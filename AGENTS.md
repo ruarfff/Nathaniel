@@ -113,7 +113,41 @@ open ~/Library/Developer/Xcode/DerivedData/Nathaniel-*/Build/Products/Debug/Nath
 
 ## Testing
 
-### Current State
+### iOS Simulator Testing (MCP)
+
+This project has ios-simulator-mcp configured for automated simulator testing. Use these tools for testing:
+
+**Workflow:**
+```bash
+# 1. Build for simulator
+xcodebuild -project Nathaniel.xcodeproj \
+  -scheme "Nathaniel iOS" \
+  -configuration Debug \
+  -destination 'platform=iOS Simulator,id=<UDID>' \
+  build
+
+# 2. Install app (use MCP tool: mcp__ios-simulator__install_app)
+# app_path: ~/Library/Developer/Xcode/DerivedData/Nathaniel-*/Build/Products/Debug-iphonesimulator/Nathaniel.app
+
+# 3. Launch app (use MCP tool: mcp__ios-simulator__launch_app)
+# bundle_id: com.ruarfff.Nathaniel
+
+# 4. Take screenshot (use MCP tool: mcp__ios-simulator__screenshot)
+# 5. View console output for crashes:
+xcrun simctl launch --console <UDID> com.ruarfff.Nathaniel
+```
+
+**Available MCP Tools:**
+- `mcp__ios-simulator__get_booted_sim_id` - Get currently booted simulator UDID
+- `mcp__ios-simulator__open_simulator` - Open Simulator.app
+- `mcp__ios-simulator__install_app` - Install .app bundle
+- `mcp__ios-simulator__launch_app` - Launch app by bundle ID
+- `mcp__ios-simulator__screenshot` - Capture screenshot to file
+- `mcp__ios-simulator__ui_describe_all` - Get accessibility tree (requires idb)
+
+**Note:** Some MCP features (ui_tap, ui_view, ui_swipe) require `idb` (iOS Development Bridge) to be installed.
+
+### Unit Tests
 
 The project does not yet have unit tests or UI tests configured. This section documents how to add and run tests when they are implemented.
 
