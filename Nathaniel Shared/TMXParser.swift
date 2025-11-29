@@ -84,7 +84,9 @@ class TMXLayer {
     /// Get tile at grid position
     func tile(at x: Int, y: Int) -> Int {
         guard x >= 0 && x < width && y >= 0 && y < height else { return 0 }
-        return tiles[y * width + x]
+        let index = y * width + x
+        guard index >= 0 && index < tiles.count else { return 0 }
+        return tiles[index]
     }
 
     /// Check if tile at position is solid (non-empty)
@@ -318,10 +320,70 @@ class TMXParser: NSObject, XMLParserDelegate {
         return tiles
     }
 
-    /// Decompress gzip data using Compression framework
+    /// Decompress gzip data
+    /// Gzip format: 10-byte header + deflate data + 8-byte trailer
     private func decompress(data: Data) -> Data? {
-        // Try zlib decompression (gzip is a variant)
-        let bufferSize = 1024 * 1024 // 1MB buffer should be enough for map data
+        // Check for gzip magic number (0x1f, 0x8b)
+        guard data.count > 18 else {
+            print("TMXParser: Data too small for gzip: \(data.count) bytes")
+            return nil
+        }
+
+        let bytes = [UInt8](data)
+
+        // Verify gzip header
+        guard bytes[0] == 0x1f && bytes[1] == 0x8b else {
+            print("TMXParser: Not gzip data (magic: \(String(format: "%02x %02x", bytes[0], bytes[1])))")
+            // Try as raw zlib/deflate
+            return decompressRawDeflate(data: data)
+        }
+
+        // Skip the gzip header to get to the deflate stream
+        // Header is at least 10 bytes: magic(2) + method(1) + flags(1) + mtime(4) + xfl(1) + os(1)
+        let flags = bytes[3]
+        var headerSize = 10
+
+        // If FEXTRA flag is set, skip extra field
+        if (flags & 0x04) != 0 && headerSize + 2 <= data.count {
+            let xlen = Int(bytes[headerSize]) | (Int(bytes[headerSize + 1]) << 8)
+            headerSize += 2 + xlen
+        }
+
+        // If FNAME flag is set, skip null-terminated filename
+        if (flags & 0x08) != 0 {
+            while headerSize < data.count && bytes[headerSize] != 0 {
+                headerSize += 1
+            }
+            headerSize += 1 // skip null terminator
+        }
+
+        // If FCOMMENT flag is set, skip null-terminated comment
+        if (flags & 0x10) != 0 {
+            while headerSize < data.count && bytes[headerSize] != 0 {
+                headerSize += 1
+            }
+            headerSize += 1 // skip null terminator
+        }
+
+        // If FHCRC flag is set, skip header CRC
+        if (flags & 0x02) != 0 {
+            headerSize += 2
+        }
+
+        guard headerSize < data.count - 8 else {
+            print("TMXParser: Invalid gzip header, headerSize=\(headerSize), dataCount=\(data.count)")
+            return nil
+        }
+
+        // Extract the deflate stream (excluding 8-byte trailer: CRC32 + ISIZE)
+        let deflateData = data.subdata(in: headerSize..<(data.count - 8))
+
+        return decompressRawDeflate(data: deflateData)
+    }
+
+    /// Decompress raw deflate data using Compression framework
+    private func decompressRawDeflate(data: Data) -> Data? {
+        let bufferSize = 1024 * 1024 // 1MB buffer
         var destinationBuffer = [UInt8](repeating: 0, count: bufferSize)
 
         let decompressedSize = data.withUnsafeBytes { (sourcePtr: UnsafeRawBufferPointer) -> Int in
@@ -336,7 +398,11 @@ class TMXParser: NSObject, XMLParserDelegate {
             )
         }
 
-        guard decompressedSize > 0 else { return nil }
+        guard decompressedSize > 0 else {
+            print("TMXParser: Raw deflate decompression failed for data of size \(data.count)")
+            return nil
+        }
+
         return Data(destinationBuffer.prefix(decompressedSize))
     }
 }

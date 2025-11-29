@@ -10,7 +10,7 @@ class TMXRenderer {
     }
 
     /// Load tileset textures from the bundle
-    func loadTilesets(from directory: String = "Assets/Maps") {
+    func loadTilesets() {
         for tileset in map.tilesets {
             // Remove .png extension if present for texture loading
             var textureName = tileset.imageSource
@@ -18,16 +18,23 @@ class TMXRenderer {
                 textureName = String(textureName.dropLast(4))
             }
 
-            // Try loading from the specified directory
-            let fullPath = "\(directory)/\(textureName)"
-            let texture = SKTexture(imageNamed: fullPath)
+            // Load from the bundle root - SKTexture(imageNamed:) searches there by default
+            let texture = SKTexture(imageNamed: textureName)
+
+            // Check if texture loaded correctly (texture size > 0 indicates valid texture)
+            let textureSize = texture.size()
+            if textureSize.width == 0 || textureSize.height == 0 {
+                print("TMXRenderer: WARNING - Failed to load tileset '\(tileset.name)' from '\(textureName)'")
+                print("TMXRenderer: Texture size is \(textureSize)")
+            } else {
+                print("TMXRenderer: Loaded tileset '\(tileset.name)' from '\(textureName)' (\(Int(textureSize.width))x\(Int(textureSize.height)))")
+            }
 
             // Disable texture filtering for pixel-perfect rendering
             texture.filteringMode = .nearest
 
             tileset.texture = texture
             tilesetTextures[tileset.imageSource] = texture
-            print("TMXRenderer: Loaded tileset \(tileset.name) from \(fullPath)")
         }
     }
 
@@ -67,9 +74,21 @@ class TMXRenderer {
     /// Create a sprite node for a single tile
     private func createTileNode(gid: Int, x: Int, y: Int) -> SKSpriteNode? {
         // Find the tileset containing this GID
-        guard let tileset = findTileset(for: gid),
-              let texture = tileset.texture,
-              let rect = tileset.textureRect(for: gid) else {
+        guard let tileset = findTileset(for: gid) else {
+            return nil
+        }
+
+        guard let texture = tileset.texture else {
+            return nil
+        }
+
+        // Verify texture is valid (has non-zero size)
+        let textureSize = texture.size()
+        if textureSize.width == 0 || textureSize.height == 0 {
+            return nil
+        }
+
+        guard let rect = tileset.textureRect(for: gid) else {
             return nil
         }
 

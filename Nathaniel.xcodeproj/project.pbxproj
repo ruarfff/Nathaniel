@@ -11,9 +11,6 @@
 		96B123A02EDB62E100C1F1CA /* Nathaniel.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nathaniel.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		96B123862EDB62E100C1F1CA /* Nathaniel Shared */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;

@@ -6,6 +6,9 @@
 //
 
 import SpriteKit
+import os.log
+
+private let logger = Logger(subsystem: "com.ruarfff.Nathaniel", category: "GameScene")
 
 class GameScene: SKScene {
 
@@ -22,6 +25,15 @@ class GameScene: SKScene {
 
     /// Debug label for showing info
     private var debugLabel: SKLabelNode?
+
+    /// The player character - Nathaniel
+    private var nathaniel: Nathaniel?
+
+    /// Last update time for delta time calculation
+    private var lastUpdateTime: TimeInterval = 0
+
+    /// Z-position for character sprites (above map tiles)
+    private let characterZPosition: CGFloat = 100
 
     // MARK: - Scene Setup
 
@@ -41,6 +53,7 @@ class GameScene: SKScene {
     override func didMove(to view: SKView) {
         setupCamera()
         loadMap()
+        spawnNathaniel()
         setupDebugLabel()
     }
 
@@ -55,24 +68,37 @@ class GameScene: SKScene {
     }
 
     private func loadMap() {
+        logger.info("loadMap() called")
         let parser = TMXParser()
 
         // Try to load the map from the bundle
         // The Assets folder should be added to the Xcode project
         guard let mapURL = Bundle.main.url(forResource: "levelone", withExtension: "tmx") else {
-            print("GameScene: Could not find levelone.tmx in bundle")
+            logger.error("Could not find levelone.tmx in bundle")
             showLoadError("Could not find levelone.tmx")
             return
         }
 
+        logger.info("Found map at: \(mapURL.path)")
+
         guard let map = parser.parse(url: mapURL) else {
-            print("GameScene: Failed to parse map")
+            logger.error("Failed to parse map")
             showLoadError("Failed to parse map")
             return
         }
 
-        print("GameScene: Loaded map \(map.width)x\(map.height) tiles, \(map.pixelWidth)x\(map.pixelHeight) pixels")
-        print("GameScene: \(map.tilesets.count) tilesets, \(map.layers.count) layers, \(map.objectGroups.count) object groups")
+        logger.info("Loaded map \(map.width)x\(map.height) tiles, \(map.pixelWidth)x\(map.pixelHeight) pixels")
+        logger.info("\(map.tilesets.count) tilesets, \(map.layers.count) layers, \(map.objectGroups.count) object groups")
+
+        // Log tileset info
+        for tileset in map.tilesets {
+            logger.info("Tileset: \(tileset.name), firstGid: \(tileset.firstGid), image: \(tileset.imageSource), size: \(tileset.imageWidth)x\(tileset.imageHeight)")
+        }
+
+        // Log layer info
+        for layer in map.layers {
+            logger.info("Layer: \(layer.name), size: \(layer.width)x\(layer.height), tiles: \(layer.tiles.count)")
+        }
 
         // Create renderer and load tilesets
         mapRenderer = TMXRenderer(map: map)
@@ -85,13 +111,6 @@ class GameScene: SKScene {
             print("GameScene: Map node added with \(mapNode.children.count) layer nodes")
         }
 
-        // Position camera at Nathaniel's spawn point
-        if let nathanielSpawn = mapRenderer?.getSpawnObjects().first(where: { $0.name == "Nathaniel" }) {
-            let spawnPos = mapRenderer?.convertToSpriteKit(point: nathanielSpawn.center) ?? CGPoint.zero
-            cameraNode.position = spawnPos
-            print("GameScene: Camera positioned at Nathaniel spawn: \(spawnPos)")
-        }
-
         // Log spawn points for debugging
         if let objects = mapRenderer?.getSpawnObjects() {
             print("GameScene: Found \(objects.count) spawn objects:")
@@ -100,6 +119,54 @@ class GameScene: SKScene {
                 print("  - \(obj.name) (\(obj.type)) at \(pos)")
             }
         }
+    }
+
+    /// Spawn Nathaniel at his designated spawn point
+    private func spawnNathaniel() {
+        guard let renderer = mapRenderer else {
+            print("GameScene: Cannot spawn Nathaniel - map not loaded")
+            return
+        }
+
+        // Find Nathaniel's spawn point in the map
+        let allObjects = renderer.getSpawnObjects()
+        print("GameScene: Found \(allObjects.count) spawn objects")
+        for obj in allObjects {
+            print("GameScene: Object '\(obj.name)' type='\(obj.type)' at (\(obj.x), \(obj.y))")
+        }
+
+        guard let spawnObject = allObjects.first(where: { $0.name == "Nathaniel" }) else {
+            print("GameScene: No spawn point named 'Nathaniel' found in map")
+            return
+        }
+
+        print("GameScene: Found Nathaniel spawn at TMX coords: (\(spawnObject.center.x), \(spawnObject.center.y))")
+
+        let spawnPos = renderer.convertToSpriteKit(point: spawnObject.center)
+        print("GameScene: Converted to SpriteKit coords: (\(spawnPos.x), \(spawnPos.y))")
+
+        // Create and configure Nathaniel
+        nathaniel = Nathaniel()
+        guard let nathaniel = nathaniel else { return }
+
+        nathaniel.position = spawnPos
+        nathaniel.sprite.zPosition = characterZPosition
+
+        // Scale up the sprite to make it more visible (original is tiny ~25x35)
+        nathaniel.sprite.setScale(3.0)
+
+        print("GameScene: Nathaniel sprite size: \(nathaniel.sprite.size)")
+        print("GameScene: Nathaniel sprite xScale: \(nathaniel.sprite.xScale), yScale: \(nathaniel.sprite.yScale)")
+        print("GameScene: Nathaniel sprite texture: \(String(describing: nathaniel.sprite.texture))")
+
+        // Add to scene
+        addChild(nathaniel.sprite)
+
+
+        // Position camera at Nathaniel
+        cameraNode.position = spawnPos
+
+        print("GameScene: Spawned Nathaniel at \(spawnPos.x), \(spawnPos.y)")
     }
 
     private func setupDebugLabel() {
@@ -129,21 +196,69 @@ class GameScene: SKScene {
             return
         }
 
-        let camPos = cameraNode.position
-        let tilePos = renderer.worldToTile(point: camPos)
-        let walkable = renderer.isWalkable(tileX: tilePos.x, tileY: tilePos.y)
+        var debugText = ""
 
-        debugLabel?.text = """
-        Camera: (\(Int(camPos.x)), \(Int(camPos.y)))
-        Tile: (\(tilePos.x), \(tilePos.y))
-        Walkable: \(walkable)
-        """
+        if let nathaniel = nathaniel {
+            let pos = nathaniel.position
+            let tilePos = renderer.worldToTile(point: pos)
+            debugText += "Nathaniel: (\(Int(pos.x)), \(Int(pos.y)))\n"
+            debugText += "Tile: (\(tilePos.x), \(tilePos.y))\n"
+            debugText += "HP: \(nathaniel.currentHP)/\(nathaniel.maxHP)\n"
+            debugText += "Moving: \(nathaniel.isMoving)\n"
+            debugText += "Facing: \(nathaniel.facingDirection)"
+        } else {
+            let camPos = cameraNode.position
+            let tilePos = renderer.worldToTile(point: camPos)
+            debugText = "Camera: (\(Int(camPos.x)), \(Int(camPos.y)))\nTile: (\(tilePos.x), \(tilePos.y))"
+        }
+
+        debugLabel?.text = debugText
     }
 
     // MARK: - Update Loop
 
     override func update(_ currentTime: TimeInterval) {
+        // Calculate delta time
+        let deltaTime: TimeInterval
+        if lastUpdateTime == 0 {
+            deltaTime = 0
+        } else {
+            deltaTime = currentTime - lastUpdateTime
+        }
+        lastUpdateTime = currentTime
+
+        // Update Nathaniel
+        nathaniel?.update(deltaTime: deltaTime)
+
+        // Camera follows Nathaniel
+        updateCameraFollow()
+
+        // Update debug display
         updateDebugLabel()
+    }
+
+    /// Make the camera smoothly follow Nathaniel
+    private func updateCameraFollow() {
+        guard let nathaniel = nathaniel, let renderer = mapRenderer else { return }
+
+        // Target position is Nathaniel's position
+        let targetPos = nathaniel.position
+
+        // Clamp to map bounds
+        let halfWidth = size.width / 2
+        let halfHeight = size.height / 2
+
+        var clampedPos = targetPos
+        clampedPos.x = max(halfWidth, min(CGFloat(renderer.map.pixelWidth) - halfWidth, clampedPos.x))
+        clampedPos.y = max(halfHeight, min(CGFloat(renderer.map.pixelHeight) - halfHeight, clampedPos.y))
+
+        // Smooth camera movement (lerp)
+        let smoothFactor: CGFloat = 0.1
+        let currentPos = cameraNode.position
+        cameraNode.position = CGPoint(
+            x: currentPos.x + (clampedPos.x - currentPos.x) * smoothFactor,
+            y: currentPos.y + (clampedPos.y - currentPos.y) * smoothFactor
+        )
     }
 
     // MARK: - Camera Movement
@@ -172,16 +287,14 @@ class GameScene: SKScene {
 extension GameScene {
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        // Future: Handle tap to move character
+        guard let touch = touches.first else { return }
+        let location = touch.location(in: self)
+        handleMoveCommand(to: location)
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        // Pan camera with touch drag
-        guard let touch = touches.first else { return }
-        let location = touch.location(in: self)
-        let previousLocation = touch.previousLocation(in: self)
-        let delta = CGPoint(x: previousLocation.x - location.x, y: previousLocation.y - location.y)
-        moveCamera(by: delta)
+        // Two-finger drag to pan camera (optional, for when we want manual camera control)
+        // For now, single finger just updates move destination
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -198,42 +311,45 @@ extension GameScene {
 extension GameScene {
 
     override func mouseDown(with event: NSEvent) {
-        // Future: Handle click to move character
         let location = event.location(in: self)
-        print("Click at: \(location)")
-
-        if let renderer = mapRenderer {
-            let tile = renderer.worldToTile(point: location)
-            let walkable = renderer.isWalkable(tileX: tile.x, tileY: tile.y)
-            print("  Tile: (\(tile.x), \(tile.y)), Walkable: \(walkable)")
-        }
+        handleMoveCommand(to: location)
     }
 
     override func mouseDragged(with event: NSEvent) {
-        // Pan camera with mouse drag
-        let delta = CGPoint(x: -event.deltaX, y: event.deltaY)
-        moveCamera(by: delta)
+        // Right-click drag to pan camera manually (optional)
     }
 
     override func mouseUp(with event: NSEvent) {
     }
 
     override func keyDown(with event: NSEvent) {
-        // Arrow keys for camera movement
-        let moveSpeed: CGFloat = 32
-
-        switch event.keyCode {
-        case 123: // Left arrow
-            moveCamera(by: CGPoint(x: -moveSpeed, y: 0))
-        case 124: // Right arrow
-            moveCamera(by: CGPoint(x: moveSpeed, y: 0))
-        case 125: // Down arrow
-            moveCamera(by: CGPoint(x: 0, y: -moveSpeed))
-        case 126: // Up arrow
-            moveCamera(by: CGPoint(x: 0, y: moveSpeed))
-        default:
-            break
+        // S key to stop movement
+        if event.keyCode == 1 { // S key
+            nathaniel?.stop()
         }
     }
 }
 #endif
+
+// MARK: - Movement Commands
+
+extension GameScene {
+
+    /// Handle a move command to a world position
+    func handleMoveCommand(to location: CGPoint) {
+        guard let nathaniel = nathaniel else { return }
+
+        // Check if the destination is walkable
+        if let renderer = mapRenderer {
+            let tile = renderer.worldToTile(point: location)
+            if !renderer.isWalkable(tileX: tile.x, tileY: tile.y) {
+                logger.debug("Destination not walkable: tile (\(tile.x), \(tile.y))")
+                // Still allow movement toward the location - pathfinding will handle obstacles
+                // For now, just move directly (pathfinding will be added later)
+            }
+        }
+
+        nathaniel.moveTo(location)
+        logger.debug("Moving Nathaniel to \(location.x), \(location.y)")
+    }
+}
