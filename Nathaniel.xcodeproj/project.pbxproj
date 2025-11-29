@@ -12,41 +12,11 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		96B123B12EDB62E100C1F1CA /* Exceptions for "Nathaniel Shared" folder in "Nathaniel iOS" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Actions.sks,
-				Assets,
-				Assets.xcassets,
-				GameScene.sks,
-				GameScene.swift,
-				TMXParser.swift,
-				TMXRenderer.swift,
-			);
-			target = 96B1238E2EDB62E100C1F1CA /* Nathaniel iOS */;
-		};
-		96B123B52EDB62E100C1F1CA /* Exceptions for "Nathaniel Shared" folder in "Nathaniel macOS" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Actions.sks,
-				Assets,
-				Assets.xcassets,
-				GameScene.sks,
-				GameScene.swift,
-				TMXParser.swift,
-				TMXRenderer.swift,
-			);
-			target = 96B1239F2EDB62E100C1F1CA /* Nathaniel macOS */;
-		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		96B123862EDB62E100C1F1CA /* Nathaniel Shared */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				96B123B12EDB62E100C1F1CA /* Exceptions for "Nathaniel Shared" folder in "Nathaniel iOS" target */,
-				96B123B52EDB62E100C1F1CA /* Exceptions for "Nathaniel Shared" folder in "Nathaniel macOS" target */,
-			);
 			path = "Nathaniel Shared";
 			sourceTree = "<group>";
 		};
@@ -115,6 +85,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				96B123862EDB62E100C1F1CA /* Nathaniel Shared */,
 				96B123912EDB62E100C1F1CA /* Nathaniel iOS */,
 			);
 			name = "Nathaniel iOS";
@@ -137,6 +108,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				96B123862EDB62E100C1F1CA /* Nathaniel Shared */,
 				96B123A12EDB62E100C1F1CA /* Nathaniel macOS */,
 			);
 			name = "Nathaniel macOS";
