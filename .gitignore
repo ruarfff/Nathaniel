@@ -24,3 +24,8 @@ fastlane/screenshots/**/*.png
 fastlane/test_output
 
 .claude/settings.local.json
+
+.workspaces/
+
+test-artifacts/
+test-screenshots/
