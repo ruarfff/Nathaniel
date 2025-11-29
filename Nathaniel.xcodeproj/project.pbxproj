@@ -16,9 +16,12 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Actions.sks,
+				Assets,
 				Assets.xcassets,
 				GameScene.sks,
 				GameScene.swift,
+				TMXParser.swift,
+				TMXRenderer.swift,
 			);
 			target = 96B1238E2EDB62E100C1F1CA /* Nathaniel iOS */;
 		};
@@ -26,9 +29,12 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Actions.sks,
+				Assets,
 				Assets.xcassets,
 				GameScene.sks,
 				GameScene.swift,
+				TMXParser.swift,
+				TMXRenderer.swift,
 			);
 			target = 96B1239F2EDB62E100C1F1CA /* Nathaniel macOS */;
 		};

@@ -14,6 +14,9 @@ Nathaniel is a top-down RTS game for mobile. The player controls Nathaniel and h
 
 This is a learning project. The developer is experienced with other platforms (Android, Windows Phone, Godot) but new to Swift and SpriteKit. Architecture decisions should be discussed and explained rather than assumed.
 
+## Source control
+
+This project uses jj
 
 ## Repository Structure
 
