@@ -1,4 +1,11 @@
 import SpriteKit
+import CoreGraphics
+
+#if os(iOS) || os(tvOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
 /// Renders a TMXMap to SpriteKit nodes
 class TMXRenderer {
@@ -18,8 +25,16 @@ class TMXRenderer {
                 textureName = String(textureName.dropLast(4))
             }
 
-            // Load from the bundle root - SKTexture(imageNamed:) searches there by default
-            let texture = SKTexture(imageNamed: textureName)
+            // Load the image and process transparency if needed
+            let texture: SKTexture
+            if let transColor = tileset.transparencyColor,
+               let processedTexture = loadTextureWithTransparency(named: textureName, transparencyColor: transColor) {
+                texture = processedTexture
+                print("TMXRenderer: Loaded tileset '\(tileset.name)' with transparency color #\(transColor)")
+            } else {
+                // Fall back to standard loading
+                texture = SKTexture(imageNamed: textureName)
+            }
 
             // Check if texture loaded correctly (texture size > 0 indicates valid texture)
             let textureSize = texture.size()
@@ -36,6 +51,97 @@ class TMXRenderer {
             tileset.texture = texture
             tilesetTextures[tileset.imageSource] = texture
         }
+    }
+
+    /// Load a texture and make a specific color transparent
+    private func loadTextureWithTransparency(named name: String, transparencyColor: String) -> SKTexture? {
+        // Parse the hex color
+        guard let (targetR, targetG, targetB) = parseHexColor(transparencyColor) else {
+            print("TMXRenderer: Invalid transparency color: \(transparencyColor)")
+            return nil
+        }
+
+        #if os(iOS) || os(tvOS)
+        guard let image = UIImage(named: name),
+              let cgImage = image.cgImage else {
+            return nil
+        }
+        #elseif os(macOS)
+        guard let image = NSImage(named: name),
+              let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+            return nil
+        }
+        #endif
+
+        let width = cgImage.width
+        let height = cgImage.height
+
+        // Create a bitmap context with alpha
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            return nil
+        }
+
+        // Draw the original image
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        // Get pixel data
+        guard let data = context.data else {
+            return nil
+        }
+
+        let pixelBuffer = data.bindMemory(to: UInt8.self, capacity: width * height * 4)
+
+        // Process each pixel
+        for y in 0..<height {
+            for x in 0..<width {
+                let offset = (y * width + x) * 4
+                let r = pixelBuffer[offset]
+                let g = pixelBuffer[offset + 1]
+                let b = pixelBuffer[offset + 2]
+
+                // Check if this pixel matches the transparency color
+                if r == targetR && g == targetG && b == targetB {
+                    // Make transparent
+                    pixelBuffer[offset + 3] = 0  // Set alpha to 0
+                }
+            }
+        }
+
+        // Create new image from modified context
+        guard let newCGImage = context.makeImage() else {
+            return nil
+        }
+
+        let texture = SKTexture(cgImage: newCGImage)
+        texture.filteringMode = .nearest
+        return texture
+    }
+
+    /// Parse a hex color string (e.g., "bf7bc7") to RGB components
+    private func parseHexColor(_ hex: String) -> (UInt8, UInt8, UInt8)? {
+        var hexString = hex
+        if hexString.hasPrefix("#") {
+            hexString = String(hexString.dropFirst())
+        }
+
+        guard hexString.count == 6,
+              let value = UInt32(hexString, radix: 16) else {
+            return nil
+        }
+
+        let r = UInt8((value >> 16) & 0xFF)
+        let g = UInt8((value >> 8) & 0xFF)
+        let b = UInt8(value & 0xFF)
+
+        return (r, g, b)
     }
 
     /// Create a node containing all visible map layers

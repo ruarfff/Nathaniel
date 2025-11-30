@@ -231,6 +231,165 @@ class Blaster: Gun {
     }
 }
 
+// MARK: - Bow Weapon (for Boss)
+
+/// Bow weapon that shoots arrows - used by the Boss
+class Bow: Gun {
+
+    init(cooldownTime: TimeInterval = 1.5, damage: Int = 25, range: CGFloat = 300) {
+        super.init(
+            cooldownTime: cooldownTime,
+            damage: damage,
+            range: range,
+            bulletSpeed: 400,  // Arrows are slower than bullets
+            bulletTexture: "arrow"
+        )
+    }
+}
+
+// MARK: - Boss Enemy
+
+/// Boss enemy for Level One - high HP, ranged attacks, triggers victory when defeated
+class Boss: Enemy {
+
+    // MARK: - Constants (from legacy code)
+
+    /// Maximum health points (very high for boss)
+    static let defaultMaxHP = 800
+
+    /// Movement speed (moderate)
+    static let defaultSpeed: CGFloat = 60
+
+    /// Points awarded for killing (high value)
+    static let defaultKillScore = 100
+
+    /// Detection range
+    static let defaultVisibleRange: CGFloat = 600
+
+    /// Attack range (bow range)
+    static let defaultAttackRange: CGFloat = 500
+
+    /// Distance ratio at which boss stops moving (30% of range)
+    static let stopDistanceRatio: CGFloat = 0.3
+
+    // MARK: - Properties
+
+    /// Whether this boss has been defeated (for win condition)
+    private(set) var isDefeated: Bool = false
+
+    // MARK: - Initialization
+
+    init() {
+        super.init(
+            name: "Boss",
+            maxHP: Boss.defaultMaxHP,
+            speed: Boss.defaultSpeed,
+            killScore: Boss.defaultKillScore,
+            visibleRange: Boss.defaultVisibleRange,
+            attackRange: Boss.defaultAttackRange,
+            meleeDamage: 0,  // No melee - ranged only
+            meleeAttackCooldown: 0,
+            spriteSheetCols: 8,
+            spriteSheetRows: 8  // Boss has 8 rows for more animation variety
+        )
+
+        // Configure ranged weapon (Bow)
+        hasRangedWeapon = true
+        weapon = Bow(cooldownTime: 1.5, damage: 25, range: Boss.defaultAttackRange)
+        weapon?.owner = self
+
+        // Load sprite sheet
+        loadSpriteSheet(named: "boss1spritesheet")
+
+        // Initial facing
+        facingDirection = .south
+    }
+
+    // MARK: - AI Override
+
+    /// Boss-specific AI: approach target but maintain comfortable attack distance
+    override func updateAI(deltaTime: TimeInterval) {
+        guard let target = target, target.isAlive else {
+            destination = nil
+            isAttacking = false
+            return
+        }
+
+        let dx = target.position.x - position.x
+        let dy = target.position.y - position.y
+        let distanceToTarget = hypot(dx, dy)
+
+        // Check if target is in visible range
+        if distanceToTarget > visibleRange {
+            destination = nil
+            isAttacking = false
+            return
+        }
+
+        // Face the target
+        let direction = CGVector(dx: dx, dy: dy)
+        facingDirection = FacingDirection.from(direction: direction)
+
+        // Stop distance (30% of attack range)
+        let stopDistance = attackRange * Boss.stopDistanceRatio
+
+        if distanceToTarget > stopDistance {
+            // Move closer while attacking if in attack range
+            if distanceToTarget <= attackRange {
+                isAttacking = true
+                destination = target.position
+                performAttack()
+            } else {
+                // Just move closer
+                isAttacking = false
+                destination = target.position
+            }
+        } else {
+            // Close enough - stop and attack
+            isAttacking = true
+            destination = nil
+            performAttack()
+        }
+    }
+
+    // MARK: - Texture Update Override
+
+    /// Boss has different animation frame layout (8x8 sprite sheet)
+    override func updateTexture() {
+        guard !frameTextures.isEmpty else { return }
+
+        // Boss sprite sheet layout (based on legacy code):
+        // Rows 0-4: Movement animations by direction
+        // Row 5: Idle poses
+        // Rows 6-7: Attack animations (if any)
+
+        // Column mapping for directions (same as others)
+        let col = facingDirection.rawValue
+
+        // For boss: row 5 has idle frames, rows 0-4 have movement
+        // The legacy code uses frames[index, col] for movement where index = 0-3
+        // and frames[5, col] for idle
+        let row: Int
+        if isMoving {
+            // Use movement row (cycle through first 4 rows based on animation)
+            row = min(1, frameTextures.count - 1)  // Simplified: just use row 1 for walking
+        } else {
+            // Use idle row (row 5 in legacy, but we may have fewer rows)
+            row = min(5, frameTextures.count - 1)
+        }
+
+        guard row < frameTextures.count, col < frameTextures[row].count else { return }
+        sprite.texture = frameTextures[row][col]
+    }
+
+    // MARK: - Death Override
+
+    override func onDeath() {
+        isDefeated = true
+        super.onDeath()
+    }
+}
+
 // MARK: - Soldier Enemy
 
 /// Ranged enemy that keeps distance and shoots at players

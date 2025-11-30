@@ -33,6 +33,8 @@ class TMXTileset {
     let imageSource: String
     let imageWidth: Int
     let imageHeight: Int
+    /// Transparency color as hex string (e.g., "bf7bc7") - pixels of this color should be transparent
+    let transparencyColor: String?
     var texture: SKTexture?
 
     /// Number of columns in the tileset image
@@ -40,7 +42,7 @@ class TMXTileset {
     var rows: Int { imageHeight / tileHeight }
 
     init(firstGid: Int, name: String, tileWidth: Int, tileHeight: Int,
-         imageSource: String, imageWidth: Int, imageHeight: Int) {
+         imageSource: String, imageWidth: Int, imageHeight: Int, transparencyColor: String? = nil) {
         self.firstGid = firstGid
         self.name = name
         self.tileWidth = tileWidth
@@ -48,6 +50,7 @@ class TMXTileset {
         self.imageSource = imageSource
         self.imageWidth = imageWidth
         self.imageHeight = imageHeight
+        self.transparencyColor = transparencyColor
     }
 
     /// Get texture rect for a global tile ID
@@ -204,10 +207,12 @@ class TMXParser: NSObject, XMLParserDelegate {
                 let source = attributes["source"] ?? ""
                 let width = Int(attributes["width"] ?? "0") ?? 0
                 let height = Int(attributes["height"] ?? "0") ?? 0
+                let trans = attributes["trans"]  // Transparency color (e.g., "bf7bc7")
                 // Recreate tileset with image info
                 currentTileset = TMXTileset(firstGid: tileset.firstGid, name: tileset.name,
                                             tileWidth: tileset.tileWidth, tileHeight: tileset.tileHeight,
-                                            imageSource: source, imageWidth: width, imageHeight: height)
+                                            imageSource: source, imageWidth: width, imageHeight: height,
+                                            transparencyColor: trans)
             }
 
         case "layer":

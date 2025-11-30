@@ -10,7 +10,7 @@ import os.log
 
 private let logger = Logger(subsystem: "com.ruarfff.Nathaniel", category: "GameScene")
 
-class GameScene: SKScene {
+class GameScene: SKScene, LevelManagerDelegate {
 
     // MARK: - Properties
 
@@ -35,8 +35,17 @@ class GameScene: SKScene {
     /// The currently selected/controlled character
     private var selectedCharacter: Character?
 
-    /// Active enemies in the scene
-    private var enemies: [Enemy] = []
+    /// Enemy manager
+    private var enemyManager: EnemyManager!
+
+    /// Level manager for game state
+    private var levelManager: LevelManager!
+
+    /// Game overlay for victory/game over screens
+    private var gameOverlay: GameOverlay!
+
+    /// Starting spawn position for respawn
+    private var startPosition: CGPoint = .zero
 
     /// Last update time for delta time calculation
     private var lastUpdateTime: TimeInterval = 0
@@ -61,9 +70,31 @@ class GameScene: SKScene {
 
     override func didMove(to view: SKView) {
         setupCamera()
+        setupLevelManager()
+        setupEnemyManager()
+        setupOverlay()
         loadMap()
         spawnCharacters()
         setupDebugLabel()
+    }
+
+    private func setupLevelManager() {
+        levelManager = LevelManager(config: .levelOne)
+        levelManager.delegate = self
+    }
+
+    private func setupEnemyManager() {
+        enemyManager = EnemyManager(scene: self)
+        enemyManager.enemyZPosition = characterZPosition
+        enemyManager.enemyScale = 3.0
+        enemyManager.delegate = levelManager
+        levelManager.enemyManager = enemyManager
+    }
+
+    private func setupOverlay() {
+        gameOverlay = GameOverlay(size: size)
+        gameOverlay.zPosition = 1000
+        cameraNode.addChild(gameOverlay)
     }
 
     private func setupCamera() {
@@ -149,6 +180,10 @@ class GameScene: SKScene {
             print("GameScene: Found Nathaniel spawn at TMX coords: (\(spawnObject.center.x), \(spawnObject.center.y))")
             let spawnPos = renderer.convertToSpriteKit(point: spawnObject.center)
 
+            // Store start position for respawning
+            startPosition = spawnPos
+            levelManager.startPosition = spawnPos
+
             nathaniel = Nathaniel()
             if let nathaniel = nathaniel {
                 nathaniel.position = spawnPos
@@ -165,6 +200,11 @@ class GameScene: SKScene {
                     guard let self = self else { return }
                     projectile.sprite.setScale(2.0)
                     self.addChild(projectile.sprite)
+                }
+
+                // Wire up death callback for game over handling
+                nathaniel.onDeathCallback = { [weak self] in
+                    self?.handleNathanielDeath()
                 }
 
                 print("GameScene: Spawned Nathaniel at \(spawnPos.x), \(spawnPos.y)")
@@ -215,77 +255,35 @@ class GameScene: SKScene {
     private func spawnEnemies() {
         guard let nathaniel = nathaniel else { return }
 
+        // Register player characters with enemy manager
+        var players: [Character] = []
+        if let n = self.nathaniel { players.append(n) }
+        if let h = self.hermes { players.append(h) }
+        enemyManager.playerCharacters = players
+
         // For testing: Spawn a grunt near Nathaniel
-        let grunt = Grunt()
-        grunt.position = CGPoint(
-            x: nathaniel.position.x + 300,
-            y: nathaniel.position.y + 100
+        enemyManager.addEnemy(
+            name: "Grunt1",
+            at: CGPoint(x: nathaniel.position.x + 300, y: nathaniel.position.y + 100),
+            target: nathaniel
         )
-        grunt.sprite.zPosition = characterZPosition
-        grunt.sprite.setScale(3.0)
-        grunt.target = nathaniel  // Target Nathaniel
-
-        // Set up health bar for grunt
-        grunt.setupHealthBar(width: 40, yOffset: 8)
-
-        addChild(grunt.sprite)
-        enemies.append(grunt)
-
-        print("GameScene: Spawned test Grunt at \(grunt.position.x), \(grunt.position.y)")
 
         // For testing: Spawn a soldier nearby (within visible range)
-        let soldier = Soldier()
-        soldier.position = CGPoint(
-            x: nathaniel.position.x + 200,
-            y: nathaniel.position.y + 200
+        enemyManager.addEnemy(
+            name: "Soldier1",
+            at: CGPoint(x: nathaniel.position.x + 200, y: nathaniel.position.y + 200),
+            target: nathaniel
         )
-        soldier.sprite.zPosition = characterZPosition
-        soldier.sprite.setScale(3.0)
-        soldier.target = nathaniel
 
-        // Set up health bar for soldier
-        soldier.setupHealthBar(width: 40, yOffset: 8)
-
-        // Wire up soldier's weapon callbacks
-        soldier.weapon?.onFire = { [weak self] projectile in
-            guard let self = self else { return }
-            projectile.sprite.setScale(2.0)
-            self.addChild(projectile.sprite)
-        }
-
-        // Soldier's bullets can hit player characters
-        soldier.weapon?.onCheckCollision = { [weak self] projectile in
-            guard let self = self else { return nil }
-            // Check collision with Nathaniel
-            if let nathaniel = self.nathaniel, nathaniel.isAlive {
-                if projectile.checkCollision(with: nathaniel) {
-                    return nathaniel
-                }
-            }
-            // Check collision with Hermes
-            if let hermes = self.hermes, hermes.isAlive {
-                if projectile.checkCollision(with: hermes) {
-                    return hermes
-                }
-            }
-            return nil
-        }
-
-        addChild(soldier.sprite)
-        enemies.append(soldier)
-
-        print("GameScene: Spawned test Soldier at \(soldier.position.x), \(soldier.position.y)")
+        // For testing: Spawn a boss further away
+        enemyManager.addEnemy(
+            name: "Boss1",
+            at: CGPoint(x: nathaniel.position.x + 400, y: nathaniel.position.y - 100),
+            target: nathaniel
+        )
 
         // Set up weapon collision callback for Nathaniel's bullets to hit enemies
-        nathaniel.weapon.onCheckCollision = { [weak self] projectile in
-            guard let self = self else { return nil }
-            for enemy in self.enemies where enemy.isAlive {
-                if projectile.checkCollision(with: enemy) {
-                    return enemy
-                }
-            }
-            return nil
-        }
+        nathaniel.weapon.onCheckCollision = enemyManager.createCollisionCallback()
     }
 
     private func setupDebugLabel() {
@@ -317,6 +315,9 @@ class GameScene: SKScene {
 
         var debugText = ""
 
+        // Show game state
+        debugText += "Lives: \(levelManager.lives) | Score: \(levelManager.score)\n"
+
         // Show selected character info
         if let selected = selectedCharacter {
             let pos = selected.position
@@ -342,7 +343,7 @@ class GameScene: SKScene {
         }
 
         // Show enemy count
-        let aliveEnemies = enemies.filter { $0.isAlive }.count
+        let aliveEnemies = enemyManager.aliveCount
         if aliveEnemies > 0 {
             debugText += "\n\nEnemies: \(aliveEnemies)"
         }
@@ -363,23 +364,94 @@ class GameScene: SKScene {
         }
         lastUpdateTime = currentTime
 
+        // Don't update game logic if not playing
+        guard levelManager.state == .playing else {
+            return
+        }
+
+        // Update level manager
+        levelManager.update(deltaTime: deltaTime)
+
         // Update player characters
         nathaniel?.update(deltaTime: deltaTime)
         hermes?.update(deltaTime: deltaTime)
 
-        // Update enemies
-        for enemy in enemies where enemy.isActive {
-            enemy.update(deltaTime: deltaTime)
-        }
-
-        // Remove dead enemies (after a delay to show death animation)
-        enemies.removeAll { !$0.isAlive && !$0.isActive }
+        // Update enemies via manager
+        enemyManager.update(deltaTime: deltaTime)
 
         // Camera follows selected character
         updateCameraFollow()
 
         // Update debug display
         updateDebugLabel()
+    }
+
+    // MARK: - Player Death Handling
+
+    /// Handle Nathaniel's death
+    private func handleNathanielDeath() {
+        let shouldRespawn = levelManager.handlePlayerDeath()
+
+        if shouldRespawn {
+            // Schedule respawn after a brief delay
+            let wait = SKAction.wait(forDuration: 2.0)
+            let respawn = SKAction.run { [weak self] in
+                self?.respawnNathaniel()
+            }
+            run(SKAction.sequence([wait, respawn]))
+        }
+    }
+
+    /// Respawn Nathaniel at start position
+    private func respawnNathaniel() {
+        guard let nathaniel = nathaniel else { return }
+
+        // Re-add sprite to scene if removed
+        if nathaniel.sprite.parent == nil {
+            addChild(nathaniel.sprite)
+        }
+
+        // Reset sprite state
+        nathaniel.sprite.alpha = 1.0
+        nathaniel.sprite.removeAllActions()
+
+        // Respawn at start position
+        nathaniel.respawn(at: startPosition)
+
+        // Update health bar
+        nathaniel.updateHealthBar()
+
+        // Set as selected character
+        selectedCharacter = nathaniel
+
+        // Re-register with enemy manager
+        enemyManager.playerCharacters = [nathaniel]
+        if let hermes = hermes, hermes.isAlive {
+            enemyManager.playerCharacters.append(hermes)
+        }
+
+        logger.info("Nathaniel respawned at start position")
+    }
+
+    // MARK: - LevelManagerDelegate
+
+    func levelManagerDidGameOver(_ manager: LevelManager) {
+        logger.info("Game Over!")
+        gameOverlay.showGameOver(score: manager.score, time: manager.elapsedTime)
+    }
+
+    func levelManagerDidWin(_ manager: LevelManager) {
+        logger.info("Victory!")
+        gameOverlay.showVictory(score: manager.score, time: manager.elapsedTime)
+    }
+
+    func levelManager(_ manager: LevelManager, didLoseLife remainingLives: Int) {
+        logger.info("Life lost! Remaining: \(remainingLives)")
+        gameOverlay.showLifeLost(remainingLives: remainingLives)
+    }
+
+    func levelManager(_ manager: LevelManager, didUpdateScore newScore: Int) {
+        // Update HUD score display when implemented
     }
 
     /// Make the camera smoothly follow the selected character

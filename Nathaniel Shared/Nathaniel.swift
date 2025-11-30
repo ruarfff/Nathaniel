@@ -98,7 +98,15 @@ class Nathaniel: Character {
     // MARK: - Overrides
 
     override func onDeath() {
-        super.onDeath()
+        // Don't call super - we want custom death handling for player
+        animationState = .dead
+        isActive = false
+
+        // Fade out but don't remove (we may respawn)
+        let fadeOut = SKAction.fadeOut(withDuration: 0.5)
+        sprite.run(fadeOut)
+
+        // Notify callback
         onDeathCallback?()
     }
 
@@ -112,6 +120,14 @@ class Nathaniel: Character {
         self.facingDirection = .south
         self.animationState = .idle
         self.isActive = true
+        self.target = nil
+
+        // Reset sprite visuals
+        sprite.alpha = 1.0
+        sprite.removeAllActions()
+        sprite.colorBlendFactor = 0.0
+
         updateTexture()
+        updateHealthBar()
     }
 }
