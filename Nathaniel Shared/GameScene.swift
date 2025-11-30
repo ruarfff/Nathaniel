@@ -44,6 +44,12 @@ class GameScene: SKScene, LevelManagerDelegate {
     /// Game overlay for victory/game over screens
     private var gameOverlay: GameOverlay!
 
+    /// HUD for displaying game status
+    private var hud: HUD!
+
+    /// Whether to show debug info (can be toggled)
+    private var showDebugInfo: Bool = false
+
     /// Starting spawn position for respawn
     private var startPosition: CGPoint = .zero
 
@@ -73,9 +79,12 @@ class GameScene: SKScene, LevelManagerDelegate {
         setupLevelManager()
         setupEnemyManager()
         setupOverlay()
+        setupHUD()
         loadMap()
         spawnCharacters()
-        setupDebugLabel()
+        if showDebugInfo {
+            setupDebugLabel()
+        }
     }
 
     private func setupLevelManager() {
@@ -95,6 +104,43 @@ class GameScene: SKScene, LevelManagerDelegate {
         gameOverlay = GameOverlay(size: size)
         gameOverlay.zPosition = 1000
         cameraNode.addChild(gameOverlay)
+    }
+
+    private func setupHUD() {
+        // Calculate visible area based on view aspect ratio and scene scale mode
+        // With .aspectFill, the scene is scaled to fill the view, potentially cropping edges
+        let hudSize: CGSize
+        if let view = self.view {
+            let viewAspect = view.bounds.width / view.bounds.height
+            let sceneAspect = size.width / size.height
+
+            if viewAspect > sceneAspect {
+                // View is wider than scene - scene height is cropped
+                let visibleWidth = size.width
+                let visibleHeight = size.width / viewAspect
+                hudSize = CGSize(width: visibleWidth, height: visibleHeight)
+            } else {
+                // View is taller than scene - scene width is cropped
+                let visibleHeight = size.height
+                let visibleWidth = size.height * viewAspect
+                hudSize = CGSize(width: visibleWidth, height: visibleHeight)
+            }
+            print("HUD: view=\(view.bounds.size), scene=\(size), visible=\(hudSize)")
+        } else {
+            hudSize = size
+        }
+
+        hud = HUD(size: hudSize)
+        hud.zPosition = 500
+        cameraNode.addChild(hud)
+
+        // Initialize with starting values
+        hud.update(
+            lives: levelManager.lives,
+            score: levelManager.score,
+            resources: levelManager.resources,
+            elapsedTime: levelManager.elapsedTime
+        )
     }
 
     private func setupCamera() {
@@ -382,8 +428,34 @@ class GameScene: SKScene, LevelManagerDelegate {
         // Camera follows selected character
         updateCameraFollow()
 
-        // Update debug display
-        updateDebugLabel()
+        // Update HUD
+        updateHUD()
+
+        // Update debug display (if enabled)
+        if showDebugInfo {
+            updateDebugLabel()
+        }
+    }
+
+    // MARK: - HUD Update
+
+    private func updateHUD() {
+        // Update all HUD values from level manager
+        hud.update(
+            lives: levelManager.lives,
+            score: levelManager.score,
+            resources: levelManager.resources,
+            elapsedTime: levelManager.elapsedTime
+        )
+
+        // Update selected character info
+        if let selected = selectedCharacter {
+            hud.updateSelectedCharacter(
+                name: selected.name,
+                health: selected.currentHP,
+                maxHealth: selected.maxHP
+            )
+        }
     }
 
     // MARK: - Player Death Handling
@@ -448,10 +520,11 @@ class GameScene: SKScene, LevelManagerDelegate {
     func levelManager(_ manager: LevelManager, didLoseLife remainingLives: Int) {
         logger.info("Life lost! Remaining: \(remainingLives)")
         gameOverlay.showLifeLost(remainingLives: remainingLives)
+        hud.flashLifeLost()
     }
 
     func levelManager(_ manager: LevelManager, didUpdateScore newScore: Int) {
-        // Update HUD score display when implemented
+        hud.updateScore(newScore)
     }
 
     /// Make the camera smoothly follow the selected character
