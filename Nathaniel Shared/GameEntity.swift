@@ -76,12 +76,106 @@ protocol GameEntity: AnyObject {
 
 // MARK: - Character Base Class
 
+// MARK: - Health Bar
+
+/// Visual health bar displayed above characters
+class HealthBar {
+
+    /// The container node holding all health bar elements
+    let node: SKNode
+
+    /// The red background (showing damage taken)
+    private let backgroundNode: SKShapeNode
+
+    /// The green foreground (showing current health)
+    private let healthNode: SKShapeNode
+
+    /// The white border
+    private let borderNode: SKShapeNode
+
+    /// Width of the health bar
+    let width: CGFloat
+
+    /// Height of the health bar
+    let height: CGFloat = 6
+
+    /// Offset above the character sprite
+    let yOffset: CGFloat
+
+    /// Whether to hide the bar when health is full
+    var hideWhenFull: Bool = true
+
+    init(width: CGFloat, yOffset: CGFloat) {
+        self.width = width
+        self.yOffset = yOffset
+
+        // Create container node
+        node = SKNode()
+        node.name = "healthBar"
+        node.zPosition = 200  // Above character sprites
+
+        // Background (red - shows when health is missing)
+        let bgPath = CGMutablePath()
+        bgPath.addRect(CGRect(x: -width/2, y: 0, width: width, height: height))
+        backgroundNode = SKShapeNode(path: bgPath)
+        backgroundNode.fillColor = SKColor(red: 0.8, green: 0.2, blue: 0.2, alpha: 1.0)
+        backgroundNode.strokeColor = .clear
+        backgroundNode.lineWidth = 0
+
+        // Health bar (green - shows current health)
+        let healthPath = CGMutablePath()
+        healthPath.addRect(CGRect(x: -width/2, y: 0, width: width, height: height))
+        healthNode = SKShapeNode(path: healthPath)
+        healthNode.fillColor = SKColor(red: 0.2, green: 0.7, blue: 0.2, alpha: 1.0)
+        healthNode.strokeColor = .clear
+        healthNode.lineWidth = 0
+
+        // Border (white outline)
+        let borderPath = CGMutablePath()
+        borderPath.addRect(CGRect(x: -width/2, y: 0, width: width, height: height))
+        borderNode = SKShapeNode(path: borderPath)
+        borderNode.fillColor = .clear
+        borderNode.strokeColor = .white
+        borderNode.lineWidth = 1
+
+        // Add in order: background, health, border
+        node.addChild(backgroundNode)
+        node.addChild(healthNode)
+        node.addChild(borderNode)
+    }
+
+    /// Update the health bar to reflect current health
+    func update(currentHP: Int, maxHP: Int) {
+        guard maxHP > 0 else { return }
+
+        let healthPercent = CGFloat(currentHP) / CGFloat(maxHP)
+
+        // Update green health bar width
+        let healthPath = CGMutablePath()
+        healthPath.addRect(CGRect(x: -width/2, y: 0, width: width * healthPercent, height: height))
+        healthNode.path = healthPath
+
+        // Hide when full (optional)
+        if hideWhenFull {
+            node.isHidden = currentHP >= maxHP
+        }
+    }
+
+    /// Position the health bar above a sprite
+    func positionAbove(spriteHeight: CGFloat) {
+        node.position = CGPoint(x: 0, y: spriteHeight / 2 + yOffset)
+    }
+}
+
 /// Base class for all game characters (players, enemies)
 class Character: GameEntity {
 
     // MARK: - GameEntity Properties
 
     let sprite: SKSpriteNode
+
+    /// Health bar display
+    var healthBar: HealthBar?
 
     var position: CGPoint {
         get { sprite.position }
@@ -285,18 +379,63 @@ class Character: GameEntity {
         updateTexture()
     }
 
+    // MARK: - Health Bar
+
+    /// Set up a health bar for this character
+    func setupHealthBar(width: CGFloat? = nil, yOffset: CGFloat = 4) {
+        let barWidth = width ?? sprite.size.width
+        healthBar = HealthBar(width: barWidth, yOffset: yOffset)
+
+        if let healthBar = healthBar {
+            healthBar.positionAbove(spriteHeight: sprite.size.height)
+            sprite.addChild(healthBar.node)
+            healthBar.update(currentHP: currentHP, maxHP: maxHP)
+        }
+    }
+
+    /// Update the health bar display
+    func updateHealthBar() {
+        healthBar?.update(currentHP: currentHP, maxHP: maxHP)
+    }
+
     // MARK: - Combat
 
     /// Take damage from a source
     func takeDamage(_ amount: Int) {
         guard isAlive else { return }
         currentHP -= amount
+
+        // Update health bar
+        updateHealthBar()
+
+        // Flash red to indicate damage
+        showDamageFlash()
+    }
+
+    /// Flash the sprite red briefly to indicate damage
+    func showDamageFlash() {
+        // Enable color blending
+        sprite.colorBlendFactor = 0.0
+
+        // Flash sequence: tint red, then back to normal
+        let flashRed = SKAction.colorize(with: .red, colorBlendFactor: 0.7, duration: 0.05)
+        let flashBack = SKAction.colorize(withColorBlendFactor: 0.0, duration: 0.15)
+        let flashSequence = SKAction.sequence([flashRed, flashBack])
+
+        sprite.run(flashSequence)
     }
 
     /// Called when the character dies
     func onDeath() {
         animationState = .dead
-        // Subclasses can override for specific death behavior
+        isActive = false
+
+        // Fade out and remove
+        let fadeOut = SKAction.fadeOut(withDuration: 0.5)
+        let remove = SKAction.removeFromParent()
+        let deathSequence = SKAction.sequence([fadeOut, remove])
+
+        sprite.run(deathSequence)
     }
 
     // MARK: - Collision

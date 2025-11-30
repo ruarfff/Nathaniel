@@ -35,6 +35,9 @@ class GameScene: SKScene {
     /// The currently selected/controlled character
     private var selectedCharacter: Character?
 
+    /// Active enemies in the scene
+    private var enemies: [Enemy] = []
+
     /// Last update time for delta time calculation
     private var lastUpdateTime: TimeInterval = 0
 
@@ -152,6 +155,18 @@ class GameScene: SKScene {
                 nathaniel.sprite.zPosition = characterZPosition
                 nathaniel.sprite.setScale(3.0)
                 addChild(nathaniel.sprite)
+
+                // Set up health bar (scaled for the 3x sprite size)
+                nathaniel.setupHealthBar(width: 40, yOffset: 8)
+                nathaniel.healthBar?.hideWhenFull = false  // Always show player health
+
+                // Wire up weapon callbacks
+                nathaniel.weapon.onFire = { [weak self] projectile in
+                    guard let self = self else { return }
+                    projectile.sprite.setScale(2.0)
+                    self.addChild(projectile.sprite)
+                }
+
                 print("GameScene: Spawned Nathaniel at \(spawnPos.x), \(spawnPos.y)")
             }
         } else {
@@ -173,6 +188,10 @@ class GameScene: SKScene {
                 hermes.followTarget = nathaniel
                 hermes.isInBuildMode = false  // Start following
 
+                // Set up health bar
+                hermes.setupHealthBar(width: 40, yOffset: 8)
+                hermes.healthBar?.hideWhenFull = false  // Always show player health
+
                 addChild(hermes.sprite)
                 print("GameScene: Spawned Hermes at \(spawnPos.x), \(spawnPos.y)")
             }
@@ -186,6 +205,86 @@ class GameScene: SKScene {
         // Position camera at Nathaniel
         if let nathaniel = nathaniel {
             cameraNode.position = nathaniel.position
+        }
+
+        // Spawn test enemies
+        spawnEnemies()
+    }
+
+    /// Spawn enemies from map objects or for testing
+    private func spawnEnemies() {
+        guard let nathaniel = nathaniel else { return }
+
+        // For testing: Spawn a grunt near Nathaniel
+        let grunt = Grunt()
+        grunt.position = CGPoint(
+            x: nathaniel.position.x + 300,
+            y: nathaniel.position.y + 100
+        )
+        grunt.sprite.zPosition = characterZPosition
+        grunt.sprite.setScale(3.0)
+        grunt.target = nathaniel  // Target Nathaniel
+
+        // Set up health bar for grunt
+        grunt.setupHealthBar(width: 40, yOffset: 8)
+
+        addChild(grunt.sprite)
+        enemies.append(grunt)
+
+        print("GameScene: Spawned test Grunt at \(grunt.position.x), \(grunt.position.y)")
+
+        // For testing: Spawn a soldier nearby (within visible range)
+        let soldier = Soldier()
+        soldier.position = CGPoint(
+            x: nathaniel.position.x + 200,
+            y: nathaniel.position.y + 200
+        )
+        soldier.sprite.zPosition = characterZPosition
+        soldier.sprite.setScale(3.0)
+        soldier.target = nathaniel
+
+        // Set up health bar for soldier
+        soldier.setupHealthBar(width: 40, yOffset: 8)
+
+        // Wire up soldier's weapon callbacks
+        soldier.weapon?.onFire = { [weak self] projectile in
+            guard let self = self else { return }
+            projectile.sprite.setScale(2.0)
+            self.addChild(projectile.sprite)
+        }
+
+        // Soldier's bullets can hit player characters
+        soldier.weapon?.onCheckCollision = { [weak self] projectile in
+            guard let self = self else { return nil }
+            // Check collision with Nathaniel
+            if let nathaniel = self.nathaniel, nathaniel.isAlive {
+                if projectile.checkCollision(with: nathaniel) {
+                    return nathaniel
+                }
+            }
+            // Check collision with Hermes
+            if let hermes = self.hermes, hermes.isAlive {
+                if projectile.checkCollision(with: hermes) {
+                    return hermes
+                }
+            }
+            return nil
+        }
+
+        addChild(soldier.sprite)
+        enemies.append(soldier)
+
+        print("GameScene: Spawned test Soldier at \(soldier.position.x), \(soldier.position.y)")
+
+        // Set up weapon collision callback for Nathaniel's bullets to hit enemies
+        nathaniel.weapon.onCheckCollision = { [weak self] projectile in
+            guard let self = self else { return nil }
+            for enemy in self.enemies where enemy.isAlive {
+                if projectile.checkCollision(with: enemy) {
+                    return enemy
+                }
+            }
+            return nil
         }
     }
 
@@ -242,6 +341,12 @@ class GameScene: SKScene {
             debugText += "\nHermes: HP \(hermes.currentHP)/\(hermes.maxHP)"
         }
 
+        // Show enemy count
+        let aliveEnemies = enemies.filter { $0.isAlive }.count
+        if aliveEnemies > 0 {
+            debugText += "\n\nEnemies: \(aliveEnemies)"
+        }
+
         debugLabel?.text = debugText
         debugLabel?.numberOfLines = 0
     }
@@ -261,6 +366,14 @@ class GameScene: SKScene {
         // Update player characters
         nathaniel?.update(deltaTime: deltaTime)
         hermes?.update(deltaTime: deltaTime)
+
+        // Update enemies
+        for enemy in enemies where enemy.isActive {
+            enemy.update(deltaTime: deltaTime)
+        }
+
+        // Remove dead enemies (after a delay to show death animation)
+        enemies.removeAll { !$0.isAlive && !$0.isActive }
 
         // Camera follows selected character
         updateCameraFollow()
@@ -353,10 +466,22 @@ extension GameScene {
     override func mouseUp(with event: NSEvent) {
     }
 
+    override func rightMouseDown(with event: NSEvent) {
+        // Right-click to fire weapon at location
+        let location = event.location(in: self)
+        if let nathaniel = nathaniel {
+            if nathaniel.fireAt(location) {
+                logger.debug("Fired at \(location.x), \(location.y)")
+            }
+        }
+    }
+
     override func keyDown(with event: NSEvent) {
         switch event.keyCode {
         case 1: // S key - stop movement
             selectedCharacter?.stop()
+        case 3: // F key - fire weapon at mouse position
+            fireAtMousePosition()
         case 15: // R key - toggle Hermes follow mode
             if let hermes = hermes {
                 hermes.isInBuildMode = !hermes.isInBuildMode
@@ -376,6 +501,22 @@ extension GameScene {
             }
         default:
             break
+        }
+    }
+
+    /// Fire Nathaniel's weapon at the current mouse position
+    private func fireAtMousePosition() {
+        guard let view = self.view,
+              let nathaniel = nathaniel else { return }
+
+        let mouseLocationInWindow = NSEvent.mouseLocation
+        guard let window = view.window else { return }
+        let windowLocation = window.convertPoint(fromScreen: mouseLocationInWindow)
+        let viewLocation = view.convert(windowLocation, from: nil)
+        let sceneLocation = convertPoint(fromView: viewLocation)
+
+        if nathaniel.fireAt(sceneLocation) {
+            logger.debug("Fired at \(sceneLocation.x), \(sceneLocation.y)")
         }
     }
 }
