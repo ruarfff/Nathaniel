@@ -29,6 +29,12 @@ class GameScene: SKScene {
     /// The player character - Nathaniel
     private var nathaniel: Nathaniel?
 
+    /// The robot companion - Hermes
+    private var hermes: Hermes?
+
+    /// The currently selected/controlled character
+    private var selectedCharacter: Character?
+
     /// Last update time for delta time calculation
     private var lastUpdateTime: TimeInterval = 0
 
@@ -53,7 +59,7 @@ class GameScene: SKScene {
     override func didMove(to view: SKView) {
         setupCamera()
         loadMap()
-        spawnNathaniel()
+        spawnCharacters()
         setupDebugLabel()
     }
 
@@ -121,52 +127,66 @@ class GameScene: SKScene {
         }
     }
 
-    /// Spawn Nathaniel at his designated spawn point
-    private func spawnNathaniel() {
+    /// Spawn all player characters at their designated spawn points
+    private func spawnCharacters() {
         guard let renderer = mapRenderer else {
-            print("GameScene: Cannot spawn Nathaniel - map not loaded")
+            print("GameScene: Cannot spawn characters - map not loaded")
             return
         }
 
-        // Find Nathaniel's spawn point in the map
+        // Get all spawn objects
         let allObjects = renderer.getSpawnObjects()
         print("GameScene: Found \(allObjects.count) spawn objects")
         for obj in allObjects {
             print("GameScene: Object '\(obj.name)' type='\(obj.type)' at (\(obj.x), \(obj.y))")
         }
 
-        guard let spawnObject = allObjects.first(where: { $0.name == "Nathaniel" }) else {
+        // Spawn Nathaniel
+        if let spawnObject = allObjects.first(where: { $0.name == "Nathaniel" }) {
+            print("GameScene: Found Nathaniel spawn at TMX coords: (\(spawnObject.center.x), \(spawnObject.center.y))")
+            let spawnPos = renderer.convertToSpriteKit(point: spawnObject.center)
+
+            nathaniel = Nathaniel()
+            if let nathaniel = nathaniel {
+                nathaniel.position = spawnPos
+                nathaniel.sprite.zPosition = characterZPosition
+                nathaniel.sprite.setScale(3.0)
+                addChild(nathaniel.sprite)
+                print("GameScene: Spawned Nathaniel at \(spawnPos.x), \(spawnPos.y)")
+            }
+        } else {
             print("GameScene: No spawn point named 'Nathaniel' found in map")
-            return
         }
 
-        print("GameScene: Found Nathaniel spawn at TMX coords: (\(spawnObject.center.x), \(spawnObject.center.y))")
+        // Spawn Hermes
+        if let spawnObject = allObjects.first(where: { $0.name == "Hermes" }) {
+            print("GameScene: Found Hermes spawn at TMX coords: (\(spawnObject.center.x), \(spawnObject.center.y))")
+            let spawnPos = renderer.convertToSpriteKit(point: spawnObject.center)
 
-        let spawnPos = renderer.convertToSpriteKit(point: spawnObject.center)
-        print("GameScene: Converted to SpriteKit coords: (\(spawnPos.x), \(spawnPos.y))")
+            hermes = Hermes()
+            if let hermes = hermes {
+                hermes.position = spawnPos
+                hermes.sprite.zPosition = characterZPosition
+                hermes.sprite.setScale(3.0)
 
-        // Create and configure Nathaniel
-        nathaniel = Nathaniel()
-        guard let nathaniel = nathaniel else { return }
+                // Set Hermes to follow Nathaniel
+                hermes.followTarget = nathaniel
+                hermes.isInBuildMode = false  // Start following
 
-        nathaniel.position = spawnPos
-        nathaniel.sprite.zPosition = characterZPosition
+                addChild(hermes.sprite)
+                print("GameScene: Spawned Hermes at \(spawnPos.x), \(spawnPos.y)")
+            }
+        } else {
+            print("GameScene: No spawn point named 'Hermes' found in map")
+        }
 
-        // Scale up the sprite to make it more visible (original is tiny ~25x35)
-        nathaniel.sprite.setScale(3.0)
-
-        print("GameScene: Nathaniel sprite size: \(nathaniel.sprite.size)")
-        print("GameScene: Nathaniel sprite xScale: \(nathaniel.sprite.xScale), yScale: \(nathaniel.sprite.yScale)")
-        print("GameScene: Nathaniel sprite texture: \(String(describing: nathaniel.sprite.texture))")
-
-        // Add to scene
-        addChild(nathaniel.sprite)
-
+        // Select Nathaniel by default
+        selectedCharacter = nathaniel
 
         // Position camera at Nathaniel
-        cameraNode.position = spawnPos
-
-        print("GameScene: Spawned Nathaniel at \(spawnPos.x), \(spawnPos.y)")
+        if let nathaniel = nathaniel {
+            cameraNode.position = nathaniel.position
+        }
     }
 
     private func setupDebugLabel() {
@@ -198,21 +218,32 @@ class GameScene: SKScene {
 
         var debugText = ""
 
-        if let nathaniel = nathaniel {
-            let pos = nathaniel.position
+        // Show selected character info
+        if let selected = selectedCharacter {
+            let pos = selected.position
             let tilePos = renderer.worldToTile(point: pos)
-            debugText += "Nathaniel: (\(Int(pos.x)), \(Int(pos.y)))\n"
+            let selectedMark = "[*]"
+            debugText += "\(selectedMark) \(selected.name)\n"
+            debugText += "Pos: (\(Int(pos.x)), \(Int(pos.y)))\n"
             debugText += "Tile: (\(tilePos.x), \(tilePos.y))\n"
-            debugText += "HP: \(nathaniel.currentHP)/\(nathaniel.maxHP)\n"
-            debugText += "Moving: \(nathaniel.isMoving)\n"
-            debugText += "Facing: \(nathaniel.facingDirection)"
-        } else {
-            let camPos = cameraNode.position
-            let tilePos = renderer.worldToTile(point: camPos)
-            debugText = "Camera: (\(Int(camPos.x)), \(Int(camPos.y)))\nTile: (\(tilePos.x), \(tilePos.y))"
+            debugText += "HP: \(selected.currentHP)/\(selected.maxHP)\n"
+
+            // Show Hermes-specific info
+            if let hermes = hermes, selected === hermes {
+                debugText += "Follow: \(!hermes.isInBuildMode)\n"
+            }
+        }
+
+        // Show other character summary
+        if let nathaniel = nathaniel, selectedCharacter !== nathaniel {
+            debugText += "\nNathaniel: HP \(nathaniel.currentHP)/\(nathaniel.maxHP)"
+        }
+        if let hermes = hermes, selectedCharacter !== hermes {
+            debugText += "\nHermes: HP \(hermes.currentHP)/\(hermes.maxHP)"
         }
 
         debugLabel?.text = debugText
+        debugLabel?.numberOfLines = 0
     }
 
     // MARK: - Update Loop
@@ -227,22 +258,23 @@ class GameScene: SKScene {
         }
         lastUpdateTime = currentTime
 
-        // Update Nathaniel
+        // Update player characters
         nathaniel?.update(deltaTime: deltaTime)
+        hermes?.update(deltaTime: deltaTime)
 
-        // Camera follows Nathaniel
+        // Camera follows selected character
         updateCameraFollow()
 
         // Update debug display
         updateDebugLabel()
     }
 
-    /// Make the camera smoothly follow Nathaniel
+    /// Make the camera smoothly follow the selected character
     private func updateCameraFollow() {
-        guard let nathaniel = nathaniel, let renderer = mapRenderer else { return }
+        guard let selected = selectedCharacter, let renderer = mapRenderer else { return }
 
-        // Target position is Nathaniel's position
-        let targetPos = nathaniel.position
+        // Target position is the selected character's position
+        let targetPos = selected.position
 
         // Clamp to map bounds
         let halfWidth = size.width / 2
@@ -289,12 +321,11 @@ extension GameScene {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
-        handleMoveCommand(to: location)
+        handleTap(at: location)
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         // Two-finger drag to pan camera (optional, for when we want manual camera control)
-        // For now, single finger just updates move destination
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -312,7 +343,7 @@ extension GameScene {
 
     override func mouseDown(with event: NSEvent) {
         let location = event.location(in: self)
-        handleMoveCommand(to: location)
+        handleTap(at: location)
     }
 
     override func mouseDragged(with event: NSEvent) {
@@ -323,21 +354,69 @@ extension GameScene {
     }
 
     override func keyDown(with event: NSEvent) {
-        // S key to stop movement
-        if event.keyCode == 1 { // S key
-            nathaniel?.stop()
+        switch event.keyCode {
+        case 1: // S key - stop movement
+            selectedCharacter?.stop()
+        case 15: // R key - toggle Hermes follow mode
+            if let hermes = hermes {
+                hermes.isInBuildMode = !hermes.isInBuildMode
+                logger.debug("Hermes follow mode: \(!hermes.isInBuildMode)")
+            }
+        case 49: // Space key - switch selected character
+            if selectedCharacter === nathaniel {
+                if let hermes = hermes {
+                    selectCharacter(hermes)
+                    logger.debug("Switched to Hermes")
+                }
+            } else {
+                if let nathaniel = nathaniel {
+                    selectCharacter(nathaniel)
+                    logger.debug("Switched to Nathaniel")
+                }
+            }
+        default:
+            break
         }
     }
 }
 #endif
 
-// MARK: - Movement Commands
+// MARK: - Input Handling
 
 extension GameScene {
 
+    /// Handle tap/click - either select a character or move the selected character
+    func handleTap(at location: CGPoint) {
+        // Check if tapping on a character to select them
+        if let nathaniel = nathaniel, nathaniel.contains(point: location) {
+            selectCharacter(nathaniel)
+            logger.debug("Selected Nathaniel")
+            return
+        }
+
+        if let hermes = hermes, hermes.contains(point: location) {
+            selectCharacter(hermes)
+            logger.debug("Selected Hermes")
+            return
+        }
+
+        // Otherwise, move the selected character to the location
+        handleMoveCommand(to: location)
+    }
+
+    /// Select a character for control
+    private func selectCharacter(_ character: Character) {
+        selectedCharacter = character
+
+        // If selecting Hermes, put them in independent control mode
+        if let hermes = hermes, character === hermes {
+            hermes.isInBuildMode = true  // Stops following, allows independent control
+        }
+    }
+
     /// Handle a move command to a world position
     func handleMoveCommand(to location: CGPoint) {
-        guard let nathaniel = nathaniel else { return }
+        guard let selected = selectedCharacter else { return }
 
         // Check if the destination is walkable
         if let renderer = mapRenderer {
@@ -345,11 +424,10 @@ extension GameScene {
             if !renderer.isWalkable(tileX: tile.x, tileY: tile.y) {
                 logger.debug("Destination not walkable: tile (\(tile.x), \(tile.y))")
                 // Still allow movement toward the location - pathfinding will handle obstacles
-                // For now, just move directly (pathfinding will be added later)
             }
         }
 
-        nathaniel.moveTo(location)
-        logger.debug("Moving Nathaniel to \(location.x), \(location.y)")
+        selected.moveTo(location)
+        logger.debug("Moving \(selected.name) to \(location.x), \(location.y)")
     }
 }
