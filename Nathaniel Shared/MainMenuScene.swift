@@ -168,9 +168,9 @@ class MainMenuScene: SKScene {
     }
 
     private func startGame() {
-        let gameScene = GameScene.newGameScene()
+        let levelSelectScene = LevelSelectScene.newLevelSelectScene()
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentScene(gameScene, transition: transition)
+        view?.presentScene(levelSelectScene, transition: transition)
     }
 
     private func showOptions() {

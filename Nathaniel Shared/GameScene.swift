@@ -14,6 +14,9 @@ class GameScene: SKScene, LevelManagerDelegate {
 
     // MARK: - Properties
 
+    /// The level configuration to use
+    var levelConfig: LevelConfig = .levelOne
+
     /// The camera node for viewport control
     private var cameraNode: SKCameraNode!
 
@@ -44,6 +47,9 @@ class GameScene: SKScene, LevelManagerDelegate {
     /// Level manager for game state
     private var levelManager: LevelManager!
 
+    /// Wave spawner for survival-style levels
+    private var waveSpawner: WaveSpawner?
+
     /// Game overlay for victory/game over screens
     private var gameOverlay: GameOverlay!
 
@@ -64,7 +70,7 @@ class GameScene: SKScene, LevelManagerDelegate {
 
     // MARK: - Scene Setup
 
-    class func newGameScene() -> GameScene {
+    class func newGameScene(levelConfig: LevelConfig = .levelOne) -> GameScene {
         // Load 'GameScene.sks' as an SKScene.
         guard let scene = SKScene(fileNamed: "GameScene") as? GameScene else {
             print("Failed to load GameScene.sks")
@@ -73,6 +79,9 @@ class GameScene: SKScene, LevelManagerDelegate {
 
         // Set the scale mode to scale to fit the window
         scene.scaleMode = .aspectFill
+
+        // Configure the level
+        scene.levelConfig = levelConfig
 
         return scene
     }
@@ -95,7 +104,7 @@ class GameScene: SKScene, LevelManagerDelegate {
     }
 
     private func setupLevelManager() {
-        levelManager = LevelManager(config: .levelOne)
+        levelManager = LevelManager(config: levelConfig)
         levelManager.delegate = self
     }
 
@@ -168,14 +177,14 @@ class GameScene: SKScene, LevelManagerDelegate {
     }
 
     private func loadMap() {
-        logger.info("loadMap() called")
+        let mapName = levelConfig.mapName
+        logger.info("loadMap() called for level \(self.levelConfig.levelNumber): \(mapName)")
         let parser = TMXParser()
 
-        // Try to load the map from the bundle
-        // The Assets folder should be added to the Xcode project
-        guard let mapURL = Bundle.main.url(forResource: "levelone", withExtension: "tmx") else {
-            logger.error("Could not find levelone.tmx in bundle")
-            showLoadError("Could not find levelone.tmx")
+        // Try to load the map from the bundle using level config
+        guard let mapURL = Bundle.main.url(forResource: mapName, withExtension: "tmx") else {
+            logger.error("Could not find \(mapName).tmx in bundle")
+            showLoadError("Could not find \(mapName).tmx")
             return
         }
 
@@ -311,7 +320,7 @@ class GameScene: SKScene, LevelManagerDelegate {
         spawnEnemies()
     }
 
-    /// Spawn enemies from map objects or for testing
+    /// Spawn enemies based on level config (map-based or wave-based)
     private func spawnEnemies() {
         guard let nathaniel = nathaniel else { return }
 
@@ -321,35 +330,54 @@ class GameScene: SKScene, LevelManagerDelegate {
         if let h = self.hermes { players.append(h) }
         enemyManager.playerCharacters = players
 
-        // For testing: Spawn a grunt near Nathaniel
-        enemyManager.addEnemy(
-            name: "Grunt1",
-            at: CGPoint(x: nathaniel.position.x + 300, y: nathaniel.position.y + 100),
-            target: nathaniel
-        )
-
-        // For testing: Spawn a soldier nearby (within visible range)
-        enemyManager.addEnemy(
-            name: "Soldier1",
-            at: CGPoint(x: nathaniel.position.x + 200, y: nathaniel.position.y + 200),
-            target: nathaniel
-        )
-
-        // For testing: Spawn a boss further away
-        enemyManager.addEnemy(
-            name: "Boss1",
-            at: CGPoint(x: nathaniel.position.x + 400, y: nathaniel.position.y - 100),
-            target: nathaniel
-        )
-
         // Set up weapon collision callback for Nathaniel's bullets to hit enemies
         nathaniel.weapon.onCheckCollision = enemyManager.createCollisionCallback()
 
         // Set up structure manager with player characters for heal tower
         structureManager.playerCharacters = players
 
-        // Spawn test defensive structures
-        spawnTestStructures()
+        // Spawn enemies based on spawn mode
+        switch levelConfig.spawnMode {
+        case .mapBased:
+            // Spawn from map object layer
+            spawnEnemiesFromMap()
+
+        case .waveBased:
+            // Set up wave spawner for survival-style levels
+            setupWaveSpawner()
+        }
+    }
+
+    /// Spawn enemies from map spawn points
+    private func spawnEnemiesFromMap() {
+        guard let renderer = mapRenderer else { return }
+
+        // Get spawn objects from map
+        let allObjects = renderer.getSpawnObjects()
+
+        // Filter to enemy spawns and spawn them
+        enemyManager.spawnFromMapObjects(allObjects, renderer: renderer)
+
+        logger.info("Spawned enemies from map objects")
+    }
+
+    /// Set up wave spawner for survival-style levels
+    private func setupWaveSpawner() {
+        guard let renderer = mapRenderer else { return }
+
+        waveSpawner = WaveSpawner()
+        waveSpawner?.enemyManager = enemyManager
+        waveSpawner?.mapWidth = CGFloat(renderer.map.pixelWidth)
+        waveSpawner?.mapHeight = CGFloat(renderer.map.pixelHeight)
+
+        // Set difficulty based on level
+        if levelConfig.levelNumber == 5 {  // Final level
+            waveSpawner?.difficulty = .hard
+        } else {
+            waveSpawner?.difficulty = .normal
+        }
+
+        logger.info("Wave spawner set up for survival-style level")
     }
 
     /// Spawn test defensive structures for testing
@@ -466,6 +494,9 @@ class GameScene: SKScene, LevelManagerDelegate {
         // Update player characters
         nathaniel?.update(deltaTime: deltaTime)
         hermes?.update(deltaTime: deltaTime)
+
+        // Update wave spawner for survival-style levels
+        waveSpawner?.update(deltaTime: deltaTime)
 
         // Update enemies via manager
         enemyManager.update(deltaTime: deltaTime)

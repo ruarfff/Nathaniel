@@ -19,6 +19,12 @@ enum LevelState {
 
 // MARK: - Level Configuration
 
+/// Spawn mode for levels - determines how enemies appear
+enum SpawnMode {
+    case mapBased       // Enemies spawn from map object points
+    case waveBased      // Enemies spawn in waves at regular intervals
+}
+
 /// Configuration for a level
 struct LevelConfig {
     let levelNumber: Int
@@ -26,6 +32,14 @@ struct LevelConfig {
     let startingLives: Int
     let startingResources: Int
     let hasBoss: Bool
+    let spawnMode: SpawnMode
+    let nextLevelNumber: Int?  // nil = game complete or survival mode
+
+    /// Get the next level configuration
+    var nextLevel: LevelConfig? {
+        guard let next = nextLevelNumber else { return nil }
+        return LevelConfig.level(next)
+    }
 
     /// Level One configuration
     static let levelOne = LevelConfig(
@@ -33,17 +47,83 @@ struct LevelConfig {
         mapName: "levelone",
         startingLives: 3,
         startingResources: 30,
-        hasBoss: true
+        hasBoss: true,
+        spawnMode: .mapBased,
+        nextLevelNumber: 2
     )
 
-    /// Survival mode configuration
+    /// Level Two configuration
+    static let levelTwo = LevelConfig(
+        levelNumber: 2,
+        mapName: "leveltwo",
+        startingLives: 3,
+        startingResources: 30,
+        hasBoss: true,
+        spawnMode: .mapBased,
+        nextLevelNumber: 3
+    )
+
+    /// Level Three configuration
+    static let levelThree = LevelConfig(
+        levelNumber: 3,
+        mapName: "levelthree",
+        startingLives: 3,
+        startingResources: 30,
+        hasBoss: true,
+        spawnMode: .mapBased,
+        nextLevelNumber: 4
+    )
+
+    /// Level Four configuration (wave-based survival-style)
+    static let levelFour = LevelConfig(
+        levelNumber: 4,
+        mapName: "survivalmap",
+        startingLives: 3,
+        startingResources: 0,
+        hasBoss: true,
+        spawnMode: .waveBased,
+        nextLevelNumber: 5
+    )
+
+    /// Final Level configuration (wave-based, harder enemies)
+    static let finalLevel = LevelConfig(
+        levelNumber: 5,
+        mapName: "survivalmap",
+        startingLives: 3,
+        startingResources: 0,
+        hasBoss: true,
+        spawnMode: .waveBased,
+        nextLevelNumber: nil  // Game complete after final level
+    )
+
+    /// Survival mode configuration (endless waves, no victory)
     static let survival = LevelConfig(
         levelNumber: 0,
         mapName: "survivalmap",
         startingLives: 1,
         startingResources: 50,
-        hasBoss: false
+        hasBoss: false,
+        spawnMode: .waveBased,
+        nextLevelNumber: nil
     )
+
+    /// Get level config by number (for level select)
+    static func level(_ number: Int) -> LevelConfig? {
+        switch number {
+        case 0: return .survival
+        case 1: return .levelOne
+        case 2: return .levelTwo
+        case 3: return .levelThree
+        case 4: return .levelFour
+        case 5: return .finalLevel
+        default: return nil
+        }
+    }
+
+    /// All playable campaign levels in order
+    static let campaignLevels: [LevelConfig] = [
+        .levelOne, .levelTwo, .levelThree, .levelFour, .finalLevel
+    ]
 }
 
 // MARK: - Level Manager Delegate
