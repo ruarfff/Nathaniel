@@ -279,6 +279,16 @@ class EnemyManager {
         }
     }
 
+    /// Check if a projectile collides with any enemy (for tower weapons)
+    func checkProjectileCollision(_ projectile: Projectile) -> Character? {
+        for enemy in enemies where enemy.isAlive {
+            if projectile.checkCollision(with: enemy) {
+                return enemy
+            }
+        }
+        return nil
+    }
+
     // MARK: - Queries
 
     /// Get all alive enemies

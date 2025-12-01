@@ -38,6 +38,9 @@ class GameScene: SKScene, LevelManagerDelegate {
     /// Enemy manager
     private var enemyManager: EnemyManager!
 
+    /// Structure manager for defensive towers
+    private var structureManager: StructureManager!
+
     /// Level manager for game state
     private var levelManager: LevelManager!
 
@@ -78,6 +81,7 @@ class GameScene: SKScene, LevelManagerDelegate {
         setupCamera()
         setupLevelManager()
         setupEnemyManager()
+        setupStructureManager()
         setupOverlay()
         setupHUD()
         loadMap()
@@ -101,6 +105,13 @@ class GameScene: SKScene, LevelManagerDelegate {
         enemyManager.enemyScale = 3.0
         enemyManager.delegate = levelManager
         levelManager.enemyManager = enemyManager
+    }
+
+    private func setupStructureManager() {
+        structureManager = StructureManager(scene: self)
+        structureManager.structureZPosition = characterZPosition
+        structureManager.structureScale = 2.5
+        structureManager.enemyManager = enemyManager
     }
 
     private func setupOverlay() {
@@ -333,6 +344,37 @@ class GameScene: SKScene, LevelManagerDelegate {
 
         // Set up weapon collision callback for Nathaniel's bullets to hit enemies
         nathaniel.weapon.onCheckCollision = enemyManager.createCollisionCallback()
+
+        // Set up structure manager with player characters for heal tower
+        structureManager.playerCharacters = players
+
+        // Spawn test defensive structures
+        spawnTestStructures()
+    }
+
+    /// Spawn test defensive structures for testing
+    private func spawnTestStructures() {
+        guard let nathaniel = nathaniel else { return }
+
+        // Spawn a gun tower near Nathaniel
+        structureManager.addGunTower(at: CGPoint(
+            x: nathaniel.position.x + 150,
+            y: nathaniel.position.y - 50
+        ))
+
+        // Spawn a heal tower nearby
+        structureManager.addHealTower(at: CGPoint(
+            x: nathaniel.position.x - 100,
+            y: nathaniel.position.y + 50
+        ))
+
+        // Spawn a laser tower
+        structureManager.addLaserTower(at: CGPoint(
+            x: nathaniel.position.x + 100,
+            y: nathaniel.position.y + 150
+        ))
+
+        print("GameScene: Spawned 3 test defensive structures")
     }
 
     private func setupDebugLabel() {
@@ -427,6 +469,9 @@ class GameScene: SKScene, LevelManagerDelegate {
 
         // Update enemies via manager
         enemyManager.update(deltaTime: deltaTime)
+
+        // Update defensive structures
+        structureManager.update(deltaTime: deltaTime)
 
         // Camera follows selected character
         updateCameraFollow()
