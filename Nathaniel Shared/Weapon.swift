@@ -348,6 +348,11 @@ class Gun: Weapon {
         // Notify scene to add the bullet sprite
         onFire?(bullet)
 
+        // Play gunshot sound
+        if let sprite = owner.sprite.scene {
+            AudioManager.shared.playSoundEffect(.gunShot, on: sprite)
+        }
+
         return true
     }
 

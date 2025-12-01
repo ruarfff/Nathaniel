@@ -430,6 +430,11 @@ class Character: GameEntity {
         animationState = .dead
         isActive = false
 
+        // Play explosion sound
+        if let scene = sprite.scene {
+            AudioManager.shared.playSoundEffect(.explosion, on: scene)
+        }
+
         // Fade out and remove
         let fadeOut = SKAction.fadeOut(withDuration: 0.5)
         let remove = SKAction.removeFromParent()

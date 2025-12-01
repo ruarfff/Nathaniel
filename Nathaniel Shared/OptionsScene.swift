@@ -144,6 +144,12 @@ class OptionsScene: SKScene {
         GameSettings.shared.musicEnabled.toggle()
         updateToggle(musicToggle, enabled: GameSettings.shared.musicEnabled)
         animateToggle(musicToggle)
+
+        // Immediately start/stop music based on new setting
+        AudioManager.shared.onMusicSettingChanged()
+        if GameSettings.shared.musicEnabled {
+            AudioManager.shared.playMusic(.menu)
+        }
     }
 
     private func animateToggle(_ toggle: SKLabelNode) {

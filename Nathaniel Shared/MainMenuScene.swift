@@ -34,6 +34,9 @@ class MainMenuScene: SKScene {
         setupBackground()
         setupTitle()
         setupMenuButtons()
+
+        // Start menu music
+        AudioManager.shared.playMusic(.menu)
     }
 
     // MARK: - Setup Methods

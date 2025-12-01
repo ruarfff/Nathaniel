@@ -85,6 +85,9 @@ class GameScene: SKScene, LevelManagerDelegate {
         if showDebugInfo {
             setupDebugLabel()
         }
+
+        // Start gameplay music
+        AudioManager.shared.playMusic(.gameplay)
     }
 
     private func setupLevelManager() {
