@@ -171,12 +171,9 @@ class MainMenuScene: SKScene {
     }
 
     private func showOptions() {
-        // For now, just flash the button - Options not yet implemented
-        let flash = SKAction.sequence([
-            SKAction.fadeAlpha(to: 0.5, duration: 0.1),
-            SKAction.fadeAlpha(to: 1.0, duration: 0.1)
-        ])
-        optionsButton.run(flash)
+        let optionsScene = OptionsScene.newOptionsScene()
+        let transition = SKTransition.fade(withDuration: 0.5)
+        view?.presentScene(optionsScene, transition: transition)
     }
 
     private func showCredits() {
