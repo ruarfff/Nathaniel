@@ -15,6 +15,7 @@ class MainMenuScene: SKScene {
     private var titleLabel: SKLabelNode!
 
     /// Menu buttons
+    private var continueButton: SKLabelNode?
     private var startButton: SKLabelNode!
     private var optionsButton: SKLabelNode!
     private var creditsButton: SKLabelNode!
@@ -99,20 +100,32 @@ class MainMenuScene: SKScene {
 
     private func setupMenuButtons() {
         let buttonSpacing: CGFloat = 70
-        let startY = size.height * 0.45
+        var currentY = size.height * 0.45
 
-        // Start Game button
-        startButton = createMenuButton(text: "Start Game", yPosition: startY)
+        // Continue button (only if there's saved progress)
+        if GameSettings.shared.hasSavedProgress {
+            let continueLevel = GameSettings.shared.continueLevel
+            continueButton = createMenuButton(text: "Continue (Level \(continueLevel))", yPosition: currentY)
+            continueButton?.name = "continueButton"
+            continueButton?.fontColor = SKColor(red: 0.3, green: 0.9, blue: 0.4, alpha: 1.0) // Green highlight
+            addChild(continueButton!)
+            currentY -= buttonSpacing
+        }
+
+        // Start Game button (now goes to level select or new game)
+        startButton = createMenuButton(text: "Level Select", yPosition: currentY)
         startButton.name = "startButton"
         addChild(startButton)
+        currentY -= buttonSpacing
 
         // Options button
-        optionsButton = createMenuButton(text: "Options", yPosition: startY - buttonSpacing)
+        optionsButton = createMenuButton(text: "Options", yPosition: currentY)
         optionsButton.name = "optionsButton"
         addChild(optionsButton)
+        currentY -= buttonSpacing
 
         // Credits button
-        creditsButton = createMenuButton(text: "Credits", yPosition: startY - buttonSpacing * 2)
+        creditsButton = createMenuButton(text: "Credits", yPosition: currentY)
         creditsButton.name = "creditsButton"
         addChild(creditsButton)
     }
@@ -137,6 +150,10 @@ class MainMenuScene: SKScene {
             guard let nodeName = node.name else { continue }
 
             switch nodeName {
+            case "continueButton":
+                animateButtonPress(node as? SKLabelNode) {
+                    self.continueGame()
+                }
             case "startButton":
                 animateButtonPress(node as? SKLabelNode) {
                     self.startGame()
@@ -165,6 +182,20 @@ class MainMenuScene: SKScene {
         let scaleUp = SKAction.scale(to: 1.0, duration: 0.1)
         let sequence = SKAction.sequence([scaleDown, scaleUp, SKAction.run(completion)])
         button.run(sequence)
+    }
+
+    private func continueGame() {
+        // Get the next level to play based on saved progress
+        let continueLevel = GameSettings.shared.continueLevel
+        guard let levelConfig = LevelConfig.level(continueLevel) else {
+            // If invalid, just go to level select
+            startGame()
+            return
+        }
+
+        let gameScene = GameScene.newGameScene(levelConfig: levelConfig)
+        let transition = SKTransition.fade(withDuration: 0.5)
+        view?.presentScene(gameScene, transition: transition)
     }
 
     private func startGame() {

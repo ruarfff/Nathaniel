@@ -7,6 +7,16 @@
 
 import SpriteKit
 
+// MARK: - Overlay State
+
+/// The current state of the overlay
+enum OverlayState {
+    case hidden
+    case victory
+    case gameOver
+    case lifeLost
+}
+
 // MARK: - Game Overlay
 
 /// Overlay node for victory/game over screens
@@ -28,6 +38,21 @@ class GameOverlay: SKNode {
 
     /// Size of the overlay
     private let overlaySize: CGSize
+
+    /// Current overlay state
+    private(set) var state: OverlayState = .hidden
+
+    /// Whether there's a next level available
+    private(set) var hasNextLevel: Bool = false
+
+    /// Callback for when "Next Level" is selected
+    var onNextLevel: (() -> Void)?
+
+    /// Callback for when "Retry" is selected
+    var onRetry: (() -> Void)?
+
+    /// Callback for when "Main Menu" is selected
+    var onMainMenu: (() -> Void)?
 
     // MARK: - Initialization
 
@@ -80,7 +105,10 @@ class GameOverlay: SKNode {
     // MARK: - Display
 
     /// Show victory screen
-    func showVictory(score: Int, time: TimeInterval) {
+    func showVictory(score: Int, time: TimeInterval, hasNextLevel: Bool = false) {
+        state = .victory
+        self.hasNextLevel = hasNextLevel
+
         titleLabel.text = "VICTORY!"
         titleLabel.fontColor = SKColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)
 
@@ -88,17 +116,30 @@ class GameOverlay: SKNode {
         let seconds = Int(time) % 60
         subtitleLabel.text = "Score: \(score) | Time: \(minutes):\(String(format: "%02d", seconds))"
 
-        #if os(iOS) || os(tvOS)
-        instructionLabel.text = "Tap to continue"
-        #else
-        instructionLabel.text = "Press any key to continue"
-        #endif
+        if hasNextLevel {
+            #if os(iOS) || os(tvOS)
+            instructionLabel.text = "Tap for Next Level"
+            #else
+            instructionLabel.text = "Press any key for Next Level"
+            #endif
+        } else {
+            // Final level or survival - completed the game
+            titleLabel.text = "GAME COMPLETE!"
+            #if os(iOS) || os(tvOS)
+            instructionLabel.text = "Tap to return to menu"
+            #else
+            instructionLabel.text = "Press any key to return to menu"
+            #endif
+        }
 
         animateIn()
     }
 
     /// Show game over screen
     func showGameOver(score: Int, time: TimeInterval) {
+        state = .gameOver
+        hasNextLevel = false
+
         titleLabel.text = "GAME OVER"
         titleLabel.fontColor = SKColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 1.0)
 
@@ -115,8 +156,26 @@ class GameOverlay: SKNode {
         animateIn()
     }
 
+    /// Handle user interaction with the overlay
+    func handleInteraction() {
+        switch state {
+        case .hidden, .lifeLost:
+            break
+        case .victory:
+            if hasNextLevel {
+                onNextLevel?()
+            } else {
+                onMainMenu?()
+            }
+        case .gameOver:
+            onRetry?()
+        }
+    }
+
     /// Show life lost notification (brief)
     func showLifeLost(remainingLives: Int) {
+        state = .lifeLost
+
         titleLabel.text = "Life Lost!"
         titleLabel.fontColor = SKColor(red: 0.9, green: 0.6, blue: 0.2, alpha: 1.0)
 
@@ -131,6 +190,7 @@ class GameOverlay: SKNode {
         let fadeOut = SKAction.fadeOut(withDuration: 0.5)
         let hide = SKAction.run { [weak self] in
             self?.isHidden = true
+            self?.state = .hidden
         }
         run(SKAction.sequence([wait, fadeOut, hide]))
     }

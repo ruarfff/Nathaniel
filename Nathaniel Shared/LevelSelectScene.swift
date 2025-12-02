@@ -116,21 +116,53 @@ class LevelSelectScene: SKScene {
         default: levelName = "Level \(level)"
         }
 
+        // Check if level is completed
+        let isCompleted = GameSettings.shared.isLevelCompleted(level)
+        let highScore = GameSettings.shared.highScore(forLevel: level)
+
         button.text = levelName
         button.fontSize = 32
-        button.fontColor = .white
+        button.fontColor = isCompleted ? SKColor(red: 0.3, green: 0.9, blue: 0.4, alpha: 1.0) : .white
         button.position = CGPoint(x: x, y: y)
         button.horizontalAlignmentMode = .center
         button.verticalAlignmentMode = .center
 
         // Add background
-        let background = SKShapeNode(rectOf: CGSize(width: 180, height: 80), cornerRadius: 10)
-        background.fillColor = SKColor(red: 0.3, green: 0.4, blue: 0.3, alpha: 1.0)
-        background.strokeColor = SKColor(red: 0.5, green: 0.6, blue: 0.4, alpha: 1.0)
+        let background = SKShapeNode(rectOf: CGSize(width: 180, height: 100), cornerRadius: 10)
+        if isCompleted {
+            background.fillColor = SKColor(red: 0.2, green: 0.35, blue: 0.25, alpha: 1.0)
+            background.strokeColor = SKColor(red: 0.3, green: 0.7, blue: 0.4, alpha: 1.0)
+        } else {
+            background.fillColor = SKColor(red: 0.3, green: 0.4, blue: 0.3, alpha: 1.0)
+            background.strokeColor = SKColor(red: 0.5, green: 0.6, blue: 0.4, alpha: 1.0)
+        }
         background.lineWidth = 2
         background.position = .zero
         background.zPosition = -1
         button.addChild(background)
+
+        // Add completion checkmark or high score
+        if isCompleted {
+            // Checkmark
+            let check = SKLabelNode(text: "\u{2713}") // Unicode checkmark
+            check.fontSize = 20
+            check.fontColor = SKColor(red: 0.3, green: 0.9, blue: 0.4, alpha: 1.0)
+            check.position = CGPoint(x: 70, y: 20)
+            check.zPosition = 1
+            button.addChild(check)
+        }
+
+        // Show high score if exists
+        if let score = highScore {
+            let scoreLabel = SKLabelNode(fontNamed: "Copperplate")
+            scoreLabel.text = "Best: \(score)"
+            scoreLabel.fontSize = 16
+            scoreLabel.fontColor = SKColor(white: 0.8, alpha: 1.0)
+            scoreLabel.position = CGPoint(x: 0, y: -30)
+            scoreLabel.horizontalAlignmentMode = .center
+            scoreLabel.zPosition = 1
+            button.addChild(scoreLabel)
+        }
 
         return button
     }

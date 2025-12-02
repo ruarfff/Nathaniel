@@ -127,6 +127,47 @@ class GameScene: SKScene, LevelManagerDelegate {
         gameOverlay = GameOverlay(size: size)
         gameOverlay.zPosition = 1000
         cameraNode.addChild(gameOverlay)
+
+        // Set up overlay callbacks
+        gameOverlay.onNextLevel = { [weak self] in
+            self?.transitionToNextLevel()
+        }
+
+        gameOverlay.onRetry = { [weak self] in
+            self?.restartLevel()
+        }
+
+        gameOverlay.onMainMenu = { [weak self] in
+            self?.returnToMainMenu()
+        }
+    }
+
+    // MARK: - Level Transitions
+
+    /// Transition to the next level
+    private func transitionToNextLevel() {
+        guard let nextConfig = levelConfig.nextLevel else {
+            returnToMainMenu()
+            return
+        }
+
+        let nextScene = GameScene.newGameScene(levelConfig: nextConfig)
+        let transition = SKTransition.fade(withDuration: 0.5)
+        view?.presentScene(nextScene, transition: transition)
+    }
+
+    /// Restart the current level
+    private func restartLevel() {
+        let restartScene = GameScene.newGameScene(levelConfig: levelConfig)
+        let transition = SKTransition.fade(withDuration: 0.5)
+        view?.presentScene(restartScene, transition: transition)
+    }
+
+    /// Return to the main menu
+    private func returnToMainMenu() {
+        let menuScene = MainMenuScene.newMenuScene()
+        let transition = SKTransition.fade(withDuration: 0.5)
+        view?.presentScene(menuScene, transition: transition)
     }
 
     private func setupHUD() {
@@ -593,7 +634,20 @@ class GameScene: SKScene, LevelManagerDelegate {
 
     func levelManagerDidWin(_ manager: LevelManager) {
         logger.info("Victory!")
-        gameOverlay.showVictory(score: manager.score, time: manager.elapsedTime)
+
+        // Save progress for campaign levels (not survival mode)
+        if levelConfig.levelNumber > 0 {
+            GameSettings.shared.recordLevelCompletion(
+                levelNumber: levelConfig.levelNumber,
+                score: manager.score,
+                time: manager.elapsedTime
+            )
+        }
+
+        // Check if there's a next level
+        let hasNextLevel = levelConfig.nextLevel != nil
+
+        gameOverlay.showVictory(score: manager.score, time: manager.elapsedTime, hasNextLevel: hasNextLevel)
     }
 
     func levelManager(_ manager: LevelManager, didLoseLife remainingLives: Int) {
@@ -701,6 +755,15 @@ extension GameScene {
     }
 
     override func keyDown(with event: NSEvent) {
+        // Check if the overlay is showing (victory/game over)
+        if gameOverlay.state == .victory || gameOverlay.state == .gameOver {
+            gameOverlay.handleInteraction()
+            return
+        }
+
+        // Don't handle keys if game is not in playing state
+        guard levelManager.state == .playing else { return }
+
         switch event.keyCode {
         case 1: // S key - stop movement
             selectedCharacter?.stop()
@@ -752,6 +815,15 @@ extension GameScene {
 
     /// Handle tap/click - either select a character or move the selected character
     func handleTap(at location: CGPoint) {
+        // Check if the overlay is showing (victory/game over)
+        if gameOverlay.state == .victory || gameOverlay.state == .gameOver {
+            gameOverlay.handleInteraction()
+            return
+        }
+
+        // Don't handle taps if game is not in playing state
+        guard levelManager.state == .playing else { return }
+
         // Check if tapping on a character to select them
         if let nathaniel = nathaniel, nathaniel.contains(point: location) {
             selectCharacter(nathaniel)
