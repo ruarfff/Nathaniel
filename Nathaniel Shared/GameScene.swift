@@ -68,6 +68,22 @@ class GameScene: SKScene, LevelManagerDelegate {
     /// Z-position for character sprites (above map tiles)
     private let characterZPosition: CGFloat = 100
 
+    // MARK: - Camera Zoom Properties
+
+    /// Current camera zoom level (1.0 = default, higher = zoomed in)
+    private var cameraZoom: CGFloat = 1.0
+
+    /// Minimum zoom level (zoomed out)
+    private let minZoom: CGFloat = 0.5
+
+    /// Maximum zoom level (zoomed in)
+    private let maxZoom: CGFloat = 2.0
+
+    // MARK: - Fog of War
+
+    /// Fog of war manager for visibility system
+    private var fogOfWar: FogOfWar?
+
     // MARK: - Scene Setup
 
     class func newGameScene(levelConfig: LevelConfig = .levelOne) -> GameScene {
@@ -94,6 +110,7 @@ class GameScene: SKScene, LevelManagerDelegate {
         setupOverlay()
         setupHUD()
         loadMap()
+        setupFogOfWar()
         spawnCharacters()
         if showDebugInfo {
             setupDebugLabel()
@@ -268,6 +285,28 @@ class GameScene: SKScene, LevelManagerDelegate {
                 let pos = mapRenderer?.convertToSpriteKit(point: obj.center) ?? CGPoint.zero
                 print("  - \(obj.name) (\(obj.type)) at \(pos)")
             }
+        }
+    }
+
+    /// Set up fog of war system
+    private func setupFogOfWar() {
+        guard let renderer = mapRenderer else {
+            print("GameScene: Cannot setup fog of war - map not loaded")
+            return
+        }
+
+        let map = renderer.map
+        fogOfWar = FogOfWar(
+            mapWidth: map.width,
+            mapHeight: map.height,
+            tileSize: CGFloat(map.tileWidth)
+        )
+
+        if let fogNode = fogOfWar?.fogNode {
+            // Position fog above map tiles but below characters
+            fogNode.zPosition = 50
+            addChild(fogNode)
+            print("GameScene: Fog of war initialized for \(map.width)x\(map.height) map")
         }
     }
 
@@ -545,6 +584,9 @@ class GameScene: SKScene, LevelManagerDelegate {
         // Update defensive structures
         structureManager.update(deltaTime: deltaTime)
 
+        // Update fog of war
+        updateFogOfWar(currentTime: currentTime)
+
         // Camera follows selected character
         updateCameraFollow()
 
@@ -575,6 +617,44 @@ class GameScene: SKScene, LevelManagerDelegate {
                 health: selected.currentHP,
                 maxHealth: selected.maxHP
             )
+        }
+    }
+
+    // MARK: - Fog of War Update
+
+    /// Update fog of war based on player character positions
+    private func updateFogOfWar(currentTime: TimeInterval) {
+        guard let fog = fogOfWar else { return }
+
+        // Collect character positions and vision ranges
+        var visiblePositions: [(CGPoint, CGFloat)] = []
+
+        if let nathaniel = nathaniel, nathaniel.isAlive {
+            visiblePositions.append((nathaniel.position, nathaniel.visionRange))
+        }
+
+        if let hermes = hermes, hermes.isAlive {
+            visiblePositions.append((hermes.position, hermes.visionRange))
+        }
+
+        // Update fog with throttling for performance
+        fog.updateThrottled(visibleFrom: visiblePositions, currentTime: currentTime)
+
+        // Update enemy visibility based on fog
+        updateEnemyVisibility()
+    }
+
+    /// Update enemy sprite visibility based on fog of war
+    private func updateEnemyVisibility() {
+        guard let fog = fogOfWar else { return }
+
+        for enemy in enemyManager.enemies {
+            let isVisible = fog.isVisible(at: enemy.position)
+            // Smoothly fade enemies in/out
+            let targetAlpha: CGFloat = isVisible ? 1.0 : 0.0
+            if abs(enemy.sprite.alpha - targetAlpha) > 0.01 {
+                enemy.sprite.run(SKAction.fadeAlpha(to: targetAlpha, duration: 0.2))
+            }
         }
     }
 
@@ -667,9 +747,11 @@ class GameScene: SKScene, LevelManagerDelegate {
         // Target position is the selected character's position
         let targetPos = selected.position
 
-        // Clamp to map bounds
-        let halfWidth = size.width / 2
-        let halfHeight = size.height / 2
+        // Clamp to map bounds - adjust for zoom level
+        // When zoomed in (cameraZoom > 1), visible area is smaller so half dimensions decrease
+        // When zoomed out (cameraZoom < 1), visible area is larger so half dimensions increase
+        let halfWidth = (size.width / 2) * cameraZoom
+        let halfHeight = (size.height / 2) * cameraZoom
 
         var clampedPos = targetPos
         clampedPos.x = max(halfWidth, min(CGFloat(renderer.map.pixelWidth) - halfWidth, clampedPos.x))
@@ -693,14 +775,46 @@ class GameScene: SKScene, LevelManagerDelegate {
         newPos.x += delta.x
         newPos.y += delta.y
 
-        // Clamp to map bounds
-        let halfWidth = size.width / 2
-        let halfHeight = size.height / 2
+        // Clamp to map bounds - adjust for zoom level
+        let halfWidth = (size.width / 2) * cameraZoom
+        let halfHeight = (size.height / 2) * cameraZoom
 
         newPos.x = max(halfWidth, min(CGFloat(renderer.map.pixelWidth) - halfWidth, newPos.x))
         newPos.y = max(halfHeight, min(CGFloat(renderer.map.pixelHeight) - halfHeight, newPos.y))
 
         cameraNode.position = newPos
+    }
+
+    // MARK: - Camera Zoom
+
+    /// Update camera zoom by a scale factor
+    /// - Parameter scale: Multiplier for current zoom (>1 zooms in, <1 zooms out)
+    func updateZoom(by scale: CGFloat) {
+        let newZoom = cameraZoom * scale
+        cameraZoom = max(minZoom, min(maxZoom, newZoom))
+        cameraNode.setScale(cameraZoom)
+        updateUIScaleForZoom()
+    }
+
+    /// Set camera zoom to an absolute value
+    /// - Parameter zoom: Target zoom level (clamped to min/max)
+    func setZoom(_ zoom: CGFloat) {
+        cameraZoom = max(minZoom, min(maxZoom, zoom))
+        cameraNode.setScale(cameraZoom)
+        updateUIScaleForZoom()
+    }
+
+    /// Handle pinch gesture zoom (called from iOS GameViewController)
+    /// - Parameter scale: Gesture scale factor
+    func handlePinchZoom(scale: CGFloat) {
+        updateZoom(by: scale)
+    }
+
+    /// Keep HUD and overlay at consistent screen size when zooming
+    private func updateUIScaleForZoom() {
+        let inverseScale = 1.0 / cameraZoom
+        hud?.setScale(inverseScale)
+        gameOverlay?.setScale(inverseScale)
     }
 }
 
@@ -742,6 +856,13 @@ extension GameScene {
     }
 
     override func mouseUp(with event: NSEvent) {
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        // Use scroll delta for zoom - positive deltaY = scroll up = zoom in
+        let zoomSensitivity: CGFloat = 0.02
+        let zoomDelta = event.scrollingDeltaY * zoomSensitivity
+        updateZoom(by: 1.0 + zoomDelta)
     }
 
     override func rightMouseDown(with event: NSEvent) {

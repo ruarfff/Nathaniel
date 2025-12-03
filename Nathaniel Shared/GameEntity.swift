@@ -223,6 +223,9 @@ class Character: GameEntity {
     /// Current animation state
     var animationState: AnimationState = .idle
 
+    /// Vision range for fog of war (how far the character can see)
+    var visionRange: CGFloat = 200.0
+
     /// Collision radius for circle collision detection
     var collisionRadius: CGFloat {
         return sprite.size.width * 0.4
