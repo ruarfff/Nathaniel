@@ -42,7 +42,8 @@ class OptionsScene: SKScene {
         titleLabel.text = "OPTIONS"
         titleLabel.fontSize = 56
         titleLabel.fontColor = SKColor(red: 0.9, green: 0.8, blue: 0.5, alpha: 1.0)
-        titleLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.8)
+        // Position lower to avoid being cut off on devices with different aspect ratios
+        titleLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.72)
         titleLabel.horizontalAlignmentMode = .center
         addChild(titleLabel)
     }
@@ -105,7 +106,8 @@ class OptionsScene: SKScene {
         backButton.text = "Back"
         backButton.fontSize = 32
         backButton.fontColor = .white
-        backButton.position = CGPoint(x: size.width / 2, y: size.height * 0.15)
+        // Position higher to avoid being cut off on devices with different aspect ratios
+        backButton.position = CGPoint(x: size.width / 2, y: size.height * 0.25)
         backButton.horizontalAlignmentMode = .center
         backButton.name = "backButton"
         addChild(backButton)
