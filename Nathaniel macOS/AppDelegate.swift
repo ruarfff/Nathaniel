@@ -10,10 +10,11 @@ import Cocoa
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
 
-
-
     func applicationDidFinishLaunching(_ aNotification: Notification) {
-        // Insert code here to initialize your application
+        if SmokeTestRunner.isEnabled {
+            let exitCode = SmokeTestRunner.runForProcessExit()
+            exit(exitCode)
+        }
     }
 
     func applicationWillTerminate(_ aNotification: Notification) {
@@ -26,4 +27,3 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 
 }
-

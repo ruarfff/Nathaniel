@@ -7,6 +7,165 @@
 
 import SpriteKit
 
+// MARK: - Build Configuration
+
+/// Configuration for Hermes's build system
+struct BuildConfig {
+
+    /// Radius around Hermes within which towers can be placed
+    static let buildRadius: CGFloat = 250.0
+
+    /// Tower costs (in resources)
+    struct TowerCosts {
+        static let gunTower: Int = 5
+        static let laserTower: Int = 10
+        static let healTower: Int = 15
+    }
+
+    /// Tower placement collision radius (for overlap checks)
+    static let towerCollisionRadius: CGFloat = 30.0
+}
+
+// MARK: - Placement Validation
+
+/// Result of placement validation with reason for failure
+enum PlacementResult {
+    case valid
+    case outOfBuildRadius
+    case blockedByTerrain
+    case overlapsStructure
+    case overlapsCharacter
+    case overlapsEnemy
+}
+
+/// Validates tower placement positions
+class PlacementValidator {
+
+    // MARK: - Properties
+
+    /// Reference to Hermes for build radius check
+    weak var hermes: Character?
+
+    /// Reference to TMX renderer for terrain collision check
+    weak var tmxRenderer: TMXRenderer?
+
+    /// Reference to structure manager for tower overlap check
+    weak var structureManager: StructureManager?
+
+    /// Reference to enemy manager for enemy overlap check
+    weak var enemyManager: EnemyManager?
+
+    /// Player characters to check for overlap
+    var playerCharacters: [Character] = []
+
+    // MARK: - Validation
+
+    /// Validate if a position is valid for tower placement
+    /// - Parameter position: The world position to check
+    /// - Returns: PlacementResult indicating if valid or why invalid
+    func validate(position: CGPoint) -> PlacementResult {
+        // Check 1: Within build radius of Hermes
+        if !isWithinBuildRadius(position) {
+            return .outOfBuildRadius
+        }
+
+        // Check 2: Not on collision tiles
+        if !isTerrainClear(position) {
+            return .blockedByTerrain
+        }
+
+        // Check 3: Not overlapping existing structures
+        if overlapsStructure(position) {
+            return .overlapsStructure
+        }
+
+        // Check 4: Not overlapping player characters
+        if overlapsPlayerCharacter(position) {
+            return .overlapsCharacter
+        }
+
+        // Check 5: Not overlapping enemies
+        if overlapsEnemy(position) {
+            return .overlapsEnemy
+        }
+
+        return .valid
+    }
+
+    /// Convenience method for boolean check
+    func isValidPlacement(at position: CGPoint) -> Bool {
+        return validate(position: position) == .valid
+    }
+
+    // MARK: - Individual Checks
+
+    /// Check if position is within build radius of Hermes
+    private func isWithinBuildRadius(_ position: CGPoint) -> Bool {
+        guard let hermes = hermes else { return false }
+
+        let dx = position.x - hermes.position.x
+        let dy = position.y - hermes.position.y
+        let distance = hypot(dx, dy)
+
+        return distance <= BuildConfig.buildRadius
+    }
+
+    /// Check if terrain at position is walkable (no collision)
+    private func isTerrainClear(_ position: CGPoint) -> Bool {
+        guard let renderer = tmxRenderer else { return true }
+        return renderer.isWalkable(at: position)
+    }
+
+    /// Check if position overlaps any existing structure
+    private func overlapsStructure(_ position: CGPoint) -> Bool {
+        guard let manager = structureManager else { return false }
+
+        for structure in manager.activeStructures {
+            let dx = position.x - structure.position.x
+            let dy = position.y - structure.position.y
+            let distance = hypot(dx, dy)
+
+            // Use tower collision radius for overlap check
+            if distance < BuildConfig.towerCollisionRadius * 2 {
+                return true
+            }
+        }
+        return false
+    }
+
+    /// Check if position overlaps any player character
+    private func overlapsPlayerCharacter(_ position: CGPoint) -> Bool {
+        for character in playerCharacters where character.isAlive {
+            let dx = position.x - character.position.x
+            let dy = position.y - character.position.y
+            let distance = hypot(dx, dy)
+
+            // Use character's collision radius plus tower radius
+            if distance < character.collisionRadius + BuildConfig.towerCollisionRadius {
+                return true
+            }
+        }
+        return false
+    }
+
+    /// Check if position overlaps any enemy
+    private func overlapsEnemy(_ position: CGPoint) -> Bool {
+        guard let manager = enemyManager else { return false }
+
+        for enemy in manager.aliveEnemies {
+            let dx = position.x - enemy.position.x
+            let dy = position.y - enemy.position.y
+            let distance = hypot(dx, dy)
+
+            // Use enemy's collision radius plus tower radius
+            if distance < enemy.collisionRadius + BuildConfig.towerCollisionRadius {
+                return true
+            }
+        }
+        return false
+    }
+}
+
 // MARK: - Defensive Structure Base Class
 
 /// Base class for all defensive structures (towers)
@@ -89,6 +248,30 @@ class DefensiveStructure: Character {
         sprite.run(SKAction.sequence([fadeOut, remove]))
     }
 
+    /// Destroy with enhanced visual effect (used by staggered destruction)
+    /// This handles only the sprite animation, not the explosion effect
+    func destroyWithEffect() {
+        animationState = .dead
+        isActive = false
+
+        // Notify callback
+        onDestroyed?()
+
+        // Enhanced destruction animation: flash, expand slightly, then collapse
+        let flashWhite = SKAction.colorize(with: .white, colorBlendFactor: 1.0, duration: 0.05)
+        let flashBack = SKAction.colorize(withColorBlendFactor: 0, duration: 0.05)
+        let scaleUp = SKAction.scale(by: 1.3, duration: 0.1)
+        let scaleDown = SKAction.scale(to: 0.1, duration: 0.2)
+        let fadeOut = SKAction.fadeOut(withDuration: 0.2)
+        let remove = SKAction.removeFromParent()
+
+        let flashSequence = SKAction.sequence([flashWhite, flashBack])
+        let collapseGroup = SKAction.group([scaleDown, fadeOut])
+        let fullSequence = SKAction.sequence([flashSequence, scaleUp, collapseGroup, remove])
+
+        sprite.run(fullSequence)
+    }
+
     // MARK: - Texture Setup (Single Frame)
 
     /// Load a single texture for the structure
@@ -118,6 +301,11 @@ class DefensiveStructure: Character {
 
 /// Armed tower that fires bullets at enemies
 class GunTower: DefensiveStructure {
+
+    // MARK: - Constants
+
+    /// Resource cost to build this tower
+    static let cost: Int = BuildConfig.TowerCosts.gunTower
 
     // MARK: - Properties
 
@@ -182,6 +370,11 @@ class GunTower: DefensiveStructure {
 
 /// Support tower that heals nearby player characters
 class HealTower: DefensiveStructure {
+
+    // MARK: - Constants
+
+    /// Resource cost to build this tower
+    static let cost: Int = BuildConfig.TowerCosts.healTower
 
     // MARK: - Properties
 
@@ -337,6 +530,11 @@ class LaserBeam {
 /// Armed tower that fires continuous laser beams at enemies
 class LaserTower: DefensiveStructure {
 
+    // MARK: - Constants
+
+    /// Resource cost to build this tower
+    static let cost: Int = BuildConfig.TowerCosts.laserTower
+
     // MARK: - Properties
 
     /// Damage per second while beam is active
@@ -452,6 +650,9 @@ class StructureManager {
     /// All structures
     private var structures: [DefensiveStructure] = []
 
+    /// Towers owned by Hermes's current deployment
+    private var hermesTowers: [DefensiveStructure] = []
+
     /// Reference to the scene
     weak var scene: SKScene?
 
@@ -466,6 +667,16 @@ class StructureManager {
 
     /// Scale for structure sprites
     var structureScale: CGFloat = 2.0
+
+    /// Whether Hermes has any deployed towers
+    var hasHermesTowers: Bool {
+        return !hermesTowers.isEmpty
+    }
+
+    /// Count of Hermes's deployed towers
+    var hermesTowerCount: Int {
+        return hermesTowers.count
+    }
 
     // MARK: - Initialization
 
@@ -528,6 +739,75 @@ class StructureManager {
         return tower
     }
 
+    // MARK: - Hermes Tower Management
+
+    /// Add a tower for Hermes at the specified position
+    /// - Parameters:
+    ///   - type: The type of tower to build
+    ///   - position: Where to place the tower
+    /// - Returns: The created tower
+    @discardableResult
+    func addHermesTower(type: TowerType, at position: CGPoint) -> DefensiveStructure {
+        let tower: DefensiveStructure
+
+        switch type {
+        case .gunTower:
+            tower = addGunTower(at: position)
+        case .laserTower:
+            tower = addLaserTower(at: position)
+        case .healTower:
+            tower = addHealTower(at: position)
+        }
+
+        // Track as Hermes tower
+        hermesTowers.append(tower)
+
+        print("StructureManager: Added Hermes tower (\(type.displayName)), total Hermes towers: \(hermesTowerCount)")
+
+        return tower
+    }
+
+    /// Destroy all towers owned by Hermes
+    /// Called when releasing Hermes to move again
+    /// - Parameters:
+    ///   - camera: Camera for screen shake effects (optional)
+    ///   - completion: Called when all towers are destroyed
+    func destroyAllHermesTowers(camera: SKCameraNode? = nil, completion: (() -> Void)? = nil) {
+        print("StructureManager: Destroying \(hermesTowerCount) Hermes towers with effects")
+
+        guard let scene = scene, !hermesTowers.isEmpty else {
+            hermesTowers.removeAll()
+            completion?()
+            return
+        }
+
+        // Capture towers to destroy
+        let towersToDestroy = hermesTowers
+
+        // Clear the array immediately to prevent issues
+        hermesTowers.removeAll()
+
+        // Use staggered destruction for dramatic effect
+        StaggeredDestruction.destroy(
+            towers: towersToDestroy,
+            in: scene,
+            camera: camera,
+            delayBetween: 0.12,
+            completion: completion
+        )
+    }
+
+    /// Destroy all towers immediately without effects (for cleanup/reset)
+    func destroyAllHermesTowersImmediate() {
+        print("StructureManager: Immediately destroying \(hermesTowerCount) Hermes towers")
+
+        for tower in hermesTowers {
+            tower.onDeath()
+        }
+
+        hermesTowers.removeAll()
+    }
+
     /// Common setup for all structures
     private func setupStructure(_ structure: DefensiveStructure, at position: CGPoint) {
         structure.position = position
@@ -555,6 +835,11 @@ class StructureManager {
     private func removeStructure(_ structure: DefensiveStructure) {
         if let index = structures.firstIndex(where: { $0 === structure }) {
             structures.remove(at: index)
+        }
+        // Also remove from Hermes towers if applicable
+        if let hermesIndex = hermesTowers.firstIndex(where: { $0 === structure }) {
+            hermesTowers.remove(at: hermesIndex)
+            print("StructureManager: Hermes tower destroyed, remaining: \(hermesTowerCount)")
         }
     }
 
@@ -606,5 +891,6 @@ class StructureManager {
             structure.sprite.removeFromParent()
         }
         structures.removeAll()
+        hermesTowers.removeAll()
     }
 }

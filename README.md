@@ -34,6 +34,17 @@ xcodebuild -project Nathaniel.xcodeproj -scheme "Nathaniel iOS" build
 xcodebuild -project Nathaniel.xcodeproj -scheme "Nathaniel macOS" build
 ```
 
+**Smoke test from command line:**
+```bash
+# macOS (builds + runs a headless smoke test)
+bash scripts/smoke_macos.sh
+
+# iOS Simulator (builds + installs + launches + screenshots)
+bash scripts/smoke_ios_sim.sh
+```
+
+See `docs/automation.md` for Codex MCP setup and script options.
+
 ## Current Status
 
 - TMX map loading and rendering (Tiled format)

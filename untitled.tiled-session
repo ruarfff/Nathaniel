@@ -1,12 +1,38 @@
 {
-    "activeFile": "",
+    "activeFile": "Nathaniel Shared/Assets/Maps/levelone.tmx",
     "expandedProjectPaths": [
+        "Nathaniel Shared/Assets",
+        ".",
+        "Nathaniel Shared",
+        "Nathaniel Shared/Assets/Maps"
     ],
     "fileStates": {
+        "Nathaniel Shared/Assets/Maps/levelone.tmx": {
+            "scale": 0.5,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 1522,
+                "y": 467
+            }
+        },
+        "Nathaniel Shared/Assets/Maps/levelone.tmx#minetileset2": {
+            "scaleInDock": 1
+        },
+        "Nathaniel Shared/Assets/Maps/levelone.tmx#roughrippleearthdarktograsstileset": {
+            "scaleInDock": 1
+        },
+        "Nathaniel Shared/Assets/Maps/levelone.tmx#treestileset": {
+            "scaleInDock": 1
+        },
+        "Nathaniel Shared/Assets/Maps/levelone.tmx#windmilltileset": {
+            "scaleInDock": 1
+        }
     },
     "openFiles": [
+        "Nathaniel Shared/Assets/Maps/levelone.tmx"
     ],
     "project": "untitled.tiled-project",
     "recentFiles": [
+        "Nathaniel Shared/Assets/Maps/levelone.tmx"
     ]
 }

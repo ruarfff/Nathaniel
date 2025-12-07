@@ -278,5 +278,8 @@ class LevelManager: EnemyManagerDelegate {
 
     func enemyManager(_ manager: EnemyManager, enemyDidDie enemy: Enemy, score: Int) {
         addScore(score)
+
+        // Spawn resource drop from the dead enemy
+        ResourceManager.shared.spawnFromEnemy(enemy)
     }
 }

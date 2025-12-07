@@ -52,6 +52,26 @@ class Hermes: Character {
         }
     }
 
+    /// Whether Hermes is locked (has deployed towers and cannot move)
+    private(set) var isLocked: Bool = false {
+        didSet {
+            updateLockedVisual()
+        }
+    }
+
+    /// Visual indicator node for locked state
+    private var lockedIndicator: SKSpriteNode?
+
+    /// Build radius indicator circle
+    private var buildRadiusIndicator: SKShapeNode?
+
+    /// Whether to show build radius (when selected in build mode)
+    var showBuildRadius: Bool = false {
+        didSet {
+            updateBuildRadiusVisual()
+        }
+    }
+
     /// The character Hermes should follow when not in build mode
     weak var followTarget: Character?
 
@@ -202,8 +222,8 @@ class Hermes: Character {
     // MARK: - Update
 
     override func update(deltaTime: TimeInterval) {
-        // Handle follow behavior when not in build mode
-        if !isInBuildMode, let target = followTarget {
+        // Handle follow behavior when not in build mode and not locked
+        if !isInBuildMode && !isLocked, let target = followTarget {
             updateFollowBehavior(target: target)
         }
 
@@ -261,5 +281,141 @@ class Hermes: Character {
     /// Exit build mode (resume following)
     func exitBuildMode() {
         isInBuildMode = false
+    }
+
+    // MARK: - Locked State (Tower Deployment)
+
+    /// Lock Hermes when towers are deployed
+    /// Prevents all movement until towers are released
+    func lock() {
+        guard !isLocked else { return }
+        isLocked = true
+        destination = nil  // Stop any current movement
+        print("Hermes: Locked - towers deployed")
+    }
+
+    /// Unlock Hermes when towers are destroyed/released
+    /// Allows movement again
+    func unlock() {
+        guard isLocked else { return }
+        isLocked = false
+        print("Hermes: Unlocked - can move again")
+    }
+
+    /// Override destination to prevent movement when locked
+    override var destination: CGPoint? {
+        get { super.destination }
+        set {
+            if isLocked {
+                // Reject movement commands when locked
+                return
+            }
+            super.destination = newValue
+        }
+    }
+
+    /// Update the locked visual indicator
+    private func updateLockedVisual() {
+        if isLocked {
+            // Show locked indicator (anchor-like symbol)
+            if lockedIndicator == nil {
+                let indicator = SKSpriteNode(color: .clear, size: CGSize(width: 24, height: 24))
+
+                // Create an anchor shape using a shape node
+                let anchorShape = SKShapeNode()
+                let path = CGMutablePath()
+                // Simple anchor shape: circle with line down
+                path.addEllipse(in: CGRect(x: -6, y: 2, width: 12, height: 12))
+                path.move(to: CGPoint(x: 0, y: 2))
+                path.addLine(to: CGPoint(x: 0, y: -10))
+                path.move(to: CGPoint(x: -6, y: -6))
+                path.addLine(to: CGPoint(x: 6, y: -6))
+                anchorShape.path = path
+                anchorShape.strokeColor = .yellow
+                anchorShape.lineWidth = 2
+                anchorShape.zPosition = 1
+
+                indicator.addChild(anchorShape)
+                indicator.position = CGPoint(x: 0, y: sprite.size.height / 2 + 16)
+                indicator.zPosition = 200
+                sprite.addChild(indicator)
+                lockedIndicator = indicator
+
+                // Pulse animation
+                let scaleUp = SKAction.scale(to: 1.2, duration: 0.5)
+                let scaleDown = SKAction.scale(to: 1.0, duration: 0.5)
+                let pulse = SKAction.sequence([scaleUp, scaleDown])
+                indicator.run(SKAction.repeatForever(pulse))
+            }
+            lockedIndicator?.isHidden = false
+
+            // Add subtle tint to Hermes
+            sprite.color = .yellow
+            sprite.colorBlendFactor = 0.15
+        } else {
+            // Hide locked indicator
+            lockedIndicator?.isHidden = true
+
+            // Remove tint
+            sprite.colorBlendFactor = 0
+        }
+    }
+
+    // MARK: - Build Radius Visual
+
+    /// Update the build radius indicator
+    private func updateBuildRadiusVisual() {
+        if showBuildRadius {
+            // Create build radius circle if needed
+            if buildRadiusIndicator == nil {
+                let radius = TowerConfig.buildRadius
+                let circle = SKShapeNode(circleOfRadius: radius)
+                circle.strokeColor = SKColor.cyan.withAlphaComponent(0.5)
+                circle.fillColor = SKColor.cyan.withAlphaComponent(0.05)
+                circle.lineWidth = 2
+                circle.glowWidth = 1
+                circle.zPosition = -1  // Below Hermes sprite
+
+                // Add dashed line effect
+                let pattern: [CGFloat] = [10, 5]
+                let path = CGPath(ellipseIn: CGRect(x: -radius, y: -radius, width: radius * 2, height: radius * 2), transform: nil)
+                circle.path = path.copy(dashingWithPhase: 0, lengths: pattern)
+
+                sprite.addChild(circle)
+                buildRadiusIndicator = circle
+
+                // Subtle rotation animation
+                let rotate = SKAction.rotate(byAngle: .pi * 2, duration: 20)
+                circle.run(SKAction.repeatForever(rotate))
+            }
+            buildRadiusIndicator?.isHidden = false
+
+            // Add cyan tint when showing build radius (unless locked which uses yellow)
+            if !isLocked {
+                sprite.color = .cyan
+                sprite.colorBlendFactor = 0.1
+            }
+        } else {
+            // Hide build radius
+            buildRadiusIndicator?.isHidden = true
+
+            // Remove tint (unless locked)
+            if !isLocked {
+                sprite.colorBlendFactor = 0
+            }
+        }
+    }
+
+    /// Add a selection highlight ring (called externally when Hermes is selected)
+    func showSelectionHighlight() {
+        // The build radius indicator serves as the selection highlight in build mode
+        if isInBuildMode {
+            showBuildRadius = true
+        }
+    }
+
+    /// Remove selection highlight
+    func hideSelectionHighlight() {
+        showBuildRadius = false
     }
 }

@@ -26,6 +26,7 @@ class AudioManager {
         case evilLaugh = "evilLaugh"
         case arrowShot = "arrowShot"
         case laserBlast = "zap"
+        case collect = "collect"
     }
 
     // MARK: - Music Types
@@ -69,7 +70,7 @@ class AudioManager {
 
     private func preloadSoundEffects() {
         for effect in [SoundEffect.laser, .explosion, .gunShot, .rayGun,
-                       .laserCannon, .evilLaugh, .arrowShot, .laserBlast] {
+                       .laserCannon, .evilLaugh, .arrowShot, .laserBlast, .collect] {
             let filename = "\(effect.rawValue).wav"
             soundEffectActions[effect] = SKAction.playSoundFileNamed(filename, waitForCompletion: false)
         }

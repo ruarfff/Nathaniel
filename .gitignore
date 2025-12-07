@@ -29,3 +29,5 @@ fastlane/test_output
 
 test-artifacts/
 test-screenshots/
+
+.derivedData/

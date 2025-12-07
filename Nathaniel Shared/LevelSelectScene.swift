@@ -189,11 +189,12 @@ class LevelSelectScene: SKScene {
 
     private func setupBackButton() {
         backButton = SKLabelNode(fontNamed: "Copperplate-Bold")
-        backButton.text = "< Back"
-        backButton.fontSize = 28
+        backButton.text = "Back"
+        backButton.fontSize = 32
         backButton.fontColor = .white
-        backButton.position = CGPoint(x: 100, y: size.height - 50)
-        backButton.horizontalAlignmentMode = .left
+        // Position at bottom center to stay within visible area on all aspect ratios
+        backButton.position = CGPoint(x: size.width / 2, y: size.height * 0.10)
+        backButton.horizontalAlignmentMode = .center
         backButton.name = "backButton"
         addChild(backButton)
     }

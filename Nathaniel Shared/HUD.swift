@@ -45,6 +45,26 @@ class HUD: SKNode {
     /// Timer display
     private let timerLabel: SKLabelNode
 
+    /// Release Hermes button (visible when Hermes has deployed towers)
+    private var releaseHermesButton: SKNode?
+    private let releaseButtonName = "releaseHermesButton"
+
+    /// Callback when Release Hermes button is tapped
+    var onReleaseHermes: (() -> Void)?
+
+    /// Build button (visible when Hermes is selected)
+    private var buildButton: SKNode?
+    private let buildButtonName = "buildButton"
+
+    /// Tower count label (visible when Hermes has towers)
+    private var towerCountLabel: SKLabelNode?
+
+    /// Callback when Build button is tapped
+    var onBuildTapped: (() -> Void)?
+
+    /// Whether Hermes is currently selected (controls build button visibility)
+    private var isHermesSelected: Bool = false
+
     /// Padding from screen edges
     private let padding: CGFloat = 16
 
@@ -362,5 +382,241 @@ class HUD: SKNode {
         let fadeOut = SKAction.fadeOut(withDuration: 0.8)
         let remove = SKAction.removeFromParent()
         floater.run(SKAction.sequence([SKAction.group([moveUp, fadeOut]), remove]))
+    }
+
+    /// Highlight resource collection
+    func highlightResourceCollected(amount: Int) {
+        // Create floating "+amount" text
+        let floater = SKLabelNode(fontNamed: "Helvetica-Bold")
+        floater.fontSize = 18
+        floater.fontColor = SKColor(red: 0.3, green: 0.9, blue: 0.5, alpha: 1.0)
+        floater.text = "+\(amount)"
+        floater.position = CGPoint(x: resourcesValueLabel.position.x + 60, y: resourcesValueLabel.position.y - 10)
+        floater.zPosition = 1
+        topRightContainer.addChild(floater)
+
+        // Animate up and fade out
+        let moveUp = SKAction.moveBy(x: 0, y: 30, duration: 0.8)
+        let fadeOut = SKAction.fadeOut(withDuration: 0.8)
+        let remove = SKAction.removeFromParent()
+        floater.run(SKAction.sequence([SKAction.group([moveUp, fadeOut]), remove]))
+    }
+
+    // MARK: - Release Hermes Button
+
+    /// Show the Release Hermes button
+    func showReleaseHermesButton() {
+        guard releaseHermesButton == nil else {
+            releaseHermesButton?.isHidden = false
+            return
+        }
+
+        let halfWidth = viewportSize.width / 2
+        let halfHeight = viewportSize.height / 2
+
+        // Create button container
+        let button = SKNode()
+        button.name = releaseButtonName
+        button.zPosition = 600
+
+        // Position in bottom-right corner
+        button.position = CGPoint(
+            x: halfWidth - 90,
+            y: -halfHeight + 60
+        )
+
+        // Button background
+        let buttonBg = SKShapeNode(rectOf: CGSize(width: 140, height: 50), cornerRadius: 8)
+        buttonBg.fillColor = SKColor(red: 0.8, green: 0.2, blue: 0.2, alpha: 0.9)
+        buttonBg.strokeColor = .white
+        buttonBg.lineWidth = 2
+        buttonBg.name = releaseButtonName
+        button.addChild(buttonBg)
+
+        // Button text
+        let label = SKLabelNode(fontNamed: "Helvetica-Bold")
+        label.fontSize = 14
+        label.fontColor = .white
+        label.text = "RELEASE HERMES"
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+        label.name = releaseButtonName
+        button.addChild(label)
+
+        // Add subtle pulse animation
+        let scaleUp = SKAction.scale(to: 1.05, duration: 0.5)
+        let scaleDown = SKAction.scale(to: 1.0, duration: 0.5)
+        let pulse = SKAction.sequence([scaleUp, scaleDown])
+        button.run(SKAction.repeatForever(pulse))
+
+        addChild(button)
+        releaseHermesButton = button
+
+        // Animate in
+        button.alpha = 0
+        button.setScale(0.8)
+        let fadeIn = SKAction.fadeIn(withDuration: 0.2)
+        let scaleIn = SKAction.scale(to: 1.0, duration: 0.2)
+        button.run(SKAction.group([fadeIn, scaleIn]))
+    }
+
+    /// Hide the Release Hermes button
+    func hideReleaseHermesButton() {
+        guard let button = releaseHermesButton else { return }
+
+        // Animate out
+        let fadeOut = SKAction.fadeOut(withDuration: 0.2)
+        let scaleOut = SKAction.scale(to: 0.8, duration: 0.2)
+        let remove = SKAction.run { [weak self] in
+            self?.releaseHermesButton?.removeFromParent()
+            self?.releaseHermesButton = nil
+        }
+        button.run(SKAction.sequence([SKAction.group([fadeOut, scaleOut]), remove]))
+    }
+
+    // MARK: - Build Button
+
+    /// Show the Build button (when Hermes is selected)
+    func showBuildButton() {
+        isHermesSelected = true
+        guard buildButton == nil else {
+            buildButton?.isHidden = false
+            return
+        }
+
+        let halfWidth = viewportSize.width / 2
+        let halfHeight = viewportSize.height / 2
+
+        // Create button container
+        let button = SKNode()
+        button.name = buildButtonName
+        button.zPosition = 600
+
+        // Position in bottom-left corner
+        button.position = CGPoint(
+            x: -halfWidth + 80,
+            y: -halfHeight + 60
+        )
+
+        // Button background
+        let buttonBg = SKShapeNode(rectOf: CGSize(width: 100, height: 50), cornerRadius: 8)
+        buttonBg.fillColor = SKColor(red: 0.2, green: 0.6, blue: 0.8, alpha: 0.9)
+        buttonBg.strokeColor = .white
+        buttonBg.lineWidth = 2
+        buttonBg.name = buildButtonName
+        button.addChild(buttonBg)
+
+        // Button text
+        let label = SKLabelNode(fontNamed: "Helvetica-Bold")
+        label.fontSize = 16
+        label.fontColor = .white
+        label.text = "BUILD"
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+        label.name = buildButtonName
+        button.addChild(label)
+
+        addChild(button)
+        buildButton = button
+
+        // Animate in
+        button.alpha = 0
+        button.setScale(0.8)
+        let fadeIn = SKAction.fadeIn(withDuration: 0.2)
+        let scaleIn = SKAction.scale(to: 1.0, duration: 0.2)
+        button.run(SKAction.group([fadeIn, scaleIn]))
+    }
+
+    /// Hide the Build button
+    func hideBuildButton() {
+        isHermesSelected = false
+        guard let button = buildButton else { return }
+
+        // Animate out
+        let fadeOut = SKAction.fadeOut(withDuration: 0.2)
+        let scaleOut = SKAction.scale(to: 0.8, duration: 0.2)
+        let remove = SKAction.run { [weak self] in
+            self?.buildButton?.removeFromParent()
+            self?.buildButton = nil
+        }
+        button.run(SKAction.sequence([SKAction.group([fadeOut, scaleOut]), remove]))
+    }
+
+    // MARK: - Tower Count Display
+
+    /// Update the tower count display
+    func updateTowerCount(_ count: Int) {
+        if count > 0 {
+            showTowerCount(count)
+        } else {
+            hideTowerCount()
+        }
+    }
+
+    /// Show tower count
+    private func showTowerCount(_ count: Int) {
+        if towerCountLabel == nil {
+            let label = SKLabelNode(fontNamed: "Helvetica-Bold")
+            label.fontSize = 14
+            label.fontColor = SKColor(red: 0.2, green: 0.8, blue: 0.9, alpha: 1.0)
+            label.horizontalAlignmentMode = .left
+            label.verticalAlignmentMode = .top
+            label.zPosition = 1
+
+            // Position below resources
+            label.position = CGPoint(x: 0, y: -45)
+            topRightContainer.addChild(label)
+            towerCountLabel = label
+        }
+
+        towerCountLabel?.text = "TOWERS: \(count)"
+        towerCountLabel?.isHidden = false
+    }
+
+    /// Hide tower count
+    private func hideTowerCount() {
+        towerCountLabel?.isHidden = true
+    }
+
+    /// Handle touch on HUD - returns true if touch was handled
+    func handleTouch(at point: CGPoint) -> Bool {
+        // Check if touch is on build button
+        if let button = buildButton, !button.isHidden {
+            let buttonPoint = convert(point, to: button)
+            if let bg = button.children.first as? SKShapeNode,
+               bg.contains(buttonPoint) {
+                // Trigger callback
+                onBuildTapped?()
+
+                // Visual feedback
+                let flash = SKAction.sequence([
+                    SKAction.colorize(with: .white, colorBlendFactor: 0.5, duration: 0.1),
+                    SKAction.colorize(withColorBlendFactor: 0, duration: 0.1)
+                ])
+                bg.run(flash)
+
+                return true
+            }
+        }
+
+        // Check if touch is on release button
+        if let button = releaseHermesButton, !button.isHidden {
+            let buttonPoint = convert(point, to: button)
+            if let bg = button.children.first as? SKShapeNode,
+               bg.contains(buttonPoint) {
+                // Trigger callback
+                onReleaseHermes?()
+
+                // Visual feedback
+                let flash = SKAction.sequence([
+                    SKAction.colorize(with: .white, colorBlendFactor: 0.5, duration: 0.1),
+                    SKAction.colorize(withColorBlendFactor: 0, duration: 0.1)
+                ])
+                bg.run(flash)
+
+                return true
+            }
+        }
+        return false
     }
 }

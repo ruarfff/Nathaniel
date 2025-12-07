@@ -23,6 +23,22 @@ class Enemy: Character {
     /// Range at which enemy can attack
     let attackRange: CGFloat
 
+    // MARK: - Resource Drop Properties
+
+    /// Minimum resources dropped on death
+    let resourceDropMin: Int
+
+    /// Maximum resources dropped on death
+    let resourceDropMax: Int
+
+    /// Calculate a random resource drop amount within the configured range
+    func calculateResourceDrop() -> Int {
+        guard resourceDropMax >= resourceDropMin && resourceDropMin > 0 else {
+            return 0
+        }
+        return Int.random(in: resourceDropMin...resourceDropMax)
+    }
+
     /// Current target (usually a player character)
     weak var target: Character?
 
@@ -49,6 +65,7 @@ class Enemy: Character {
     init(name: String, maxHP: Int, speed: CGFloat, killScore: Int,
          visibleRange: CGFloat, attackRange: CGFloat,
          meleeDamage: Int = 0, meleeAttackCooldown: TimeInterval = 1.0,
+         resourceDropMin: Int = 1, resourceDropMax: Int = 3,
          spriteSheetCols: Int = 8, spriteSheetRows: Int = 4) {
 
         self.killScore = killScore
@@ -56,6 +73,8 @@ class Enemy: Character {
         self.attackRange = attackRange
         self.meleeDamage = meleeDamage
         self.meleeAttackCooldown = meleeAttackCooldown
+        self.resourceDropMin = resourceDropMin
+        self.resourceDropMax = resourceDropMax
 
         super.init(
             name: name,
@@ -191,6 +210,10 @@ class Grunt: Enemy {
     /// Time between melee attacks
     static let defaultMeleeAttackCooldown: TimeInterval = 0.8
 
+    /// Resource drop range (low - basic enemy)
+    static let defaultResourceDropMin = 1
+    static let defaultResourceDropMax = 3
+
     // MARK: - Initialization
 
     init() {
@@ -203,6 +226,8 @@ class Grunt: Enemy {
             attackRange: Grunt.defaultAttackRange,
             meleeDamage: Grunt.defaultMeleeDamage,
             meleeAttackCooldown: Grunt.defaultMeleeAttackCooldown,
+            resourceDropMin: Grunt.defaultResourceDropMin,
+            resourceDropMax: Grunt.defaultResourceDropMax,
             spriteSheetCols: 8,
             spriteSheetRows: 4
         )
@@ -272,6 +297,10 @@ class Boss: Enemy {
     /// Distance ratio at which boss stops moving (30% of range)
     static let stopDistanceRatio: CGFloat = 0.3
 
+    /// Resource drop range (high - boss enemy)
+    static let defaultResourceDropMin = 10
+    static let defaultResourceDropMax = 20
+
     // MARK: - Properties
 
     /// Whether this boss has been defeated (for win condition)
@@ -289,6 +318,8 @@ class Boss: Enemy {
             attackRange: Boss.defaultAttackRange,
             meleeDamage: 0,  // No melee - ranged only
             meleeAttackCooldown: 0,
+            resourceDropMin: Boss.defaultResourceDropMin,
+            resourceDropMax: Boss.defaultResourceDropMax,
             spriteSheetCols: 8,
             spriteSheetRows: 8  // Boss has 8 rows for more animation variety
         )
@@ -412,6 +443,10 @@ class Soldier: Enemy {
     /// Preferred distance to maintain from target (60% of range)
     static let preferredDistanceRatio: CGFloat = 0.6
 
+    /// Resource drop range (medium - ranged enemy)
+    static let defaultResourceDropMin = 3
+    static let defaultResourceDropMax = 6
+
     // MARK: - Initialization
 
     init() {
@@ -424,6 +459,8 @@ class Soldier: Enemy {
             attackRange: Soldier.defaultRange,
             meleeDamage: 0,  // No melee - ranged only
             meleeAttackCooldown: 0,
+            resourceDropMin: Soldier.defaultResourceDropMin,
+            resourceDropMax: Soldier.defaultResourceDropMax,
             spriteSheetCols: 8,
             spriteSheetRows: 2  // Soldier has only 2 rows
         )

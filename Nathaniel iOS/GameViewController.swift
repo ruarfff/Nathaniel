@@ -14,8 +14,12 @@ class GameViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // Start with the main menu
-        let scene = MainMenuScene.newMenuScene()
+        let scene: SKScene
+        if SmokeTestRunner.isEnabled {
+            scene = GameScene.newGameScene(levelConfig: .levelOne)
+        } else {
+            scene = MainMenuScene.newMenuScene()
+        }
 
         // Present the scene
         let skView = self.view as! SKView
