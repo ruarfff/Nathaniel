@@ -14,9 +14,40 @@ Nathaniel is a top-down RTS game for mobile. The player controls Nathaniel and h
 
 This is a learning project. The developer is experienced with other platforms (Android, Windows Phone, Godot) but new to Swift and SpriteKit. Architecture decisions should be discussed and explained rather than assumed.
 
-## Source control
+## Source Control
 
-This project uses jj
+This project uses standard **git** for version control.
+
+### Common Commands
+
+```bash
+# Check status
+git status
+
+# Stage and commit changes
+git add <files>
+git commit -m "Description of changes"
+
+# View history
+git log --oneline
+
+# Create a branch
+git checkout -b feature/my-feature
+
+# Switch branches
+git checkout main
+
+# Pull latest changes
+git pull origin main
+
+# Push changes
+git push origin <branch>
+```
+
+### Remote
+
+- **Origin**: GitHub repository
+- **Main branch**: `main`
 
 ## Repository Structure
 
