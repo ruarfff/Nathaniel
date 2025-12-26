@@ -134,6 +134,11 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
         // Start gameplay music
         AudioManager.shared.playMusic(.gameplay)
+
+        #if DEBUG
+        // Notify the command server that a new scene is presented
+        NotificationCenter.default.post(name: .skViewDidPresentScene, object: view)
+        #endif
     }
 
     private func setupHaptics() {

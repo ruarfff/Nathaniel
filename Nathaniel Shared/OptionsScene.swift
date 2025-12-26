@@ -28,6 +28,11 @@ class OptionsScene: SKScene {
         setupTitle()
         setupOptions()
         setupBackButton()
+
+        #if DEBUG
+        // Notify the command server that a new scene is presented
+        NotificationCenter.default.post(name: .skViewDidPresentScene, object: view)
+        #endif
     }
 
     // MARK: - Setup Methods
@@ -114,6 +119,11 @@ class OptionsScene: SKScene {
     }
 
     // MARK: - Button Actions
+
+    /// Handle a tap at the given location (used by GameCommandServer)
+    func handleTap(at location: CGPoint) {
+        handleButtonTap(at: location)
+    }
 
     private func handleButtonTap(at location: CGPoint) {
         let nodesAtPoint = nodes(at: location)

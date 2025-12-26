@@ -25,7 +25,36 @@ class GameViewController: NSViewController {
         
         skView.showsFPS = true
         skView.showsNodeCount = true
+
+        #if DEBUG
+        // Wire up command server delegate
+        updateCommandServerDelegate(scene: scene)
+
+        // Observe scene changes to update the delegate
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(sceneDidChange(_:)),
+            name: .skViewDidPresentScene,
+            object: skView
+        )
+        #endif
     }
 
+    #if DEBUG
+    @objc private func sceneDidChange(_ notification: Notification) {
+        if let skView = view as? SKView, let scene = skView.scene {
+            updateCommandServerDelegate(scene: scene)
+        }
+    }
+
+    private func updateCommandServerDelegate(scene: SKScene) {
+        if let delegate = scene as? GameCommandDelegate {
+            GameCommandServer.shared.delegate = delegate
+            print("[GameViewController] Command server delegate set to \(type(of: scene))")
+        } else {
+            print("[GameViewController] Scene \(type(of: scene)) does not conform to GameCommandDelegate")
+        }
+    }
+    #endif
 }
 

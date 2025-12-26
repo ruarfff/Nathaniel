@@ -29,6 +29,19 @@ class GameViewController: UIViewController {
         skView.showsFPS = true
         skView.showsNodeCount = true
 
+        #if DEBUG
+        // Wire up command server delegate
+        updateCommandServerDelegate(scene: scene)
+
+        // Observe scene changes to update the delegate
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(sceneDidChange(_:)),
+            name: .skViewDidPresentScene,
+            object: skView
+        )
+        #endif
+
         // Add pinch gesture for zoom
         let pinchGesture = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
         view.addGestureRecognizer(pinchGesture)
@@ -55,4 +68,21 @@ class GameViewController: UIViewController {
     override var prefersStatusBarHidden: Bool {
         return true
     }
+
+    #if DEBUG
+    @objc private func sceneDidChange(_ notification: Notification) {
+        if let skView = view as? SKView, let scene = skView.scene {
+            updateCommandServerDelegate(scene: scene)
+        }
+    }
+
+    private func updateCommandServerDelegate(scene: SKScene) {
+        if let delegate = scene as? GameCommandDelegate {
+            GameCommandServer.shared.delegate = delegate
+            print("[GameViewController] Command server delegate set to \(type(of: scene))")
+        } else {
+            print("[GameViewController] Scene \(type(of: scene)) does not conform to GameCommandDelegate")
+        }
+    }
+    #endif
 }

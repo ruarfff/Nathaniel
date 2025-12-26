@@ -1,0 +1,28 @@
+{
+  "name": "nathaniel-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for Nathaniel game testing - enables LLM agents to control and test the game",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch"
+  },
+  "bin": {
+    "nathaniel-mcp-server": "./dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "Ruairi O'Brien",
+  "license": "MIT"
+}

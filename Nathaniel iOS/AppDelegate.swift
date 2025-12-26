@@ -15,6 +15,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+
+        #if DEBUG
+        // Start the game command server for agent testing
+        GameCommandServer.shared.start()
+        print("[AppDelegate] GameCommandServer started on port 8765")
+        #endif
+
         return true
     }
 

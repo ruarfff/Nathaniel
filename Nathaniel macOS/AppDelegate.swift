@@ -15,6 +15,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let exitCode = SmokeTestRunner.runForProcessExit()
             exit(exitCode)
         }
+
+        #if DEBUG
+        // Start the game command server for agent testing
+        GameCommandServer.shared.start()
+        print("[AppDelegate] GameCommandServer started on port 8765")
+        #endif
     }
 
     func applicationWillTerminate(_ aNotification: Notification) {

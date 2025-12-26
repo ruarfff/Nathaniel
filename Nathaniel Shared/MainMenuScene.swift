@@ -38,6 +38,11 @@ class MainMenuScene: SKScene {
 
         // Start menu music
         AudioManager.shared.playMusic(.menu)
+
+        #if DEBUG
+        // Notify the command server that a new scene is presented
+        NotificationCenter.default.post(name: .skViewDidPresentScene, object: view)
+        #endif
     }
 
     // MARK: - Setup Methods
@@ -142,6 +147,11 @@ class MainMenuScene: SKScene {
     }
 
     // MARK: - Button Actions
+
+    /// Handle a tap at the given location (used by GameCommandServer)
+    func handleTap(at location: CGPoint) {
+        handleButtonTap(at: location)
+    }
 
     private func handleButtonTap(at location: CGPoint) {
         let nodesAtPoint = nodes(at: location)

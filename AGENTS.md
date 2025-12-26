@@ -53,14 +53,16 @@ git push origin <branch>
 
 ```
 Nathaniel/
-├── Legacy/    # Original Windows Phone 7 codebase (C#/XNA)
+├── Legacy/                         # Original Windows Phone 7 codebase (C#/XNA)
 │   ├── NathanielGamePhone/         # Main game project
 │   ├── EasyStorage/                # Storage library for save games
-│   └── NathanielGame.sln          # Visual Studio solution
+│   └── NathanielGame.sln           # Visual Studio solution
 ├── Nathaniel Shared/               # Shared Swift/SpriteKit code
+│   └── GameCommandServer/          # Agent testing HTTP server (DEBUG only)
 ├── Nathaniel iOS/                  # iOS-specific code
 ├── Nathaniel macOS/                # macOS-specific code
-└── Nathaniel.xcodeproj            # Xcode project
+├── game-mcp-server/                # MCP server for agent testing
+└── Nathaniel.xcodeproj             # Xcode project
 ```
 
 ## Prerequisites
@@ -259,11 +261,138 @@ com.ruarfff.Nathaniel
 - Use iPhone 17 Pro, iPhone 17 Pro Max, or similar iOS 26.1 simulators
 - Older simulators (iOS 18.x) won't work with this project
 
+### Agent Testing via GameCommandServer (Recommended)
+
+The game includes an embedded HTTP server for programmatic testing by AI agents. This is the **recommended approach** for automated testing as it works reliably with SpriteKit's coordinate system.
+
+#### Overview
+
+- **GameCommandServer**: HTTP server embedded in DEBUG builds, running on port 8765
+- **game-mcp-server**: MCP wrapper that exposes the HTTP API as MCP tools
+
+#### Architecture
+
+```
+┌─────────────────┐     HTTP      ┌──────────────────────┐
+│  LLM Agent      │ ◄──────────► │  GameCommandServer   │
+│  (Claude Code)  │    :8765     │  (in-game, Swift)    │
+└─────────────────┘              └──────────────────────┘
+        │                                  │
+        │ MCP                              │ SpriteKit
+        ▼                                  ▼
+┌─────────────────┐              ┌──────────────────────┐
+│ game-mcp-server │              │    Game Scenes       │
+│  (TypeScript)   │              │ (MainMenu, Game, etc)│
+└─────────────────┘              └──────────────────────┘
+```
+
+#### Quick Start
+
+1. **Build and run the game** in Debug mode (iOS Simulator or macOS)
+2. **Test the HTTP server**:
+   ```bash
+   curl http://localhost:8765/health
+   # {"status":"ok","server":"GameCommandServer","version":"1.0.0"}
+   ```
+3. **Get game state**:
+   ```bash
+   curl http://localhost:8765/state
+   ```
+4. **Get interactive nodes**:
+   ```bash
+   curl http://localhost:8765/nodes
+   ```
+5. **Inject a tap**:
+   ```bash
+   curl -X POST http://localhost:8765/tap \
+     -H "Content-Type: application/json" \
+     -d '{"x": 683, "y": 350}'
+   ```
+
+#### HTTP API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Check server status |
+| `/state` | GET | Get current game state (scene, score, lives, positions) |
+| `/nodes` | GET | List interactive nodes with frame coordinates |
+| `/screenshot` | GET | Capture scene as base64 PNG |
+| `/tap` | POST | Inject tap at coordinates `{x, y}` |
+| `/swipe` | POST | Inject swipe `{fromX, fromY, toX, toY, duration}` |
+| `/action` | POST | Execute named action `{name, params}` |
+
+#### Using the MCP Server
+
+The `game-mcp-server/` directory contains an MCP server wrapper:
+
+```bash
+cd game-mcp-server
+npm install
+npm run build
+```
+
+Add to Claude Code MCP config:
+```json
+{
+  "mcpServers": {
+    "nathaniel-game": {
+      "command": "node",
+      "args": ["/path/to/game-mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+Available MCP tools:
+- `game_health` - Check server status
+- `game_get_state` - Get game state
+- `game_get_nodes` - List interactive elements
+- `game_screenshot` - Capture screenshot
+- `game_tap` - Tap at coordinates
+- `game_swipe` - Swipe gesture
+- `game_action` - Execute named action
+
+#### Scene Coordinates
+
+The game uses SpriteKit scene coordinates (not screen/view coordinates):
+- **Origin (0, 0)** is at the bottom-left of the scene
+- **Scene size**: 1366 x 1024 (design resolution)
+- Use `/nodes` to get exact frame coordinates for elements
+
+#### Available Actions
+
+Actions vary by scene:
+
+**MainMenuScene**:
+- `startGame` - Navigate to level select
+- `options` - Open options screen
+- `credits` - Open credits screen
+
+**LevelSelectScene**:
+- `level_1` through `level_5` - Start specific level
+- `back` - Return to main menu
+
+**GameScene**:
+- `selectNathaniel` - Select Nathaniel
+- `selectHermes` - Select Hermes
+- `moveNathaniel` (params: `x`, `y`) - Move Nathaniel to position
+- `targetEnemy` (params: `index`) - Target enemy by index
+
+#### Source Files
+
+```
+Nathaniel Shared/GameCommandServer/
+├── GameCommandServer.swift     # HTTP server implementation
+├── GameCommandProtocol.swift   # GameCommandDelegate protocol
+├── GameScene+CommandDelegate.swift  # Scene conformances
+└── TouchInjector.swift         # Touch/click injection utilities
+```
+
 ### macOS App Testing
 
 The macOS version can be built and run, but **automated UI interaction is unreliable**. Mouse clicks via `cliclick` or AppleScript don't properly translate to SpriteKit scene coordinates.
 
-**Recommendation:** Use iOS Simulator for automated testing. Manual testing works fine for macOS.
+**Recommendation:** Use the GameCommandServer API or iOS Simulator for automated testing. Manual testing works fine for macOS.
 
 ```bash
 # Build and run macOS version
