@@ -78,9 +78,9 @@ class Hermes: Character {
     /// Current operational mode
     var mode: HermesMode = .independent {
         didSet {
-            // Update locked visual when mode changes to/from locked
-            if (oldValue == .locked) != (mode == .locked) {
-                updateLockedVisual()
+            // Update visuals when mode changes
+            if oldValue != mode {
+                updateModeVisual()
             }
         }
     }
@@ -98,6 +98,9 @@ class Hermes: Character {
 
     /// Visual indicator node for locked state
     private var lockedIndicator: SKSpriteNode?
+
+    /// Visual indicator node for follow state
+    private var followIndicator: SKSpriteNode?
 
     /// Mode to restore after unlocking (nil if not locked)
     private var preLockMode: HermesMode?
@@ -463,51 +466,106 @@ class Hermes: Character {
         }
     }
 
-    /// Update the locked visual indicator
-    private func updateLockedVisual() {
-        if isLocked {
+    /// Update visual indicators based on current mode
+    private func updateModeVisual() {
+        switch mode {
+        case .locked:
             // Show locked indicator (anchor-like symbol)
-            if lockedIndicator == nil {
-                let indicator = SKSpriteNode(color: .clear, size: CGSize(width: 24, height: 24))
-
-                // Create an anchor shape using a shape node
-                let anchorShape = SKShapeNode()
-                let path = CGMutablePath()
-                // Simple anchor shape: circle with line down
-                path.addEllipse(in: CGRect(x: -6, y: 2, width: 12, height: 12))
-                path.move(to: CGPoint(x: 0, y: 2))
-                path.addLine(to: CGPoint(x: 0, y: -10))
-                path.move(to: CGPoint(x: -6, y: -6))
-                path.addLine(to: CGPoint(x: 6, y: -6))
-                anchorShape.path = path
-                anchorShape.strokeColor = .yellow
-                anchorShape.lineWidth = 2
-                anchorShape.zPosition = 1
-
-                indicator.addChild(anchorShape)
-                indicator.position = CGPoint(x: 0, y: sprite.size.height / 2 + 16)
-                indicator.zPosition = 200
-                sprite.addChild(indicator)
-                lockedIndicator = indicator
-
-                // Pulse animation
-                let scaleUp = SKAction.scale(to: 1.2, duration: 0.5)
-                let scaleDown = SKAction.scale(to: 1.0, duration: 0.5)
-                let pulse = SKAction.sequence([scaleUp, scaleDown])
-                indicator.run(SKAction.repeatForever(pulse))
-            }
-            lockedIndicator?.isHidden = false
-
-            // Add subtle tint to Hermes
+            showLockedIndicator()
+            hideFollowIndicator()
             sprite.color = .yellow
             sprite.colorBlendFactor = 0.15
-        } else {
-            // Hide locked indicator
-            lockedIndicator?.isHidden = true
 
-            // Remove tint
+        case .following:
+            // Show follow indicator (chain link)
+            hideLockedIndicator()
+            showFollowIndicator()
+            sprite.color = .cyan
+            sprite.colorBlendFactor = 0.12
+
+        case .independent:
+            // No indicators, no tint
+            hideLockedIndicator()
+            hideFollowIndicator()
             sprite.colorBlendFactor = 0
         }
+    }
+
+    /// Show the locked state indicator
+    private func showLockedIndicator() {
+        if lockedIndicator == nil {
+            let indicator = SKSpriteNode(color: .clear, size: CGSize(width: 24, height: 24))
+
+            // Create an anchor shape using a shape node
+            let anchorShape = SKShapeNode()
+            let path = CGMutablePath()
+            // Simple anchor shape: circle with line down
+            path.addEllipse(in: CGRect(x: -6, y: 2, width: 12, height: 12))
+            path.move(to: CGPoint(x: 0, y: 2))
+            path.addLine(to: CGPoint(x: 0, y: -10))
+            path.move(to: CGPoint(x: -6, y: -6))
+            path.addLine(to: CGPoint(x: 6, y: -6))
+            anchorShape.path = path
+            anchorShape.strokeColor = .yellow
+            anchorShape.lineWidth = 2
+            anchorShape.zPosition = 1
+
+            indicator.addChild(anchorShape)
+            indicator.position = CGPoint(x: 0, y: sprite.size.height / 2 + 16)
+            indicator.zPosition = 200
+            sprite.addChild(indicator)
+            lockedIndicator = indicator
+
+            // Pulse animation
+            let scaleUp = SKAction.scale(to: 1.2, duration: 0.5)
+            let scaleDown = SKAction.scale(to: 1.0, duration: 0.5)
+            let pulse = SKAction.sequence([scaleUp, scaleDown])
+            indicator.run(SKAction.repeatForever(pulse))
+        }
+        lockedIndicator?.isHidden = false
+    }
+
+    /// Hide the locked state indicator
+    private func hideLockedIndicator() {
+        lockedIndicator?.isHidden = true
+    }
+
+    /// Show the follow state indicator (chain link above head)
+    private func showFollowIndicator() {
+        if followIndicator == nil {
+            let indicator = SKSpriteNode(color: .clear, size: CGSize(width: 24, height: 24))
+
+            // Create a chain link shape
+            let linkShape = SKShapeNode()
+            let path = CGMutablePath()
+            // Two interlocking ovals for chain link
+            path.addEllipse(in: CGRect(x: -8, y: -2, width: 10, height: 8))
+            path.addEllipse(in: CGRect(x: -2, y: -2, width: 10, height: 8))
+            linkShape.path = path
+            linkShape.strokeColor = .cyan
+            linkShape.lineWidth = 2
+            linkShape.zPosition = 1
+
+            indicator.addChild(linkShape)
+            indicator.position = CGPoint(x: 0, y: sprite.size.height / 2 + 16)
+            indicator.zPosition = 200
+            sprite.addChild(indicator)
+            followIndicator = indicator
+
+            // Gentle bob animation
+            let moveUp = SKAction.moveBy(x: 0, y: 3, duration: 0.6)
+            let moveDown = SKAction.moveBy(x: 0, y: -3, duration: 0.6)
+            moveUp.timingMode = .easeInEaseOut
+            moveDown.timingMode = .easeInEaseOut
+            let bob = SKAction.sequence([moveUp, moveDown])
+            indicator.run(SKAction.repeatForever(bob))
+        }
+        followIndicator?.isHidden = false
+    }
+
+    /// Hide the follow state indicator
+    private func hideFollowIndicator() {
+        followIndicator?.isHidden = true
     }
 
     // MARK: - Build Radius Visual
@@ -538,21 +596,11 @@ class Hermes: Character {
                 circle.run(SKAction.repeatForever(rotate))
             }
             buildRadiusIndicator?.isHidden = false
-
-            // Add cyan tint when showing build radius (unless locked which uses yellow)
-            if !isLocked {
-                sprite.color = .cyan
-                sprite.colorBlendFactor = 0.1
-            }
         } else {
             // Hide build radius
             buildRadiusIndicator?.isHidden = true
-
-            // Remove tint (unless locked)
-            if !isLocked {
-                sprite.colorBlendFactor = 0
-            }
         }
+        // Note: Color tint is now handled by updateModeVisual()
     }
 
     /// Add a selection highlight ring (called externally when Hermes is selected)
