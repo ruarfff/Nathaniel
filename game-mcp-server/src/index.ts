@@ -11,9 +11,8 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
-  ToolSchema,
+  Tool,
 } from '@modelcontextprotocol/sdk/types.js';
-import { z } from 'zod';
 import { GameClient } from './gameClient.js';
 
 // Configuration
@@ -24,7 +23,7 @@ const GAME_SERVER_TIMEOUT = parseInt(process.env.GAME_SERVER_TIMEOUT || '5000', 
 const gameClient = new GameClient(GAME_SERVER_URL, GAME_SERVER_TIMEOUT);
 
 // Tool definitions
-const tools: ToolSchema[] = [
+const tools: Tool[] = [
   {
     name: 'game_health',
     description: 'Check if the game command server is running and healthy. Returns true if the game is ready to accept commands.',

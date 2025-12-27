@@ -54,7 +54,7 @@ export class GameClient {
    */
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await this.fetch('/health', { method: 'GET' });
+      const response = await this.fetch<{ status: string }>('/health', { method: 'GET' });
       return response.status === 'ok';
     } catch {
       return false;
@@ -65,35 +65,31 @@ export class GameClient {
    * Get the current game state
    */
   async getState(): Promise<GameState> {
-    const response = await this.fetch('/state', { method: 'GET' });
-    return response as GameState;
+    return this.fetch<GameState>('/state', { method: 'GET' });
   }
 
   /**
    * Get all interactive nodes in the current scene
    */
   async getNodes(): Promise<NodeInfo[]> {
-    const response = await this.fetch('/nodes', { method: 'GET' });
-    return response as NodeInfo[];
+    return this.fetch<NodeInfo[]>('/nodes', { method: 'GET' });
   }
 
   /**
    * Capture a screenshot of the current scene
    */
   async screenshot(): Promise<ScreenshotResponse> {
-    const response = await this.fetch('/screenshot', { method: 'GET' });
-    return response as ScreenshotResponse;
+    return this.fetch<ScreenshotResponse>('/screenshot', { method: 'GET' });
   }
 
   /**
    * Inject a tap at the given screen coordinates
    */
   async tap(x: number, y: number): Promise<CommandResponse> {
-    const response = await this.fetch('/tap', {
+    return this.fetch<CommandResponse>('/tap', {
       method: 'POST',
       body: JSON.stringify({ x, y }),
     });
-    return response as CommandResponse;
   }
 
   /**
@@ -106,28 +102,26 @@ export class GameClient {
     toY: number,
     duration: number = 0.3
   ): Promise<CommandResponse> {
-    const response = await this.fetch('/swipe', {
+    return this.fetch<CommandResponse>('/swipe', {
       method: 'POST',
       body: JSON.stringify({ fromX, fromY, toX, toY, duration }),
     });
-    return response as CommandResponse;
   }
 
   /**
    * Execute a named game action
    */
   async action(name: string, params?: Record<string, string>): Promise<CommandResponse> {
-    const response = await this.fetch('/action', {
+    return this.fetch<CommandResponse>('/action', {
       method: 'POST',
       body: JSON.stringify({ name, params }),
     });
-    return response as CommandResponse;
   }
 
   /**
    * Internal fetch helper with timeout
    */
-  private async fetch(path: string, options: RequestInit): Promise<Record<string, unknown>> {
+  private async fetch<T = unknown>(path: string, options: RequestInit): Promise<T> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
