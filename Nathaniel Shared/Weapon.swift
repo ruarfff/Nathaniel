@@ -385,4 +385,9 @@ class Gun: Weapon {
     var activeBullets: [Projectile] {
         return projectilePool.activeProjectiles
     }
+
+    /// Whether any projectiles are still in flight
+    var hasActiveProjectiles: Bool {
+        return !projectilePool.activeProjectiles.isEmpty
+    }
 }

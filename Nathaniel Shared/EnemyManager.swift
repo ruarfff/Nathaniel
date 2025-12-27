@@ -205,7 +205,8 @@ class EnemyManager {
             enemy.update(deltaTime: deltaTime)
 
             // Check if dead and inactive (death animation finished)
-            if !enemy.isAlive && !enemy.isActive {
+            // Also wait for any projectiles to complete their trajectory
+            if !enemy.isAlive && !enemy.isActive && !enemy.hasActiveProjectiles {
                 indicesToRemove.append(index)
             }
         }

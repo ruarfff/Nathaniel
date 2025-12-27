@@ -60,6 +60,11 @@ class Enemy: Character {
     /// Whether the enemy is currently attacking
     var isAttacking: Bool = false
 
+    /// Whether this enemy has projectiles still in flight
+    var hasActiveProjectiles: Bool {
+        return weapon?.hasActiveProjectiles ?? false
+    }
+
     // MARK: - Initialization
 
     init(name: String, maxHP: Int, speed: CGFloat, killScore: Int,
@@ -88,6 +93,10 @@ class Enemy: Character {
     // MARK: - Update
 
     override func update(deltaTime: TimeInterval) {
+        // Always update weapon projectiles, even after death
+        // This ensures projectiles complete their trajectory instead of freezing
+        weapon?.update(deltaTime: deltaTime)
+
         guard isActive && isAlive else { return }
 
         #if DEBUG
@@ -97,9 +106,6 @@ class Enemy: Character {
 
         // Update melee timer
         meleeAttackTimer += deltaTime
-
-        // Update weapon if ranged
-        weapon?.update(deltaTime: deltaTime)
 
         // Run AI behavior
         updateAI(deltaTime: deltaTime)
