@@ -62,6 +62,13 @@ class HUD: SKNode {
     /// Callback when Build button is tapped
     var onBuildTapped: (() -> Void)?
 
+    /// Character toggle button (always visible)
+    private var characterToggleButton: SKNode?
+    private let toggleButtonName = "characterToggleButton"
+
+    /// Callback when character toggle button is tapped
+    var onCharacterToggle: (() -> Void)?
+
     /// Whether Hermes is currently selected (controls build button visibility)
     private var isHermesSelected: Bool = false
 
@@ -247,6 +254,47 @@ class HUD: SKNode {
         selectedCharacterLabel.position = CGPoint(x: 0, y: 0)
         selectedCharacterLabel.zPosition = 1
         bottomContainer.addChild(selectedCharacterLabel)
+
+        // Character toggle button (always visible, to the right of selected panel)
+        setupCharacterToggleButton()
+    }
+
+    /// Setup the character toggle button
+    private func setupCharacterToggleButton() {
+        let halfHeight = viewportSize.height / 2
+        let insetY: CGFloat = 20
+
+        // Create button container
+        let button = SKNode()
+        button.name = toggleButtonName
+        button.zPosition = 600
+
+        // Position to the right of the bottom "SELECTED" panel
+        button.position = CGPoint(
+            x: 120,  // Offset from center (selected panel is at x=0)
+            y: -halfHeight + insetY + padding + 40
+        )
+
+        // Button background - circular for icon-style button
+        let buttonBg = SKShapeNode(circleOfRadius: 25)
+        buttonBg.fillColor = SKColor(red: 0.3, green: 0.5, blue: 0.7, alpha: 0.9)
+        buttonBg.strokeColor = .white
+        buttonBg.lineWidth = 2
+        buttonBg.name = toggleButtonName
+        button.addChild(buttonBg)
+
+        // Arrow icon using two arrow characters
+        let arrowLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        arrowLabel.fontSize = 22
+        arrowLabel.fontColor = .white
+        arrowLabel.text = "⇄"
+        arrowLabel.verticalAlignmentMode = .center
+        arrowLabel.horizontalAlignmentMode = .center
+        arrowLabel.name = toggleButtonName
+        button.addChild(arrowLabel)
+
+        addChild(button)
+        characterToggleButton = button
     }
 
     /// Create a semi-transparent background panel
@@ -580,6 +628,23 @@ class HUD: SKNode {
 
     /// Handle touch on HUD - returns true if touch was handled
     func handleTouch(at point: CGPoint) -> Bool {
+        // Check if touch is on character toggle button
+        if let button = characterToggleButton, !button.isHidden {
+            let buttonPoint = convert(point, to: button)
+            if let bg = button.children.first as? SKShapeNode,
+               bg.contains(buttonPoint) {
+                // Trigger callback
+                onCharacterToggle?()
+
+                // Visual feedback - scale pop
+                let scaleUp = SKAction.scale(to: 1.2, duration: 0.1)
+                let scaleDown = SKAction.scale(to: 1.0, duration: 0.1)
+                button.run(SKAction.sequence([scaleUp, scaleDown]))
+
+                return true
+            }
+        }
+
         // Check if touch is on build button
         if let button = buildButton, !button.isHidden {
             let buttonPoint = convert(point, to: button)

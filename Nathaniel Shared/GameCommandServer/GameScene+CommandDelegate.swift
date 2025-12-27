@@ -193,6 +193,11 @@ extension GameScene: GameCommandDelegate {
             }
             return .failure("Enemy manager not found")
 
+        case "toggleCharacter":
+            // Use the new toggleSelectedCharacter method
+            toggleSelectedCharacter()
+            return .success("Toggled character selection")
+
         case "toggleBuildMenu":
             // Simulate tapping the build button
             return .failure("Build menu action not yet implemented")

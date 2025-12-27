@@ -146,120 +146,49 @@ open ~/Library/Developer/Xcode/DerivedData/Nathaniel-*/Build/Products/Debug/Nath
 
 ## Testing
 
-### iOS Simulator Testing (XcodeBuildMCP)
+### IMPORTANT: Use GameCommandServer for UI Interaction
 
-This project uses **XcodeBuildMCP** for automated iOS simulator testing and interaction. The game runs in **landscape mode** which requires special handling for tap coordinates.
+**DO NOT use XcodeBuildMCP's tap/describe_ui/swipe tools for in-game interaction.** They have coordinate transformation issues with landscape SpriteKit games.
 
-#### Quick Start - Running the Game in Simulator
+**ALWAYS use the GameCommandServer HTTP API (port 8765)** for:
+- Navigating menus
+- Tapping buttons
+- Getting game state
+- Interacting with gameplay
 
-```bash
-# 1. List available simulators and find one with iOS 26.1+
-mcp__XcodeBuildMCP__list_sims
+**XcodeBuildMCP is fine for**: building, running, booting simulators, taking screenshots.
 
-# 2. Boot the simulator (use iPhone 17 Pro or similar)
-mcp__XcodeBuildMCP__boot_sim({ simulatorUuid: "UUID" })
-
-# 3. Open the Simulator app
-mcp__XcodeBuildMCP__open_sim()
-
-# 4. Build and run the iOS app
-mcp__XcodeBuildMCP__build_run_sim({
-  projectPath: "/Users/ruairi/dev/Nathaniel/Nathaniel.xcodeproj",
-  scheme: "Nathaniel iOS",
-  simulatorId: "UUID",
-  configuration: "Debug"
-})
-
-# 5. Rotate simulator to landscape (game requires landscape)
-# Use AppleScript - see "Rotating Simulator" section below
-
-# 6. Take screenshots and interact
-mcp__XcodeBuildMCP__screenshot({ simulatorUuid: "UUID" })
-mcp__XcodeBuildMCP__describe_ui({ simulatorUuid: "UUID" })
-mcp__XcodeBuildMCP__tap({ simulatorUuid: "UUID", x: X, y: Y })
-```
-
-#### Important: Coordinate Transformation for Landscape Games
-
-**The game runs in landscape mode but the simulator reports portrait coordinates.** You must transform coordinates:
-
-1. Get UI element positions using `describe_ui` - returns landscape coordinates (874x402)
-2. Transform for tapping:
-   - Portrait X = Landscape Y
-   - Portrait Y = 874 - Landscape X
-
-**Example:**
-```
-# describe_ui shows "Level Select" at landscape (437, 227)
-# Transform for tap:
-#   portrait_x = 227
-#   portrait_y = 874 - 437 = 437
-# Tap at (227, 437)
-```
-
-#### Rotating Simulator to Landscape
-
-There is no `xcrun simctl` command for rotation. Use AppleScript:
+### Quick Start: Test a Feature
 
 ```bash
-# Rotate simulator left (run multiple times for 90° increments)
-osascript << 'EOF'
-tell application "Simulator" to activate
-delay 0.3
-tell application "System Events"
-    tell process "Simulator"
-        click menu item "Rotate Left" of menu "Device" of menu bar 1
-    end tell
-end tell
-EOF
+# 1. Set up XcodeBuildMCP session
+mcp__XcodeBuildMCP__list_sims  # Find iOS 26.1+ simulator UUID
+mcp__XcodeBuildMCP__session-set-defaults:
+  projectPath: /Users/ruairi/dev/Nathaniel/Nathaniel.xcodeproj
+  scheme: Nathaniel iOS
+  simulatorId: <UUID>
+  useLatestOS: true
+
+# 2. Build and run
+mcp__XcodeBuildMCP__boot_sim
+mcp__XcodeBuildMCP__open_sim
+mcp__XcodeBuildMCP__build_run_sim
+
+# 3. Wait 2-3 seconds, then verify GameCommandServer is running
+curl -s http://localhost:8765/health
+
+# 4. Navigate using HTTP API (NOT XcodeBuildMCP tap!)
+curl -s http://localhost:8765/action -X POST -H "Content-Type: application/json" -d '{"name":"startGame"}'
+curl -s http://localhost:8765/action -X POST -H "Content-Type: application/json" -d '{"name":"level_1"}'
+
+# 5. Interact with the game
+curl -s http://localhost:8765/state | jq .           # Get game state
+curl -s http://localhost:8765/nodes | jq .           # Get interactive elements
+curl -s http://localhost:8765/action -X POST -d '{"name":"selectHermes"}'  # Execute action
+
+# 6. Take screenshot for visual verification (XcodeBuildMCP works for this)
+mcp__XcodeBuildMCP__screenshot
 ```
-
-#### Available XcodeBuildMCP Tools
-
-**Simulator Management:**
-- `mcp__XcodeBuildMCP__list_sims` - List available iOS simulators with UUIDs
-- `mcp__XcodeBuildMCP__boot_sim` - Boot a simulator by UUID
-- `mcp__XcodeBuildMCP__open_sim` - Open the Simulator.app window
-
-**Building & Running:**
-- `mcp__XcodeBuildMCP__build_sim` - Build for simulator without running
-- `mcp__XcodeBuildMCP__build_run_sim` - Build and launch on simulator
-- `mcp__XcodeBuildMCP__install_app_sim` - Install .app bundle
-- `mcp__XcodeBuildMCP__launch_app_sim` - Launch app by bundle ID
-- `mcp__XcodeBuildMCP__stop_app_sim` - Stop running app
-
-**UI Interaction:**
-- `mcp__XcodeBuildMCP__screenshot` - Capture screenshot (returns image)
-- `mcp__XcodeBuildMCP__describe_ui` - Get accessibility hierarchy with frame coordinates
-- `mcp__XcodeBuildMCP__tap` - Tap at coordinates
-- `mcp__XcodeBuildMCP__swipe` - Swipe gesture
-- `mcp__XcodeBuildMCP__type_text` - Type text input
-
-#### Game-Specific Testing Workflow
-
-1. **Main Menu → Level Select:**
-   - describe_ui to find "Level Select" button
-   - Transform coordinates and tap
-
-2. **Level Select → Level 1:**
-   - describe_ui to find "Level 1" button
-   - Transform coordinates and tap
-
-3. **In-Game Movement:**
-   - Tap anywhere on the grass terrain to move Nathaniel
-   - The selected character will move to the tap location
-
-#### App Bundle ID
-
-```
-com.ruarfff.Nathaniel
-```
-
-#### Simulator Requirements
-
-- **iOS 26.1+** required (the project targets this version)
-- Use iPhone 17 Pro, iPhone 17 Pro Max, or similar iOS 26.1 simulators
-- Older simulators (iOS 18.x) won't work with this project
 
 ### Agent Testing via GameCommandServer (Recommended)
 

@@ -34,11 +34,13 @@ class GameViewController: UIViewController {
         updateCommandServerDelegate(scene: scene)
 
         // Observe scene changes to update the delegate
+        // Note: Use object: nil to receive notifications from any sender,
+        // as scenes may post with different view references
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(sceneDidChange(_:)),
             name: .skViewDidPresentScene,
-            object: skView
+            object: nil
         )
         #endif
 

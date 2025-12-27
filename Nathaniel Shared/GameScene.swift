@@ -82,6 +82,9 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     /// Maximum zoom level (zoomed in)
     private let maxZoom: CGFloat = 2.0
 
+    /// Whether camera is currently animating to a new position
+    private var isCameraAnimating: Bool = false
+
     // MARK: - Fog of War
 
     /// Fog of war manager for visibility system
@@ -136,8 +139,8 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         AudioManager.shared.playMusic(.gameplay)
 
         #if DEBUG
-        // Notify the command server that a new scene is presented
-        NotificationCenter.default.post(name: .skViewDidPresentScene, object: view)
+        // Set this scene as the command server delegate
+        GameCommandServer.shared.delegate = self
         #endif
     }
 
@@ -276,6 +279,11 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         // Set up Release Hermes button callback
         hud.onReleaseHermes = { [weak self] in
             self?.releaseHermes()
+        }
+
+        // Set up character toggle button callback
+        hud.onCharacterToggle = { [weak self] in
+            self?.toggleSelectedCharacter()
         }
 
         // Initialize with starting values
@@ -888,6 +896,8 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     /// Make the camera smoothly follow the selected character
     private func updateCameraFollow() {
+        // Skip if camera is animating (e.g., during character switch)
+        guard !isCameraAnimating else { return }
         guard let selected = selectedCharacter, let renderer = mapRenderer else { return }
 
         // Target position is the selected character's position
@@ -1066,17 +1076,7 @@ extension GameScene {
                 logger.debug("Hermes follow mode: \(!hermes.isInBuildMode)")
             }
         case 49: // Space key - switch selected character
-            if selectedCharacter === nathaniel {
-                if let hermes = hermes {
-                    selectCharacter(hermes)
-                    logger.debug("Switched to Hermes")
-                }
-            } else {
-                if let nathaniel = nathaniel {
-                    selectCharacter(nathaniel)
-                    logger.debug("Switched to Nathaniel")
-                }
-            }
+            toggleSelectedCharacter()
         default:
             break
         }
@@ -1177,6 +1177,48 @@ extension GameScene {
             hud.hideBuildButton()
             towerPlacementController?.hideMenu()
             hermes?.hideSelectionHighlight()
+        }
+
+        // Animate camera to new character position
+        animateCameraTo(character.position)
+    }
+
+    /// Toggle between Nathaniel and Hermes
+    func toggleSelectedCharacter() {
+        if selectedCharacter === nathaniel {
+            if let hermes = hermes {
+                selectCharacter(hermes)
+                logger.debug("Switched to Hermes")
+            }
+        } else {
+            if let nathaniel = nathaniel {
+                selectCharacter(nathaniel)
+                logger.debug("Switched to Nathaniel")
+            }
+        }
+    }
+
+    /// Animate camera to a target position with smooth easing
+    private func animateCameraTo(_ position: CGPoint) {
+        guard let renderer = mapRenderer else { return }
+
+        // Mark as animating to prevent updateCameraFollow from interfering
+        isCameraAnimating = true
+
+        // Clamp target position to map bounds
+        let halfWidth = (size.width / 2) * cameraZoom
+        let halfHeight = (size.height / 2) * cameraZoom
+
+        var clampedPos = position
+        clampedPos.x = max(halfWidth, min(CGFloat(renderer.map.pixelWidth) - halfWidth, clampedPos.x))
+        clampedPos.y = max(halfHeight, min(CGFloat(renderer.map.pixelHeight) - halfHeight, clampedPos.y))
+
+        // Animate to the clamped position
+        let moveAction = SKAction.move(to: clampedPos, duration: 0.3)
+        moveAction.timingMode = .easeInEaseOut
+
+        cameraNode.run(moveAction) { [weak self] in
+            self?.isCameraAnimating = false
         }
     }
 

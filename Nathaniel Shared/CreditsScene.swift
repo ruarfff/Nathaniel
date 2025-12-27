@@ -27,8 +27,8 @@ class CreditsScene: SKScene {
         setupBackButton()
 
         #if DEBUG
-        // Notify the command server that a new scene is presented
-        NotificationCenter.default.post(name: .skViewDidPresentScene, object: view)
+        // Set this scene as the command server delegate
+        GameCommandServer.shared.delegate = self
         #endif
     }
 
