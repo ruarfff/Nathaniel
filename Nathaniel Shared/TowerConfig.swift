@@ -65,13 +65,31 @@ struct TowerConfig {
     // MARK: - Tower Costs (in resources)
 
     /// Cost to build a Gun Tower
-    static let gunTowerCost: Int = 5
+    static var gunTowerCost: Int {
+        #if DEBUG
+        return DevSettings.shared.towerCostGun
+        #else
+        return 5
+        #endif
+    }
 
     /// Cost to build a Laser Tower
-    static let laserTowerCost: Int = 10
+    static var laserTowerCost: Int {
+        #if DEBUG
+        return DevSettings.shared.towerCostLaser
+        #else
+        return 10
+        #endif
+    }
 
     /// Cost to build a Heal Tower
-    static let healTowerCost: Int = 15
+    static var healTowerCost: Int {
+        #if DEBUG
+        return DevSettings.shared.towerCostHeal
+        #else
+        return 15
+        #endif
+    }
 
     // MARK: - Build Radius
 

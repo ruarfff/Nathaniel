@@ -90,6 +90,11 @@ class Enemy: Character {
     override func update(deltaTime: TimeInterval) {
         guard isActive && isAlive else { return }
 
+        #if DEBUG
+        // Apply dev settings for live updates (speed set by subclasses)
+        applyDevSettings()
+        #endif
+
         // Update melee timer
         meleeAttackTimer += deltaTime
 
@@ -102,6 +107,13 @@ class Enemy: Character {
         // Call parent update for movement
         super.update(deltaTime: deltaTime)
     }
+
+    #if DEBUG
+    /// Override in subclasses to apply dev settings
+    func applyDevSettings() {
+        // Subclasses override this to apply their specific settings
+    }
+    #endif
 
     /// AI behavior - subclasses can override for custom behavior
     func updateAI(deltaTime: TimeInterval) {
@@ -238,6 +250,12 @@ class Grunt: Enemy {
         // Initial facing
         facingDirection = .south
     }
+
+    #if DEBUG
+    override func applyDevSettings() {
+        speed = DevSettings.shared.gruntSpeed
+    }
+    #endif
 }
 
 // MARK: - Blaster Weapon (for ranged enemies)
@@ -267,7 +285,8 @@ class Bow: Gun {
             damage: damage,
             range: range,
             bulletSpeed: 400,  // Arrows are slower than bullets
-            bulletTexture: "arrow"
+            bulletTexture: "arrow",
+            projectileType: .arrow
         )
     }
 }
@@ -413,6 +432,12 @@ class Boss: Enemy {
         sprite.texture = frameTextures[row][col]
     }
 
+    #if DEBUG
+    override func applyDevSettings() {
+        speed = DevSettings.shared.bossSpeed
+    }
+    #endif
+
     // MARK: - Death Override
 
     override func onDeath() {
@@ -476,6 +501,12 @@ class Soldier: Enemy {
         // Initial facing
         facingDirection = .south
     }
+
+    #if DEBUG
+    override func applyDevSettings() {
+        speed = DevSettings.shared.soldierSpeed
+    }
+    #endif
 
     // MARK: - AI Override
 

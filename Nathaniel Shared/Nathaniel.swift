@@ -70,6 +70,11 @@ class Nathaniel: Character {
     // MARK: - Update
 
     override func update(deltaTime: TimeInterval) {
+        #if DEBUG
+        // Apply dev settings for live updates
+        speed = DevSettings.shared.nathanielSpeed
+        #endif
+
         super.update(deltaTime: deltaTime)
 
         // Update weapon (handles cooldown and projectiles)
@@ -93,6 +98,16 @@ class Nathaniel: Character {
     /// Fire weapon at a specific position
     func fireAt(_ target: CGPoint) -> Bool {
         return weapon.use(target: target)
+    }
+
+    /// Override takeDamage to support invincibility setting
+    override func takeDamage(_ amount: Int) {
+        #if DEBUG
+        if DevSettings.shared.playerInvincible {
+            return  // Ignore damage when invincible
+        }
+        #endif
+        super.takeDamage(amount)
     }
 
     // MARK: - Overrides

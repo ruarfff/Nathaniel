@@ -54,6 +54,12 @@ extension Weapon {
 
 // MARK: - Projectile
 
+/// Type of projectile for applying dev settings
+enum ProjectileType {
+    case bullet  // Player bullets, gun tower bullets, blaster bullets
+    case arrow   // Boss arrows
+}
+
 /// A projectile fired by a ranged weapon
 class Projectile: GameEntity {
 
@@ -73,8 +79,25 @@ class Projectile: GameEntity {
     /// Damage dealt on hit
     let damage: Int
 
-    /// Speed in points per second
-    let speed: CGFloat
+    /// Base speed in points per second
+    let baseSpeed: CGFloat
+
+    /// Type of projectile (for dev settings)
+    let projectileType: ProjectileType
+
+    /// Effective speed (reads from DevSettings in DEBUG)
+    var speed: CGFloat {
+        #if DEBUG
+        switch projectileType {
+        case .bullet:
+            return DevSettings.shared.bulletSpeed
+        case .arrow:
+            return DevSettings.shared.arrowSpeed
+        }
+        #else
+        return baseSpeed
+        #endif
+    }
 
     /// Maximum travel distance
     let maxDistance: CGFloat
@@ -105,10 +128,11 @@ class Projectile: GameEntity {
 
     // MARK: - Initialization
 
-    init(textureName: String, damage: Int, speed: CGFloat, maxDistance: CGFloat) {
+    init(textureName: String, damage: Int, speed: CGFloat, maxDistance: CGFloat, projectileType: ProjectileType = .bullet) {
         self.damage = damage
-        self.speed = speed
+        self.baseSpeed = speed
         self.maxDistance = maxDistance
+        self.projectileType = projectileType
 
         // Create sprite
         let texture = SKTexture(imageNamed: textureName)
@@ -280,7 +304,7 @@ class Gun: Weapon {
 
     /// Create a gun with custom parameters
     init(cooldownTime: TimeInterval, damage: Int, range: CGFloat,
-         bulletSpeed: CGFloat, bulletTexture: String) {
+         bulletSpeed: CGFloat, bulletTexture: String, projectileType: ProjectileType = .bullet) {
         self.cooldownTime = cooldownTime
         self.damage = damage
         self.range = range
@@ -291,7 +315,8 @@ class Gun: Weapon {
                 textureName: bulletTexture,
                 damage: damage,
                 speed: bulletSpeed,
-                maxDistance: range
+                maxDistance: range,
+                projectileType: projectileType
             )
         }
     }

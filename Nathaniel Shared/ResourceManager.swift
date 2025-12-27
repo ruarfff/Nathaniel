@@ -235,4 +235,12 @@ class ResourceManager {
             return hypot(dx, dy) <= radius
         }
     }
+
+    #if DEBUG
+    /// Add resources directly (for development/testing only)
+    func addResources(_ amount: Int) {
+        totalCollected += amount
+        delegate?.resourceManager(self, didUpdateTotal: totalCollected)
+    }
+    #endif
 }

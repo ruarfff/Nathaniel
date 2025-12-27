@@ -222,12 +222,27 @@ class Hermes: Character {
     // MARK: - Update
 
     override func update(deltaTime: TimeInterval) {
+        #if DEBUG
+        // Apply dev settings for live updates
+        speed = DevSettings.shared.hermesSpeed
+        #endif
+
         // Handle follow behavior when not in build mode and not locked
         if !isInBuildMode && !isLocked, let target = followTarget {
             updateFollowBehavior(target: target)
         }
 
         super.update(deltaTime: deltaTime)
+    }
+
+    /// Override takeDamage to support invincibility setting
+    override func takeDamage(_ amount: Int) {
+        #if DEBUG
+        if DevSettings.shared.playerInvincible {
+            return  // Ignore damage when invincible
+        }
+        #endif
+        super.takeDamage(amount)
     }
 
     /// Update follow behavior - follow target unless within stop distance

@@ -253,6 +253,15 @@ public class GameCommandServer {
         case ("POST", "/action"):
             handleAction(body: body, connection: connection)
 
+        case ("GET", "/settings"):
+            handleGetSettings(connection: connection)
+
+        case ("POST", "/settings"):
+            handleSetSettings(body: body, connection: connection)
+
+        case ("POST", "/settings/reset"):
+            handleResetSettings(connection: connection)
+
         default:
             sendErrorResponse(connection: connection, status: 404, message: "Not found: \(method) \(path)")
         }
@@ -377,6 +386,96 @@ public class GameCommandServer {
             )
             self?.sendCodableResponse(connection: connection, value: response)
         }
+    }
+
+    // MARK: - Settings Handlers
+
+    private func handleGetSettings(connection: NWConnection) {
+        DispatchQueue.main.async { [weak self] in
+            let settings = DevSettings.shared
+            self?.sendCodableResponse(connection: connection, value: settings)
+        }
+    }
+
+    private func handleSetSettings(body: Data?, connection: NWConnection) {
+        guard let body = body else {
+            sendErrorResponse(connection: connection, status: 400, message: "Missing request body")
+            return
+        }
+
+        // Parse JSON as dictionary for partial updates
+        guard let updates = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else {
+            sendErrorResponse(connection: connection, status: 400, message: "Invalid JSON in request body")
+            return
+        }
+
+        DispatchQueue.main.async { [weak self] in
+            let updatedCount = DevSettings.shared.apply(updates: updates)
+
+            let response: [String: Any] = [
+                "success": true,
+                "message": "Updated \(updatedCount) setting(s)",
+                "settings": self?.settingsToDictionary() ?? [:]
+            ]
+            self?.sendJSONResponse(connection: connection, json: response)
+        }
+    }
+
+    private func handleResetSettings(connection: NWConnection) {
+        DispatchQueue.main.async { [weak self] in
+            DevSettings.shared.reset()
+
+            let response: [String: Any] = [
+                "success": true,
+                "message": "All settings reset to defaults",
+                "settings": self?.settingsToDictionary() ?? [:]
+            ]
+            self?.sendJSONResponse(connection: connection, json: response)
+        }
+    }
+
+    /// Convert DevSettings to dictionary for JSON response
+    private func settingsToDictionary() -> [String: Any] {
+        let settings = DevSettings.shared
+        return [
+            // Player settings
+            "nathanielSpeed": settings.nathanielSpeed,
+            "hermesSpeed": settings.hermesSpeed,
+            "nathanielMaxHealth": settings.nathanielMaxHealth,
+            "hermesMaxHealth": settings.hermesMaxHealth,
+            "playerInvincible": settings.playerInvincible,
+            "respawnDelay": settings.respawnDelay,
+            // Enemy settings
+            "gruntSpeed": settings.gruntSpeed,
+            "soldierSpeed": settings.soldierSpeed,
+            "bossSpeed": settings.bossSpeed,
+            "enemyVisibleRange": settings.enemyVisibleRange,
+            "enemyAttackRange": settings.enemyAttackRange,
+            "enemyDamage": settings.enemyDamage,
+            // Projectile settings
+            "bulletSpeed": settings.bulletSpeed,
+            "arrowSpeed": settings.arrowSpeed,
+            "projectileDamage": settings.projectileDamage,
+            // Spawn settings
+            "spawnInterval": settings.spawnInterval,
+            // Camera settings
+            "cameraZoom": settings.cameraZoom,
+            "cameraMinZoom": settings.cameraMinZoom,
+            "cameraMaxZoom": settings.cameraMaxZoom,
+            "cameraFollowSmoothing": settings.cameraFollowSmoothing,
+            "cameraFreeMode": settings.cameraFreeMode,
+            // Tower settings
+            "towerDamage": settings.towerDamage,
+            "towerRange": settings.towerRange,
+            "towerCostGun": settings.towerCostGun,
+            "towerCostLaser": settings.towerCostLaser,
+            "towerCostHeal": settings.towerCostHeal,
+            "instantBuild": settings.instantBuild,
+            // Debug toggles
+            "infiniteResources": settings.infiniteResources,
+            "showDebugInfo": settings.showDebugInfo,
+            "showCollisionBounds": settings.showCollisionBounds
+        ]
     }
 
     // MARK: - Response Helpers

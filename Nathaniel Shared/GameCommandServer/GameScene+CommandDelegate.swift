@@ -206,6 +206,64 @@ extension GameScene: GameCommandDelegate {
             // Trigger restart via overlay
             return .failure("Restart action not yet implemented")
 
+        case "spawnEnemy":
+            guard let typeStr = params?["type"] else {
+                return .failure("Missing type parameter (grunt, soldier, boss)")
+            }
+            guard let xStr = params?["x"], let yStr = params?["y"],
+                  let x = Double(xStr), let y = Double(yStr) else {
+                return .failure("Missing x,y parameters")
+            }
+            guard let enemyManager = findEnemyManager() else {
+                return .failure("Enemy manager not found")
+            }
+
+            let position = CGPoint(x: x, y: y)
+            let target = findNathaniel()
+
+            // Spawn the appropriate enemy type
+            switch typeStr.lowercased() {
+            case "grunt", "gr":
+                enemyManager.addEnemy(name: "Grunt", at: position, target: target)
+                return .success("Spawned Grunt at (\(x), \(y))")
+            case "soldier", "so":
+                enemyManager.addEnemy(name: "Soldier", at: position, target: target)
+                return .success("Spawned Soldier at (\(x), \(y))")
+            case "boss", "bo":
+                enemyManager.addEnemy(name: "Boss", at: position, target: target)
+                return .success("Spawned Boss at (\(x), \(y))")
+            default:
+                return .failure("Unknown enemy type: \(typeStr). Use: grunt, soldier, or boss")
+            }
+
+        case "killAllEnemies":
+            guard let enemyManager = findEnemyManager() else {
+                return .failure("Enemy manager not found")
+            }
+            let count = enemyManager.aliveCount
+            for enemy in enemyManager.enemies where enemy.isAlive {
+                enemy.currentHP = 0
+            }
+            return .success("Killed \(count) enemies")
+
+        case "healPlayer":
+            if let nathaniel = findNathaniel() {
+                nathaniel.currentHP = nathaniel.maxHP
+                nathaniel.updateHealthBar()
+            }
+            if let hermes = findHermes() {
+                hermes.currentHP = hermes.maxHP
+                hermes.updateHealthBar()
+            }
+            return .success("Healed all players to full health")
+
+        case "addResources":
+            guard let amountStr = params?["amount"], let amount = Int(amountStr) else {
+                return .failure("Missing amount parameter")
+            }
+            ResourceManager.shared.addResources(amount)
+            return .success("Added \(amount) resources")
+
         default:
             return .failure("Unknown action: \(name)")
         }

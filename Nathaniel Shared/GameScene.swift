@@ -896,6 +896,19 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     /// Make the camera smoothly follow the selected character
     private func updateCameraFollow() {
+        #if DEBUG
+        // Skip camera following in free mode
+        if DevSettings.shared.cameraFreeMode {
+            return
+        }
+
+        // Apply zoom from dev settings if changed
+        let targetZoom = DevSettings.shared.cameraZoom
+        if abs(cameraZoom - targetZoom) > 0.01 {
+            setZoom(targetZoom)
+        }
+        #endif
+
         // Skip if camera is animating (e.g., during character switch)
         guard !isCameraAnimating else { return }
         guard let selected = selectedCharacter, let renderer = mapRenderer else { return }
@@ -914,7 +927,11 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         clampedPos.y = max(halfHeight, min(CGFloat(renderer.map.pixelHeight) - halfHeight, clampedPos.y))
 
         // Smooth camera movement (lerp)
+        #if DEBUG
+        let smoothFactor = DevSettings.shared.cameraFollowSmoothing
+        #else
         let smoothFactor: CGFloat = 0.1
+        #endif
         let currentPos = cameraNode.position
         cameraNode.position = CGPoint(
             x: currentPos.x + (clampedPos.x - currentPos.x) * smoothFactor,
@@ -943,11 +960,29 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     // MARK: - Camera Zoom
 
+    /// Get effective min zoom (from DevSettings in DEBUG)
+    private var effectiveMinZoom: CGFloat {
+        #if DEBUG
+        return DevSettings.shared.cameraMinZoom
+        #else
+        return minZoom
+        #endif
+    }
+
+    /// Get effective max zoom (from DevSettings in DEBUG)
+    private var effectiveMaxZoom: CGFloat {
+        #if DEBUG
+        return DevSettings.shared.cameraMaxZoom
+        #else
+        return maxZoom
+        #endif
+    }
+
     /// Update camera zoom by a scale factor
     /// - Parameter scale: Multiplier for current zoom (>1 zooms in, <1 zooms out)
     func updateZoom(by scale: CGFloat) {
         let newZoom = cameraZoom * scale
-        cameraZoom = max(minZoom, min(maxZoom, newZoom))
+        cameraZoom = max(effectiveMinZoom, min(effectiveMaxZoom, newZoom))
         cameraNode.setScale(cameraZoom)
         updateUIScaleForZoom()
     }
@@ -955,7 +990,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     /// Set camera zoom to an absolute value
     /// - Parameter zoom: Target zoom level (clamped to min/max)
     func setZoom(_ zoom: CGFloat) {
-        cameraZoom = max(minZoom, min(maxZoom, zoom))
+        cameraZoom = max(effectiveMinZoom, min(effectiveMaxZoom, zoom))
         cameraNode.setScale(cameraZoom)
         updateUIScaleForZoom()
     }
