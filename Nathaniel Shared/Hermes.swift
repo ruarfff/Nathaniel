@@ -34,8 +34,28 @@ class Hermes: Character {
     /// Visible range (for targeting) in points
     static let visibleRange: CGFloat = 500
 
-    /// Distance at which Hermes stops following (to avoid clustering)
-    static let followStopDistance: CGFloat = 100
+    // MARK: - Follow Behavior Constants
+
+    /// Distance at which Hermes stops following (arrival zone)
+    static let followStopDistance: CGFloat = 80
+
+    /// Distance at which Hermes slows down (deceleration zone)
+    static let followSlowDistance: CGFloat = 150
+
+    /// Distance at which Hermes starts following
+    static let followStartDistance: CGFloat = 200
+
+    /// Distance at which Hermes teleports to catch up
+    static let teleportDistance: CGFloat = 600
+
+    /// Base speed when following at normal distance
+    static let baseFollowSpeed: CGFloat = 45
+
+    /// Speed when catching up from far behind
+    static let catchUpSpeed: CGFloat = 100
+
+    /// Formation offset - position relative to Nathaniel (behind and to the left)
+    static let formationOffset = CGPoint(x: -50, y: -35)
 
     // MARK: - Sprite Sheet Configuration
 
@@ -265,19 +285,91 @@ class Hermes: Character {
         super.takeDamage(amount)
     }
 
-    /// Update follow behavior - follow target unless within stop distance
+    /// Update follow behavior with formation offset, speed zones, and smooth movement
     private func updateFollowBehavior(target: Character) {
-        let dx = target.position.x - position.x
-        let dy = target.position.y - position.y
+        // Calculate target position with formation offset
+        // Offset is relative to target's facing direction
+        let targetPos = calculateFormationPosition(for: target)
+
+        let dx = targetPos.x - position.x
+        let dy = targetPos.y - position.y
         let distance = sqrt(dx * dx + dy * dy)
 
-        if distance > Hermes.followStopDistance {
-            // Follow the target
-            destination = target.position
-        } else {
-            // Close enough, stop moving
-            destination = nil
+        // Teleport if too far behind
+        if distance > Hermes.teleportDistance {
+            teleportToFormation(target: target)
+            return
         }
+
+        // Determine behavior based on distance zones
+        if distance <= Hermes.followStopDistance {
+            // Arrival zone - stop and match target's facing direction
+            destination = nil
+            speed = Hermes.defaultSpeed
+
+            // Face the same direction as the target when idle
+            if !target.isMoving {
+                facingDirection = target.facingDirection
+            }
+        } else if distance <= Hermes.followSlowDistance {
+            // Deceleration zone - slow approach
+            destination = targetPos
+            // Smoothly reduce speed as we get closer
+            let t = (distance - Hermes.followStopDistance) / (Hermes.followSlowDistance - Hermes.followStopDistance)
+            speed = Hermes.defaultSpeed + (Hermes.baseFollowSpeed - Hermes.defaultSpeed) * t
+        } else if distance <= Hermes.followStartDistance {
+            // Normal follow zone
+            destination = targetPos
+            speed = Hermes.baseFollowSpeed
+        } else {
+            // Catch-up zone - move faster to close the gap
+            destination = targetPos
+            // Interpolate speed based on distance (faster when further)
+            let catchUpT = min(1.0, (distance - Hermes.followStartDistance) / (Hermes.teleportDistance - Hermes.followStartDistance))
+            speed = Hermes.baseFollowSpeed + (Hermes.catchUpSpeed - Hermes.baseFollowSpeed) * catchUpT
+        }
+    }
+
+    /// Calculate the formation position relative to the target
+    private func calculateFormationPosition(for target: Character) -> CGPoint {
+        // Rotate the formation offset based on target's facing direction
+        let offset = Hermes.formationOffset
+        let angle = facingAngle(for: target.facingDirection)
+
+        // Rotate offset by the facing angle
+        let cos_a = cos(angle)
+        let sin_a = sin(angle)
+        let rotatedX = offset.x * cos_a - offset.y * sin_a
+        let rotatedY = offset.x * sin_a + offset.y * cos_a
+
+        return CGPoint(
+            x: target.position.x + rotatedX,
+            y: target.position.y + rotatedY
+        )
+    }
+
+    /// Convert facing direction to angle in radians
+    private func facingAngle(for direction: FacingDirection) -> CGFloat {
+        switch direction {
+        case .south: return 0
+        case .southWest: return .pi * 0.25
+        case .west: return .pi * 0.5
+        case .northWest: return .pi * 0.75
+        case .north: return .pi
+        case .northEast: return .pi * 1.25
+        case .east: return .pi * 1.5
+        case .southEast: return .pi * 1.75
+        }
+    }
+
+    /// Teleport Hermes to formation position when too far behind
+    private func teleportToFormation(target: Character) {
+        let targetPos = calculateFormationPosition(for: target)
+        position = targetPos
+        destination = nil
+        facingDirection = target.facingDirection
+        speed = Hermes.defaultSpeed
+        print("Hermes: Teleported to formation (was too far behind)")
     }
 
     // MARK: - Overrides
