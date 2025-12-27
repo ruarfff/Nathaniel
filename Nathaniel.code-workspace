@@ -1,0 +1,272 @@
+{
+  "folders": [
+    {
+      "name": "Nathaniel",
+      "path": "."
+    },
+    {
+      "name": "iOS App",
+      "path": "Nathaniel iOS"
+    },
+    {
+      "name": "macOS App",
+      "path": "Nathaniel macOS"
+    },
+    {
+      "name": "Shared Code",
+      "path": "Nathaniel Shared"
+    },
+    {
+      "name": "MCP Server",
+      "path": "game-mcp-server"
+    },
+    {
+      "name": "Legacy (XNA)",
+      "path": "Legacy"
+    }
+  ],
+  "settings": {
+    // Editor settings optimized for AI agent collaboration
+    "editor.formatOnSave": true,
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.rulers": [100, 120],
+    "editor.wordWrap": "off",
+    "editor.minimap.enabled": false,
+    "editor.stickyScroll.enabled": true,
+    "editor.bracketPairColorization.enabled": true,
+    "editor.guides.bracketPairs": true,
+
+    // File handling
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 1000,
+
+    // Exclude from file explorer and search
+    "files.exclude": {
+      "**/.git": true,
+      "**/.DS_Store": true,
+      "**/Thumbs.db": true,
+      "**/xcuserdata": true,
+      "**/*.xcworkspace/xcuserdata": true,
+      "**/DerivedData": true,
+      "**/.build": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/DerivedData": true,
+      "**/*.xcodeproj/project.xcworkspace": true,
+      "**/Legacy/**": true
+    },
+
+    // Swift settings
+    "swift.path": "/usr/bin/swift",
+    "[swift]": {
+      "editor.defaultFormatter": "vknabel.vscode-apple-swift-format",
+      "editor.tabSize": 4
+    },
+
+    // TypeScript settings (for MCP server)
+    "[typescript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+      "editor.tabSize": 2
+    },
+    "[json]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+      "editor.tabSize": 2
+    },
+    "[jsonc]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+      "editor.tabSize": 2
+    },
+
+    // Markdown settings (for docs)
+    "[markdown]": {
+      "editor.wordWrap": "on",
+      "editor.quickSuggestions": {
+        "other": "off",
+        "comments": "off",
+        "strings": "off"
+      }
+    },
+
+    // Terminal settings
+    "terminal.integrated.defaultProfile.osx": "zsh",
+    "terminal.integrated.cwd": "${workspaceFolder:Nathaniel}",
+
+    // Git settings
+    "git.enableSmartCommit": true,
+    "git.confirmSync": false,
+    "git.autofetch": true,
+
+    // Explorer settings
+    "explorer.confirmDelete": false,
+    "explorer.confirmDragAndDrop": false,
+    "explorer.sortOrder": "type",
+
+    // Claude Code / AI agent optimizations
+    // Keep files easily accessible and context clear
+    "workbench.editor.enablePreview": false,
+    "workbench.editor.revealIfOpen": true,
+    "workbench.startupEditor": "none",
+    "breadcrumbs.enabled": true,
+
+    // Disable distracting features during AI sessions
+    "editor.suggest.showStatusBar": false,
+    "editor.parameterHints.enabled": true,
+    "editor.quickSuggestions": {
+      "other": "on",
+      "comments": "off",
+      "strings": "off"
+    }
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Build iOS",
+        "type": "shell",
+        "command": "make",
+        "args": ["ios-build"],
+        "group": "build",
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Build macOS",
+        "type": "shell",
+        "command": "make",
+        "args": ["macos-build"],
+        "group": "build",
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Run iOS",
+        "type": "shell",
+        "command": "make",
+        "args": ["ios"],
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Run macOS",
+        "type": "shell",
+        "command": "make",
+        "args": ["macos"],
+        "group": "build",
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Clean All",
+        "type": "shell",
+        "command": "make",
+        "args": ["clean"],
+        "group": "build",
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Build MCP Server",
+        "type": "shell",
+        "command": "npm",
+        "args": ["run", "build"],
+        "options": {
+          "cwd": "${workspaceFolder:MCP Server}"
+        },
+        "group": "build",
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared"
+        },
+        "problemMatcher": ["$tsc"]
+      },
+      {
+        "label": "Open in Xcode",
+        "type": "shell",
+        "command": "make",
+        "args": ["open-project"],
+        "group": "none",
+        "presentation": {
+          "reveal": "silent",
+          "panel": "shared"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Test GameCommandServer",
+        "type": "shell",
+        "command": "curl",
+        "args": ["-s", "http://localhost:8765/health"],
+        "group": "test",
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared"
+        },
+        "problemMatcher": []
+      }
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Attach to MCP Server",
+        "type": "node",
+        "request": "attach",
+        "port": 9229,
+        "restart": true,
+        "sourceMaps": true,
+        "outFiles": ["${workspaceFolder:MCP Server}/dist/**/*.js"]
+      }
+    ]
+  },
+  "extensions": {
+    "recommendations": [
+      // Swift development
+      "sswg.swift-lang",
+      "vknabel.vscode-apple-swift-format",
+
+      // TypeScript/JavaScript
+      "esbenp.prettier-vscode",
+      "dbaeumer.vscode-eslint",
+
+      // Git
+      "eamodio.gitlens",
+      "mhutchie.git-graph",
+
+      // Markdown
+      "yzhang.markdown-all-in-one",
+
+      // General productivity
+      "streetsidesoftware.code-spell-checker",
+      "EditorConfig.EditorConfig",
+
+      // Claude Code companion
+      "anthropics.claude-code"
+    ]
+  }
+}
