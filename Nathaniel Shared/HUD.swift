@@ -69,6 +69,17 @@ class HUD: SKNode {
     /// Callback when character toggle button is tapped
     var onCharacterToggle: (() -> Void)?
 
+    /// Hermes follow mode toggle button (visible when Nathaniel is selected)
+    private var followModeButton: SKNode?
+    private let followButtonName = "followModeButton"
+    private var followModeIcon: SKLabelNode?
+
+    /// Callback when follow mode button is tapped
+    var onFollowModeToggle: (() -> Void)?
+
+    /// Whether Hermes is currently in follow mode
+    private var isHermesFollowing: Bool = false
+
     /// Whether Hermes is currently selected (controls build button visibility)
     private var isHermesSelected: Bool = false
 
@@ -295,6 +306,104 @@ class HUD: SKNode {
 
         addChild(button)
         characterToggleButton = button
+    }
+
+    /// Setup the Hermes follow mode toggle button
+    private func setupFollowModeButton() {
+        let halfHeight = viewportSize.height / 2
+        let insetY: CGFloat = 20
+
+        // Create button container
+        let button = SKNode()
+        button.name = followButtonName
+        button.zPosition = 600
+
+        // Position to the left of the character toggle button
+        button.position = CGPoint(
+            x: 60,  // Left of the character toggle at x=120
+            y: -halfHeight + insetY + padding + 40
+        )
+
+        // Button background - circular for icon-style button
+        let buttonBg = SKShapeNode(circleOfRadius: 22)
+        buttonBg.fillColor = SKColor(red: 0.2, green: 0.6, blue: 0.4, alpha: 0.9)
+        buttonBg.strokeColor = .white
+        buttonBg.lineWidth = 2
+        buttonBg.name = followButtonName
+        button.addChild(buttonBg)
+
+        // Icon - chain link for following, target for independent
+        let icon = SKLabelNode(fontNamed: "Helvetica-Bold")
+        icon.fontSize = 18
+        icon.fontColor = .white
+        icon.text = "🎯"  // Default: independent (target)
+        icon.verticalAlignmentMode = .center
+        icon.horizontalAlignmentMode = .center
+        icon.name = followButtonName
+        button.addChild(icon)
+        followModeIcon = icon
+
+        // Start hidden (shown when Nathaniel is selected)
+        button.isHidden = true
+
+        addChild(button)
+        followModeButton = button
+    }
+
+    /// Show the follow mode button (when Nathaniel is selected)
+    func showFollowModeButton(isFollowing: Bool) {
+        isHermesFollowing = isFollowing
+        updateFollowModeButtonAppearance()
+
+        guard let button = followModeButton else {
+            setupFollowModeButton()
+            followModeButton?.isHidden = false
+            updateFollowModeButtonAppearance()
+            return
+        }
+
+        if button.isHidden {
+            button.isHidden = false
+            // Animate in
+            button.alpha = 0
+            button.setScale(0.8)
+            let fadeIn = SKAction.fadeIn(withDuration: 0.15)
+            let scaleIn = SKAction.scale(to: 1.0, duration: 0.15)
+            button.run(SKAction.group([fadeIn, scaleIn]))
+        }
+    }
+
+    /// Hide the follow mode button
+    func hideFollowModeButton() {
+        guard let button = followModeButton, !button.isHidden else { return }
+
+        // Animate out
+        let fadeOut = SKAction.fadeOut(withDuration: 0.15)
+        let scaleOut = SKAction.scale(to: 0.8, duration: 0.15)
+        let hide = SKAction.run { button.isHidden = true }
+        button.run(SKAction.sequence([SKAction.group([fadeOut, scaleOut]), hide]))
+    }
+
+    /// Update follow mode button to reflect current state
+    func updateFollowMode(isFollowing: Bool) {
+        isHermesFollowing = isFollowing
+        updateFollowModeButtonAppearance()
+    }
+
+    /// Update the follow mode button appearance based on current state
+    private func updateFollowModeButtonAppearance() {
+        guard let button = followModeButton,
+              let bg = button.children.first as? SKShapeNode else { return }
+
+        if isHermesFollowing {
+            // Following mode - chain link icon, green color
+            followModeIcon?.text = "🔗"
+            bg.fillColor = SKColor(red: 0.2, green: 0.7, blue: 0.4, alpha: 0.9)
+        } else {
+            // Independent mode - target icon, blue color
+            followModeIcon?.text = "🎯"
+            bg.fillColor = SKColor(red: 0.3, green: 0.5, blue: 0.7, alpha: 0.9)
+        }
     }
 
     /// Create a semi-transparent background panel
@@ -638,6 +747,23 @@ class HUD: SKNode {
 
                 // Visual feedback - scale pop
                 let scaleUp = SKAction.scale(to: 1.2, duration: 0.1)
+                let scaleDown = SKAction.scale(to: 1.0, duration: 0.1)
+                button.run(SKAction.sequence([scaleUp, scaleDown]))
+
+                return true
+            }
+        }
+
+        // Check if touch is on follow mode button
+        if let button = followModeButton, !button.isHidden {
+            let buttonPoint = convert(point, to: button)
+            if let bg = button.children.first as? SKShapeNode,
+               bg.contains(buttonPoint) {
+                // Trigger callback
+                onFollowModeToggle?()
+
+                // Visual feedback - scale pop
+                let scaleUp = SKAction.scale(to: 1.15, duration: 0.1)
                 let scaleDown = SKAction.scale(to: 1.0, duration: 0.1)
                 button.run(SKAction.sequence([scaleUp, scaleDown]))
 

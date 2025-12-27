@@ -286,6 +286,11 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             self?.toggleSelectedCharacter()
         }
 
+        // Set up follow mode toggle button callback
+        hud.onFollowModeToggle = { [weak self] in
+            self?.toggleHermesFollowMode()
+        }
+
         // Initialize with starting values
         hud.update(
             lives: levelManager.lives,
@@ -1191,6 +1196,7 @@ extension GameScene {
             hermes.isInBuildMode = true  // Stops following, allows independent control
             hermes.showSelectionHighlight()  // Show build radius indicator
             hud.showBuildButton()
+            hud.hideFollowModeButton()  // Hide follow button when Hermes is selected
 
             // Update placement controller with Hermes reference
             towerPlacementController?.validator.hermes = hermes
@@ -1208,10 +1214,16 @@ extension GameScene {
                 )
             }
         } else {
-            // Not selecting Hermes - hide build button, menu, and Hermes visuals
+            // Selecting Nathaniel - hide build button, menu, and Hermes visuals
             hud.hideBuildButton()
             towerPlacementController?.hideMenu()
             hermes?.hideSelectionHighlight()
+
+            // Show follow mode button when Nathaniel is selected (to control Hermes)
+            if let hermes = hermes {
+                let isFollowing = hermes.mode == .following
+                hud.showFollowModeButton(isFollowing: isFollowing)
+            }
         }
 
         // Animate camera to new character position
@@ -1231,6 +1243,22 @@ extension GameScene {
                 logger.debug("Switched to Nathaniel")
             }
         }
+    }
+
+    /// Toggle Hermes between follow mode and independent mode
+    func toggleHermesFollowMode() {
+        guard let hermes = hermes else { return }
+
+        // Can't toggle mode while locked (towers deployed)
+        guard hermes.mode != .locked else {
+            logger.debug("Cannot toggle follow mode while Hermes is locked")
+            return
+        }
+
+        hermes.toggleMode()
+        let isFollowing = hermes.mode == .following
+        hud.updateFollowMode(isFollowing: isFollowing)
+        logger.debug("Hermes follow mode: \(isFollowing)")
     }
 
     /// Animate camera to a target position with smooth easing
