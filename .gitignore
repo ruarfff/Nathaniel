@@ -31,3 +31,6 @@ test-artifacts/
 test-screenshots/
 
 .derivedData/
+
+# Tiled Map Editor session files (user-specific)
+*.tiled-session
