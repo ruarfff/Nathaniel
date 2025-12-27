@@ -7,6 +7,16 @@
 
 import SpriteKit
 
+/// Hermes operational modes - determines movement and ability behavior
+enum HermesMode {
+    /// Automatically follows Nathaniel
+    case following
+    /// Player controls Hermes directly (can place towers)
+    case independent
+    /// Towers deployed, cannot move
+    case locked
+}
+
 /// The robot companion character class
 class Hermes: Character {
 
@@ -45,22 +55,32 @@ class Hermes: Character {
     /// Textures for moving state (5 frames, mapped to directions)
     private var movingTextures: [SKTexture] = []
 
-    /// Whether Hermes is in build mode (placing structures)
-    var isInBuildMode: Bool = false {
+    /// Current operational mode
+    var mode: HermesMode = .independent {
         didSet {
-            // When in build mode, Hermes doesn't follow automatically
+            // Update locked visual when mode changes to/from locked
+            if (oldValue == .locked) != (mode == .locked) {
+                updateLockedVisual()
+            }
         }
     }
 
-    /// Whether Hermes is locked (has deployed towers and cannot move)
-    private(set) var isLocked: Bool = false {
-        didSet {
-            updateLockedVisual()
-        }
+    /// Whether Hermes is in build mode (placing structures) - computed for backward compatibility
+    var isInBuildMode: Bool {
+        get { mode == .independent }
+        set { mode = newValue ? .independent : .following }
+    }
+
+    /// Whether Hermes is locked (has deployed towers and cannot move) - computed for backward compatibility
+    var isLocked: Bool {
+        mode == .locked
     }
 
     /// Visual indicator node for locked state
     private var lockedIndicator: SKSpriteNode?
+
+    /// Mode to restore after unlocking (nil if not locked)
+    private var preLockMode: HermesMode?
 
     /// Build radius indicator circle
     private var buildRadiusIndicator: SKShapeNode?
@@ -102,8 +122,8 @@ class Hermes: Character {
         // Set initial facing direction
         facingDirection = .south
 
-        // Start in build mode (legacy behavior)
-        isInBuildMode = true
+        // Start in independent mode (legacy build mode behavior)
+        mode = .independent
     }
 
     // MARK: - Texture Loading
@@ -227,8 +247,8 @@ class Hermes: Character {
         speed = DevSettings.shared.hermesSpeed
         #endif
 
-        // Handle follow behavior when not in build mode and not locked
-        if !isInBuildMode && !isLocked, let target = followTarget {
+        // Handle follow behavior only in following mode
+        if mode == .following, let target = followTarget {
             updateFollowBehavior(target: target)
         }
 
@@ -280,22 +300,42 @@ class Hermes: Character {
         updateTexture()
     }
 
-    // MARK: - Build Mode
+    // MARK: - Mode Control
 
-    /// Toggle build mode on/off
-    func toggleBuildMode() {
-        isInBuildMode = !isInBuildMode
+    /// Toggle between following and independent modes
+    func toggleMode() {
+        guard mode != .locked else { return }  // Can't toggle while locked
+        mode = (mode == .following) ? .independent : .following
     }
 
-    /// Enter build mode (stop following)
+    /// Toggle build mode on/off (backward compatible alias for toggleMode)
+    func toggleBuildMode() {
+        toggleMode()
+    }
+
+    /// Enter independent mode (stop following, allow tower placement)
     func enterBuildMode() {
-        isInBuildMode = true
+        guard mode != .locked else { return }
+        mode = .independent
         stop()
     }
 
     /// Exit build mode (resume following)
     func exitBuildMode() {
-        isInBuildMode = false
+        guard mode != .locked else { return }
+        mode = .following
+    }
+
+    /// Enter following mode
+    func enterFollowMode() {
+        guard mode != .locked else { return }
+        mode = .following
+    }
+
+    /// Enter independent mode (player controls directly)
+    func enterIndependentMode() {
+        guard mode != .locked else { return }
+        mode = .independent
     }
 
     // MARK: - Locked State (Tower Deployment)
@@ -303,17 +343,19 @@ class Hermes: Character {
     /// Lock Hermes when towers are deployed
     /// Prevents all movement until towers are released
     func lock() {
-        guard !isLocked else { return }
-        isLocked = true
+        guard mode != .locked else { return }
+        preLockMode = mode  // Remember current mode
+        mode = .locked
         destination = nil  // Stop any current movement
         print("Hermes: Locked - towers deployed")
     }
 
     /// Unlock Hermes when towers are destroyed/released
-    /// Allows movement again
+    /// Allows movement again, restoring previous mode
     func unlock() {
-        guard isLocked else { return }
-        isLocked = false
+        guard mode == .locked else { return }
+        mode = preLockMode ?? .independent  // Restore previous mode
+        preLockMode = nil
         print("Hermes: Unlocked - can move again")
     }
 
@@ -321,7 +363,7 @@ class Hermes: Character {
     override var destination: CGPoint? {
         get { super.destination }
         set {
-            if isLocked {
+            if mode == .locked {
                 // Reject movement commands when locked
                 return
             }
