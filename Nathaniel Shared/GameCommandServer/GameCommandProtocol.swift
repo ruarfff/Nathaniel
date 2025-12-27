@@ -133,4 +133,43 @@ extension SKNode {
     }
 }
 
+extension SKScene {
+
+    /// Find a named button at the given point using frame-based hit testing with expanded hit area.
+    /// This is more reliable than nodes(at:) for SKLabelNodes which have tight glyph-based hit areas.
+    /// - Parameters:
+    ///   - point: The point to test in scene coordinates
+    ///   - hitAreaExpansion: How much to expand the hit area (default 20 points)
+    /// - Returns: The name of the button if found, nil otherwise
+    public func findButtonAtPoint(_ point: CGPoint, hitAreaExpansion: CGFloat = 20) -> String? {
+        for child in children {
+            guard let name = child.name, !name.isEmpty else { continue }
+
+            // Get frame and expand it for easier hit testing
+            let frame = child.frame
+            let expandedFrame = frame.insetBy(dx: -hitAreaExpansion, dy: -hitAreaExpansion)
+
+            if expandedFrame.contains(point) {
+                return name
+            }
+        }
+        return nil
+    }
+
+    /// Inject a tap at a point, using frame-based hit testing for buttons.
+    /// Falls back to tapping at button center if a button is found.
+    /// - Parameter point: The point in scene coordinates
+    /// - Returns: The button name if a button was tapped, nil if tap went to scene directly
+    public func injectTapAtButton(_ point: CGPoint) -> String? {
+        // First try to find a button at this point using expanded frame hit testing
+        if let buttonName = findButtonAtPoint(point) {
+            // Found a button - tap at its center for reliable hit
+            if let button = children.first(where: { $0.name == buttonName }) {
+                return buttonName
+            }
+        }
+        return nil
+    }
+}
+
 #endif

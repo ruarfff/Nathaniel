@@ -313,33 +313,40 @@ extension MainMenuScene: GameCommandDelegate {
     }
 
     public func injectTap(at point: CGPoint) -> Bool {
-        handleTap(at: point)
+        // Use frame-based hit testing to find button, then tap at its center
+        // This is more reliable than nodes(at:) for SKLabelNodes
+        if let buttonName = findButtonAtPoint(point),
+           let button = children.first(where: { $0.name == buttonName }) {
+            handleTap(at: button.position)
+        } else {
+            handleTap(at: point)
+        }
         return true
     }
 
     public func executeAction(name: String, params: [String: String]?) -> ActionResult {
         switch name {
         case "startGame":
-            handleTap(at: findButtonCenter(named: "startButton") ?? CGPoint(x: size.width/2, y: size.height*0.45))
-            return .success("Starting game")
+            if let button = children.first(where: { $0.name == "startButton" }) {
+                handleTap(at: button.position)
+                return .success("Starting game")
+            }
+            return .failure("Start button not found")
         case "options":
-            handleTap(at: findButtonCenter(named: "optionsButton") ?? CGPoint(x: size.width/2, y: size.height*0.35))
-            return .success("Opening options")
+            if let button = children.first(where: { $0.name == "optionsButton" }) {
+                handleTap(at: button.position)
+                return .success("Opening options")
+            }
+            return .failure("Options button not found")
         case "credits":
-            handleTap(at: findButtonCenter(named: "creditsButton") ?? CGPoint(x: size.width/2, y: size.height*0.25))
-            return .success("Opening credits")
+            if let button = children.first(where: { $0.name == "creditsButton" }) {
+                handleTap(at: button.position)
+                return .success("Opening credits")
+            }
+            return .failure("Credits button not found")
         default:
             return .failure("Unknown action: \(name)")
         }
-    }
-
-    private func findButtonCenter(named name: String) -> CGPoint? {
-        for child in children {
-            if child.name == name {
-                return child.position
-            }
-        }
-        return nil
     }
 }
 
@@ -391,7 +398,14 @@ extension LevelSelectScene: GameCommandDelegate {
     }
 
     public func injectTap(at point: CGPoint) -> Bool {
-        handleTap(at: point)
+        // Use frame-based hit testing to find button, then tap at its center
+        // This is more reliable than nodes(at:) for SKLabelNodes
+        if let buttonName = findButtonAtPoint(point),
+           let button = children.first(where: { $0.name == buttonName }) {
+            handleTap(at: button.position)
+        } else {
+            handleTap(at: point)
+        }
         return true
     }
 
@@ -399,22 +413,173 @@ extension LevelSelectScene: GameCommandDelegate {
         if name.hasPrefix("level_") {
             if let levelNum = Int(name.dropFirst(6)) {
                 // Find the level button and tap it
-                for child in children {
-                    if child.name == name {
-                        handleTap(at: child.position)
-                        return .success("Starting level \(levelNum)")
-                    }
+                if let button = children.first(where: { $0.name == name }) {
+                    handleTap(at: button.position)
+                    return .success("Starting level \(levelNum)")
                 }
+                return .failure("Level \(levelNum) button not found")
             }
         }
 
         switch name {
         case "back":
-            for child in children {
-                if child.name == "backButton" {
-                    handleTap(at: child.position)
-                    return .success("Going back")
-                }
+            if let button = children.first(where: { $0.name == "backButton" }) {
+                handleTap(at: button.position)
+                return .success("Going back")
+            }
+            return .failure("Back button not found")
+        default:
+            return .failure("Unknown action: \(name)")
+        }
+    }
+}
+
+// MARK: - OptionsScene Support
+
+extension OptionsScene: GameCommandDelegate {
+
+    public func getCurrentGameState() -> GameCommandServer.GameState {
+        return GameCommandServer.GameState(
+            scene: "OptionsScene",
+            score: 0,
+            lives: 0,
+            resources: 0,
+            elapsedTime: 0,
+            gameStatus: "options",
+            playerPosition: nil,
+            hermesPosition: nil,
+            enemyCount: 0
+        )
+    }
+
+    public func getInteractiveNodes() -> [GameCommandServer.NodeInfo] {
+        var nodes: [GameCommandServer.NodeInfo] = []
+
+        // Find all labeled button nodes
+        for child in children {
+            if let label = child as? SKLabelNode, let name = label.name {
+                nodes.append(GameCommandServer.NodeInfo(
+                    name: name,
+                    type: "Button",
+                    frame: GameCommandServer.FrameInfo(
+                        x: label.frame.origin.x,
+                        y: label.frame.origin.y,
+                        width: label.frame.size.width,
+                        height: label.frame.size.height
+                    ),
+                    interactive: true,
+                    properties: ["text": label.text ?? ""]
+                ))
+            }
+        }
+
+        return nodes
+    }
+
+    public func captureScreenshot() -> Data? {
+        return captureAsPNG()
+    }
+
+    public func injectTap(at point: CGPoint) -> Bool {
+        // Use frame-based hit testing to find button, then tap at its center
+        if let buttonName = findButtonAtPoint(point),
+           let button = children.first(where: { $0.name == buttonName }) {
+            handleTap(at: button.position)
+        } else {
+            handleTap(at: point)
+        }
+        return true
+    }
+
+    public func executeAction(name: String, params: [String: String]?) -> ActionResult {
+        switch name {
+        case "back":
+            if let button = children.first(where: { $0.name == "backButton" }) {
+                handleTap(at: button.position)
+                return .success("Going back to menu")
+            }
+            return .failure("Back button not found")
+        case "toggleSound":
+            if let button = children.first(where: { $0.name == "soundToggle" }) {
+                handleTap(at: button.position)
+                return .success("Toggled sound effects")
+            }
+            return .failure("Sound toggle not found")
+        case "toggleMusic":
+            if let button = children.first(where: { $0.name == "musicToggle" }) {
+                handleTap(at: button.position)
+                return .success("Toggled music")
+            }
+            return .failure("Music toggle not found")
+        default:
+            return .failure("Unknown action: \(name)")
+        }
+    }
+}
+
+// MARK: - CreditsScene Support
+
+extension CreditsScene: GameCommandDelegate {
+
+    public func getCurrentGameState() -> GameCommandServer.GameState {
+        return GameCommandServer.GameState(
+            scene: "CreditsScene",
+            score: 0,
+            lives: 0,
+            resources: 0,
+            elapsedTime: 0,
+            gameStatus: "credits",
+            playerPosition: nil,
+            hermesPosition: nil,
+            enemyCount: 0
+        )
+    }
+
+    public func getInteractiveNodes() -> [GameCommandServer.NodeInfo] {
+        var nodes: [GameCommandServer.NodeInfo] = []
+
+        // Find all labeled button nodes
+        for child in children {
+            if let label = child as? SKLabelNode, let name = label.name {
+                nodes.append(GameCommandServer.NodeInfo(
+                    name: name,
+                    type: "Button",
+                    frame: GameCommandServer.FrameInfo(
+                        x: label.frame.origin.x,
+                        y: label.frame.origin.y,
+                        width: label.frame.size.width,
+                        height: label.frame.size.height
+                    ),
+                    interactive: true,
+                    properties: ["text": label.text ?? ""]
+                ))
+            }
+        }
+
+        return nodes
+    }
+
+    public func captureScreenshot() -> Data? {
+        return captureAsPNG()
+    }
+
+    public func injectTap(at point: CGPoint) -> Bool {
+        // Use frame-based hit testing to find button, then tap at its center
+        if let buttonName = findButtonAtPoint(point),
+           let button = children.first(where: { $0.name == buttonName }) {
+            handleTap(at: button.position)
+        } else {
+            handleTap(at: point)
+        }
+        return true
+    }
+
+    public func executeAction(name: String, params: [String: String]?) -> ActionResult {
+        switch name {
+        case "back":
+            if let button = children.first(where: { $0.name == "backButton" }) {
+                handleTap(at: button.position)
+                return .success("Going back to menu")
             }
             return .failure("Back button not found")
         default:
