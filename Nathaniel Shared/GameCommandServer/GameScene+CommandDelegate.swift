@@ -85,6 +85,23 @@ extension GameScene: GameCommandDelegate {
 
         if let hermes = findHermes() {
             let frame = hermes.sprite.frame
+
+            // Calculate distance to Nathaniel if in follow mode
+            var distanceToTarget: CGFloat = 0
+            if let nathaniel = findNathaniel() {
+                let dx = nathaniel.position.x - hermes.position.x
+                let dy = nathaniel.position.y - hermes.position.y
+                distanceToTarget = sqrt(dx * dx + dy * dy)
+            }
+
+            // Map mode enum to string
+            let modeString: String
+            switch hermes.mode {
+            case .following: modeString = "following"
+            case .independent: modeString = "independent"
+            case .locked: modeString = "locked"
+            }
+
             nodes.append(GameCommandServer.NodeInfo(
                 name: "hermes",
                 type: "Companion",
@@ -98,7 +115,10 @@ extension GameScene: GameCommandDelegate {
                 properties: [
                     "health": "\(hermes.currentHP)/\(hermes.maxHP)",
                     "isAlive": "\(hermes.isAlive)",
-                    "isInBuildMode": "\(hermes.isInBuildMode)"
+                    "mode": modeString,
+                    "isInBuildMode": "\(hermes.isInBuildMode)",
+                    "followTarget": "Nathaniel",
+                    "distanceToTarget": String(format: "%.1f", distanceToTarget)
                 ]
             ))
         }
@@ -263,6 +283,51 @@ extension GameScene: GameCommandDelegate {
             }
             ResourceManager.shared.addResources(amount)
             return .success("Added \(amount) resources")
+
+        case "setHermesMode":
+            guard let modeStr = params?["mode"] else {
+                return .failure("Missing mode parameter (following, independent)")
+            }
+            guard let hermes = findHermes() else {
+                return .failure("Hermes not found")
+            }
+            // Can't change mode while locked
+            guard hermes.mode != .locked else {
+                return .failure("Cannot change mode while Hermes is locked (towers deployed)")
+            }
+            switch modeStr.lowercased() {
+            case "following", "follow":
+                hermes.enterFollowMode()
+                return .success("Hermes set to following mode")
+            case "independent", "build":
+                hermes.enterIndependentMode()
+                return .success("Hermes set to independent mode")
+            default:
+                return .failure("Unknown mode: \(modeStr). Use: following or independent")
+            }
+
+        case "toggleHermesFollow":
+            guard let hermes = findHermes() else {
+                return .failure("Hermes not found")
+            }
+            guard hermes.mode != .locked else {
+                return .failure("Cannot toggle mode while Hermes is locked (towers deployed)")
+            }
+            hermes.toggleMode()
+            let newMode = hermes.mode == .following ? "following" : "independent"
+            return .success("Hermes mode toggled to \(newMode)")
+
+        case "getHermesMode":
+            guard let hermes = findHermes() else {
+                return .failure("Hermes not found")
+            }
+            let modeString: String
+            switch hermes.mode {
+            case .following: modeString = "following"
+            case .independent: modeString = "independent"
+            case .locked: modeString = "locked"
+            }
+            return .success("Hermes mode: \(modeString)")
 
         default:
             return .failure("Unknown action: \(name)")
