@@ -1,13 +1,35 @@
 import SpriteKit
 
+// MARK: - Safe Area Insets
+
+/// Cross-platform struct for safe area insets (in scene coordinates)
+struct HUDSafeAreaInsets {
+    let top: CGFloat
+    let bottom: CGFloat
+    let left: CGFloat
+    let right: CGFloat
+
+    static let zero = HUDSafeAreaInsets(top: 0, bottom: 0, left: 0, right: 0)
+
+    init(top: CGFloat, bottom: CGFloat, left: CGFloat, right: CGFloat) {
+        self.top = top
+        self.bottom = bottom
+        self.left = left
+        self.right = right
+    }
+}
+
 // MARK: - HUD
 
 /// Heads-up display overlay showing game status
 class HUD: SKNode {
     // MARK: - Properties
 
-    /// Size of the viewport
+    /// Size of the viewport (visible area in scene coordinates)
     private let viewportSize: CGSize
+
+    /// Safe area insets (in scene coordinates, already scaled)
+    private let safeInsets: HUDSafeAreaInsets
 
     /// Container for top-left info (lives, score)
     private let topLeftContainer: SKNode
@@ -92,8 +114,9 @@ class HUD: SKNode {
 
     // MARK: - Initialization
 
-    init(size: CGSize) {
+    init(size: CGSize, safeAreaInsets: HUDSafeAreaInsets = .zero) {
         viewportSize = size
+        safeInsets = safeAreaInsets
 
         // Create containers
         topLeftContainer = SKNode()
@@ -176,18 +199,21 @@ class HUD: SKNode {
 
     private func setupLayout() {
         // Use percentage-based positioning that works regardless of scene size
-        // Scene size may be 800x480 (from SKS) or something else
+        // The viewportSize represents the visible area in scene coordinates
+        // Safe insets are already converted to scene coordinates
         let halfWidth = viewportSize.width / 2
         let halfHeight = viewportSize.height / 2
 
-        // Fixed inset values that work well for most sizes
-        let insetX: CGFloat = 20
-        let insetY: CGFloat = 20
+        // Base inset plus safe area
+        let insetLeft = padding + safeInsets.left
+        let insetRight = padding + safeInsets.right
+        let insetTop = padding + safeInsets.top
+        let insetBottom = padding + safeInsets.bottom
 
-        // Top-left container position
+        // Top-left container position (LIVES and SCORE)
         topLeftContainer.position = CGPoint(
-            x: -halfWidth + insetX + padding,
-            y: halfHeight - insetY - padding
+            x: -halfWidth + insetLeft,
+            y: halfHeight - insetTop
         )
         addChild(topLeftContainer)
 
@@ -213,10 +239,10 @@ class HUD: SKNode {
         scoreValueLabel.zPosition = 1
         topLeftContainer.addChild(scoreValueLabel)
 
-        // Top-right container position
+        // Top-right container position (RESOURCES)
         topRightContainer.position = CGPoint(
-            x: halfWidth - insetX - padding - 100, // Extra offset for right-aligned text
-            y: halfHeight - insetY - padding
+            x: halfWidth - insetRight - 100, // Extra offset for panel width
+            y: halfHeight - insetTop
         )
         addChild(topRightContainer)
 
@@ -237,19 +263,19 @@ class HUD: SKNode {
         topRightContainer.addChild(resourcesValueLabel)
 
         // Timer (top center)
-        timerLabel.position = CGPoint(x: 0, y: halfHeight - insetY - padding)
+        timerLabel.position = CGPoint(x: 0, y: halfHeight - insetTop)
         addChild(timerLabel)
 
         // Add background for timer
         let timerBg = createBackgroundPanel(width: 80, height: 30)
-        timerBg.position = CGPoint(x: 0, y: halfHeight - insetY - padding - 5)
+        timerBg.position = CGPoint(x: 0, y: halfHeight - insetTop - 5)
         addChild(timerBg)
         timerLabel.zPosition = 1
 
         // Bottom container (selected character)
         bottomContainer.position = CGPoint(
             x: 0,
-            y: -halfHeight + insetY + padding + 30
+            y: -halfHeight + insetBottom + 30
         )
         addChild(bottomContainer)
 
@@ -276,7 +302,7 @@ class HUD: SKNode {
     /// Setup the character toggle button
     private func setupCharacterToggleButton() {
         let halfHeight = viewportSize.height / 2
-        let insetY: CGFloat = 20
+        let insetBottom = padding + safeInsets.bottom
 
         // Create button container
         let button = SKNode()
@@ -286,7 +312,7 @@ class HUD: SKNode {
         // Position to the right of the bottom "SELECTED" panel
         button.position = CGPoint(
             x: 120, // Offset from center (selected panel is at x=0)
-            y: -halfHeight + insetY + padding + 40
+            y: -halfHeight + insetBottom + 40
         )
 
         // Button background - circular for icon-style button
@@ -314,7 +340,7 @@ class HUD: SKNode {
     /// Setup the Hermes follow mode toggle button
     private func setupFollowModeButton() {
         let halfHeight = viewportSize.height / 2
-        let insetY: CGFloat = 20
+        let insetBottom = padding + safeInsets.bottom
 
         // Create button container
         let button = SKNode()
@@ -324,7 +350,7 @@ class HUD: SKNode {
         // Position to the left of the character toggle button
         button.position = CGPoint(
             x: 60, // Left of the character toggle at x=120
-            y: -halfHeight + insetY + padding + 40
+            y: -halfHeight + insetBottom + 40
         )
 
         // Button background - circular for icon-style button
@@ -357,8 +383,8 @@ class HUD: SKNode {
     private func setupPauseButton() {
         let halfWidth = viewportSize.width / 2
         let halfHeight = viewportSize.height / 2
-        let insetX: CGFloat = 20
-        let insetY: CGFloat = 20
+        let insetRight = padding + safeInsets.right
+        let insetTop = padding + safeInsets.top
 
         // Create button container
         let button = SKNode()
@@ -367,8 +393,8 @@ class HUD: SKNode {
 
         // Position in top-right corner, to the right of resources panel
         button.position = CGPoint(
-            x: halfWidth - insetX - 25, // Inset from right edge
-            y: halfHeight - insetY - 25 // Inset from top edge
+            x: halfWidth - insetRight - 25, // Inset from right edge
+            y: halfHeight - insetTop - 25 // Inset from top edge
         )
 
         // Button background - circular
@@ -616,6 +642,8 @@ class HUD: SKNode {
 
         let halfWidth = viewportSize.width / 2
         let halfHeight = viewportSize.height / 2
+        let insetRight = padding + safeInsets.right
+        let insetBottom = padding + safeInsets.bottom
 
         // Create button container
         let button = SKNode()
@@ -624,8 +652,8 @@ class HUD: SKNode {
 
         // Position in bottom-right corner
         button.position = CGPoint(
-            x: halfWidth - 90,
-            y: -halfHeight + 60
+            x: halfWidth - insetRight - 70,
+            y: -halfHeight + insetBottom + 35
         )
 
         // Button background
@@ -689,6 +717,8 @@ class HUD: SKNode {
 
         let halfWidth = viewportSize.width / 2
         let halfHeight = viewportSize.height / 2
+        let insetLeft = padding + safeInsets.left
+        let insetBottom = padding + safeInsets.bottom
 
         // Create button container
         let button = SKNode()
@@ -697,8 +727,8 @@ class HUD: SKNode {
 
         // Position in bottom-left corner
         button.position = CGPoint(
-            x: -halfWidth + 80,
-            y: -halfHeight + 60
+            x: -halfWidth + insetLeft + 50,
+            y: -halfHeight + insetBottom + 35
         )
 
         // Button background

@@ -86,6 +86,10 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     /// Whether camera is currently animating to a new position
     private var isCameraAnimating: Bool = false
 
+    /// Visible viewport size in scene coordinates (accounts for aspectFill scaling)
+    /// This is the portion of the scene that's actually visible on screen
+    private var visibleViewportSize: CGSize = .zero
+
     // MARK: - Fog of War
 
     /// Fog of war manager for visibility system
@@ -479,37 +483,84 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     private func setupHUD() {
         // Calculate visible area for HUD positioning
         // The HUD is attached to the camera, which uses centered coordinates
-        // With .aspectFill, the scene is scaled to fill the view, potentially cropping edges
+        // With .aspectFill, the scene is scaled to FILL the view (no black bars)
+        // The scale factor is: max(viewWidth/sceneWidth, viewHeight/sceneHeight)
+        // This means part of the scene extends beyond the visible area and gets cropped
         //
         // IMPORTANT: We assume landscape orientation where width > height
         // The view.bounds may not be reliable during didMove(to:) as the layout
         // may not have completed yet. We use max/min to ensure correct orientation.
         let hudSize: CGSize
+        var safeInsets = HUDSafeAreaInsets.zero
+
         if let view {
             // Get view dimensions, ensuring landscape orientation (width > height)
             let viewWidth = max(view.bounds.width, view.bounds.height)
             let viewHeight = min(view.bounds.width, view.bounds.height)
-            let viewAspect = viewWidth / viewHeight
-            let sceneAspect = size.width / size.height
 
-            if viewAspect > sceneAspect {
-                // View is wider than scene - scene height is cropped
-                // Full scene width is visible, calculate visible height
-                let visibleWidth = size.width
-                let visibleHeight = size.width / viewAspect
-                hudSize = CGSize(width: visibleWidth, height: visibleHeight)
-            } else {
-                // View is taller than scene - scene width is cropped
-                // Full scene height is visible, calculate visible width
-                let visibleHeight = size.height
-                let visibleWidth = size.height * viewAspect
-                hudSize = CGSize(width: visibleWidth, height: visibleHeight)
-            }
+            // Calculate scale factors for each dimension
+            let scaleX = viewWidth / size.width
+            let scaleY = viewHeight / size.height
+
+            // aspectFill uses the larger scale (to fill the view completely)
+            let scale = max(scaleX, scaleY)
+
+            // Calculate visible area in scene coordinates
+            // This is the portion of the scene that's actually visible on screen
+            let visibleWidth = viewWidth / scale
+            let visibleHeight = viewHeight / scale
+
+            hudSize = CGSize(width: visibleWidth, height: visibleHeight)
+
+            // Get safe area insets and convert to scene coordinates
+            #if os(iOS)
+                let viewSafeInsets = view.safeAreaInsets
+
+                // Check if the view bounds are in portrait orientation (height > width)
+                // If so, we need to rotate the safe area insets to match landscape
+                let viewIsPortrait = view.bounds.height > view.bounds.width
+
+                let landscapeSafeInsets: UIEdgeInsets
+                if viewIsPortrait {
+                    // View is in portrait but we want landscape coordinates
+                    // Rotate CCW: portrait top->landscape left, portrait bottom->landscape right
+                    // portrait left->landscape bottom, portrait right->landscape top
+                    landscapeSafeInsets = UIEdgeInsets(
+                        top: viewSafeInsets.right,
+                        left: viewSafeInsets.top,
+                        bottom: viewSafeInsets.left,
+                        right: viewSafeInsets.bottom
+                    )
+                    logger.debug("View in portrait, rotating safe insets for landscape")
+                } else {
+                    landscapeSafeInsets = viewSafeInsets
+                }
+
+                // Convert from view points to scene coordinates by dividing by scale
+                safeInsets = HUDSafeAreaInsets(
+                    top: landscapeSafeInsets.top / scale,
+                    bottom: landscapeSafeInsets.bottom / scale,
+                    left: landscapeSafeInsets.left / scale,
+                    right: landscapeSafeInsets.right / scale
+                )
+                logger
+                    .debug(
+                        "Safe area insets (scene coords): top=\(safeInsets.top), bottom=\(safeInsets.bottom), left=\(safeInsets.left), right=\(safeInsets.right)"
+                    )
+            #endif
+
+            logger
+                .debug(
+                    "HUD setup: view=\(viewWidth)x\(viewHeight), scene=\(size.width)x\(size.height), scale=\(scale), hudSize=\(hudSize.width)x\(hudSize.height)"
+                )
         } else {
             hudSize = size
         }
 
-        hud = HUD(size: hudSize)
+        // Store the visible viewport size for camera clamping
+        visibleViewportSize = hudSize
+
+        hud = HUD(size: hudSize, safeAreaInsets: safeInsets)
         hud.zPosition = 500
         cameraNode.addChild(hud)
 
@@ -554,7 +605,8 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     private func loadMap() {
         let mapName = levelConfig.mapName
-        logger.info("loadMap() called for level \(levelConfig.levelNumber): \(mapName)")
+        let levelNum = levelConfig.levelNumber
+        logger.info("loadMap() called for level \(levelNum): \(mapName)")
         let parser = TMXParser()
 
         // Try to load the map from the bundle using level config
@@ -1174,11 +1226,13 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         // Target position is the selected character's position
         let targetPos = selected.position
 
-        // Clamp to map bounds - adjust for zoom level
+        // Clamp to map bounds - use visible viewport size (not scene size) for correct clamping
+        // This accounts for aspectFill scaling where visible area differs from scene size
         // When zoomed in (cameraZoom > 1), visible area is smaller so half dimensions decrease
         // When zoomed out (cameraZoom < 1), visible area is larger so half dimensions increase
-        let halfWidth = (size.width / 2) * cameraZoom
-        let halfHeight = (size.height / 2) * cameraZoom
+        let effectiveViewport = visibleViewportSize.width > 0 ? visibleViewportSize : size
+        let halfWidth = (effectiveViewport.width / 2) * cameraZoom
+        let halfHeight = (effectiveViewport.height / 2) * cameraZoom
 
         var clampedPos = targetPos
         clampedPos.x = max(halfWidth, min(CGFloat(renderer.map.pixelWidth) - halfWidth, clampedPos.x))
@@ -1206,9 +1260,10 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         newPos.x += delta.x
         newPos.y += delta.y
 
-        // Clamp to map bounds - adjust for zoom level
-        let halfWidth = (size.width / 2) * cameraZoom
-        let halfHeight = (size.height / 2) * cameraZoom
+        // Clamp to map bounds - use visible viewport size for correct clamping
+        let effectiveViewport = visibleViewportSize.width > 0 ? visibleViewportSize : size
+        let halfWidth = (effectiveViewport.width / 2) * cameraZoom
+        let halfHeight = (effectiveViewport.height / 2) * cameraZoom
 
         newPos.x = max(halfWidth, min(CGFloat(renderer.map.pixelWidth) - halfWidth, newPos.x))
         newPos.y = max(halfHeight, min(CGFloat(renderer.map.pixelHeight) - halfHeight, newPos.y))

@@ -18,37 +18,6 @@ This is a learning project. The developer is experienced with other platforms (A
 
 This project uses standard **git** for version control.
 
-### Common Commands
-
-```bash
-# Check status
-git status
-
-# Stage and commit changes
-git add <files>
-git commit -m "Description of changes"
-
-# View history
-git log --oneline
-
-# Create a branch
-git checkout -b feature/my-feature
-
-# Switch branches
-git checkout main
-
-# Pull latest changes
-git pull origin main
-
-# Push changes
-git push origin <branch>
-```
-
-### Remote
-
-- **Origin**: GitHub repository
-- **Main branch**: `main`
-
 ## Repository Structure
 
 ```
@@ -73,299 +42,192 @@ Nathaniel/
 
 ## Building and Running
 
-### Available Schemes and Targets
+### Quick Start with Make (Recommended)
 
-| Scheme | Target | Platform |
-|--------|--------|----------|
-| `Nathaniel iOS` | iOS App | iPhone/iPad Simulator or Device |
-| `Nathaniel macOS` | macOS App | Mac native |
+The project uses a Makefile for common operations. **Prefer Make commands** over raw `xcodebuild`:
 
-### Command Line Builds
-
-**iOS Build (Debug):**
 ```bash
-xcodebuild -project Nathaniel.xcodeproj -scheme "Nathaniel iOS" -configuration Debug build
+# See all available commands
+make help
+
+# Build and run
+make ios                    # iOS simulator
+make macos                  # macOS native
+
+# Build only (no run)
+make ios-build
+make macos-build
+
+# Fresh install (cleans everything first)
+make ios-fresh
+
+# Clean up
+make clean                  # Clean build products
+make clean-derived          # Remove DerivedData (fixes stale builds)
+make stop                   # Stop all running instances
 ```
 
-**iOS Build (Release):**
-```bash
-xcodebuild -project Nathaniel.xcodeproj -scheme "Nathaniel iOS" -configuration Release build
-```
+### Available Make Targets
 
-**macOS Build (Debug):**
-```bash
-xcodebuild -project Nathaniel.xcodeproj -scheme "Nathaniel macOS" -configuration Debug build
-```
+| Command | Description |
+|---------|-------------|
+| `make ios` | Build and run iOS app in simulator |
+| `make macos` | Build and run macOS app |
+| `make ios-fresh` | Clean install (removes old app data) |
+| `make ios-build` | Build iOS only |
+| `make macos-build` | Build macOS only |
+| `make test` | Run all smoke tests |
+| `make test-ios` | Run iOS smoke tests |
+| `make test-macos` | Run macOS smoke tests |
+| `make lint` | Run SwiftLint |
+| `make format` | Run SwiftFormat |
+| `make health` | Check GameCommandServer status |
+| `make stop` | Stop all running instances |
+| `make clean` | Clean build products |
+| `make list-simulators` | List available simulators |
 
-**macOS Build (Release):**
-```bash
-xcodebuild -project Nathaniel.xcodeproj -scheme "Nathaniel macOS" -configuration Release build
-```
+### Running from Xcode
 
-### Running from Xcode (Recommended)
-
-1. Open `Nathaniel.xcodeproj` in Xcode
-2. Select the desired scheme from the scheme picker:
+1. Open `Nathaniel.xcodeproj` in Xcode (or `make open-project`)
+2. Select the desired scheme:
    - **Nathaniel iOS** - for iPhone/iPad
    - **Nathaniel macOS** - for Mac
-3. Choose a destination:
-   - For iOS: Select an iOS Simulator (e.g., "iPhone 15 Pro") or a connected device
-   - For macOS: "My Mac" is automatically selected
-4. Press **Cmd+R** or click the Play button to build and run
+3. Choose a destination (iOS Simulator or "My Mac")
+4. Press **Cmd+R** to build and run
 
-### Running on iOS Simulator (Command Line)
+### Advanced: Raw xcodebuild
+
+For CI or custom builds, you can use `xcodebuild` directly:
 
 ```bash
-# Build for simulator
-xcodebuild -project Nathaniel.xcodeproj \
-  -scheme "Nathaniel iOS" \
-  -configuration Debug \
-  -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
-  build
+# iOS Debug build
+xcodebuild -project Nathaniel.xcodeproj -scheme "Nathaniel iOS" -configuration Debug build
 
-# To build and run in one step, use:
-xcodebuild -project Nathaniel.xcodeproj \
-  -scheme "Nathaniel iOS" \
-  -configuration Debug \
-  -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
-  build
-
-# Then open the simulator and install manually, or use Xcode
-```
-
-### Running macOS Build Directly
-
-After building, you can run the macOS app directly:
-```bash
-# Find the built app
-find ~/Library/Developer/Xcode/DerivedData -name "Nathaniel.app" -path "*macOS*" 2>/dev/null
-
-# Or run from the default build location
-open ~/Library/Developer/Xcode/DerivedData/Nathaniel-*/Build/Products/Debug/Nathaniel.app
+# macOS Release build
+xcodebuild -project Nathaniel.xcodeproj -scheme "Nathaniel macOS" -configuration Release build
 ```
 
 ## Testing
 
-### IMPORTANT: Use GameCommandServer for UI Interaction
+### Testing Agents (Recommended)
 
-**DO NOT use XcodeBuildMCP's tap/describe_ui/swipe tools for in-game interaction.** They have coordinate transformation issues with landscape SpriteKit games.
-
-**ALWAYS use the GameCommandServer HTTP API (port 8765)** for:
-- Navigating menus
-- Tapping buttons
-- Getting game state
-- Interacting with gameplay
-
-**XcodeBuildMCP is fine for**: building, running, booting simulators, taking screenshots.
-
-### Quick Start: Test a Feature
+After significant code changes, use testing agents to validate:
 
 ```bash
-# 1. Set up XcodeBuildMCP session
-mcp__XcodeBuildMCP__list_sims  # Find iOS 26.1+ simulator UUID
-mcp__XcodeBuildMCP__session-set-defaults:
-  projectPath: /Users/ruairi/dev/Nathaniel/Nathaniel.xcodeproj
-  scheme: Nathaniel iOS
-  simulatorId: <UUID>
-  useLatestOS: true
-
-# 2. Build and run
-mcp__XcodeBuildMCP__boot_sim
-mcp__XcodeBuildMCP__open_sim
-mcp__XcodeBuildMCP__build_run_sim
-
-# 3. Wait 2-3 seconds, then verify GameCommandServer is running
-curl -s http://localhost:8765/health
-
-# 4. Navigate using HTTP API (NOT XcodeBuildMCP tap!)
-curl -s http://localhost:8765/action -X POST -H "Content-Type: application/json" -d '{"name":"startGame"}'
-curl -s http://localhost:8765/action -X POST -H "Content-Type: application/json" -d '{"name":"level_1"}'
-
-# 5. Interact with the game
-curl -s http://localhost:8765/state | jq .           # Get game state
-curl -s http://localhost:8765/nodes | jq .           # Get interactive elements
-curl -s http://localhost:8765/action -X POST -d '{"name":"selectHermes"}'  # Execute action
-
-# 6. Take screenshot for visual verification (XcodeBuildMCP works for this)
-mcp__XcodeBuildMCP__screenshot
+/ios-game-testing    # iOS simulator - full test workflow
+/macos-game-testing  # macOS desktop - full test workflow
 ```
 
-### Agent Testing via GameCommandServer (Recommended)
+These handle: build → launch → navigate → test features → screenshot → generate report.
 
-The game includes an embedded HTTP server for programmatic testing by AI agents. This is the **recommended approach** for automated testing as it works reliably with SpriteKit's coordinate system.
-
-#### Overview
-
-- **GameCommandServer**: HTTP server embedded in DEBUG builds, running on port 8765
-- **game-mcp-server**: MCP wrapper that exposes the HTTP API as MCP tools
-
-#### Architecture
-
-```
-┌─────────────────┐     HTTP      ┌──────────────────────┐
-│  LLM Agent      │ ◄──────────► │  GameCommandServer   │
-│  (Claude Code)  │    :8765     │  (in-game, Swift)    │
-└─────────────────┘              └──────────────────────┘
-        │                                  │
-        │ MCP                              │ SpriteKit
-        ▼                                  ▼
-┌─────────────────┐              ┌──────────────────────┐
-│ game-mcp-server │              │    Game Scenes       │
-│  (TypeScript)   │              │ (MainMenu, Game, etc)│
-└─────────────────┘              └──────────────────────┘
-```
-
-#### Quick Start
-
-1. **Build and run the game** in Debug mode (iOS Simulator or macOS)
-2. **Test the HTTP server**:
-   ```bash
-   curl http://localhost:8765/health
-   # {"status":"ok","server":"GameCommandServer","version":"1.0.0"}
-   ```
-3. **Get game state**:
-   ```bash
-   curl http://localhost:8765/state
-   ```
-4. **Get interactive nodes**:
-   ```bash
-   curl http://localhost:8765/nodes
-   ```
-5. **Inject a tap**:
-   ```bash
-   curl -X POST http://localhost:8765/tap \
-     -H "Content-Type: application/json" \
-     -d '{"x": 683, "y": 350}'
-   ```
-
-#### HTTP API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Check server status |
-| `/state` | GET | Get current game state (scene, score, lives, positions) |
-| `/nodes` | GET | List interactive nodes with frame coordinates |
-| `/screenshot` | GET | Capture scene as base64 PNG |
-| `/tap` | POST | Inject tap at coordinates `{x, y}` |
-| `/swipe` | POST | Inject swipe `{fromX, fromY, toX, toY, duration}` |
-| `/action` | POST | Execute named action `{name, params}` |
-
-#### Using the MCP Server
-
-The `game-mcp-server/` directory contains an MCP server wrapper:
+### Smoke Tests
 
 ```bash
-cd game-mcp-server
-npm install
-npm run build
+make test           # All platforms
+make test-ios       # iOS only
+make test-macos     # macOS only
+make health         # Check GameCommandServer
 ```
 
-Add to Claude Code MCP config:
-```json
-{
-  "mcpServers": {
-    "nathaniel-game": {
-      "command": "node",
-      "args": ["/path/to/game-mcp-server/dist/index.js"]
-    }
-  }
-}
+## Game MCP Server (`nathaniel-game`)
+
+**CRITICAL**: Use MCP tools for all in-game interaction. Do NOT use:
+- ❌ XcodeBuildMCP's tap/describe_ui/swipe (coordinate issues with SpriteKit)
+- ❌ curl commands to localhost:8765
+- ❌ Bash scripts for game interaction
+
+XcodeBuildMCP is fine for: building, running, booting simulators, screenshots.
+
+### Prerequisites
+
+- Game running in DEBUG mode (port 8765)
+- Works with both iOS Simulator and macOS
+
+### MCP Tools
+
+| Tool | Purpose |
+|------|---------|
+| `game_health` | Check if game is running |
+| `game_get_state` | Scene, score, lives, positions, enemy count |
+| `game_get_nodes` | All interactive elements with coordinates |
+| `game_screenshot` | Capture screen (base64 PNG) |
+| `game_screenshot_annotated` | Screenshot with color-coded bounding boxes |
+| `game_describe` | Human-readable scene summary |
+| `game_tap(x, y)` | Tap at scene coordinates |
+| `game_swipe(fromX, fromY, toX, toY)` | Swipe gesture |
+| `game_action(name, params)` | Execute named action |
+
+### Workflow Pattern
+
+```
+1. game_health()      → Verify game running
+2. game_get_state()   → Check current scene
+3. game_get_nodes()   → Find elements
+4. game_tap(x, y)     → Interact
+5. game_get_state()   → Verify result
 ```
 
-Available MCP tools:
-- `game_health` - Check server status
-- `game_get_state` - Get game state
-- `game_get_nodes` - List interactive elements
-- `game_screenshot` - Capture screenshot
-- `game_tap` - Tap at coordinates
-- `game_swipe` - Swipe gesture
-- `game_action` - Execute named action
+### Scene Coordinates
 
-#### Scene Coordinates
+- Origin (0, 0) at **bottom-left**
+- Scene size: **1366 x 1024**
+- Use `game_get_nodes()` for exact frame coordinates
 
-The game uses SpriteKit scene coordinates (not screen/view coordinates):
-- **Origin (0, 0)** is at the bottom-left of the scene
-- **Scene size**: 1366 x 1024 (design resolution)
-- Use `/nodes` to get exact frame coordinates for elements
+### Available Actions by Scene
 
-#### Available Actions
+**MainMenuScene:**
+- `startGame`, `continueGame`, `loadGame`, `options`, `credits`
+- `hasSaves`, `getSaveSlots`
 
-Actions vary by scene:
+**LevelSelectScene:**
+- `level_1` through `level_5`, `back`
 
-**MainMenuScene**:
-- `startGame` - Navigate to level select
-- `options` - Open options screen
-- `credits` - Open credits screen
+**OptionsScene / CreditsScene:**
+- `back`, `toggleSound`, `toggleMusic`
 
-**LevelSelectScene**:
-- `level_1` through `level_5` - Start specific level
-- `back` - Return to main menu
+**GameScene - Character Control:**
+- `selectNathaniel`, `selectHermes`, `toggleCharacter`
+- `moveNathaniel` (params: x, y)
+- `targetEnemy` (params: index)
 
-**GameScene**:
-- `selectNathaniel` - Select Nathaniel
-- `selectHermes` - Select Hermes
-- `moveNathaniel` (params: `x`, `y`) - Move Nathaniel to position
-- `targetEnemy` (params: `index`) - Target enemy by index
+**GameScene - Hermes Modes:**
+- `setHermesMode` (params: mode=following|independent)
+- `toggleHermesFollow`, `getHermesMode`
 
-#### Source Files
+**GameScene - Pause Menu:**
+- `pause`, `resume`, `isPaused`
+- `showPauseMenu`, `hidePauseMenu`, `pauseMenuIsVisible`
+- `pauseMenuTapResume`, `pauseMenuTapSettings`, `pauseMenuTapSaveGame`
+- `pauseMenuTapExitToMenu`, `pauseMenuConfirmExit`, `pauseMenuCancelExit`
+- `exitToMenu` (params: skipConfirm=true for direct exit)
+
+**GameScene - Settings:**
+- `openSettings`, `closeSettings`, `settingsMenuIsVisible`
+- `toggleSoundEffects`, `toggleMusic`
+- `getSoundEffectsEnabled`, `getMusicEnabled`, `getCurrentSettings`
+- `setSoundEffects` (params: enabled=true|false)
+- `setMusic` (params: enabled=true|false)
+- `settingsMenuTapBack`
+
+**GameScene - Save/Load:**
+- `saveGame` (params: slot=1-3)
+- `getSaveSlots`, `hasSaves`
+- `showSaveSlotSelector`, `hideSaveSlotSelector`, `saveSlotSelectorIsVisible`
+- `deleteSaveSlot` (params: slot), `deleteAllSaves`
+
+**GameScene - Debug/Testing:**
+- `spawnEnemy` (params: type=grunt|soldier|boss, x, y)
+- `killAllEnemies`, `healPlayer`
+- `addResources` (params: amount)
+
+### Source Files
 
 ```
 Nathaniel Shared/GameCommandServer/
-├── GameCommandServer.swift     # HTTP server implementation
-├── GameCommandProtocol.swift   # GameCommandDelegate protocol
-├── GameScene+CommandDelegate.swift  # Scene conformances
-└── TouchInjector.swift         # Touch/click injection utilities
-```
-
-### macOS App Testing
-
-The macOS version can be built and run, but **automated UI interaction is unreliable**. Mouse clicks via `cliclick` or AppleScript don't properly translate to SpriteKit scene coordinates.
-
-**Recommendation:** Use the GameCommandServer API or iOS Simulator for automated testing. Manual testing works fine for macOS.
-
-```bash
-# Build and run macOS version
-mcp__XcodeBuildMCP__build_run_macos({
-  projectPath: "/Users/ruairi/dev/Nathaniel/Nathaniel.xcodeproj",
-  scheme: "Nathaniel macOS",
-  configuration: "Debug"
-})
-
-# Stop macOS app
-mcp__XcodeBuildMCP__stop_mac_app({ appName: "Nathaniel" })
-```
-
-### Unit Tests
-
-The project does not yet have unit tests or UI tests configured. This section documents how to add and run tests when they are implemented.
-
-### Adding Tests
-
-To add a test target in Xcode:
-1. Open `Nathaniel.xcodeproj`
-2. File → New → Target
-3. Choose "Unit Testing Bundle" for unit tests or "UI Testing Bundle" for UI tests
-4. Name it `Nathaniel Tests` or `Nathaniel UITests`
-5. Select the appropriate target to test (iOS or macOS)
-
-### Running Tests (When Available)
-
-**From Xcode:**
-- Press **Cmd+U** to run all tests
-- Use the Test Navigator (Cmd+6) to run individual tests
-
-**From Command Line:**
-```bash
-# Run all tests for iOS
-xcodebuild -project Nathaniel.xcodeproj \
-  -scheme "Nathaniel iOS" \
-  -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
-  test
-
-# Run all tests for macOS
-xcodebuild -project Nathaniel.xcodeproj \
-  -scheme "Nathaniel macOS" \
-  test
+├── GameCommandServer.swift         # HTTP server
+├── GameCommandProtocol.swift       # Protocol definition
+├── GameScene+CommandDelegate.swift # Scene implementations
+└── TouchInjector.swift             # Touch injection
 ```
 
 

@@ -14,7 +14,7 @@ SIMULATOR ?= iPhone 17 Pro
 # Configuration (Debug or Release)
 CONFIG ?= Debug
 
-.PHONY: help ios macos ios-build macos-build ios-run macos-run clean ios-clean macos-clean list-simulators shutdown-sims ios-fresh clean-derived
+.PHONY: help ios macos ios-build macos-build ios-run macos-run clean ios-clean macos-clean list-simulators shutdown-sims ios-fresh clean-derived test test-ios test-macos lint format health stop
 
 # Default target
 help:
@@ -30,11 +30,22 @@ help:
 	@echo "  make ios-build        Build iOS app for simulator"
 	@echo "  make macos-build      Build macOS app"
 	@echo ""
+	@echo "Testing:"
+	@echo "  make test             Run all smoke tests (iOS + macOS)"
+	@echo "  make test-ios         Run iOS simulator smoke tests"
+	@echo "  make test-macos       Run macOS smoke tests"
+	@echo "  make health           Check if GameCommandServer is running"
+	@echo ""
+	@echo "Code Quality:"
+	@echo "  make lint             Run SwiftLint on the codebase"
+	@echo "  make format           Run SwiftFormat on the codebase"
+	@echo ""
 	@echo "Cleaning:"
 	@echo "  make clean            Clean all build products"
 	@echo "  make clean-derived    Remove all Nathaniel DerivedData (fixes stale builds)"
 	@echo "  make ios-clean        Clean iOS build products"
 	@echo "  make macos-clean      Clean macOS build products"
+	@echo "  make stop             Stop all running Nathaniel instances"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  make list-simulators  List available iOS simulators"
@@ -165,3 +176,35 @@ clean-derived:
 
 open-project:
 	@open $(PROJECT)
+
+# Testing targets
+test: test-macos test-ios
+	@echo "All smoke tests complete."
+
+test-ios:
+	@echo "Running iOS simulator smoke tests..."
+	@./scripts/smoke_ios_sim.sh
+
+test-macos:
+	@echo "Running macOS smoke tests..."
+	@./scripts/test-macos.sh
+
+health:
+	@echo "Checking GameCommandServer health..."
+	@curl -sf http://localhost:8765/health && echo "" || echo "GameCommandServer is not running. Start the game first with 'make ios' or 'make macos'."
+
+# Code quality targets
+lint:
+	@echo "Running SwiftLint..."
+	@swiftlint lint --path "Nathaniel Shared" --path "Nathaniel iOS" --path "Nathaniel macOS" 2>/dev/null || echo "SwiftLint not installed. Run: brew install swiftlint"
+
+format:
+	@echo "Running SwiftFormat..."
+	@swiftformat "Nathaniel Shared" "Nathaniel iOS" "Nathaniel macOS" 2>/dev/null || echo "SwiftFormat not installed. Run: brew install swiftformat"
+
+# Stop all running instances
+stop:
+	@echo "Stopping all Nathaniel instances..."
+	@pkill -f "Nathaniel.app" 2>/dev/null || true
+	@xcrun simctl terminate booted $(BUNDLE_ID) 2>/dev/null || true
+	@echo "Done."
