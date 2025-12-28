@@ -59,6 +59,9 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     /// Pause menu overlay
     private var pauseMenu: PauseMenu!
 
+    /// Save slot selector overlay
+    private var saveSlotSelector: SaveSlotSelector!
+
     /// HUD for displaying game status
     private var hud: HUD!
 
@@ -145,6 +148,9 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         // Set this scene as the command server delegate
         GameCommandServer.shared.delegate = self
         #endif
+
+        // Restore from save if loading from saved game
+        restoreFromSavedState()
     }
 
     private func setupHaptics() {
@@ -238,13 +244,132 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         }
 
         pauseMenu.onSaveGame = { [weak self] in
-            // TODO: Save game (future task)
-            print("Save Game button tapped - not yet implemented")
+            self?.showSaveSlotSelector()
+        }
+
+        // Set up save slot selector
+        saveSlotSelector = SaveSlotSelector(size: size)
+        saveSlotSelector.zPosition = 950  // Above pause menu
+        cameraNode.addChild(saveSlotSelector)
+
+        saveSlotSelector.onSlotSelected = { [weak self] slotId in
+            self?.saveGameToSlot(slotId)
+        }
+
+        saveSlotSelector.onCancel = { [weak self] in
+            // Return focus to pause menu
+            logger.debug("Save slot selection cancelled")
         }
 
         pauseMenu.onExitToMenu = { [weak self] in
             self?.returnToMainMenu()
         }
+    }
+
+    // MARK: - Load from Save
+
+    /// Saved state to restore after scene setup (set by factory method)
+    private var pendingSaveState: SavedGameState?
+
+    /// Create a new game scene from a saved game state
+    class func newGameScene(fromSave state: SavedGameState) -> GameScene {
+        // Get the level config for the saved level
+        let levelConfig = LevelConfig.level(state.levelNumber) ?? .levelOne
+
+        // Create scene with that config
+        let scene = newGameScene(levelConfig: levelConfig)
+
+        // Store the save state to restore after setup
+        scene.pendingSaveState = state
+
+        return scene
+    }
+
+    /// Called after scene setup to restore saved state
+    private func restoreFromSavedState() {
+        guard let state = pendingSaveState else { return }
+        pendingSaveState = nil
+
+        logger.info("Restoring game from save: Level \(state.levelNumber)")
+
+        // Restore level manager state
+        levelManager.restore(
+            elapsedTime: state.elapsedTime,
+            score: state.score,
+            lives: state.lives
+        )
+
+        // Restore resources
+        ResourceManager.shared.restore(total: state.resources)
+
+        // Restore Nathaniel
+        if let nathaniel = nathaniel {
+            nathaniel.restoreFromSavedState(state.nathaniel)
+            startPosition = nathaniel.position  // Update respawn point
+        }
+
+        // Restore Hermes
+        if let hermes = hermes {
+            hermes.restoreFromSavedState(state.hermes)
+        }
+
+        // Clear existing enemies and restore from save
+        enemyManager.removeAllEnemies()
+        for enemyState in state.enemies {
+            let enemy = enemyState.type.createEnemy()
+            enemy.restore(from: enemyState)
+
+            // Restore target reference
+            if let targetIndex = enemyState.targetIndex {
+                if targetIndex == 0 {
+                    enemy.target = nathaniel
+                } else if targetIndex == 1 {
+                    enemy.target = hermes
+                }
+            }
+
+            enemyManager.addEnemy(enemy)
+        }
+
+        // Restore towers
+        for towerState in state.towers {
+            let position = towerState.position.cgPoint
+            var tower: DefensiveStructure?
+
+            switch towerState.type {
+            case .gunTower:
+                tower = structureManager.addGunTower(at: position)
+            case .laserTower:
+                tower = structureManager.addLaserTower(at: position)
+            case .healTower:
+                tower = structureManager.addHealTower(at: position)
+            }
+
+            // Restore tower HP
+            if let tower = tower {
+                tower.currentHP = towerState.currentHP
+
+                // Mark as Hermes-owned if applicable
+                if towerState.isHermesOwned {
+                    structureManager.markAsHermesOwned(tower)
+                }
+            }
+        }
+
+        // Restore wave state if applicable
+        if let currentWave = state.currentWave {
+            waveSpawner?.restore(wave: currentWave, timeUntilNext: state.timeUntilNextWave ?? 0)
+        }
+
+        // Update camera to follow restored Nathaniel position
+        if let nathaniel = nathaniel {
+            cameraNode.position = nathaniel.position
+        }
+
+        // Update HUD
+        updateHUD()
+
+        logger.info("Save state restored successfully")
     }
 
     // MARK: - Level Transitions
@@ -292,6 +417,55 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             self?.levelManager.resume()
             logger.info("Game resumed")
         }
+    }
+
+    /// Show the save slot selector
+    private func showSaveSlotSelector() {
+        saveSlotSelector.show(mode: .save)
+        logger.debug("Showing save slot selector")
+    }
+
+    /// Save the game to a specific slot
+    private func saveGameToSlot(_ slotId: Int) {
+        // Create save state from current game
+        let displayName = "Level \(levelConfig.levelNumber)"
+        guard let saveState = createSaveState(displayName: displayName) else {
+            logger.error("Failed to create save state")
+            showSaveNotification(success: false)
+            return
+        }
+
+        // Save to the selected slot
+        let success = SaveManager.shared.saveToSlot(saveState, slotId: slotId)
+
+        // Show notification
+        showSaveNotification(success: success)
+
+        logger.info("Saved to slot \(slotId): \(success ? "success" : "failed")")
+    }
+
+    /// Show a toast notification for save result
+    private func showSaveNotification(success: Bool) {
+        let message = success ? "Game Saved!" : "Save Failed"
+        let color: SKColor = success ? .green : .red
+
+        let notification = SKLabelNode(fontNamed: "Helvetica-Bold")
+        notification.text = message
+        notification.fontSize = 24
+        notification.fontColor = color
+        notification.position = CGPoint(x: 0, y: -100)
+        notification.zPosition = 1000
+        notification.alpha = 0
+
+        cameraNode.addChild(notification)
+
+        // Fade in, hold, fade out
+        let fadeIn = SKAction.fadeIn(withDuration: 0.2)
+        let wait = SKAction.wait(forDuration: 1.5)
+        let fadeOut = SKAction.fadeOut(withDuration: 0.3)
+        let remove = SKAction.removeFromParent()
+
+        notification.run(SKAction.sequence([fadeIn, wait, fadeOut, remove]))
     }
 
     private func setupHUD() {
@@ -1074,8 +1248,14 @@ extension GameScene {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
 
-        // Check if pause menu handles the touch (in HUD/camera space)
+        // Check if save slot selector handles the touch (in HUD/camera space)
         let hudLocation = cameraNode.convert(location, from: self)
+        if saveSlotSelector.isVisible {
+            _ = saveSlotSelector.handleTouch(at: hudLocation)
+            return
+        }
+
+        // Check if pause menu handles the touch (in HUD/camera space)
         if pauseMenu.isVisible {
             _ = pauseMenu.handleTouch(at: hudLocation)
             return
@@ -1126,8 +1306,14 @@ extension GameScene {
     override func mouseDown(with event: NSEvent) {
         let location = event.location(in: self)
 
-        // Check if pause menu handles the click (in HUD/camera space)
+        // Check if save slot selector handles the click (in HUD/camera space)
         let hudLocation = cameraNode.convert(location, from: self)
+        if saveSlotSelector.isVisible {
+            _ = saveSlotSelector.handleTouch(at: hudLocation)
+            return
+        }
+
+        // Check if pause menu handles the click (in HUD/camera space)
         if pauseMenu.isVisible {
             _ = pauseMenu.handleTouch(at: hudLocation)
             return

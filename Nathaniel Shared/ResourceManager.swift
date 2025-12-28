@@ -83,6 +83,12 @@ class ResourceManager {
         totalExpired = 0
     }
 
+    /// Restore resource total from saved game
+    func restore(total: Int) {
+        totalCollected = total
+        delegate?.resourceManager(self, didUpdateTotal: totalCollected)
+    }
+
     // MARK: - Spawning
 
     /// Spawn a resource at a position

@@ -61,6 +61,18 @@ class WaveSpawner {
         isActive = true
     }
 
+    /// Restore state from saved game
+    func restore(wave: Int, timeUntilNext: TimeInterval) {
+        // Wave number roughly corresponds to time thresholds
+        // Use wave to estimate elapsed time (each "wave" ~= 1 minute)
+        elapsedTime = TimeInterval(wave) * 60.0
+        timeSinceLastSpawn = spawnInterval - timeUntilNext
+
+        // Update difficulty immediately based on restored time
+        let minutes = elapsedTime / 60.0
+        updateDifficulty(minutes: minutes)
+    }
+
     // MARK: - Update
 
     /// Update the spawner each frame

@@ -194,6 +194,14 @@ class LevelManager: EnemyManagerDelegate {
         state = .playing
     }
 
+    /// Restore state from saved game
+    func restore(elapsedTime: TimeInterval, score: Int, lives: Int) {
+        self.elapsedTime = elapsedTime
+        self.score = score
+        self.lives = lives
+        self.state = .playing
+    }
+
     // MARK: - Pause/Resume
 
     /// Pause the game

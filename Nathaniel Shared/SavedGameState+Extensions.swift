@@ -315,13 +315,14 @@ extension StructureManager {
 // MARK: - WaveSpawner Extension
 
 extension WaveSpawner {
-    /// Current wave number for serialization
+    /// Current wave number for serialization (based on elapsed time)
     var currentWave: Int {
-        // Access through Mirror if needed, or expose property
+        // Access elapsedTime through Mirror
         let mirror = Mirror(reflecting: self)
         for child in mirror.children {
-            if child.label == "currentWave", let wave = child.value as? Int {
-                return wave
+            if child.label == "elapsedTime", let time = child.value as? TimeInterval {
+                // Wave number is approximately elapsed time in minutes
+                return Int(time / 60.0)
             }
         }
         return 0
@@ -330,11 +331,18 @@ extension WaveSpawner {
     /// Time until next wave for serialization
     var timeUntilNextWave: TimeInterval {
         let mirror = Mirror(reflecting: self)
+        var spawnInterval: TimeInterval = 5.0
+        var timeSinceLastSpawn: TimeInterval = 0
+
         for child in mirror.children {
-            if child.label == "spawnTimer", let timer = child.value as? TimeInterval {
-                return timer
+            if child.label == "spawnInterval", let interval = child.value as? TimeInterval {
+                spawnInterval = interval
+            }
+            if child.label == "timeSinceLastSpawn", let time = child.value as? TimeInterval {
+                timeSinceLastSpawn = time
             }
         }
-        return 0
+
+        return max(0, spawnInterval - timeSinceLastSpawn)
     }
 }

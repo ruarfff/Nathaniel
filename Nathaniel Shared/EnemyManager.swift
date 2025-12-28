@@ -82,6 +82,44 @@ class EnemyManager {
         totalKilled = 0
     }
 
+    /// Remove all enemies from the scene (for loading saved game)
+    func removeAllEnemies() {
+        for enemy in enemies {
+            enemy.sprite.removeFromParent()
+        }
+        enemies.removeAll()
+        numSpawners = 0
+        numSoldiers = 0
+        numBosses = 0
+    }
+
+    /// Add a pre-created enemy to the manager
+    /// - Parameter enemy: The enemy to add
+    func addEnemy(_ enemy: Enemy) {
+        // Configure display properties
+        enemy.sprite.zPosition = enemyZPosition
+        enemy.sprite.setScale(enemyScale)
+
+        // Set up health bar
+        enemy.setupHealthBar(width: 40, yOffset: 8)
+
+        // Set up ranged weapon if applicable
+        if enemy is Soldier || enemy is Boss {
+            setupRangedWeapon(for: enemy)
+        }
+
+        // Track type counts
+        if enemy is Soldier { numSoldiers += 1 }
+        if enemy is Boss { numBosses += 1 }
+
+        // Add to scene
+        scene?.addChild(enemy.sprite)
+
+        // Track
+        enemies.append(enemy)
+        totalSpawned += 1
+    }
+
     // MARK: - Enemy Factory
 
     /// Create and add an enemy based on name prefix

@@ -767,6 +767,12 @@ class StructureManager {
         return tower
     }
 
+    /// Mark an existing tower as Hermes-owned (for restoring saved game)
+    func markAsHermesOwned(_ tower: DefensiveStructure) {
+        guard !hermesTowers.contains(where: { $0 === tower }) else { return }
+        hermesTowers.append(tower)
+    }
+
     /// Destroy all towers owned by Hermes
     /// Called when releasing Hermes to move again
     /// - Parameters:

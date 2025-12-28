@@ -424,6 +424,77 @@ extension GameScene: GameCommandDelegate {
             pauseMenu.hideConfirmation()
             return .success("Cancelled exit")
 
+        // MARK: - Save/Load Actions
+
+        case "saveGame":
+            guard let slotIdStr = params?["slot"], let slotId = Int(slotIdStr) else {
+                return .failure("Missing slot parameter (1-3)")
+            }
+            guard slotId >= 1 && slotId <= SaveManager.slotCount else {
+                return .failure("Invalid slot ID: \(slotId). Must be 1-\(SaveManager.slotCount)")
+            }
+            // Create save state
+            let displayName = "Level \(findLevelManager()?.config.levelNumber ?? 1)"
+            guard let saveState = createSaveState(displayName: displayName) else {
+                return .failure("Failed to create save state")
+            }
+            // Save to slot
+            let success = SaveManager.shared.saveToSlot(saveState, slotId: slotId)
+            if success {
+                return .success("Game saved to slot \(slotId)")
+            } else {
+                return .failure("Failed to save to slot \(slotId)")
+            }
+
+        case "getSaveSlots":
+            let slots = SaveManager.shared.getSaveSlots()
+            var slotInfo: [String] = []
+            for slot in slots {
+                if slot.hasSave {
+                    slotInfo.append("Slot \(slot.id): \(slot.displaySummary)")
+                } else {
+                    slotInfo.append("Slot \(slot.id): Empty")
+                }
+            }
+            return .success(slotInfo.joined(separator: "; "))
+
+        case "hasSaves":
+            return .success("hasSaves: \(SaveManager.shared.hasSaves)")
+
+        case "showSaveSlotSelector":
+            guard let selector = findSaveSlotSelector() else {
+                return .failure("Save slot selector not found")
+            }
+            selector.show(mode: .save)
+            return .success("Save slot selector shown")
+
+        case "hideSaveSlotSelector":
+            guard let selector = findSaveSlotSelector() else {
+                return .failure("Save slot selector not found")
+            }
+            selector.hide()
+            return .success("Save slot selector hidden")
+
+        case "saveSlotSelectorIsVisible":
+            guard let selector = findSaveSlotSelector() else {
+                return .failure("Save slot selector not found")
+            }
+            return .success("saveSlotSelectorIsVisible: \(selector.isVisible)")
+
+        case "deleteSaveSlot":
+            guard let slotIdStr = params?["slot"], let slotId = Int(slotIdStr) else {
+                return .failure("Missing slot parameter (1-3)")
+            }
+            guard slotId >= 1 && slotId <= SaveManager.slotCount else {
+                return .failure("Invalid slot ID: \(slotId). Must be 1-\(SaveManager.slotCount)")
+            }
+            SaveManager.shared.deleteSlot(slotId)
+            return .success("Deleted save slot \(slotId)")
+
+        case "deleteAllSaves":
+            SaveManager.shared.deleteAllSlots()
+            return .success("Deleted all save slots")
+
         default:
             return .failure("Unknown action: \(name)")
         }
@@ -493,6 +564,16 @@ extension GameScene: GameCommandDelegate {
         for child in mirror.children {
             if child.label == "pauseMenu", let pauseMenu = child.value as? PauseMenu {
                 return pauseMenu
+            }
+        }
+        return nil
+    }
+
+    private func findSaveSlotSelector() -> SaveSlotSelector? {
+        let mirror = Mirror(reflecting: self)
+        for child in mirror.children {
+            if child.label == "saveSlotSelector", let selector = child.value as? SaveSlotSelector {
+                return selector
             }
         }
         return nil
