@@ -55,12 +55,12 @@ class GameSettings {
     // MARK: - Audio Settings
 
     var soundEffectsEnabled: Bool {
-        get { UserDefaults.standard.object(forKey: Keys.soundEffectsEnabled) as? Bool ?? true }
+        get { UserDefaults.standard.object(forKey: Keys.soundEffectsEnabled) as? Bool ?? false }
         set { UserDefaults.standard.set(newValue, forKey: Keys.soundEffectsEnabled) }
     }
 
     var musicEnabled: Bool {
-        get { UserDefaults.standard.object(forKey: Keys.musicEnabled) as? Bool ?? true }
+        get { UserDefaults.standard.object(forKey: Keys.musicEnabled) as? Bool ?? false }
         set { UserDefaults.standard.set(newValue, forKey: Keys.musicEnabled) }
     }
 

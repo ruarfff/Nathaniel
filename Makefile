@@ -14,7 +14,7 @@ SIMULATOR ?= iPhone 17 Pro
 # Configuration (Debug or Release)
 CONFIG ?= Debug
 
-.PHONY: help ios macos ios-build macos-build ios-run macos-run clean ios-clean macos-clean list-simulators shutdown-sims
+.PHONY: help ios macos ios-build macos-build ios-run macos-run clean ios-clean macos-clean list-simulators shutdown-sims ios-fresh clean-derived
 
 # Default target
 help:
@@ -24,6 +24,7 @@ help:
 	@echo "Running:"
 	@echo "  make ios              Build and run iOS app in simulator"
 	@echo "  make macos            Build and run macOS app"
+	@echo "  make ios-fresh        Clean install iOS app (removes old app data)"
 	@echo ""
 	@echo "Building only:"
 	@echo "  make ios-build        Build iOS app for simulator"
@@ -31,6 +32,7 @@ help:
 	@echo ""
 	@echo "Cleaning:"
 	@echo "  make clean            Clean all build products"
+	@echo "  make clean-derived    Remove all Nathaniel DerivedData (fixes stale builds)"
 	@echo "  make ios-clean        Clean iOS build products"
 	@echo "  make macos-clean      Clean macOS build products"
 	@echo ""
@@ -60,20 +62,52 @@ ios-build:
 
 ios-run:
 	@echo "Building and running $(IOS_SCHEME) on $(SIMULATOR)..."
-	@echo "Shutting down all simulators first..."
-	@xcrun simctl shutdown all 2>/dev/null || true
-	xcodebuild -project $(PROJECT) \
+	@echo "Booting simulator..."
+	@xcrun simctl boot "$(SIMULATOR)" 2>/dev/null || true
+	@open -a Simulator
+	@echo "Building app..."
+	@xcodebuild -project $(PROJECT) \
 		-scheme "$(IOS_SCHEME)" \
 		-configuration $(CONFIG) \
 		-destination 'platform=iOS Simulator,name=$(SIMULATOR)' \
-		build
+		build 2>&1 | tail -20
+	@echo ""
+	@echo "Uninstalling old version (if any)..."
+	@xcrun simctl uninstall "$(SIMULATOR)" $(BUNDLE_ID) 2>/dev/null || true
+	@echo "Installing fresh build..."
+	@APP_PATH=$$(find ~/Library/Developer/Xcode/DerivedData -name "Nathaniel.app" -path "*$(CONFIG)-iphonesimulator*" -type d 2>/dev/null | head -1) && \
+		if [ -z "$$APP_PATH" ]; then echo "Error: Could not find built app"; exit 1; fi && \
+		echo "Installing from: $$APP_PATH" && \
+		xcrun simctl install "$(SIMULATOR)" "$$APP_PATH" && \
+		echo "Launching app..." && \
+		xcrun simctl launch "$(SIMULATOR)" $(BUNDLE_ID)
+
+# Fresh iOS install (cleans DerivedData, uninstalls app, rebuilds from scratch)
+ios-fresh:
+	@echo "Fresh install of $(IOS_SCHEME) on $(SIMULATOR)..."
+	@echo "Cleaning DerivedData..."
+	@rm -rf ~/Library/Developer/Xcode/DerivedData/Nathaniel-*
+	@echo "Shutting down simulators..."
+	@xcrun simctl shutdown all 2>/dev/null || true
 	@echo "Booting $(SIMULATOR)..."
 	@xcrun simctl boot "$(SIMULATOR)" 2>/dev/null || true
 	@open -a Simulator
 	@sleep 2
-	@echo "Installing and launching app..."
+	@echo "Uninstalling existing app..."
+	@xcrun simctl uninstall "$(SIMULATOR)" $(BUNDLE_ID) 2>/dev/null || true
+	@echo "Building app (clean build)..."
+	@xcodebuild -project $(PROJECT) \
+		-scheme "$(IOS_SCHEME)" \
+		-configuration $(CONFIG) \
+		-destination 'platform=iOS Simulator,name=$(SIMULATOR)' \
+		build 2>&1 | tail -20
+	@echo ""
+	@echo "Installing fresh build..."
 	@APP_PATH=$$(find ~/Library/Developer/Xcode/DerivedData -name "Nathaniel.app" -path "*$(CONFIG)-iphonesimulator*" -type d 2>/dev/null | head -1) && \
+		if [ -z "$$APP_PATH" ]; then echo "Error: Could not find built app"; exit 1; fi && \
+		echo "Installing from: $$APP_PATH" && \
 		xcrun simctl install "$(SIMULATOR)" "$$APP_PATH" && \
+		echo "Launching app..." && \
 		xcrun simctl launch "$(SIMULATOR)" $(BUNDLE_ID)
 
 # macOS targets
@@ -123,6 +157,11 @@ list-simulators:
 shutdown-sims:
 	@echo "Shutting down all simulators..."
 	@xcrun simctl shutdown all
+
+clean-derived:
+	@echo "Removing all Nathaniel DerivedData directories..."
+	@rm -rf ~/Library/Developer/Xcode/DerivedData/Nathaniel-*
+	@echo "Done. Next build will be from scratch."
 
 open-project:
 	@open $(PROJECT)
