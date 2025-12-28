@@ -424,6 +424,105 @@ extension GameScene: GameCommandDelegate {
             pauseMenu.hideConfirmation()
             return .success("Cancelled exit")
 
+        case "exitToMenu":
+            // Optional: skipConfirm param to bypass confirmation dialog
+            let skipConfirm = params?["skipConfirm"] == "true"
+            guard let pauseMenu = findPauseMenu() else {
+                return .failure("Pause menu not found")
+            }
+            if skipConfirm {
+                // Directly exit without showing confirmation
+                pauseMenu.onExitToMenu?()
+                return .success("Exiting to main menu")
+            } else {
+                // Show the pause menu if not visible, then show confirmation
+                if !pauseMenu.isVisible {
+                    pauseGame()
+                }
+                pauseMenu.showExitConfirmation()
+                return .success("Exit confirmation shown (tap pauseMenuConfirmExit to confirm)")
+            }
+
+        // MARK: - Settings Menu Actions
+
+        case "settingsMenuIsVisible":
+            guard let settingsMenu = findSettingsMenu() else {
+                return .failure("Settings menu not found")
+            }
+            return .success("settingsMenuIsVisible: \(settingsMenu.isVisible)")
+
+        case "openSettings", "showSettingsMenu":
+            guard let settingsMenu = findSettingsMenu() else {
+                return .failure("Settings menu not found")
+            }
+            settingsMenu.show()
+            return .success("Settings menu opened")
+
+        case "closeSettings", "hideSettingsMenu":
+            guard let settingsMenu = findSettingsMenu() else {
+                return .failure("Settings menu not found")
+            }
+            settingsMenu.hide()
+            return .success("Settings menu closed")
+
+        case "toggleSoundEffects":
+            let current = GameSettings.shared.soundEffectsEnabled
+            GameSettings.shared.soundEffectsEnabled = !current
+            return .success("Sound effects: \(!current)")
+
+        case "toggleMusic":
+            let current = GameSettings.shared.musicEnabled
+            GameSettings.shared.musicEnabled = !current
+            // Apply immediately
+            if !current {
+                AudioManager.shared.resumeMusic()
+            } else {
+                AudioManager.shared.pauseMusic()
+            }
+            return .success("Music: \(!current)")
+
+        case "getSoundEffectsEnabled":
+            return .success("soundEffectsEnabled: \(GameSettings.shared.soundEffectsEnabled)")
+
+        case "getMusicEnabled":
+            return .success("musicEnabled: \(GameSettings.shared.musicEnabled)")
+
+        case "getCurrentSettings", "getSettings":
+            let soundEffects = GameSettings.shared.soundEffectsEnabled
+            let music = GameSettings.shared.musicEnabled
+            return .success("soundEffects: \(soundEffects), music: \(music)")
+
+        case "setSoundEffects":
+            guard let valueStr = params?["enabled"], let enabled = Bool(valueStr) else {
+                return .failure("Missing or invalid 'enabled' parameter (true/false)")
+            }
+            GameSettings.shared.soundEffectsEnabled = enabled
+            return .success("Sound effects set to: \(enabled)")
+
+        case "setMusic":
+            guard let valueStr = params?["enabled"], let enabled = Bool(valueStr) else {
+                return .failure("Missing or invalid 'enabled' parameter (true/false)")
+            }
+            GameSettings.shared.musicEnabled = enabled
+            if enabled {
+                AudioManager.shared.resumeMusic()
+            } else {
+                AudioManager.shared.pauseMusic()
+            }
+            return .success("Music set to: \(enabled)")
+
+        case "settingsMenuTapBack":
+            guard let settingsMenu = findSettingsMenu() else {
+                return .failure("Settings menu not found")
+            }
+            guard settingsMenu.isVisible else {
+                return .failure("Settings menu is not visible")
+            }
+            settingsMenu.hide {
+                settingsMenu.onBack?()
+            }
+            return .success("Tapped Back button")
+
         // MARK: - Save/Load Actions
 
         case "saveGame":
@@ -578,6 +677,16 @@ extension GameScene: GameCommandDelegate {
         }
         return nil
     }
+
+    private func findSettingsMenu() -> SettingsMenu? {
+        let mirror = Mirror(reflecting: self)
+        for child in mirror.children {
+            if child.label == "settingsMenu", let menu = child.value as? SettingsMenu {
+                return menu
+            }
+        }
+        return nil
+    }
 }
 
 // MARK: - Menu Scenes Support
@@ -647,6 +756,31 @@ extension MainMenuScene: GameCommandDelegate {
                 return .success("Starting game")
             }
             return .failure("Start button not found")
+        case "continueGame":
+            if let button = children.first(where: { $0.name == "continueButton" }) {
+                handleTap(at: button.position)
+                return .success("Continuing game")
+            }
+            return .failure("Continue button not found (no campaign progress)")
+        case "loadGame", "showLoadGameSelector":
+            if let button = children.first(where: { $0.name == "loadGameButton" }) {
+                handleTap(at: button.position)
+                return .success("Opening load game selector")
+            }
+            return .failure("Load Game button not found (no saves)")
+        case "hasSaves":
+            return .success("hasSaves: \(SaveManager.shared.hasSaves)")
+        case "getSaveSlots":
+            let slots = SaveManager.shared.getSaveSlots()
+            var slotInfo: [String] = []
+            for slot in slots {
+                if slot.hasSave {
+                    slotInfo.append("Slot \(slot.id): \(slot.displaySummary)")
+                } else {
+                    slotInfo.append("Slot \(slot.id): Empty")
+                }
+            }
+            return .success(slotInfo.joined(separator: "; "))
         case "options":
             if let button = children.first(where: { $0.name == "optionsButton" }) {
                 handleTap(at: button.position)

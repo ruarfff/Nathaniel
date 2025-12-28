@@ -16,9 +16,13 @@ class MainMenuScene: SKScene {
 
     /// Menu buttons
     private var continueButton: SKLabelNode?
+    private var loadGameButton: SKLabelNode?
     private var startButton: SKLabelNode!
     private var optionsButton: SKLabelNode!
     private var creditsButton: SKLabelNode!
+
+    /// Save slot selector for loading games
+    private var saveSlotSelector: SaveSlotSelector?
 
     /// Background node
     private var backgroundNode: SKSpriteNode?
@@ -35,6 +39,7 @@ class MainMenuScene: SKScene {
         setupBackground()
         setupTitle()
         setupMenuButtons()
+        setupSaveSlotSelector()
 
         // Start menu music
         AudioManager.shared.playMusic(.menu)
@@ -107,13 +112,22 @@ class MainMenuScene: SKScene {
         let buttonSpacing: CGFloat = 70
         var currentY = size.height * 0.45
 
-        // Continue button (only if there's saved progress)
+        // Continue button (only if there's saved campaign progress)
         if GameSettings.shared.hasSavedProgress {
             let continueLevel = GameSettings.shared.continueLevel
             continueButton = createMenuButton(text: "Continue (Level \(continueLevel))", yPosition: currentY)
             continueButton?.name = "continueButton"
             continueButton?.fontColor = SKColor(red: 0.3, green: 0.9, blue: 0.4, alpha: 1.0) // Green highlight
             addChild(continueButton!)
+            currentY -= buttonSpacing
+        }
+
+        // Load Game button (only if there are mid-level saves)
+        if SaveManager.shared.hasSaves {
+            loadGameButton = createMenuButton(text: "Load Game", yPosition: currentY)
+            loadGameButton?.name = "loadGameButton"
+            loadGameButton?.fontColor = SKColor(red: 0.4, green: 0.7, blue: 1.0, alpha: 1.0) // Blue highlight
+            addChild(loadGameButton!)
             currentY -= buttonSpacing
         }
 
@@ -135,6 +149,25 @@ class MainMenuScene: SKScene {
         addChild(creditsButton)
     }
 
+    private func setupSaveSlotSelector() {
+        let selector = SaveSlotSelector(size: size)
+        selector.zPosition = 1000  // Above everything else
+        // Position at center of scene (SaveSlotSelector is centered at origin)
+        selector.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        addChild(selector)
+        saveSlotSelector = selector
+
+        // Set up callbacks
+        selector.onSlotSelected = { [weak self] slotId in
+            self?.loadGameFromSlot(slotId)
+        }
+
+        selector.onCancel = {
+            // Just close the selector, stay on main menu
+            print("[MainMenuScene] Load cancelled")
+        }
+    }
+
     private func createMenuButton(text: String, yPosition: CGFloat) -> SKLabelNode {
         let button = SKLabelNode(fontNamed: "Copperplate-Bold")
         button.text = text
@@ -154,6 +187,12 @@ class MainMenuScene: SKScene {
     }
 
     private func handleButtonTap(at location: CGPoint) {
+        // Check if save slot selector handles the touch first
+        if let selector = saveSlotSelector, selector.isVisible {
+            _ = selector.handleTouch(at: location)
+            return
+        }
+
         let nodesAtPoint = nodes(at: location)
 
         for node in nodesAtPoint {
@@ -163,6 +202,10 @@ class MainMenuScene: SKScene {
             case "continueButton":
                 animateButtonPress(node as? SKLabelNode) {
                     self.continueGame()
+                }
+            case "loadGameButton":
+                animateButtonPress(node as? SKLabelNode) {
+                    self.showLoadGameSelector()
                 }
             case "startButton":
                 animateButtonPress(node as? SKLabelNode) {
@@ -224,6 +267,23 @@ class MainMenuScene: SKScene {
         let creditsScene = CreditsScene.newCreditsScene()
         let transition = SKTransition.fade(withDuration: 0.5)
         view?.presentScene(creditsScene, transition: transition)
+    }
+
+    private func showLoadGameSelector() {
+        saveSlotSelector?.show(mode: .load)
+    }
+
+    private func loadGameFromSlot(_ slotId: Int) {
+        guard let savedState = SaveManager.shared.loadFromSlot(slotId) else {
+            print("[MainMenuScene] Failed to load save from slot \(slotId)")
+            return
+        }
+
+        // Create game scene from saved state
+        let gameScene = GameScene.newGameScene(fromSave: savedState)
+
+        let transition = SKTransition.fade(withDuration: 0.5)
+        view?.presentScene(gameScene, transition: transition)
     }
 }
 

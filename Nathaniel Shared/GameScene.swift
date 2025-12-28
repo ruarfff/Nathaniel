@@ -59,6 +59,9 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     /// Pause menu overlay
     private var pauseMenu: PauseMenu!
 
+    /// Settings menu overlay
+    private var settingsMenu: SettingsMenu!
+
     /// Save slot selector overlay
     private var saveSlotSelector: SaveSlotSelector!
 
@@ -239,12 +242,25 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         }
 
         pauseMenu.onSettings = { [weak self] in
-            // TODO: Show settings menu (future task)
-            print("Settings button tapped - not yet implemented")
+            self?.showSettings()
         }
 
         pauseMenu.onSaveGame = { [weak self] in
             self?.showSaveSlotSelector()
+        }
+
+        // Set up settings menu
+        settingsMenu = SettingsMenu(size: size)
+        settingsMenu.zPosition = 920  // Above pause menu, below save slot selector
+        cameraNode.addChild(settingsMenu)
+
+        settingsMenu.onBack = { [weak self] in
+            // Return focus to pause menu (which is still visible underneath)
+            logger.debug("Settings menu closed")
+        }
+
+        settingsMenu.onSettingChanged = { setting, value in
+            logger.debug("Setting changed: \(setting.rawValue) = \(value)")
         }
 
         // Set up save slot selector
@@ -417,6 +433,12 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             self?.levelManager.resume()
             logger.info("Game resumed")
         }
+    }
+
+    /// Show the settings menu
+    private func showSettings() {
+        settingsMenu.show()
+        logger.debug("Showing settings menu")
     }
 
     /// Show the save slot selector
@@ -1255,6 +1277,12 @@ extension GameScene {
             return
         }
 
+        // Check if settings menu handles the touch (in HUD/camera space)
+        if settingsMenu.isVisible {
+            _ = settingsMenu.handleTouch(at: hudLocation)
+            return
+        }
+
         // Check if pause menu handles the touch (in HUD/camera space)
         if pauseMenu.isVisible {
             _ = pauseMenu.handleTouch(at: hudLocation)
@@ -1310,6 +1338,12 @@ extension GameScene {
         let hudLocation = cameraNode.convert(location, from: self)
         if saveSlotSelector.isVisible {
             _ = saveSlotSelector.handleTouch(at: hudLocation)
+            return
+        }
+
+        // Check if settings menu handles the click (in HUD/camera space)
+        if settingsMenu.isVisible {
+            _ = settingsMenu.handleTouch(at: hudLocation)
             return
         }
 
