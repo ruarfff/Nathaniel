@@ -522,3 +522,170 @@ AI assistants often create planning and design documents during development:
 - ❌ Do NOT use external issue trackers
 - ❌ Do NOT duplicate tracking systems
 - ❌ Do NOT clutter repo root with planning documents
+
+## Coding Standards
+
+### File Structure
+
+Every Swift file follows this header format:
+
+```swift
+//
+//  FileName.swift
+//  Nathaniel Shared
+//
+//  One-line description of what this file does.
+//
+
+import SpriteKit
+```
+
+### Code Organization
+
+Use `// MARK:` comments to organize code sections in this order:
+
+```swift
+class MyClass {
+    // MARK: - Constants
+    static let defaultValue = 100
+
+    // MARK: - Properties
+    var myProperty: String
+
+    // MARK: - Initialization
+    init() { }
+
+    // MARK: - Public Methods
+    func publicMethod() { }
+
+    // MARK: - Private Methods
+    private func privateHelper() { }
+
+    // MARK: - Protocol Conformance
+    // Group by protocol name
+}
+```
+
+### Naming Conventions
+
+| Type | Convention | Example |
+|------|------------|---------|
+| Classes/Structs/Enums | PascalCase | `Character`, `GunTower`, `LevelConfig` |
+| Properties/Methods | camelCase | `currentHP`, `maxSpeed`, `updateTexture()` |
+| Static Constants | PascalCase | `Nathaniel.defaultMaxHP` |
+| Enum Cases | camelCase | `.gunTower`, `.following`, `.south` |
+| Boolean Properties | `is`/`has` prefix | `isAlive`, `hasRangedWeapon` |
+
+### Memory Management
+
+**Always use weak references for:**
+- Delegates: `weak var delegate: MyDelegate?`
+- Targets that may be deallocated: `weak var target: Character?`
+- Closure captures that reference `self`: `{ [weak self] in ... }`
+
+```swift
+// Correct - avoids retain cycle
+weapon.onFire = { [weak self] projectile in
+    guard let self = self else { return }
+    self.scene?.addChild(projectile.sprite)
+}
+
+// Correct - delegate is weak
+weak var delegate: LevelManagerDelegate?
+```
+
+### Optionals
+
+Prefer safe unwrapping over force unwraps:
+
+```swift
+// Good - safe unwrapping
+if let target = currentTarget, target.isAlive {
+    attackTarget(target)
+}
+
+// Good - optional chaining
+if currentTarget?.isAlive != true {
+    findNewTarget()
+}
+
+// Avoid - force unwrap can crash
+if currentTarget != nil && currentTarget!.isAlive { ... }
+```
+
+### Error Handling
+
+Use `fatalError()` for programming errors (missing resources, invalid state):
+
+```swift
+guard let scene = SKScene(fileNamed: "GameScene") as? GameScene else {
+    fatalError("Failed to load GameScene.sks - ensure the file exists")
+}
+```
+
+Use optionals and graceful degradation for runtime conditions:
+
+```swift
+guard let target = findTarget() else {
+    // No target available - this is normal, not an error
+    return
+}
+```
+
+### DEBUG-Only Code
+
+Use `#if DEBUG` for development features:
+
+```swift
+#if DEBUG
+if DevSettings.shared.playerInvincible {
+    return  // Skip damage in god mode
+}
+#endif
+```
+
+### Game Loop Performance
+
+Avoid allocations in `update(deltaTime:)`:
+- Cache values that don't change every frame
+- Compare integers, not strings
+- Reuse objects where possible
+
+```swift
+// Good - compare integers
+private var cachedScore: Int = -1
+
+func update(score: Int) {
+    if score != cachedScore {
+        cachedScore = score
+        updateScoreLabel(score)
+    }
+}
+
+// Bad - creates strings every frame
+if scoreLabel.text != String(score) { ... }
+```
+
+### Comments
+
+- Add comments for non-obvious logic
+- Don't comment obvious code
+- Use `///` for documentation comments on public APIs
+
+```swift
+/// Find the nearest enemy within attack range
+/// - Returns: The closest enemy, or nil if none in range
+func findTargetInRange() -> Enemy? {
+    // Implementation
+}
+```
+
+## Documentation
+
+Additional documentation is available in the `docs/` directory:
+
+- [Adding Characters](docs/adding-characters.md) - How to create new player or enemy types
+- [Adding Levels](docs/adding-levels.md) - How to create new game levels
+- [Adding Towers](docs/adding-towers.md) - How to create new defensive structures
+- [Testing Guide](docs/testing.md) - How to test the game with GameCommandServer
+- [Automation](docs/automation.md) - Smoke tests and CI setup
