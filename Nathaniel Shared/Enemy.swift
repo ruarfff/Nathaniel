@@ -1,17 +1,9 @@
-//
-//  Enemy.swift
-//  Nathaniel Shared
-//
-//  Base class for enemy characters and specific enemy implementations.
-//
-
 import SpriteKit
 
 // MARK: - Enemy Base Class
 
 /// Base class for all enemy characters
 class Enemy: Character {
-
     // MARK: - Properties
 
     /// Score awarded when this enemy is killed
@@ -33,10 +25,10 @@ class Enemy: Character {
 
     /// Calculate a random resource drop amount within the configured range
     func calculateResourceDrop() -> Int {
-        guard resourceDropMax >= resourceDropMin && resourceDropMin > 0 else {
+        guard resourceDropMax >= resourceDropMin, resourceDropMin > 0 else {
             return 0
         }
-        return Int.random(in: resourceDropMin...resourceDropMax)
+        return Int.random(in: resourceDropMin ... resourceDropMax)
     }
 
     /// Current target (usually a player character)
@@ -62,7 +54,7 @@ class Enemy: Character {
 
     /// Whether this enemy has projectiles still in flight
     var hasActiveProjectiles: Bool {
-        return weapon?.hasActiveProjectiles ?? false
+        weapon?.hasActiveProjectiles ?? false
     }
 
     // MARK: - Threat System
@@ -70,17 +62,30 @@ class Enemy: Character {
     /// Threat table tracking threat per player
     var threatTable = ThreatTable()
 
+    /// Multiplier for threat generation (affects how easily this enemy changes targets)
+    /// Higher values = more responsive to threat changes
+    /// Lower values = more "sticky" to current target
+    var threatMultiplier: Float = 1.0
+
     /// Whether this enemy has been aggro'd (seen a player)
     private var hasInitialAggro = false
 
     // MARK: - Initialization
 
-    init(name: String, maxHP: Int, speed: CGFloat, killScore: Int,
-         visibleRange: CGFloat, attackRange: CGFloat,
-         meleeDamage: Int = 0, meleeAttackCooldown: TimeInterval = 1.0,
-         resourceDropMin: Int = 1, resourceDropMax: Int = 3,
-         spriteSheetCols: Int = 8, spriteSheetRows: Int = 4) {
-
+    init(
+        name: String,
+        maxHP: Int,
+        speed: CGFloat,
+        killScore: Int,
+        visibleRange: CGFloat,
+        attackRange: CGFloat,
+        meleeDamage: Int = 0,
+        meleeAttackCooldown: TimeInterval = 1.0,
+        resourceDropMin: Int = 1,
+        resourceDropMax: Int = 3,
+        spriteSheetCols: Int = 8,
+        spriteSheetRows: Int = 4
+    ) {
         self.killScore = killScore
         self.visibleRange = visibleRange
         self.attackRange = attackRange
@@ -103,9 +108,10 @@ class Enemy: Character {
     /// Add threat for a target (called when damage is dealt, etc.)
     /// - Parameters:
     ///   - target: The character generating threat
-    ///   - amount: Amount of threat to add
+    ///   - amount: Amount of threat to add (will be scaled by threatMultiplier)
     func addThreat(from target: Character, amount: Float) {
-        threatTable.addThreat(for: target, amount: amount)
+        let scaledAmount = amount * threatMultiplier
+        threatTable.addThreat(for: target, amount: scaledAmount)
     }
 
     /// Generate initial aggro threat when first spotting a player
@@ -127,7 +133,7 @@ class Enemy: Character {
 
     /// Get the target with highest threat, or nil if no threats
     func getHighestThreatTarget() -> Character? {
-        return threatTable.getHighestThreatTarget()
+        threatTable.getHighestThreatTarget()
     }
 
     /// Update threat decay
@@ -142,11 +148,11 @@ class Enemy: Character {
         // This ensures projectiles complete their trajectory instead of freezing
         weapon?.update(deltaTime: deltaTime)
 
-        guard isActive && isAlive else { return }
+        guard isActive, isAlive else { return }
 
         #if DEBUG
-        // Apply dev settings for live updates (speed set by subclasses)
-        applyDevSettings()
+            // Apply dev settings for live updates (speed set by subclasses)
+            applyDevSettings()
         #endif
 
         // Update melee timer
@@ -160,15 +166,15 @@ class Enemy: Character {
     }
 
     #if DEBUG
-    /// Override in subclasses to apply dev settings
-    func applyDevSettings() {
-        // Subclasses override this to apply their specific settings
-    }
+        /// Override in subclasses to apply dev settings
+        func applyDevSettings() {
+            // Subclasses override this to apply their specific settings
+        }
     #endif
 
     /// AI behavior - subclasses can override for custom behavior
     func updateAI(deltaTime: TimeInterval) {
-        guard let target = target, target.isAlive else {
+        guard let target, target.isAlive else {
             // No target or target dead - stop
             destination = nil
             isAttacking = false
@@ -191,7 +197,7 @@ class Enemy: Character {
         if distanceToTarget <= attackRange {
             // In range - attack!
             isAttacking = true
-            destination = nil  // Stop moving when attacking
+            destination = nil // Stop moving when attacking
 
             // Face target
             let direction = CGVector(dx: dx, dy: dy)
@@ -210,9 +216,9 @@ class Enemy: Character {
 
     /// Perform an attack (melee or ranged)
     func performAttack() {
-        guard let target = target, target.isAlive else { return }
+        guard let target, target.isAlive else { return }
 
-        if hasRangedWeapon, let weapon = weapon {
+        if hasRangedWeapon, let weapon {
             // Ranged attack
             _ = weapon.use(target: target.position)
         } else if meleeDamage > 0 {
@@ -235,7 +241,7 @@ class Enemy: Character {
         takeDamage(amount)
 
         // Generate threat if we have an attacker
-        if let attacker = attacker {
+        if let attacker {
             let threatAmount = Float(amount) * ThreatConfig.damageThreatMultiplier
             addThreat(from: attacker, amount: threatAmount)
         }
@@ -250,11 +256,10 @@ class Enemy: Character {
 
         // Row 0 = idle/attack, Row 1 = moving
         // Note: The grunt has 4 rows - rows 2 and 3 might be attack frames
-        let row: Int
-        if isAttacking || !isMoving {
-            row = 0
+        let row = if isAttacking || !isMoving {
+            0
         } else {
-            row = 1
+            1
         }
 
         guard row < frameTextures.count, col < frameTextures[row].count else { return }
@@ -266,7 +271,6 @@ class Enemy: Character {
 
 /// Basic melee enemy that chases and attacks players
 class Grunt: Enemy {
-
     // MARK: - Constants (from legacy code)
 
     /// Maximum health points
@@ -317,12 +321,15 @@ class Grunt: Enemy {
 
         // Initial facing
         facingDirection = .south
+
+        // Grunts are easily provoked and quickly switch targets
+        threatMultiplier = 1.2
     }
 
     #if DEBUG
-    override func applyDevSettings() {
-        speed = DevSettings.shared.gruntSpeed
-    }
+        override func applyDevSettings() {
+            speed = DevSettings.shared.gruntSpeed
+        }
     #endif
 }
 
@@ -330,7 +337,6 @@ class Grunt: Enemy {
 
 /// Ranged weapon used by enemies that shoots red bullets
 class Blaster: Gun {
-
     init(cooldownTime: TimeInterval = 0.8, damage: Int = 25, range: CGFloat = 600) {
         super.init(
             cooldownTime: cooldownTime,
@@ -346,13 +352,12 @@ class Blaster: Gun {
 
 /// Bow weapon that shoots arrows - used by the Boss
 class Bow: Gun {
-
     init(cooldownTime: TimeInterval = 1.5, damage: Int = 25, range: CGFloat = 300) {
         super.init(
             cooldownTime: cooldownTime,
             damage: damage,
             range: range,
-            bulletSpeed: 400,  // Arrows are slower than bullets
+            bulletSpeed: 400, // Arrows are slower than bullets
             bulletTexture: "arrow",
             projectileType: .arrow
         )
@@ -363,7 +368,6 @@ class Bow: Gun {
 
 /// Boss enemy for Level One - high HP, ranged attacks, triggers victory when defeated
 class Boss: Enemy {
-
     // MARK: - Constants (from legacy code)
 
     /// Maximum health points (very high for boss)
@@ -403,12 +407,12 @@ class Boss: Enemy {
             killScore: Boss.defaultKillScore,
             visibleRange: Boss.defaultVisibleRange,
             attackRange: Boss.defaultAttackRange,
-            meleeDamage: 0,  // No melee - ranged only
+            meleeDamage: 0, // No melee - ranged only
             meleeAttackCooldown: 0,
             resourceDropMin: Boss.defaultResourceDropMin,
             resourceDropMax: Boss.defaultResourceDropMax,
             spriteSheetCols: 8,
-            spriteSheetRows: 8  // Boss has 8 rows for more animation variety
+            spriteSheetRows: 8 // Boss has 8 rows for more animation variety
         )
 
         // Configure ranged weapon (Bow)
@@ -421,13 +425,16 @@ class Boss: Enemy {
 
         // Initial facing
         facingDirection = .south
+
+        // Bosses are more deliberate and harder to pull aggro from their target
+        threatMultiplier = 0.8
     }
 
     // MARK: - AI Override
 
     /// Boss-specific AI: approach target but maintain comfortable attack distance
     override func updateAI(deltaTime: TimeInterval) {
-        guard let target = target, target.isAlive else {
+        guard let target, target.isAlive else {
             destination = nil
             isAttacking = false
             return
@@ -487,13 +494,12 @@ class Boss: Enemy {
         // For boss: row 5 has idle frames, rows 0-4 have movement
         // The legacy code uses frames[index, col] for movement where index = 0-3
         // and frames[5, col] for idle
-        let row: Int
-        if isMoving {
+        let row: Int = if isMoving {
             // Use movement row (cycle through first 4 rows based on animation)
-            row = min(1, frameTextures.count - 1)  // Simplified: just use row 1 for walking
+            min(1, frameTextures.count - 1) // Simplified: just use row 1 for walking
         } else {
             // Use idle row (row 5 in legacy, but we may have fewer rows)
-            row = min(5, frameTextures.count - 1)
+            min(5, frameTextures.count - 1)
         }
 
         guard row < frameTextures.count, col < frameTextures[row].count else { return }
@@ -501,9 +507,9 @@ class Boss: Enemy {
     }
 
     #if DEBUG
-    override func applyDevSettings() {
-        speed = DevSettings.shared.bossSpeed
-    }
+        override func applyDevSettings() {
+            speed = DevSettings.shared.bossSpeed
+        }
     #endif
 
     // MARK: - Death Override
@@ -518,7 +524,6 @@ class Boss: Enemy {
 
 /// Ranged enemy that keeps distance and shoots at players
 class Soldier: Enemy {
-
     // MARK: - Constants (from legacy code)
 
     /// Maximum health points
@@ -550,12 +555,12 @@ class Soldier: Enemy {
             killScore: Soldier.defaultKillScore,
             visibleRange: Soldier.defaultRange,
             attackRange: Soldier.defaultRange,
-            meleeDamage: 0,  // No melee - ranged only
+            meleeDamage: 0, // No melee - ranged only
             meleeAttackCooldown: 0,
             resourceDropMin: Soldier.defaultResourceDropMin,
             resourceDropMax: Soldier.defaultResourceDropMax,
             spriteSheetCols: 8,
-            spriteSheetRows: 2  // Soldier has only 2 rows
+            spriteSheetRows: 2 // Soldier has only 2 rows
         )
 
         // Configure ranged weapon
@@ -571,16 +576,16 @@ class Soldier: Enemy {
     }
 
     #if DEBUG
-    override func applyDevSettings() {
-        speed = DevSettings.shared.soldierSpeed
-    }
+        override func applyDevSettings() {
+            speed = DevSettings.shared.soldierSpeed
+        }
     #endif
 
     // MARK: - AI Override
 
     /// Soldier-specific AI: maintain distance while shooting
     override func updateAI(deltaTime: TimeInterval) {
-        guard let target = target, target.isAlive else {
+        guard let target, target.isAlive else {
             destination = nil
             isAttacking = false
             return

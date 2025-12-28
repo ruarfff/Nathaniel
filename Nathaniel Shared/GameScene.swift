@@ -1,20 +1,12 @@
-//
-//  GameScene.swift
-//  Nathaniel Shared
-//
-//  Created by Ruairi O'Brien on 11/29/25.
-//
-
-import SpriteKit
 import os.log
+import SpriteKit
 #if os(iOS)
-import UIKit
+    import UIKit
 #endif
 
 private let logger = Logger(subsystem: "com.ruarfff.Nathaniel", category: "GameScene")
 
 class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPlacementControllerDelegate {
-
     // MARK: - Properties
 
     /// The level configuration to use
@@ -106,8 +98,8 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     private var towerPlacementController: TowerPlacementController?
 
     #if os(iOS)
-    /// Haptic feedback generator for targeting
-    private var hapticGenerator: UIImpactFeedbackGenerator?
+        /// Haptic feedback generator for targeting
+        private var hapticGenerator: UIImpactFeedbackGenerator?
     #endif
 
     // MARK: - Scene Setup
@@ -144,8 +136,8 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         AudioManager.shared.playMusic(.gameplay)
 
         #if DEBUG
-        // Set this scene as the command server delegate
-        GameCommandServer.shared.delegate = self
+            // Set this scene as the command server delegate
+            GameCommandServer.shared.delegate = self
         #endif
 
         // Restore from save if loading from saved game
@@ -154,8 +146,8 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     private func setupHaptics() {
         #if os(iOS)
-        hapticGenerator = UIImpactFeedbackGenerator(style: .medium)
-        hapticGenerator?.prepare()
+            hapticGenerator = UIImpactFeedbackGenerator(style: .medium)
+            hapticGenerator?.prepare()
         #endif
     }
 
@@ -211,7 +203,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     private func setupOverlay() {
         gameOverlay = GameOverlay(size: size)
-        gameOverlay.zPosition = 1000
+        gameOverlay.zPosition = 1_000
         cameraNode.addChild(gameOverlay)
 
         // Set up overlay callbacks
@@ -229,7 +221,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
         // Set up pause menu
         pauseMenu = PauseMenu(size: size)
-        pauseMenu.zPosition = 900  // Below game overlay but above HUD
+        pauseMenu.zPosition = 900 // Below game overlay but above HUD
         cameraNode.addChild(pauseMenu)
 
         // Wire up pause menu callbacks
@@ -247,7 +239,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
         // Set up settings menu
         settingsMenu = SettingsMenu(size: size)
-        settingsMenu.zPosition = 920  // Above pause menu, below save slot selector
+        settingsMenu.zPosition = 920 // Above pause menu, below save slot selector
         cameraNode.addChild(settingsMenu)
 
         settingsMenu.onBack = { [weak self] in
@@ -261,7 +253,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
         // Set up save slot selector
         saveSlotSelector = SaveSlotSelector(size: size)
-        saveSlotSelector.zPosition = 950  // Above pause menu
+        saveSlotSelector.zPosition = 950 // Above pause menu
         cameraNode.addChild(saveSlotSelector)
 
         saveSlotSelector.onSlotSelected = { [weak self] slotId in
@@ -315,13 +307,13 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         ResourceManager.shared.restore(total: state.resources)
 
         // Restore Nathaniel
-        if let nathaniel = nathaniel {
+        if let nathaniel {
             nathaniel.restoreFromSavedState(state.nathaniel)
-            startPosition = nathaniel.position  // Update respawn point
+            startPosition = nathaniel.position // Update respawn point
         }
 
         // Restore Hermes
-        if let hermes = hermes {
+        if let hermes {
             hermes.restoreFromSavedState(state.hermes)
         }
 
@@ -346,19 +338,17 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         // Restore towers
         for towerState in state.towers {
             let position = towerState.position.cgPoint
-            var tower: DefensiveStructure?
-
-            switch towerState.type {
+            var tower: DefensiveStructure? = switch towerState.type {
             case .gunTower:
-                tower = structureManager.addGunTower(at: position)
+                structureManager.addGunTower(at: position)
             case .laserTower:
-                tower = structureManager.addLaserTower(at: position)
+                structureManager.addLaserTower(at: position)
             case .healTower:
-                tower = structureManager.addHealTower(at: position)
+                structureManager.addHealTower(at: position)
             }
 
             // Restore tower HP
-            if let tower = tower {
+            if let tower {
                 tower.currentHP = towerState.currentHP
 
                 // Mark as Hermes-owned if applicable
@@ -374,7 +364,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         }
 
         // Update camera to follow restored Nathaniel position
-        if let nathaniel = nathaniel {
+        if let nathaniel {
             cameraNode.position = nathaniel.position
         }
 
@@ -472,7 +462,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         notification.fontSize = 24
         notification.fontColor = color
         notification.position = CGPoint(x: 0, y: -100)
-        notification.zPosition = 1000
+        notification.zPosition = 1_000
         notification.alpha = 0
 
         cameraNode.addChild(notification)
@@ -487,25 +477,34 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     }
 
     private func setupHUD() {
-        // Calculate visible area based on view aspect ratio and scene scale mode
+        // Calculate visible area for HUD positioning
+        // The HUD is attached to the camera, which uses centered coordinates
         // With .aspectFill, the scene is scaled to fill the view, potentially cropping edges
+        //
+        // IMPORTANT: We assume landscape orientation where width > height
+        // The view.bounds may not be reliable during didMove(to:) as the layout
+        // may not have completed yet. We use max/min to ensure correct orientation.
         let hudSize: CGSize
-        if let view = self.view {
-            let viewAspect = view.bounds.width / view.bounds.height
+        if let view {
+            // Get view dimensions, ensuring landscape orientation (width > height)
+            let viewWidth = max(view.bounds.width, view.bounds.height)
+            let viewHeight = min(view.bounds.width, view.bounds.height)
+            let viewAspect = viewWidth / viewHeight
             let sceneAspect = size.width / size.height
 
             if viewAspect > sceneAspect {
                 // View is wider than scene - scene height is cropped
+                // Full scene width is visible, calculate visible height
                 let visibleWidth = size.width
                 let visibleHeight = size.width / viewAspect
                 hudSize = CGSize(width: visibleWidth, height: visibleHeight)
             } else {
                 // View is taller than scene - scene width is cropped
+                // Full scene height is visible, calculate visible width
                 let visibleHeight = size.height
                 let visibleWidth = size.height * viewAspect
                 hudSize = CGSize(width: visibleWidth, height: visibleHeight)
             }
-            print("HUD: view=\(view.bounds.size), scene=\(size), visible=\(hudSize)")
         } else {
             hudSize = size
         }
@@ -555,7 +554,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     private func loadMap() {
         let mapName = levelConfig.mapName
-        logger.info("loadMap() called for level \(self.levelConfig.levelNumber): \(mapName)")
+        logger.info("loadMap() called for level \(levelConfig.levelNumber): \(mapName)")
         let parser = TMXParser()
 
         // Try to load the map from the bundle using level config
@@ -574,11 +573,15 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         }
 
         logger.info("Loaded map \(map.width)x\(map.height) tiles, \(map.pixelWidth)x\(map.pixelHeight) pixels")
-        logger.info("\(map.tilesets.count) tilesets, \(map.layers.count) layers, \(map.objectGroups.count) object groups")
+        logger
+            .info("\(map.tilesets.count) tilesets, \(map.layers.count) layers, \(map.objectGroups.count) object groups")
 
         // Log tileset info
         for tileset in map.tilesets {
-            logger.info("Tileset: \(tileset.name), firstGid: \(tileset.firstGid), image: \(tileset.imageSource), size: \(tileset.imageWidth)x\(tileset.imageHeight)")
+            logger
+                .info(
+                    "Tileset: \(tileset.name), firstGid: \(tileset.firstGid), image: \(tileset.imageSource), size: \(tileset.imageWidth)x\(tileset.imageHeight)"
+                )
         }
 
         // Log layer info
@@ -592,7 +595,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
         // Create and add map node
         mapNode = mapRenderer?.createMapNode()
-        if let mapNode = mapNode {
+        if let mapNode {
             addChild(mapNode)
             print("GameScene: Map node added with \(mapNode.children.count) layer nodes")
         }
@@ -653,7 +656,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             levelManager.startPosition = spawnPos
 
             nathaniel = Nathaniel()
-            if let nathaniel = nathaniel {
+            if let nathaniel {
                 nathaniel.position = spawnPos
                 nathaniel.sprite.zPosition = characterZPosition
                 nathaniel.sprite.setScale(3.0)
@@ -661,13 +664,13 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
                 // Set up health bar (scaled for the 3x sprite size)
                 nathaniel.setupHealthBar(width: 40, yOffset: 8)
-                nathaniel.healthBar?.hideWhenFull = false  // Always show player health
+                nathaniel.healthBar?.hideWhenFull = false // Always show player health
 
                 // Wire up weapon callbacks
                 nathaniel.weapon.onFire = { [weak self] projectile in
-                    guard let self = self else { return }
+                    guard let self else { return }
                     projectile.sprite.setScale(2.0)
-                    self.addChild(projectile.sprite)
+                    addChild(projectile.sprite)
                 }
 
                 // Wire up death callback for game over handling
@@ -687,18 +690,18 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             let spawnPos = renderer.convertToSpriteKit(point: spawnObject.center)
 
             hermes = Hermes()
-            if let hermes = hermes {
+            if let hermes {
                 hermes.position = spawnPos
                 hermes.sprite.zPosition = characterZPosition
                 hermes.sprite.setScale(3.0)
 
                 // Set Hermes to follow Nathaniel
                 hermes.followTarget = nathaniel
-                hermes.isInBuildMode = false  // Start following
+                hermes.isInBuildMode = false // Start following
 
                 // Set up health bar
                 hermes.setupHealthBar(width: 40, yOffset: 8)
-                hermes.healthBar?.hideWhenFull = false  // Always show player health
+                hermes.healthBar?.hideWhenFull = false // Always show player health
 
                 addChild(hermes.sprite)
                 print("GameScene: Spawned Hermes at \(spawnPos.x), \(spawnPos.y)")
@@ -711,7 +714,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         selectedCharacter = nathaniel
 
         // Position camera at Nathaniel
-        if let nathaniel = nathaniel {
+        if let nathaniel {
             cameraNode.position = nathaniel.position
         }
 
@@ -721,12 +724,12 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     /// Spawn enemies based on level config (map-based or wave-based)
     private func spawnEnemies() {
-        guard let nathaniel = nathaniel else { return }
+        guard let nathaniel else { return }
 
         // Register player characters with enemy manager
         var players: [Character] = []
         if let n = self.nathaniel { players.append(n) }
-        if let h = self.hermes { players.append(h) }
+        if let h = hermes { players.append(h) }
         enemyManager.playerCharacters = players
 
         // Set up weapon collision callback for Nathaniel's bullets to hit enemies
@@ -775,7 +778,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         waveSpawner?.mapHeight = CGFloat(renderer.map.pixelHeight)
 
         // Set difficulty based on level
-        if levelConfig.levelNumber == 5 {  // Final level
+        if levelConfig.levelNumber == 5 { // Final level
             waveSpawner?.difficulty = .hard
         } else {
             waveSpawner?.difficulty = .normal
@@ -786,7 +789,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     /// Spawn test defensive structures for testing
     private func spawnTestStructures() {
-        guard let nathaniel = nathaniel else { return }
+        guard let nathaniel else { return }
 
         // Spawn a gun tower near Nathaniel
         structureManager.addGunTower(at: CGPoint(
@@ -815,8 +818,8 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         debugLabel?.fontColor = .white
         debugLabel?.horizontalAlignmentMode = .left
         debugLabel?.verticalAlignmentMode = .top
-        debugLabel?.position = CGPoint(x: -size.width/2 + 10, y: size.height/2 - 10)
-        debugLabel?.zPosition = 1000
+        debugLabel?.position = CGPoint(x: -size.width / 2 + 10, y: size.height / 2 - 10)
+        debugLabel?.zPosition = 1_000
         cameraNode.addChild(debugLabel!)
         updateDebugLabel()
     }
@@ -852,16 +855,16 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             debugText += "HP: \(selected.currentHP)/\(selected.maxHP)\n"
 
             // Show Hermes-specific info
-            if let hermes = hermes, selected === hermes {
+            if let hermes, selected === hermes {
                 debugText += "Follow: \(!hermes.isInBuildMode)\n"
             }
         }
 
         // Show other character summary
-        if let nathaniel = nathaniel, selectedCharacter !== nathaniel {
+        if let nathaniel, selectedCharacter !== nathaniel {
             debugText += "\nNathaniel: HP \(nathaniel.currentHP)/\(nathaniel.maxHP)"
         }
-        if let hermes = hermes, selectedCharacter !== hermes {
+        if let hermes, selectedCharacter !== hermes {
             debugText += "\nHermes: HP \(hermes.currentHP)/\(hermes.maxHP)"
         }
 
@@ -879,11 +882,10 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     override func update(_ currentTime: TimeInterval) {
         // Calculate delta time
-        let deltaTime: TimeInterval
-        if lastUpdateTime == 0 {
-            deltaTime = 0
+        let deltaTime: TimeInterval = if lastUpdateTime == 0 {
+            0
         } else {
-            deltaTime = currentTime - lastUpdateTime
+            currentTime - lastUpdateTime
         }
         lastUpdateTime = currentTime
 
@@ -980,11 +982,11 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         // Collect character positions and vision ranges
         var visiblePositions: [(CGPoint, CGFloat)] = []
 
-        if let nathaniel = nathaniel, nathaniel.isAlive {
+        if let nathaniel, nathaniel.isAlive {
             visiblePositions.append((nathaniel.position, nathaniel.visionRange))
         }
 
-        if let hermes = hermes, hermes.isAlive {
+        if let hermes, hermes.isAlive {
             visiblePositions.append((hermes.position, hermes.visionRange))
         }
 
@@ -1027,7 +1029,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     /// Respawn Nathaniel at start position
     private func respawnNathaniel() {
-        guard let nathaniel = nathaniel else { return }
+        guard let nathaniel else { return }
 
         // Re-add sprite to scene if removed
         if nathaniel.sprite.parent == nil {
@@ -1049,7 +1051,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
         // Re-register with enemy manager
         enemyManager.playerCharacters = [nathaniel]
-        if let hermes = hermes, hermes.isAlive {
+        if let hermes, hermes.isAlive {
             enemyManager.playerCharacters.append(hermes)
         }
 
@@ -1106,7 +1108,11 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     // MARK: - TowerPlacementControllerDelegate
 
-    func placementController(_ controller: TowerPlacementController, didPlaceTower type: TowerType, at position: CGPoint) {
+    func placementController(
+        _ controller: TowerPlacementController,
+        didPlaceTower type: TowerType,
+        at position: CGPoint
+    ) {
         // Lock Hermes in build mode
         hermes?.isInBuildMode = true
 
@@ -1120,7 +1126,11 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         logger.debug("Placed \(type.displayName) at (\(position.x), \(position.y))")
     }
 
-    func placementController(_ controller: TowerPlacementController, didFailPlacement type: TowerType, reason: PlacementResult) {
+    func placementController(
+        _ controller: TowerPlacementController,
+        didFailPlacement type: TowerType,
+        reason: PlacementResult
+    ) {
         // Log failure reason
         switch reason {
         case .valid:
@@ -1145,16 +1155,16 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     /// Make the camera smoothly follow the selected character
     private func updateCameraFollow() {
         #if DEBUG
-        // Skip camera following in free mode
-        if DevSettings.shared.cameraFreeMode {
-            return
-        }
+            // Skip camera following in free mode
+            if DevSettings.shared.cameraFreeMode {
+                return
+            }
 
-        // Apply zoom from dev settings if changed
-        let targetZoom = DevSettings.shared.cameraZoom
-        if abs(cameraZoom - targetZoom) > 0.01 {
-            setZoom(targetZoom)
-        }
+            // Apply zoom from dev settings if changed
+            let targetZoom = DevSettings.shared.cameraZoom
+            if abs(cameraZoom - targetZoom) > 0.01 {
+                setZoom(targetZoom)
+            }
         #endif
 
         // Skip if camera is animating (e.g., during character switch)
@@ -1176,9 +1186,9 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
         // Smooth camera movement (lerp)
         #if DEBUG
-        let smoothFactor = DevSettings.shared.cameraFollowSmoothing
+            let smoothFactor = DevSettings.shared.cameraFollowSmoothing
         #else
-        let smoothFactor: CGFloat = 0.1
+            let smoothFactor: CGFloat = 0.1
         #endif
         let currentPos = cameraNode.position
         cameraNode.position = CGPoint(
@@ -1211,18 +1221,18 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     /// Get effective min zoom (from DevSettings in DEBUG)
     private var effectiveMinZoom: CGFloat {
         #if DEBUG
-        return DevSettings.shared.cameraMinZoom
+            return DevSettings.shared.cameraMinZoom
         #else
-        return minZoom
+            return minZoom
         #endif
     }
 
     /// Get effective max zoom (from DevSettings in DEBUG)
     private var effectiveMaxZoom: CGFloat {
         #if DEBUG
-        return DevSettings.shared.cameraMaxZoom
+            return DevSettings.shared.cameraMaxZoom
         #else
-        return maxZoom
+            return maxZoom
         #endif
     }
 
@@ -1260,181 +1270,178 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 // MARK: - iOS Touch Handling
 
 #if os(iOS) || os(tvOS)
-extension GameScene {
+    extension GameScene {
+        override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+            guard let touch = touches.first else { return }
+            let location = touch.location(in: self)
 
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first else { return }
-        let location = touch.location(in: self)
+            // Check if save slot selector handles the touch (in HUD/camera space)
+            let hudLocation = cameraNode.convert(location, from: self)
+            if saveSlotSelector.isVisible {
+                _ = saveSlotSelector.handleTouch(at: hudLocation)
+                return
+            }
 
-        // Check if save slot selector handles the touch (in HUD/camera space)
-        let hudLocation = cameraNode.convert(location, from: self)
-        if saveSlotSelector.isVisible {
-            _ = saveSlotSelector.handleTouch(at: hudLocation)
-            return
+            // Check if settings menu handles the touch (in HUD/camera space)
+            if settingsMenu.isVisible {
+                _ = settingsMenu.handleTouch(at: hudLocation)
+                return
+            }
+
+            // Check if pause menu handles the touch (in HUD/camera space)
+            if pauseMenu.isVisible {
+                _ = pauseMenu.handleTouch(at: hudLocation)
+                return
+            }
+
+            // Check if build menu handles the touch (in HUD/camera space)
+            if let controller = towerPlacementController,
+               controller.handleTouchBegan(at: hudLocation)
+            {
+                return
+            }
+
+            handleTap(at: location)
         }
 
-        // Check if settings menu handles the touch (in HUD/camera space)
-        if settingsMenu.isVisible {
-            _ = settingsMenu.handleTouch(at: hudLocation)
-            return
+        override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+            guard let touch = touches.first else { return }
+            let location = touch.location(in: self)
+
+            // Forward to build menu if dragging
+            if let controller = towerPlacementController, controller.isDragging {
+                // Placement indicator works in world space
+                _ = controller.handleTouchMoved(to: location, in: self)
+            }
         }
 
-        // Check if pause menu handles the touch (in HUD/camera space)
-        if pauseMenu.isVisible {
-            _ = pauseMenu.handleTouch(at: hudLocation)
-            return
+        override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+            guard let touch = touches.first else { return }
+            let location = touch.location(in: self)
+
+            // Forward to build menu if dragging
+            if let controller = towerPlacementController, controller.isDragging {
+                _ = controller.handleTouchEnded(at: location)
+            }
         }
 
-        // Check if build menu handles the touch (in HUD/camera space)
-        if let controller = towerPlacementController,
-           controller.handleTouchBegan(at: hudLocation) {
-            return
+        override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+            // Cancel any active build menu drag
+            towerPlacementController?.handleTouchCancelled()
         }
-
-        handleTap(at: location)
     }
-
-    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first else { return }
-        let location = touch.location(in: self)
-
-        // Forward to build menu if dragging
-        if let controller = towerPlacementController, controller.isDragging {
-            // Placement indicator works in world space
-            _ = controller.handleTouchMoved(to: location, in: self)
-        }
-    }
-
-    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first else { return }
-        let location = touch.location(in: self)
-
-        // Forward to build menu if dragging
-        if let controller = towerPlacementController, controller.isDragging {
-            _ = controller.handleTouchEnded(at: location)
-        }
-    }
-
-    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        // Cancel any active build menu drag
-        towerPlacementController?.handleTouchCancelled()
-    }
-}
 #endif
 
 // MARK: - macOS Mouse/Keyboard Handling
 
 #if os(OSX)
-extension GameScene {
+    extension GameScene {
+        override func mouseDown(with event: NSEvent) {
+            let location = event.location(in: self)
 
-    override func mouseDown(with event: NSEvent) {
-        let location = event.location(in: self)
+            // Check if save slot selector handles the click (in HUD/camera space)
+            let hudLocation = cameraNode.convert(location, from: self)
+            if saveSlotSelector.isVisible {
+                _ = saveSlotSelector.handleTouch(at: hudLocation)
+                return
+            }
 
-        // Check if save slot selector handles the click (in HUD/camera space)
-        let hudLocation = cameraNode.convert(location, from: self)
-        if saveSlotSelector.isVisible {
-            _ = saveSlotSelector.handleTouch(at: hudLocation)
-            return
+            // Check if settings menu handles the click (in HUD/camera space)
+            if settingsMenu.isVisible {
+                _ = settingsMenu.handleTouch(at: hudLocation)
+                return
+            }
+
+            // Check if pause menu handles the click (in HUD/camera space)
+            if pauseMenu.isVisible {
+                _ = pauseMenu.handleTouch(at: hudLocation)
+                return
+            }
+
+            handleTap(at: location)
         }
 
-        // Check if settings menu handles the click (in HUD/camera space)
-        if settingsMenu.isVisible {
-            _ = settingsMenu.handleTouch(at: hudLocation)
-            return
+        override func mouseDragged(with event: NSEvent) {
+            // Right-click drag to pan camera manually (optional)
         }
 
-        // Check if pause menu handles the click (in HUD/camera space)
-        if pauseMenu.isVisible {
-            _ = pauseMenu.handleTouch(at: hudLocation)
-            return
+        override func mouseUp(with event: NSEvent) {}
+
+        override func scrollWheel(with event: NSEvent) {
+            // Use scroll delta for zoom - positive deltaY = scroll up = zoom in
+            let zoomSensitivity: CGFloat = 0.02
+            let zoomDelta = event.scrollingDeltaY * zoomSensitivity
+            updateZoom(by: 1.0 + zoomDelta)
         }
 
-        handleTap(at: location)
-    }
+        override func rightMouseDown(with event: NSEvent) {
+            // Right-click to fire weapon at location
+            let location = event.location(in: self)
+            if let nathaniel {
+                if nathaniel.fireAt(location) {
+                    logger.debug("Fired at \(location.x), \(location.y)")
+                }
+            }
+        }
 
-    override func mouseDragged(with event: NSEvent) {
-        // Right-click drag to pan camera manually (optional)
-    }
+        override func keyDown(with event: NSEvent) {
+            // Escape key toggles pause (works in both playing and paused states)
+            if event.keyCode == 53 { // Escape key
+                if levelManager.state == .paused {
+                    resumeGame()
+                } else if levelManager.state == .playing {
+                    pauseGame()
+                }
+                return
+            }
 
-    override func mouseUp(with event: NSEvent) {
-    }
+            // Check if the overlay is showing (victory/game over)
+            if gameOverlay.state == .victory || gameOverlay.state == .gameOver {
+                gameOverlay.handleInteraction()
+                return
+            }
 
-    override func scrollWheel(with event: NSEvent) {
-        // Use scroll delta for zoom - positive deltaY = scroll up = zoom in
-        let zoomSensitivity: CGFloat = 0.02
-        let zoomDelta = event.scrollingDeltaY * zoomSensitivity
-        updateZoom(by: 1.0 + zoomDelta)
-    }
+            // Don't handle other keys if game is not in playing state
+            guard levelManager.state == .playing else { return }
 
-    override func rightMouseDown(with event: NSEvent) {
-        // Right-click to fire weapon at location
-        let location = event.location(in: self)
-        if let nathaniel = nathaniel {
-            if nathaniel.fireAt(location) {
-                logger.debug("Fired at \(location.x), \(location.y)")
+            switch event.keyCode {
+            case 1: // S key - stop movement
+                selectedCharacter?.stop()
+            case 3: // F key - fire weapon at mouse position
+                fireAtMousePosition()
+            case 15: // R key - toggle Hermes follow mode
+                if let hermes {
+                    hermes.isInBuildMode = !hermes.isInBuildMode
+                    logger.debug("Hermes follow mode: \(!hermes.isInBuildMode)")
+                }
+            case 49: // Space key - switch selected character
+                toggleSelectedCharacter()
+            default:
+                break
+            }
+        }
+
+        /// Fire Nathaniel's weapon at the current mouse position
+        private func fireAtMousePosition() {
+            guard let view,
+                  let nathaniel else { return }
+
+            let mouseLocationInWindow = NSEvent.mouseLocation
+            guard let window = view.window else { return }
+            let windowLocation = window.convertPoint(fromScreen: mouseLocationInWindow)
+            let viewLocation = view.convert(windowLocation, from: nil)
+            let sceneLocation = convertPoint(fromView: viewLocation)
+
+            if nathaniel.fireAt(sceneLocation) {
+                logger.debug("Fired at \(sceneLocation.x), \(sceneLocation.y)")
             }
         }
     }
-
-    override func keyDown(with event: NSEvent) {
-        // Escape key toggles pause (works in both playing and paused states)
-        if event.keyCode == 53 {  // Escape key
-            if levelManager.state == .paused {
-                resumeGame()
-            } else if levelManager.state == .playing {
-                pauseGame()
-            }
-            return
-        }
-
-        // Check if the overlay is showing (victory/game over)
-        if gameOverlay.state == .victory || gameOverlay.state == .gameOver {
-            gameOverlay.handleInteraction()
-            return
-        }
-
-        // Don't handle other keys if game is not in playing state
-        guard levelManager.state == .playing else { return }
-
-        switch event.keyCode {
-        case 1: // S key - stop movement
-            selectedCharacter?.stop()
-        case 3: // F key - fire weapon at mouse position
-            fireAtMousePosition()
-        case 15: // R key - toggle Hermes follow mode
-            if let hermes = hermes {
-                hermes.isInBuildMode = !hermes.isInBuildMode
-                logger.debug("Hermes follow mode: \(!hermes.isInBuildMode)")
-            }
-        case 49: // Space key - switch selected character
-            toggleSelectedCharacter()
-        default:
-            break
-        }
-    }
-
-    /// Fire Nathaniel's weapon at the current mouse position
-    private func fireAtMousePosition() {
-        guard let view = self.view,
-              let nathaniel = nathaniel else { return }
-
-        let mouseLocationInWindow = NSEvent.mouseLocation
-        guard let window = view.window else { return }
-        let windowLocation = window.convertPoint(fromScreen: mouseLocationInWindow)
-        let viewLocation = view.convert(windowLocation, from: nil)
-        let sceneLocation = convertPoint(fromView: viewLocation)
-
-        if nathaniel.fireAt(sceneLocation) {
-            logger.debug("Fired at \(sceneLocation.x), \(sceneLocation.y)")
-        }
-    }
-}
 #endif
 
 // MARK: - Input Handling
 
 extension GameScene {
-
     /// Handle tap/click - either select a character, target an enemy, or move the selected character
     func handleTap(at location: CGPoint) {
         // Check if the overlay is showing (victory/game over)
@@ -1453,13 +1460,13 @@ extension GameScene {
         }
 
         // Check if tapping on a character to select them
-        if let nathaniel = nathaniel, nathaniel.contains(point: location) {
+        if let nathaniel, nathaniel.contains(point: location) {
             selectCharacter(nathaniel)
             logger.debug("Selected Nathaniel")
             return
         }
 
-        if let hermes = hermes, hermes.contains(point: location) {
+        if let hermes, hermes.contains(point: location) {
             selectCharacter(hermes)
             logger.debug("Selected Hermes")
             return
@@ -1483,21 +1490,21 @@ extension GameScene {
         selectedCharacter = character
 
         // If selecting Hermes, show build button and put in independent control
-        if let hermes = hermes, character === hermes {
-            hermes.isInBuildMode = true  // Stops following, allows independent control
-            hermes.showSelectionHighlight()  // Show build radius indicator
+        if let hermes, character === hermes {
+            hermes.isInBuildMode = true // Stops following, allows independent control
+            hermes.showSelectionHighlight() // Show build radius indicator
             hud.showBuildButton()
-            hud.hideFollowModeButton()  // Hide follow button when Hermes is selected
+            hud.hideFollowModeButton() // Hide follow button when Hermes is selected
 
             // Update placement controller with Hermes reference
             towerPlacementController?.validator.hermes = hermes
             towerPlacementController?.updateAffordability()
 
             // Configure validator with current game state
-            if let mapRenderer = mapRenderer {
+            if let mapRenderer {
                 var players: [Character] = []
                 if let n = nathaniel { players.append(n) }
-                players.append(hermes)  // hermes is known non-nil here
+                players.append(hermes) // hermes is known non-nil here
                 towerPlacementController?.configureValidator(
                     tmxRenderer: mapRenderer,
                     enemyManager: enemyManager,
@@ -1511,7 +1518,7 @@ extension GameScene {
             hermes?.hideSelectionHighlight()
 
             // Show follow mode button when Nathaniel is selected (to control Hermes)
-            if let hermes = hermes {
+            if let hermes {
                 let isFollowing = hermes.mode == .following
                 hud.showFollowModeButton(isFollowing: isFollowing)
             }
@@ -1524,12 +1531,12 @@ extension GameScene {
     /// Toggle between Nathaniel and Hermes
     func toggleSelectedCharacter() {
         if selectedCharacter === nathaniel {
-            if let hermes = hermes {
+            if let hermes {
                 selectCharacter(hermes)
                 logger.debug("Switched to Hermes")
             }
         } else {
-            if let nathaniel = nathaniel {
+            if let nathaniel {
                 selectCharacter(nathaniel)
                 logger.debug("Switched to Nathaniel")
             }
@@ -1538,7 +1545,7 @@ extension GameScene {
 
     /// Toggle Hermes between follow mode and independent mode
     func toggleHermesFollowMode() {
-        guard let hermes = hermes else { return }
+        guard let hermes else { return }
 
         // Can't toggle mode while locked (towers deployed)
         guard hermes.mode != .locked else {
@@ -1578,7 +1585,7 @@ extension GameScene {
 
     /// Release Hermes from build mode - destroy all towers and allow movement
     private func releaseHermes() {
-        guard let hermes = hermes else { return }
+        guard let hermes else { return }
 
         logger.info("Releasing Hermes - destroying all towers with visual effects")
 
@@ -1589,7 +1596,7 @@ extension GameScene {
 
         // Destroy all Hermes-owned towers with staggered visual effects
         structureManager?.destroyAllHermesTowers(camera: cameraNode) { [weak self, weak hermes] in
-            guard let hermes = hermes else { return }
+            guard let hermes else { return }
 
             // Unlock Hermes to allow movement after destruction completes
             hermes.unlock()
@@ -1644,7 +1651,7 @@ extension GameScene {
 
     /// Target an enemy - sets Nathaniel's target and shows indicator
     private func targetEnemy(_ enemy: Enemy, tapLocation: CGPoint) {
-        guard let nathaniel = nathaniel else { return }
+        guard let nathaniel else { return }
 
         // Set as Nathaniel's target for auto-attack
         nathaniel.target = enemy
@@ -1672,7 +1679,7 @@ extension GameScene {
     private func playTargetFeedback(at location: CGPoint) {
         // Haptic feedback (iOS only)
         #if os(iOS)
-        hapticGenerator?.impactOccurred()
+            hapticGenerator?.impactOccurred()
         #endif
 
         // Visual ripple effect
@@ -1686,7 +1693,7 @@ extension GameScene {
         ripple.fillColor = .clear
         ripple.lineWidth = 2.0
         ripple.position = point
-        ripple.zPosition = 200  // Above enemies
+        ripple.zPosition = 200 // Above enemies
 
         addChild(ripple)
 

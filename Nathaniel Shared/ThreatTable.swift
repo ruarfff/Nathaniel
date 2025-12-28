@@ -1,10 +1,3 @@
-//
-//  ThreatTable.swift
-//  Nathaniel Shared
-//
-//  Tracks threat values for enemy targeting decisions.
-//
-
 import Foundation
 
 // MARK: - Threat Constants
@@ -20,8 +13,10 @@ enum ThreatConfig {
     /// Proximity threat per second when in visible range
     static let proximityThreatPerSecond: Float = 5.0
 
-    /// Threat decay per second (so old threat dissipates)
-    static let threatDecayPerSecond: Float = 2.0
+    /// Percentage of threat that decays per second (0.0-1.0)
+    /// At 0.10 (10%), threat halves roughly every 7 seconds
+    /// At 0.15 (15%), threat halves roughly every 4.5 seconds
+    static let threatDecayRatePerSecond: Float = 0.10
 
     /// Minimum threat to consider a valid target
     static let minimumThreatThreshold: Float = 0.1
@@ -32,7 +27,6 @@ enum ThreatConfig {
 /// Tracks threat values for potential targets
 /// Used by enemies to determine which player to attack
 struct ThreatTable {
-
     /// Threat entry for a single target
     private struct ThreatEntry {
         weak var target: Character?
@@ -66,10 +60,12 @@ struct ThreatTable {
         return entries[id]?.threat ?? 0
     }
 
-    /// Apply threat decay over time
+    /// Apply threat decay over time (percentage-based)
     /// - Parameter deltaTime: Time since last update
     mutating func decayThreat(deltaTime: TimeInterval) {
-        let decayAmount = ThreatConfig.threatDecayPerSecond * Float(deltaTime)
+        // Calculate decay multiplier for this frame
+        // Using (1 - rate)^time for smooth exponential decay
+        let decayMultiplier = pow(1.0 - ThreatConfig.threatDecayRatePerSecond, Float(deltaTime))
 
         var idsToRemove: [ObjectIdentifier] = []
 
@@ -80,7 +76,7 @@ struct ThreatTable {
                 continue
             }
 
-            entry.threat = max(0, entry.threat - decayAmount)
+            entry.threat *= decayMultiplier
 
             // Remove if below threshold
             if entry.threat < ThreatConfig.minimumThreatThreshold {
@@ -136,7 +132,7 @@ struct ThreatTable {
 
     /// Check if we have any valid targets
     var hasTargets: Bool {
-        return entries.values.contains { entry in
+        entries.values.contains { entry in
             guard let target = entry.target else { return false }
             return target.isAlive
         }
@@ -144,6 +140,6 @@ struct ThreatTable {
 
     /// Number of tracked targets
     var count: Int {
-        return entries.values.filter { $0.target?.isAlive == true }.count
+        entries.values.count(where: { $0.target?.isAlive == true })
     }
 }

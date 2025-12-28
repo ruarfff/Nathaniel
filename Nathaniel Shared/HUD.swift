@@ -1,17 +1,9 @@
-//
-//  HUD.swift
-//  Nathaniel Shared
-//
-//  Heads-up display for game information: lives, score, resources, and selected character.
-//
-
 import SpriteKit
 
 // MARK: - HUD
 
 /// Heads-up display overlay showing game status
 class HUD: SKNode {
-
     // MARK: - Properties
 
     /// Size of the viewport
@@ -101,7 +93,7 @@ class HUD: SKNode {
     // MARK: - Initialization
 
     init(size: CGSize) {
-        self.viewportSize = size
+        viewportSize = size
 
         // Create containers
         topLeftContainer = SKNode()
@@ -175,6 +167,7 @@ class HUD: SKNode {
         zPosition = 500
     }
 
+    @available(*, unavailable)
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
@@ -190,8 +183,6 @@ class HUD: SKNode {
         // Fixed inset values that work well for most sizes
         let insetX: CGFloat = 20
         let insetY: CGFloat = 20
-
-        print("HUD: viewportSize = \(viewportSize), halfWidth = \(halfWidth), halfHeight = \(halfHeight)")
 
         // Top-left container position
         topLeftContainer.position = CGPoint(
@@ -224,7 +215,7 @@ class HUD: SKNode {
 
         // Top-right container position
         topRightContainer.position = CGPoint(
-            x: halfWidth - insetX - padding - 100,  // Extra offset for right-aligned text
+            x: halfWidth - insetX - padding - 100, // Extra offset for right-aligned text
             y: halfHeight - insetY - padding
         )
         addChild(topRightContainer)
@@ -294,7 +285,7 @@ class HUD: SKNode {
 
         // Position to the right of the bottom "SELECTED" panel
         button.position = CGPoint(
-            x: 120,  // Offset from center (selected panel is at x=0)
+            x: 120, // Offset from center (selected panel is at x=0)
             y: -halfHeight + insetY + padding + 40
         )
 
@@ -332,7 +323,7 @@ class HUD: SKNode {
 
         // Position to the left of the character toggle button
         button.position = CGPoint(
-            x: 60,  // Left of the character toggle at x=120
+            x: 60, // Left of the character toggle at x=120
             y: -halfHeight + insetY + padding + 40
         )
 
@@ -348,7 +339,7 @@ class HUD: SKNode {
         let icon = SKLabelNode(fontNamed: "Helvetica-Bold")
         icon.fontSize = 18
         icon.fontColor = .white
-        icon.text = "🎯"  // Default: independent (target)
+        icon.text = "🎯" // Default: independent (target)
         icon.verticalAlignmentMode = .center
         icon.horizontalAlignmentMode = .center
         icon.name = followButtonName
@@ -376,8 +367,8 @@ class HUD: SKNode {
 
         // Position in top-right corner, to the right of resources panel
         button.position = CGPoint(
-            x: halfWidth - insetX - 25,  // Inset from right edge
-            y: halfHeight - insetY - 25  // Inset from top edge
+            x: halfWidth - insetX - 25, // Inset from right edge
+            y: halfHeight - insetY - 25 // Inset from top edge
         )
 
         // Button background - circular
@@ -480,7 +471,7 @@ class HUD: SKNode {
 
         // Create new icons
         let iconSize: CGFloat = 20
-        for i in 0..<lives {
+        for i in 0 ..< lives {
             let icon = createHeartIcon(size: iconSize)
             icon.position = CGPoint(x: CGFloat(i) * (iconSize + 4), y: -25)
             topLeftContainer.addChild(icon)
@@ -796,7 +787,8 @@ class HUD: SKNode {
         if let button = pauseButton, !button.isHidden {
             let buttonPoint = convert(point, to: button)
             if let bg = button.children.first as? SKShapeNode,
-               bg.contains(buttonPoint) {
+               bg.contains(buttonPoint)
+            {
                 // Trigger callback
                 onPauseTapped?()
 
@@ -813,7 +805,8 @@ class HUD: SKNode {
         if let button = characterToggleButton, !button.isHidden {
             let buttonPoint = convert(point, to: button)
             if let bg = button.children.first as? SKShapeNode,
-               bg.contains(buttonPoint) {
+               bg.contains(buttonPoint)
+            {
                 // Trigger callback
                 onCharacterToggle?()
 
@@ -830,7 +823,8 @@ class HUD: SKNode {
         if let button = followModeButton, !button.isHidden {
             let buttonPoint = convert(point, to: button)
             if let bg = button.children.first as? SKShapeNode,
-               bg.contains(buttonPoint) {
+               bg.contains(buttonPoint)
+            {
                 // Trigger callback
                 onFollowModeToggle?()
 
@@ -847,14 +841,15 @@ class HUD: SKNode {
         if let button = buildButton, !button.isHidden {
             let buttonPoint = convert(point, to: button)
             if let bg = button.children.first as? SKShapeNode,
-               bg.contains(buttonPoint) {
+               bg.contains(buttonPoint)
+            {
                 // Trigger callback
                 onBuildTapped?()
 
                 // Visual feedback
                 let flash = SKAction.sequence([
                     SKAction.colorize(with: .white, colorBlendFactor: 0.5, duration: 0.1),
-                    SKAction.colorize(withColorBlendFactor: 0, duration: 0.1)
+                    SKAction.colorize(withColorBlendFactor: 0, duration: 0.1),
                 ])
                 bg.run(flash)
 
@@ -866,14 +861,15 @@ class HUD: SKNode {
         if let button = releaseHermesButton, !button.isHidden {
             let buttonPoint = convert(point, to: button)
             if let bg = button.children.first as? SKShapeNode,
-               bg.contains(buttonPoint) {
+               bg.contains(buttonPoint)
+            {
                 // Trigger callback
                 onReleaseHermes?()
 
                 // Visual feedback
                 let flash = SKAction.sequence([
                     SKAction.colorize(with: .white, colorBlendFactor: 0.5, duration: 0.1),
-                    SKAction.colorize(withColorBlendFactor: 0, duration: 0.1)
+                    SKAction.colorize(withColorBlendFactor: 0, duration: 0.1),
                 ])
                 bg.run(flash)
 
