@@ -61,6 +61,24 @@ const tools: Tool[] = [
     },
   },
   {
+    name: 'game_screenshot_annotated',
+    description: 'Capture an annotated screenshot with bounding boxes around all interactive nodes. Color-coded: green=players, red=enemies, cyan=towers, yellow=UI, orange=projectiles. Very useful for understanding what elements are on screen and where they are located.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: 'game_describe',
+    description: 'Get a semantic description of the current scene. Returns a human-readable summary including player status, threats, UI elements, and suggestions. More concise than game_get_state for understanding the overall situation.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
+  {
     name: 'game_tap',
     description: 'Tap at specific screen coordinates in the game. Use game_get_nodes first to find the correct coordinates for buttons and interactive elements.',
     inputSchema: {
@@ -212,6 +230,47 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             isError: true,
           };
         }
+      }
+
+      case 'game_screenshot_annotated': {
+        const screenshot = await gameClient.annotatedScreenshot();
+        if (screenshot.success) {
+          return {
+            content: [
+              {
+                type: 'image',
+                data: screenshot.data,
+                mimeType: 'image/png',
+              },
+              {
+                type: 'text',
+                text: `Annotated screenshot captured. ${screenshot.nodeCount} interactive nodes highlighted.`,
+              },
+            ],
+          };
+        } else {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'Failed to capture annotated screenshot',
+              },
+            ],
+            isError: true,
+          };
+        }
+      }
+
+      case 'game_describe': {
+        const description = await gameClient.describe();
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(description, null, 2),
+            },
+          ],
+        };
       }
 
       case 'game_tap': {

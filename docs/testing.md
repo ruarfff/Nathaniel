@@ -71,6 +71,8 @@ curl -s http://localhost:8765/state | jq .
 | `/state` | GET | Get current game state |
 | `/nodes` | GET | List interactive UI elements |
 | `/screenshot` | GET | Capture scene as base64 PNG |
+| `/screenshot/annotated` | GET | Capture screenshot with bounding boxes around nodes |
+| `/describe` | GET | Get semantic scene description for agents |
 | `/tap` | POST | Inject tap at coordinates |
 | `/swipe` | POST | Inject swipe gesture |
 | `/action` | POST | Execute named action |

@@ -38,6 +38,21 @@ export interface ScreenshotResponse {
   success: boolean;
   format: string;
   data: string;  // base64 encoded
+  nodeCount?: number;  // Only present for annotated screenshots
+}
+
+export interface DescribeResponse {
+  summary: string;
+  playerStatus: string;
+  threats: string;
+  ui?: string;
+  score?: number;
+  lives?: number;
+  resources?: number;
+  elapsedTime?: number;
+  suggestions?: string[];
+  enemyCount: number;
+  nodeCount: number;
 }
 
 export class GameClient {
@@ -80,6 +95,20 @@ export class GameClient {
    */
   async screenshot(): Promise<ScreenshotResponse> {
     return this.fetch<ScreenshotResponse>('/screenshot', { method: 'GET' });
+  }
+
+  /**
+   * Capture a screenshot with annotated bounding boxes around interactive nodes
+   */
+  async annotatedScreenshot(): Promise<ScreenshotResponse> {
+    return this.fetch<ScreenshotResponse>('/screenshot/annotated', { method: 'GET' });
+  }
+
+  /**
+   * Get a semantic description of the current scene for agent understanding
+   */
+  async describe(): Promise<DescribeResponse> {
+    return this.fetch<DescribeResponse>('/describe', { method: 'GET' });
   }
 
   /**
