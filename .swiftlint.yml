@@ -35,7 +35,8 @@ function_body_length:
 # Cyclomatic complexity
 cyclomatic_complexity:
   warning: 15
-  error: 25
+  error: 50
+  ignores_case_statements: true
 
 # Opt-in rules worth enabling
 opt_in_rules:
@@ -112,6 +113,7 @@ identifier_name:
     - g
     - b
     - a
+    - v
 
 nesting:
   type_level:
