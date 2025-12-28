@@ -1,0 +1,65 @@
+# SwiftFormat configuration for Nathaniel
+# https://github.com/nicklockwood/SwiftFormat
+
+# Swift version (matches project)
+--swiftversion 6.0
+
+# Excluded paths
+--exclude Legacy,build,DerivedData,.build,Pods,Carthage,.swiftpm
+
+# Indentation
+--indent 4
+--tabwidth 4
+--smarttabs enabled
+
+# Line breaks
+--linebreaks lf
+--maxwidth 120
+
+# Braces
+--allman false
+
+# Wrapping
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--wrapreturntype preserve
+--wrapternary before-operators
+--wrapconditions preserve
+
+# Spacing
+--operatorfunc spaced
+--nospaceoperators
+--ranges spaced
+
+# Declarations
+--self remove
+--importgrouping alpha
+--extensionacl on-declarations
+
+# Header
+--header strip
+
+# Other
+--commas always
+--decimalgrouping 3
+--binarygrouping 4,8
+--octalgrouping 4,8
+--hexgrouping 2
+--fractiongrouping disabled
+--exponentgrouping disabled
+--hexliteralcase uppercase
+--exponentcase lowercase
+--semicolons inline
+--stripunusedargs closure-only
+--elseposition same-line
+--guardelse auto
+--emptybraces no-space
+--modifierorder
+--patternlet hoist
+--redundanttype infer-locals-only
+--typeattributes prev-line
+--funcattributes prev-line
+--varattributes prev-line
+--storedvarattrs same-line
+--computedvarattrs prev-line

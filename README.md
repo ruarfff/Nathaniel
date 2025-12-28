@@ -58,4 +58,41 @@ This is a learning project for Swift/SpriteKit development. See `AGENTS.md` for 
 
 **Issue tracking:** Uses `bd` (beads) - run `bd ready` to see available work.
 
-**Source control:** Uses `jj`
+**Source control:** Uses `git`
+
+## Code Quality
+
+This project uses automated code quality tools:
+
+- **SwiftFormat** - Auto-formats Swift code
+- **SwiftLint** - Catches code quality issues
+- **pre-commit** - Runs checks on every commit
+
+### Setup
+
+```bash
+./scripts/setup-hooks.sh
+```
+
+This installs the tools via Homebrew and configures git hooks.
+
+### Manual Usage
+
+```bash
+# Format all Swift files
+swiftformat .
+
+# Lint all Swift files
+swiftlint
+
+# Auto-fix some lint issues
+swiftlint --fix
+```
+
+### Bypassing Hooks
+
+If you need to commit without running checks:
+
+```bash
+git commit --no-verify
+```

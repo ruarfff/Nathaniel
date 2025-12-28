@@ -1,0 +1,123 @@
+# SwiftLint configuration for Nathaniel
+# https://github.com/realm/SwiftLint
+
+excluded:
+  - Legacy
+  - build
+  - DerivedData
+  - .build
+  - Pods
+  - Carthage
+  - .swiftpm
+
+# Line length
+line_length:
+  warning: 120
+  error: 150
+  ignores_urls: true
+  ignores_comments: true
+
+# Type body length (for game classes that can be large)
+type_body_length:
+  warning: 400
+  error: 600
+
+# File length
+file_length:
+  warning: 500
+  error: 1000
+
+# Function body length
+function_body_length:
+  warning: 60
+  error: 100
+
+# Cyclomatic complexity
+cyclomatic_complexity:
+  warning: 15
+  error: 25
+
+# Opt-in rules worth enabling
+opt_in_rules:
+  - closure_spacing
+  - collection_alignment
+  - contains_over_filter_count
+  - contains_over_filter_is_empty
+  - contains_over_first_not_nil
+  - empty_collection_literal
+  - empty_count
+  - empty_string
+  - enum_case_associated_values_count
+  - explicit_init
+  - fallthrough
+  - fatal_error_message
+  - first_where
+  - flatmap_over_map_reduce
+  - force_unwrapping
+  - identical_operands
+  - last_where
+  - legacy_multiple
+  - literal_expression_end_indentation
+  - lower_acl_than_parent
+  - modifier_order
+  - multiline_arguments
+  - multiline_parameters
+  - operator_usage_whitespace
+  - overridden_super_call
+  - override_in_extension
+  - pattern_matching_keywords
+  - prefer_self_type_over_type_of_self
+  - prefer_zero_over_explicit_init
+  - private_action
+  - private_outlet
+  - prohibited_super_call
+  - redundant_nil_coalescing
+  - redundant_type_annotation
+  - sorted_first_last
+  - toggle_bool
+  - unavailable_function
+  - unneeded_parentheses_in_closure_argument
+  - vertical_parameter_alignment_on_call
+  - yoda_condition
+
+# Disabled rules
+disabled_rules:
+  - todo  # We track TODOs via bd/beads
+  - opening_brace  # SwiftFormat handles this
+  - trailing_comma  # SwiftFormat adds trailing commas by default
+
+# Custom rules
+identifier_name:
+  min_length:
+    warning: 2
+    error: 1
+  max_length:
+    warning: 50
+    error: 60
+  excluded:
+    - id
+    - x
+    - y
+    - hp
+    - dx
+    - dy
+    - dt
+    - up
+    - i
+    - j
+    - k
+    - w
+    - h
+    - r
+    - g
+    - b
+    - a
+
+nesting:
+  type_level:
+    warning: 2
+  function_level:
+    warning: 3
+
+# Reporter type (console for pre-commit)
+reporter: "xcode"
