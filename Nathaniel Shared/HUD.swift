@@ -33,10 +33,12 @@ class HUD: SKNode {
     /// Score display
     private let scoreLabel: SKLabelNode
     private let scoreValueLabel: SKLabelNode
+    private var cachedScore: Int = -1
 
     /// Resources display
     private let resourcesLabel: SKLabelNode
     private let resourcesValueLabel: SKLabelNode
+    private var cachedResources: Int = -1
 
     /// Selected character indicator
     private let selectedLabel: SKLabelNode
@@ -552,12 +554,15 @@ class HUD: SKNode {
             updateLivesDisplay(lives: lives)
         }
 
-        // Update other values
-        if scoreValueLabel.text != String(score) {
+        // Update score only if changed (compare integers, not strings)
+        if score != cachedScore {
+            cachedScore = score
             updateScore(score)
         }
 
-        if resourcesValueLabel.text != String(resources) {
+        // Update resources only if changed
+        if resources != cachedResources {
+            cachedResources = resources
             updateResources(resources)
         }
 

@@ -207,8 +207,8 @@ class DefensiveStructure: Character {
     override func update(deltaTime: TimeInterval) {
         guard isActive && isAlive else { return }
 
-        // Find target if we don't have one
-        if currentTarget == nil || !currentTarget!.isAlive {
+        // Find target if we don't have one or current target is dead
+        if currentTarget?.isAlive != true {
             currentTarget = findTargetInRange()
         }
 

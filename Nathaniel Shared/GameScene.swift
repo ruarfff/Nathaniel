@@ -115,14 +115,10 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     class func newGameScene(levelConfig: LevelConfig = .levelOne) -> GameScene {
         // Load 'GameScene.sks' as an SKScene.
         guard let scene = SKScene(fileNamed: "GameScene") as? GameScene else {
-            print("Failed to load GameScene.sks")
-            abort()
+            fatalError("Failed to load GameScene.sks - ensure the file exists in the bundle")
         }
 
-        // Set the scale mode to scale to fit the window
         scene.scaleMode = .aspectFill
-
-        // Configure the level
         scene.levelConfig = levelConfig
 
         return scene
