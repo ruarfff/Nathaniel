@@ -15,9 +15,16 @@ extension GameScene: GameCommandDelegate {
     // MARK: - State Queries
 
     public func getCurrentGameState() -> GameCommandServer.GameState {
-        // Determine game status
+        // Determine game status and pause state
         let status: String
-        if let overlay = children.first(where: { $0 is GameOverlay }) as? GameOverlay {
+        let isPaused: Bool
+        let levelInfo = findLevelManager()
+
+        if levelInfo?.isPaused == true {
+            status = "paused"
+            isPaused = true
+        } else if let overlay = children.first(where: { $0 is GameOverlay }) as? GameOverlay {
+            isPaused = false
             switch overlay.state {
             case .hidden:
                 status = "playing"
@@ -30,6 +37,7 @@ extension GameScene: GameCommandDelegate {
             }
         } else {
             status = "playing"
+            isPaused = false
         }
 
         // Get player positions
@@ -44,9 +52,6 @@ extension GameScene: GameCommandDelegate {
             hermesPos = GameCommandServer.PointInfo(x: hermes.position.x, y: hermes.position.y)
         }
 
-        // Get level manager info
-        let levelInfo = findLevelManager()
-
         return GameCommandServer.GameState(
             scene: "GameScene",
             score: levelInfo?.score ?? 0,
@@ -54,6 +59,7 @@ extension GameScene: GameCommandDelegate {
             resources: ResourceManager.shared.totalCollected,
             elapsedTime: levelInfo?.elapsedTime ?? 0,
             gameStatus: status,
+            isPaused: isPaused,
             playerPosition: nathanielPos,
             hermesPosition: hermesPos,
             enemyCount: findEnemyManager()?.aliveCount ?? 0
@@ -329,6 +335,95 @@ extension GameScene: GameCommandDelegate {
             }
             return .success("Hermes mode: \(modeString)")
 
+        case "pause":
+            pauseGame()
+            return .success("Game paused")
+
+        case "resume":
+            resumeGame()
+            return .success("Game resumed")
+
+        case "isPaused":
+            guard let levelManager = findLevelManager() else {
+                return .failure("Level manager not found")
+            }
+            return .success("isPaused: \(levelManager.isPaused)")
+
+        case "showPauseMenu":
+            pauseGame()
+            return .success("Pause menu shown")
+
+        case "hidePauseMenu":
+            resumeGame()
+            return .success("Pause menu hidden")
+
+        case "pauseMenuIsVisible":
+            guard let pauseMenu = findPauseMenu() else {
+                return .failure("Pause menu not found")
+            }
+            return .success("pauseMenuIsVisible: \(pauseMenu.isVisible)")
+
+        case "pauseMenuTapResume":
+            guard let pauseMenu = findPauseMenu() else {
+                return .failure("Pause menu not found")
+            }
+            guard pauseMenu.isVisible else {
+                return .failure("Pause menu is not visible")
+            }
+            pauseMenu.onResume?()
+            return .success("Tapped Resume button")
+
+        case "pauseMenuTapSettings":
+            guard let pauseMenu = findPauseMenu() else {
+                return .failure("Pause menu not found")
+            }
+            guard pauseMenu.isVisible else {
+                return .failure("Pause menu is not visible")
+            }
+            pauseMenu.onSettings?()
+            return .success("Tapped Settings button")
+
+        case "pauseMenuTapSaveGame":
+            guard let pauseMenu = findPauseMenu() else {
+                return .failure("Pause menu not found")
+            }
+            guard pauseMenu.isVisible else {
+                return .failure("Pause menu is not visible")
+            }
+            pauseMenu.onSaveGame?()
+            return .success("Tapped Save Game button")
+
+        case "pauseMenuTapExitToMenu":
+            guard let pauseMenu = findPauseMenu() else {
+                return .failure("Pause menu not found")
+            }
+            guard pauseMenu.isVisible else {
+                return .failure("Pause menu is not visible")
+            }
+            // This shows confirmation dialog
+            pauseMenu.showExitConfirmation()
+            return .success("Tapped Exit to Menu button (showing confirmation)")
+
+        case "pauseMenuConfirmExit":
+            guard let pauseMenu = findPauseMenu() else {
+                return .failure("Pause menu not found")
+            }
+            guard pauseMenu.isShowingConfirmation else {
+                return .failure("Exit confirmation is not showing")
+            }
+            pauseMenu.onExitToMenu?()
+            return .success("Confirmed exit to menu")
+
+        case "pauseMenuCancelExit":
+            guard let pauseMenu = findPauseMenu() else {
+                return .failure("Pause menu not found")
+            }
+            guard pauseMenu.isShowingConfirmation else {
+                return .failure("Exit confirmation is not showing")
+            }
+            pauseMenu.hideConfirmation()
+            return .success("Cancelled exit")
+
         default:
             return .failure("Unknown action: \(name)")
         }
@@ -392,6 +487,16 @@ extension GameScene: GameCommandDelegate {
         }
         return nil
     }
+
+    private func findPauseMenu() -> PauseMenu? {
+        let mirror = Mirror(reflecting: self)
+        for child in mirror.children {
+            if child.label == "pauseMenu", let pauseMenu = child.value as? PauseMenu {
+                return pauseMenu
+            }
+        }
+        return nil
+    }
 }
 
 // MARK: - Menu Scenes Support
@@ -406,6 +511,7 @@ extension MainMenuScene: GameCommandDelegate {
             resources: 0,
             elapsedTime: 0,
             gameStatus: "menu",
+            isPaused: false,
             playerPosition: nil,
             hermesPosition: nil,
             enemyCount: 0
@@ -488,6 +594,7 @@ extension LevelSelectScene: GameCommandDelegate {
             resources: 0,
             elapsedTime: 0,
             gameStatus: "levelSelect",
+            isPaused: false,
             playerPosition: nil,
             hermesPosition: nil,
             enemyCount: 0
@@ -574,6 +681,7 @@ extension OptionsScene: GameCommandDelegate {
             resources: 0,
             elapsedTime: 0,
             gameStatus: "options",
+            isPaused: false,
             playerPosition: nil,
             hermesPosition: nil,
             enemyCount: 0
@@ -657,6 +765,7 @@ extension CreditsScene: GameCommandDelegate {
             resources: 0,
             elapsedTime: 0,
             gameStatus: "credits",
+            isPaused: false,
             playerPosition: nil,
             hermesPosition: nil,
             enemyCount: 0

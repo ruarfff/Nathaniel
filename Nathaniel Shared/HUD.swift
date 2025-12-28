@@ -83,6 +83,13 @@ class HUD: SKNode {
     /// Whether Hermes is currently selected (controls build button visibility)
     private var isHermesSelected: Bool = false
 
+    /// Pause button (always visible during gameplay)
+    private var pauseButton: SKNode?
+    private let pauseButtonName = "pauseButton"
+
+    /// Callback when pause button is tapped
+    var onPauseTapped: (() -> Void)?
+
     /// Padding from screen edges
     private let padding: CGFloat = 16
 
@@ -268,6 +275,9 @@ class HUD: SKNode {
 
         // Character toggle button (always visible, to the right of selected panel)
         setupCharacterToggleButton()
+
+        // Pause button (always visible, top-right corner)
+        setupPauseButton()
     }
 
     /// Setup the character toggle button
@@ -348,6 +358,46 @@ class HUD: SKNode {
 
         addChild(button)
         followModeButton = button
+    }
+
+    /// Setup the pause button (always visible)
+    private func setupPauseButton() {
+        let halfWidth = viewportSize.width / 2
+        let halfHeight = viewportSize.height / 2
+        let insetX: CGFloat = 20
+        let insetY: CGFloat = 20
+
+        // Create button container
+        let button = SKNode()
+        button.name = pauseButtonName
+        button.zPosition = 600
+
+        // Position in top-right corner, to the right of resources panel
+        button.position = CGPoint(
+            x: halfWidth - insetX - 25,  // Inset from right edge
+            y: halfHeight - insetY - 25  // Inset from top edge
+        )
+
+        // Button background - circular
+        let buttonBg = SKShapeNode(circleOfRadius: 22)
+        buttonBg.fillColor = SKColor(red: 0.4, green: 0.4, blue: 0.5, alpha: 0.9)
+        buttonBg.strokeColor = .white
+        buttonBg.lineWidth = 2
+        buttonBg.name = pauseButtonName
+        button.addChild(buttonBg)
+
+        // Pause icon (two vertical bars using unicode)
+        let pauseIcon = SKLabelNode(fontNamed: "Helvetica-Bold")
+        pauseIcon.fontSize = 20
+        pauseIcon.fontColor = .white
+        pauseIcon.text = "⏸"
+        pauseIcon.verticalAlignmentMode = .center
+        pauseIcon.horizontalAlignmentMode = .center
+        pauseIcon.name = pauseButtonName
+        button.addChild(pauseIcon)
+
+        addChild(button)
+        pauseButton = button
     }
 
     /// Show the follow mode button (when Nathaniel is selected)
@@ -737,6 +787,23 @@ class HUD: SKNode {
 
     /// Handle touch on HUD - returns true if touch was handled
     func handleTouch(at point: CGPoint) -> Bool {
+        // Check if touch is on pause button
+        if let button = pauseButton, !button.isHidden {
+            let buttonPoint = convert(point, to: button)
+            if let bg = button.children.first as? SKShapeNode,
+               bg.contains(buttonPoint) {
+                // Trigger callback
+                onPauseTapped?()
+
+                // Visual feedback - scale pop
+                let scaleUp = SKAction.scale(to: 1.2, duration: 0.1)
+                let scaleDown = SKAction.scale(to: 1.0, duration: 0.1)
+                button.run(SKAction.sequence([scaleUp, scaleDown]))
+
+                return true
+            }
+        }
+
         // Check if touch is on character toggle button
         if let button = characterToggleButton, !button.isHidden {
             let buttonPoint = convert(point, to: button)

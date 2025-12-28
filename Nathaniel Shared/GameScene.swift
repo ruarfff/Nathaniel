@@ -56,6 +56,9 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     /// Game overlay for victory/game over screens
     private var gameOverlay: GameOverlay!
 
+    /// Pause menu overlay
+    private var pauseMenu: PauseMenu!
+
     /// HUD for displaying game status
     private var hud: HUD!
 
@@ -218,6 +221,30 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         gameOverlay.onMainMenu = { [weak self] in
             self?.returnToMainMenu()
         }
+
+        // Set up pause menu
+        pauseMenu = PauseMenu(size: size)
+        pauseMenu.zPosition = 900  // Below game overlay but above HUD
+        cameraNode.addChild(pauseMenu)
+
+        // Wire up pause menu callbacks
+        pauseMenu.onResume = { [weak self] in
+            self?.resumeGame()
+        }
+
+        pauseMenu.onSettings = { [weak self] in
+            // TODO: Show settings menu (future task)
+            print("Settings button tapped - not yet implemented")
+        }
+
+        pauseMenu.onSaveGame = { [weak self] in
+            // TODO: Save game (future task)
+            print("Save Game button tapped - not yet implemented")
+        }
+
+        pauseMenu.onExitToMenu = { [weak self] in
+            self?.returnToMainMenu()
+        }
     }
 
     // MARK: - Level Transitions
@@ -246,6 +273,25 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         let menuScene = MainMenuScene.newMenuScene()
         let transition = SKTransition.fade(withDuration: 0.5)
         view?.presentScene(menuScene, transition: transition)
+    }
+
+    // MARK: - Pause/Resume
+
+    /// Pause the game
+    func pauseGame() {
+        guard levelManager.state == .playing else { return }
+        levelManager.pause()
+        pauseMenu.show()
+        logger.info("Game paused")
+    }
+
+    /// Resume the game from pause
+    func resumeGame() {
+        guard levelManager.state == .paused else { return }
+        pauseMenu.hide { [weak self] in
+            self?.levelManager.resume()
+            logger.info("Game resumed")
+        }
     }
 
     private func setupHUD() {
@@ -289,6 +335,11 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         // Set up follow mode toggle button callback
         hud.onFollowModeToggle = { [weak self] in
             self?.toggleHermesFollowMode()
+        }
+
+        // Set up pause button callback
+        hud.onPauseTapped = { [weak self] in
+            self?.pauseGame()
         }
 
         // Initialize with starting values
@@ -1023,8 +1074,14 @@ extension GameScene {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
 
-        // Check if build menu handles the touch (in HUD/camera space)
+        // Check if pause menu handles the touch (in HUD/camera space)
         let hudLocation = cameraNode.convert(location, from: self)
+        if pauseMenu.isVisible {
+            _ = pauseMenu.handleTouch(at: hudLocation)
+            return
+        }
+
+        // Check if build menu handles the touch (in HUD/camera space)
         if let controller = towerPlacementController,
            controller.handleTouchBegan(at: hudLocation) {
             return
@@ -1068,6 +1125,14 @@ extension GameScene {
 
     override func mouseDown(with event: NSEvent) {
         let location = event.location(in: self)
+
+        // Check if pause menu handles the click (in HUD/camera space)
+        let hudLocation = cameraNode.convert(location, from: self)
+        if pauseMenu.isVisible {
+            _ = pauseMenu.handleTouch(at: hudLocation)
+            return
+        }
+
         handleTap(at: location)
     }
 
@@ -1096,13 +1161,23 @@ extension GameScene {
     }
 
     override func keyDown(with event: NSEvent) {
+        // Escape key toggles pause (works in both playing and paused states)
+        if event.keyCode == 53 {  // Escape key
+            if levelManager.state == .paused {
+                resumeGame()
+            } else if levelManager.state == .playing {
+                pauseGame()
+            }
+            return
+        }
+
         // Check if the overlay is showing (victory/game over)
         if gameOverlay.state == .victory || gameOverlay.state == .gameOver {
             gameOverlay.handleInteraction()
             return
         }
 
-        // Don't handle keys if game is not in playing state
+        // Don't handle other keys if game is not in playing state
         guard levelManager.state == .playing else { return }
 
         switch event.keyCode {

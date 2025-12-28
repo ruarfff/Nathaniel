@@ -194,6 +194,25 @@ class LevelManager: EnemyManagerDelegate {
         state = .playing
     }
 
+    // MARK: - Pause/Resume
+
+    /// Pause the game
+    func pause() {
+        guard state == .playing else { return }
+        state = .paused
+    }
+
+    /// Resume from pause
+    func resume() {
+        guard state == .paused else { return }
+        state = .playing
+    }
+
+    /// Whether the game is currently paused
+    var isPaused: Bool {
+        return state == .paused
+    }
+
     // MARK: - Update
 
     /// Update the level manager each frame

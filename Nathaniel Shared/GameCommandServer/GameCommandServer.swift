@@ -30,7 +30,8 @@ public class GameCommandServer {
         let lives: Int
         let resources: Int
         let elapsedTime: TimeInterval
-        let gameStatus: String  // "playing", "victory", "gameOver"
+        let gameStatus: String  // "playing", "paused", "victory", "gameOver"
+        let isPaused: Bool
         let playerPosition: PointInfo?
         let hermesPosition: PointInfo?
         let enemyCount: Int
