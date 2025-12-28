@@ -1653,6 +1653,12 @@ extension GameScene {
     private func targetEnemy(_ enemy: Enemy, tapLocation: CGPoint) {
         guard let nathaniel else { return }
 
+        // Only allow targeting enemies that are currently visible (not in fog of war)
+        if let fog = fogOfWar, !fog.isVisible(at: enemy.position) {
+            logger.debug("Cannot target enemy - not visible in fog of war")
+            return
+        }
+
         // Set as Nathaniel's target for auto-attack
         nathaniel.target = enemy
 

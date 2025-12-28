@@ -28,11 +28,11 @@ class Hermes: Character {
     /// Movement speed in points per second
     static let defaultSpeed: CGFloat = 40
 
-    /// Weapon range in points
-    static let weaponRange: CGFloat = 450
+    /// Weapon range in points (slightly less than vision range so players see enemies before attacking)
+    static let weaponRange: CGFloat = 700
 
-    /// Visible range (for targeting) in points
-    static let visibleRange: CGFloat = 500
+    /// Visible range (for targeting) in points - covers most of the visible screen from camera center
+    static let visibleRange: CGFloat = 800
 
     // MARK: - Follow Behavior Constants
 
@@ -131,6 +131,9 @@ class Hermes: Character {
             spriteSheetCols: Hermes.idleSheetCols,
             spriteSheetRows: Hermes.idleSheetRows
         )
+
+        // Set vision range to match static constant
+        visionRange = Hermes.visibleRange
 
         print("Hermes: Initializing...")
 
