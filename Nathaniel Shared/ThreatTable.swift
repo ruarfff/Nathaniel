@@ -1,0 +1,149 @@
+//
+//  ThreatTable.swift
+//  Nathaniel Shared
+//
+//  Tracks threat values for enemy targeting decisions.
+//
+
+import Foundation
+
+// MARK: - Threat Constants
+
+/// Configuration for threat system
+enum ThreatConfig {
+    /// Base threat generated per point of damage dealt
+    static let damageThreatMultiplier: Float = 1.0
+
+    /// Threat generated when first entering visible range
+    static let initialAggroThreat: Float = 10.0
+
+    /// Proximity threat per second when in visible range
+    static let proximityThreatPerSecond: Float = 5.0
+
+    /// Threat decay per second (so old threat dissipates)
+    static let threatDecayPerSecond: Float = 2.0
+
+    /// Minimum threat to consider a valid target
+    static let minimumThreatThreshold: Float = 0.1
+}
+
+// MARK: - Threat Table
+
+/// Tracks threat values for potential targets
+/// Used by enemies to determine which player to attack
+struct ThreatTable {
+
+    /// Threat entry for a single target
+    private struct ThreatEntry {
+        weak var target: Character?
+        var threat: Float
+    }
+
+    /// Threat entries by target (using ObjectIdentifier as key)
+    private var entries: [ObjectIdentifier: ThreatEntry] = [:]
+
+    // MARK: - Threat Modification
+
+    /// Add threat for a target
+    /// - Parameters:
+    ///   - target: The character generating threat
+    ///   - amount: Amount of threat to add
+    mutating func addThreat(for target: Character, amount: Float) {
+        let id = ObjectIdentifier(target)
+        if var entry = entries[id] {
+            entry.threat += amount
+            entries[id] = entry
+        } else {
+            entries[id] = ThreatEntry(target: target, threat: amount)
+        }
+    }
+
+    /// Get current threat value for a target
+    /// - Parameter target: The character to check
+    /// - Returns: Current threat value (0 if not tracked)
+    func getThreat(for target: Character) -> Float {
+        let id = ObjectIdentifier(target)
+        return entries[id]?.threat ?? 0
+    }
+
+    /// Apply threat decay over time
+    /// - Parameter deltaTime: Time since last update
+    mutating func decayThreat(deltaTime: TimeInterval) {
+        let decayAmount = ThreatConfig.threatDecayPerSecond * Float(deltaTime)
+
+        var idsToRemove: [ObjectIdentifier] = []
+
+        for (id, var entry) in entries {
+            // Skip dead or deallocated targets
+            guard let target = entry.target, target.isAlive else {
+                idsToRemove.append(id)
+                continue
+            }
+
+            entry.threat = max(0, entry.threat - decayAmount)
+
+            // Remove if below threshold
+            if entry.threat < ThreatConfig.minimumThreatThreshold {
+                idsToRemove.append(id)
+            } else {
+                entries[id] = entry
+            }
+        }
+
+        // Clean up
+        for id in idsToRemove {
+            entries.removeValue(forKey: id)
+        }
+    }
+
+    /// Clear all threat (for reset)
+    mutating func clear() {
+        entries.removeAll()
+    }
+
+    // MARK: - Target Selection
+
+    /// Get the target with highest threat
+    /// - Returns: The character with highest threat, or nil if no valid targets
+    func getHighestThreatTarget() -> Character? {
+        var highestThreat: Float = 0
+        var highestTarget: Character?
+
+        for entry in entries.values {
+            guard let target = entry.target, target.isAlive else { continue }
+
+            if entry.threat > highestThreat {
+                highestThreat = entry.threat
+                highestTarget = target
+            }
+        }
+
+        return highestTarget
+    }
+
+    /// Get all valid targets sorted by threat (highest first)
+    /// - Returns: Array of (target, threat) pairs sorted by threat
+    func getSortedTargets() -> [(target: Character, threat: Float)] {
+        var result: [(Character, Float)] = []
+
+        for entry in entries.values {
+            guard let target = entry.target, target.isAlive else { continue }
+            result.append((target, entry.threat))
+        }
+
+        return result.sorted { $0.1 > $1.1 }
+    }
+
+    /// Check if we have any valid targets
+    var hasTargets: Bool {
+        return entries.values.contains { entry in
+            guard let target = entry.target else { return false }
+            return target.isAlive
+        }
+    }
+
+    /// Number of tracked targets
+    var count: Int {
+        return entries.values.filter { $0.target?.isAlive == true }.count
+    }
+}

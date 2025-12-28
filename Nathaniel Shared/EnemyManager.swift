@@ -223,21 +223,11 @@ class EnemyManager {
         var indicesToRemove: [Int] = []
 
         for (index, enemy) in enemies.enumerated() {
-            // Auto-assign targets
-            if enemy.target == nil || !enemy.target!.isAlive {
-                enemy.target = findNearestPlayer(to: enemy.position, withinRange: enemy.visibleRange)
-            }
+            // Update threat system
+            updateThreat(for: enemy, deltaTime: deltaTime)
 
-            // Check if player is attacking this enemy (aggro response)
-            if enemy.target == nil {
-                for player in playerCharacters where player.isAlive {
-                    // If player is targeting an enemy, that enemy should respond
-                    if let playerTarget = (player as? Nathaniel)?.target, playerTarget === enemy {
-                        enemy.target = player
-                        break
-                    }
-                }
-            }
+            // Select target based on threat
+            selectTarget(for: enemy)
 
             // Update the enemy
             enemy.update(deltaTime: deltaTime)
@@ -264,6 +254,44 @@ class EnemyManager {
             }
 
             enemies.remove(at: index)
+        }
+    }
+
+    // MARK: - Threat System
+
+    /// Update threat for an enemy based on nearby players
+    private func updateThreat(for enemy: Enemy, deltaTime: TimeInterval) {
+        // Decay existing threat over time
+        enemy.updateThreatDecay(deltaTime: deltaTime)
+
+        // Generate threat for each player in visible range
+        for player in playerCharacters where player.isAlive {
+            let dx = player.position.x - enemy.position.x
+            let dy = player.position.y - enemy.position.y
+            let distance = hypot(dx, dy)
+
+            // Check if player is in visible range
+            if distance <= enemy.visibleRange {
+                // Generate initial aggro if this is the first time seeing any player
+                enemy.generateInitialAggro(for: player)
+
+                // Generate continuous proximity threat
+                enemy.generateProximityThreat(for: player, deltaTime: deltaTime)
+            }
+        }
+    }
+
+    /// Select the best target for an enemy based on threat
+    private func selectTarget(for enemy: Enemy) {
+        // Try to get highest threat target
+        if let threatTarget = enemy.getHighestThreatTarget() {
+            enemy.target = threatTarget
+            return
+        }
+
+        // Fallback: find nearest player if no threat (shouldn't happen often)
+        if enemy.target == nil || !enemy.target!.isAlive {
+            enemy.target = findNearestPlayer(to: enemy.position, withinRange: enemy.visibleRange)
         }
     }
 

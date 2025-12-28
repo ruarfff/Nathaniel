@@ -333,7 +333,12 @@ class Gun: Weapon {
         // Check collisions for active projectiles
         for projectile in projectilePool.activeProjectiles {
             if let hitCharacter = onCheckCollision?(projectile) {
-                hitCharacter.takeDamage(projectile.damage)
+                // If hitting an enemy, use threat-aware damage
+                if let enemy = hitCharacter as? Enemy {
+                    enemy.takeDamage(projectile.damage, from: owner)
+                } else {
+                    hitCharacter.takeDamage(projectile.damage)
+                }
                 projectile.hasCollision = true
                 projectile.deactivate()
             }

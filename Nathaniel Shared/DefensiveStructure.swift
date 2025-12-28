@@ -350,7 +350,12 @@ class GunTower: DefensiveStructure {
         // Check bullet collisions
         for projectile in gun.activeBullets {
             if let hit = onCheckCollision?(projectile) {
-                hit.takeDamage(projectile.damage)
+                // Towers don't generate player threat
+                if let enemy = hit as? Enemy {
+                    enemy.takeDamage(projectile.damage, from: nil)
+                } else {
+                    hit.takeDamage(projectile.damage)
+                }
                 projectile.hasCollision = true
                 projectile.deactivate()
             }
@@ -617,10 +622,11 @@ class LaserTower: DefensiveStructure {
             // Update beam visual
             beam.fire(from: position, to: target.position)
 
-            // Deal damage over time
+            // Deal damage over time (towers don't generate player threat)
             let damage = Int(CGFloat(damagePerSecond) * CGFloat(deltaTime))
             if damage > 0 {
-                target.takeDamage(damage)
+                // target is already Enemy, use threat-aware damage with nil attacker
+                target.takeDamage(damage, from: nil)
             }
 
             // Check if burst is over

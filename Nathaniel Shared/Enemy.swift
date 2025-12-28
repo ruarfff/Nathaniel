@@ -65,6 +65,14 @@ class Enemy: Character {
         return weapon?.hasActiveProjectiles ?? false
     }
 
+    // MARK: - Threat System
+
+    /// Threat table tracking threat per player
+    var threatTable = ThreatTable()
+
+    /// Whether this enemy has been aggro'd (seen a player)
+    private var hasInitialAggro = false
+
     // MARK: - Initialization
 
     init(name: String, maxHP: Int, speed: CGFloat, killScore: Int,
@@ -88,6 +96,43 @@ class Enemy: Character {
             spriteSheetCols: spriteSheetCols,
             spriteSheetRows: spriteSheetRows
         )
+    }
+
+    // MARK: - Threat System Methods
+
+    /// Add threat for a target (called when damage is dealt, etc.)
+    /// - Parameters:
+    ///   - target: The character generating threat
+    ///   - amount: Amount of threat to add
+    func addThreat(from target: Character, amount: Float) {
+        threatTable.addThreat(for: target, amount: amount)
+    }
+
+    /// Generate initial aggro threat when first spotting a player
+    /// - Parameter target: The player that was spotted
+    func generateInitialAggro(for target: Character) {
+        guard !hasInitialAggro else { return }
+        hasInitialAggro = true
+        threatTable.addThreat(for: target, amount: ThreatConfig.initialAggroThreat)
+    }
+
+    /// Generate proximity threat for being near a target
+    /// - Parameters:
+    ///   - target: The player in range
+    ///   - deltaTime: Time since last update
+    func generateProximityThreat(for target: Character, deltaTime: TimeInterval) {
+        let amount = ThreatConfig.proximityThreatPerSecond * Float(deltaTime)
+        threatTable.addThreat(for: target, amount: amount)
+    }
+
+    /// Get the target with highest threat, or nil if no threats
+    func getHighestThreatTarget() -> Character? {
+        return threatTable.getHighestThreatTarget()
+    }
+
+    /// Update threat decay
+    func updateThreatDecay(deltaTime: TimeInterval) {
+        threatTable.decayThreat(deltaTime: deltaTime)
     }
 
     // MARK: - Update
@@ -176,6 +221,23 @@ class Enemy: Character {
                 meleeAttackTimer = 0
                 target.takeDamage(meleeDamage)
             }
+        }
+    }
+
+    // MARK: - Damage and Threat
+
+    /// Take damage from an attacker and generate threat
+    /// - Parameters:
+    ///   - amount: Amount of damage to take
+    ///   - attacker: The character dealing the damage (for threat tracking)
+    func takeDamage(_ amount: Int, from attacker: Character?) {
+        // First, take the damage
+        takeDamage(amount)
+
+        // Generate threat if we have an attacker
+        if let attacker = attacker {
+            let threatAmount = Float(amount) * ThreatConfig.damageThreatMultiplier
+            addThreat(from: attacker, amount: threatAmount)
         }
     }
 
