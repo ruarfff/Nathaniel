@@ -112,6 +112,34 @@ class HUD: SKNode {
     /// Spacing between elements
     private let spacing: CGFloat = 8
 
+    // MARK: - Player Health Display
+
+    /// Container for player health bars (bottom-left)
+    private var playerHealthContainer: SKNode?
+
+    /// Nathaniel health bar components
+    private var nathanielHealthBar: SKShapeNode?
+    private var nathanielHealthFill: SKShapeNode?
+    private var nathanielNameLabel: SKLabelNode?
+
+    /// Hermes health bar components
+    private var hermesHealthBar: SKShapeNode?
+    private var hermesHealthFill: SKShapeNode?
+    private var hermesNameLabel: SKLabelNode?
+
+    /// Cached health values (to avoid unnecessary updates)
+    private var cachedNathanielHP: Int = -1
+    private var cachedNathanielMaxHP: Int = -1
+    private var cachedHermesHP: Int = -1
+    private var cachedHermesMaxHP: Int = -1
+
+    /// Currently selected character name (for highlight)
+    private var selectedCharacterName: String = "Nathaniel"
+
+    /// Player health bar constants
+    private let playerHealthBarWidth: CGFloat = 90
+    private let playerHealthBarHeight: CGFloat = 8
+
     // MARK: - Initialization
 
     init(size: CGSize, safeAreaInsets: HUDSafeAreaInsets = .zero) {
@@ -297,6 +325,9 @@ class HUD: SKNode {
 
         // Pause button (always visible, top-right corner)
         setupPauseButton()
+
+        // Player health display (bottom-left)
+        setupPlayerHealthDisplay()
     }
 
     /// Setup the character toggle button
@@ -485,6 +516,148 @@ class HUD: SKNode {
         return panel
     }
 
+    // MARK: - Player Health Display Setup
+
+    /// Setup the player health display panel
+    private func setupPlayerHealthDisplay() {
+        let halfWidth = viewportSize.width / 2
+        let halfHeight = viewportSize.height / 2
+        let insetLeft = padding + safeInsets.left
+        let insetBottom = padding + safeInsets.bottom
+
+        // Create container for player health
+        let container = SKNode()
+        container.name = "playerHealthContainer"
+        container.zPosition = 500
+
+        // Position in bottom-left, above the build button area
+        container.position = CGPoint(
+            x: -halfWidth + insetLeft + 75,
+            y: -halfHeight + insetBottom + 95
+        )
+
+        // Background panel
+        let panelBg = createBackgroundPanel(width: 150, height: 65)
+        panelBg.position = CGPoint(x: 0, y: 0)
+        container.addChild(panelBg)
+
+        // Nathaniel row (top)
+        let nathanielY: CGFloat = 15
+
+        let nathanielLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        nathanielLabel.fontSize = 11
+        nathanielLabel.fontColor = .white
+        nathanielLabel.horizontalAlignmentMode = .left
+        nathanielLabel.verticalAlignmentMode = .center
+        nathanielLabel.text = "NATHANIEL"
+        nathanielLabel.position = CGPoint(x: -65, y: nathanielY)
+        nathanielLabel.zPosition = 1
+        container.addChild(nathanielLabel)
+        nathanielNameLabel = nathanielLabel
+
+        // Nathaniel health bar background (red)
+        let nBarBg = SKShapeNode(
+            rect: CGRect(
+                x: 0,
+                y: -playerHealthBarHeight / 2,
+                width: playerHealthBarWidth,
+                height: playerHealthBarHeight
+            ),
+            cornerRadius: 3
+        )
+        nBarBg.fillColor = SKColor(red: 0.5, green: 0.15, blue: 0.15, alpha: 0.9)
+        nBarBg.strokeColor = SKColor.white.withAlphaComponent(0.6)
+        nBarBg.lineWidth = 1
+        nBarBg.position = CGPoint(x: -15, y: nathanielY)
+        nBarBg.zPosition = 1
+        container.addChild(nBarBg)
+        nathanielHealthBar = nBarBg
+
+        // Nathaniel health bar fill (green)
+        let nBarFill = SKShapeNode(
+            rect: CGRect(
+                x: 0,
+                y: -playerHealthBarHeight / 2,
+                width: playerHealthBarWidth,
+                height: playerHealthBarHeight
+            ),
+            cornerRadius: 3
+        )
+        nBarFill.fillColor = SKColor(red: 0.2, green: 0.7, blue: 0.3, alpha: 1.0)
+        nBarFill.strokeColor = .clear
+        nBarFill.lineWidth = 0
+        nBarFill.position = CGPoint(x: -15, y: nathanielY)
+        nBarFill.zPosition = 2
+        container.addChild(nBarFill)
+        nathanielHealthFill = nBarFill
+
+        // Hermes row (bottom)
+        let hermesY: CGFloat = -15
+
+        let hermesLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        hermesLabel.fontSize = 11
+        hermesLabel.fontColor = SKColor(white: 0.85, alpha: 1.0)
+        hermesLabel.horizontalAlignmentMode = .left
+        hermesLabel.verticalAlignmentMode = .center
+        hermesLabel.text = "HERMES"
+        hermesLabel.position = CGPoint(x: -65, y: hermesY)
+        hermesLabel.zPosition = 1
+        container.addChild(hermesLabel)
+        hermesNameLabel = hermesLabel
+
+        // Hermes health bar background (red)
+        let hBarBg = SKShapeNode(
+            rect: CGRect(
+                x: 0,
+                y: -playerHealthBarHeight / 2,
+                width: playerHealthBarWidth,
+                height: playerHealthBarHeight
+            ),
+            cornerRadius: 3
+        )
+        hBarBg.fillColor = SKColor(red: 0.5, green: 0.15, blue: 0.15, alpha: 0.9)
+        hBarBg.strokeColor = SKColor.white.withAlphaComponent(0.6)
+        hBarBg.lineWidth = 1
+        hBarBg.position = CGPoint(x: -15, y: hermesY)
+        hBarBg.zPosition = 1
+        container.addChild(hBarBg)
+        hermesHealthBar = hBarBg
+
+        // Hermes health bar fill (cyan)
+        let hBarFill = SKShapeNode(
+            rect: CGRect(
+                x: 0,
+                y: -playerHealthBarHeight / 2,
+                width: playerHealthBarWidth,
+                height: playerHealthBarHeight
+            ),
+            cornerRadius: 3
+        )
+        hBarFill.fillColor = SKColor(red: 0.2, green: 0.7, blue: 0.85, alpha: 1.0)
+        hBarFill.strokeColor = .clear
+        hBarFill.lineWidth = 0
+        hBarFill.position = CGPoint(x: -15, y: hermesY)
+        hBarFill.zPosition = 2
+        container.addChild(hBarFill)
+        hermesHealthFill = hBarFill
+
+        addChild(container)
+        playerHealthContainer = container
+    }
+
+    /// Get color for health bar based on health percentage
+    private func healthBarColor(percent: CGFloat, baseColor: SKColor) -> SKColor {
+        if percent > 0.6 {
+            baseColor
+        } else if percent > 0.3 {
+            // Yellow warning
+            SKColor(red: 0.9, green: 0.8, blue: 0.2, alpha: 1.0)
+        } else {
+            // Red critical
+            SKColor(red: 0.9, green: 0.25, blue: 0.2, alpha: 1.0)
+        }
+    }
+
     // MARK: - Updates
 
     /// Update lives display
@@ -545,6 +718,7 @@ class HUD: SKNode {
     /// Update selected character display
     func updateSelectedCharacter(name: String, health: Int, maxHealth: Int) {
         selectedCharacterLabel.text = name.uppercased()
+        selectedCharacterName = name
 
         // Color based on health percentage
         let healthPercent = CGFloat(health) / CGFloat(maxHealth)
@@ -555,6 +729,95 @@ class HUD: SKNode {
         } else {
             selectedCharacterLabel.fontColor = SKColor(red: 1.0, green: 0.3, blue: 0.3, alpha: 1.0)
         }
+
+        // Update name label highlights in player health display
+        updatePlayerHealthHighlight()
+    }
+
+    /// Update player health bars
+    /// - Parameters:
+    ///   - nathanielHP: Current Nathaniel HP
+    ///   - nathanielMaxHP: Max Nathaniel HP
+    ///   - hermesHP: Current Hermes HP
+    ///   - hermesMaxHP: Max Hermes HP
+    func updatePlayerHealth(nathanielHP: Int, nathanielMaxHP: Int, hermesHP: Int, hermesMaxHP: Int) {
+        // Update Nathaniel health bar if changed
+        if nathanielHP != cachedNathanielHP || nathanielMaxHP != cachedNathanielMaxHP {
+            cachedNathanielHP = nathanielHP
+            cachedNathanielMaxHP = nathanielMaxHP
+            updateHealthBarFill(
+                fillNode: nathanielHealthFill,
+                currentHP: nathanielHP,
+                maxHP: nathanielMaxHP,
+                baseColor: SKColor(red: 0.2, green: 0.7, blue: 0.3, alpha: 1.0)
+            )
+        }
+
+        // Update Hermes health bar if changed
+        if hermesHP != cachedHermesHP || hermesMaxHP != cachedHermesMaxHP {
+            cachedHermesHP = hermesHP
+            cachedHermesMaxHP = hermesMaxHP
+            updateHealthBarFill(
+                fillNode: hermesHealthFill,
+                currentHP: hermesHP,
+                maxHP: hermesMaxHP,
+                baseColor: SKColor(red: 0.2, green: 0.7, blue: 0.85, alpha: 1.0)
+            )
+        }
+    }
+
+    /// Update a single health bar fill
+    private func updateHealthBarFill(fillNode: SKShapeNode?, currentHP: Int, maxHP: Int, baseColor: SKColor) {
+        guard let fill = fillNode, maxHP > 0 else { return }
+
+        let percent = CGFloat(currentHP) / CGFloat(maxHP)
+        let fillWidth = playerHealthBarWidth * percent
+
+        // Update fill width with rounded rect
+        let fillRect = CGRect(
+            x: 0,
+            y: -playerHealthBarHeight / 2,
+            width: max(fillWidth, 0),
+            height: playerHealthBarHeight
+        )
+        if fillWidth > 6 {
+            fill.path = CGPath(roundedRect: fillRect, cornerWidth: 3, cornerHeight: 3, transform: nil)
+        } else {
+            fill.path = CGPath(rect: fillRect, transform: nil)
+        }
+
+        // Update color based on health percentage
+        fill.fillColor = healthBarColor(percent: percent, baseColor: baseColor)
+    }
+
+    /// Update highlight on selected character in player health panel
+    private func updatePlayerHealthHighlight() {
+        let isNathanielSelected = selectedCharacterName.lowercased().contains("nathaniel")
+
+        // Highlight selected character's name
+        nathanielNameLabel?.fontColor = isNathanielSelected ? .white : SKColor(white: 0.7, alpha: 1.0)
+        hermesNameLabel?.fontColor = isNathanielSelected ? SKColor(white: 0.7, alpha: 1.0) : .white
+
+        // Subtle border highlight on selected bar
+        nathanielHealthBar?.strokeColor = isNathanielSelected
+            ? SKColor.white.withAlphaComponent(0.9)
+            : SKColor.white.withAlphaComponent(0.4)
+        hermesHealthBar?.strokeColor = isNathanielSelected
+            ? SKColor.white.withAlphaComponent(0.4)
+            : SKColor.white.withAlphaComponent(0.9)
+    }
+
+    /// Flash player health bar when taking damage
+    func flashPlayerHealth(isNathaniel: Bool) {
+        let fillNode = isNathaniel ? nathanielHealthFill : hermesHealthFill
+        guard let fill = fillNode else { return }
+
+        // Flash white then restore
+        let originalColor = fill.fillColor
+        let flashWhite = SKAction.run { fill.fillColor = .white }
+        let wait = SKAction.wait(forDuration: 0.08)
+        let restore = SKAction.run { fill.fillColor = originalColor }
+        fill.run(SKAction.sequence([flashWhite, wait, restore]))
     }
 
     /// Update timer display

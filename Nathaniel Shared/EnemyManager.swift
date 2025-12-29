@@ -1,10 +1,3 @@
-//
-//  EnemyManager.swift
-//  Nathaniel Shared
-//
-//  Manages enemy spawning, tracking, and lifecycle.
-//
-
 import SpriteKit
 
 // MARK: - Enemy Manager Delegate
@@ -22,7 +15,6 @@ protocol EnemyManagerDelegate: AnyObject {
 
 /// Manages all enemies in the game, including spawning, updates, and cleanup
 class EnemyManager {
-
     // MARK: - Properties
 
     /// All active enemies
@@ -100,8 +92,9 @@ class EnemyManager {
         enemy.sprite.zPosition = enemyZPosition
         enemy.sprite.setScale(enemyScale)
 
-        // Set up health bar
-        enemy.setupHealthBar(width: 40, yOffset: 8)
+        // Set up compact health bar (smaller, closer to sprite, rounded)
+        enemy.setupHealthBar(width: 32, yOffset: 3, compact: true)
+        enemy.healthBar?.hideWhenFull = true
 
         // Set up ranged weapon if applicable
         if enemy is Soldier || enemy is Boss {
@@ -157,8 +150,9 @@ class EnemyManager {
         enemy.sprite.setScale(enemyScale)
         enemy.target = target
 
-        // Set up health bar
-        enemy.setupHealthBar(width: 40, yOffset: 8)
+        // Set up compact health bar (smaller, closer to sprite, rounded)
+        enemy.setupHealthBar(width: 32, yOffset: 3, compact: true)
+        enemy.healthBar?.hideWhenFull = true
 
         // Add to scene
         scene?.addChild(enemy.sprite)
@@ -181,8 +175,8 @@ class EnemyManager {
             // Only process enemy spawns (by type or name prefix)
             let name = obj.name
             if name.hasPrefix("Gr") || name.hasPrefix("So") ||
-               name.hasPrefix("Sp") || name.hasPrefix("Bo") {
-
+                name.hasPrefix("Sp") || name.hasPrefix("Bo")
+            {
                 let position = renderer.convertToSpriteKit(point: obj.center)
 
                 // Find nearest player to set as initial target
@@ -199,15 +193,15 @@ class EnemyManager {
 
         // Projectile spawn callback
         weapon.onFire = { [weak self] projectile in
-            guard let self = self else { return }
+            guard let self else { return }
             projectile.sprite.setScale(2.0)
-            self.scene?.addChild(projectile.sprite)
+            scene?.addChild(projectile.sprite)
         }
 
         // Projectile collision callback
         weapon.onCheckCollision = { [weak self] projectile in
-            guard let self = self else { return nil }
-            for player in self.playerCharacters where player.isAlive {
+            guard let self else { return nil }
+            for player in playerCharacters where player.isAlive {
                 if projectile.checkCollision(with: player) {
                     return player
                 }
@@ -234,7 +228,7 @@ class EnemyManager {
 
             // Check if dead and inactive (death animation finished)
             // Also wait for any projectiles to complete their trajectory
-            if !enemy.isAlive && !enemy.isActive && !enemy.hasActiveProjectiles {
+            if !enemy.isAlive, !enemy.isActive, !enemy.hasActiveProjectiles {
                 indicesToRemove.append(index)
             }
         }
@@ -308,7 +302,7 @@ class EnemyManager {
             let distance = hypot(dx, dy)
 
             // Check range if specified
-            if let range = range, distance > range {
+            if let range, distance > range {
                 continue
             }
 
@@ -335,9 +329,9 @@ class EnemyManager {
 
     /// Create a collision check callback for a player's weapon
     func createCollisionCallback() -> (Projectile) -> Character? {
-        return { [weak self] projectile in
-            guard let self = self else { return nil }
-            for enemy in self.enemies where enemy.isAlive {
+        { [weak self] projectile in
+            guard let self else { return nil }
+            for enemy in enemies where enemy.isAlive {
                 if projectile.checkCollision(with: enemy) {
                     return enemy
                 }
@@ -360,16 +354,16 @@ class EnemyManager {
 
     /// Get all alive enemies
     var aliveEnemies: [Enemy] {
-        return enemies.filter { $0.isAlive }
+        enemies.filter(\.isAlive)
     }
 
     /// Count of alive enemies
     var aliveCount: Int {
-        return aliveEnemies.count
+        aliveEnemies.count
     }
 
     /// Whether any boss is alive
     var isBossAlive: Bool {
-        return enemies.contains { $0 is Boss && $0.isAlive }
+        enemies.contains { $0 is Boss && $0.isAlive }
     }
 }

@@ -1014,6 +1014,14 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
                 maxHealth: selected.maxHP
             )
         }
+
+        // Update player health bars
+        hud.updatePlayerHealth(
+            nathanielHP: nathaniel?.currentHP ?? 0,
+            nathanielMaxHP: nathaniel?.maxHP ?? 1,
+            hermesHP: hermes?.currentHP ?? 0,
+            hermesMaxHP: hermes?.maxHP ?? 1
+        )
     }
 
     // MARK: - Target Indicator Update

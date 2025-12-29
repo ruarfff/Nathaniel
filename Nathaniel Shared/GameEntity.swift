@@ -1,10 +1,3 @@
-//
-//  GameEntity.swift
-//  Nathaniel Shared
-//
-//  Game entity protocol and base classes for the entity system.
-//
-
 import SpriteKit
 
 // MARK: - Direction
@@ -80,7 +73,6 @@ protocol GameEntity: AnyObject {
 
 /// Visual health bar displayed above characters
 class HealthBar {
-
     /// The container node holding all health bar elements
     let node: SKNode
 
@@ -97,7 +89,10 @@ class HealthBar {
     let width: CGFloat
 
     /// Height of the health bar
-    let height: CGFloat = 6
+    let height: CGFloat
+
+    /// Corner radius for rounded bars
+    let cornerRadius: CGFloat
 
     /// Offset above the character sprite
     let yOffset: CGFloat
@@ -105,26 +100,55 @@ class HealthBar {
     /// Whether to hide the bar when health is full
     var hideWhenFull: Bool = true
 
-    init(width: CGFloat, yOffset: CGFloat) {
+    /// Standard height for health bars
+    static let standardHeight: CGFloat = 6
+
+    /// Compact height for enemy health bars
+    static let compactHeight: CGFloat = 4
+
+    /// Standard corner radius
+    static let standardCornerRadius: CGFloat = 0
+
+    /// Compact corner radius
+    static let compactCornerRadius: CGFloat = 2
+
+    init(
+        width: CGFloat,
+        yOffset: CGFloat,
+        height: CGFloat = HealthBar.standardHeight,
+        cornerRadius: CGFloat = HealthBar.standardCornerRadius
+    ) {
         self.width = width
         self.yOffset = yOffset
+        self.height = height
+        self.cornerRadius = cornerRadius
 
         // Create container node
         node = SKNode()
         node.name = "healthBar"
-        node.zPosition = 200  // Above character sprites
+        node.zPosition = 200 // Above character sprites
+
+        let barRect = CGRect(x: -width / 2, y: 0, width: width, height: height)
 
         // Background (red - shows when health is missing)
         let bgPath = CGMutablePath()
-        bgPath.addRect(CGRect(x: -width/2, y: 0, width: width, height: height))
+        if cornerRadius > 0 {
+            bgPath.addRoundedRect(in: barRect, cornerWidth: cornerRadius, cornerHeight: cornerRadius)
+        } else {
+            bgPath.addRect(barRect)
+        }
         backgroundNode = SKShapeNode(path: bgPath)
-        backgroundNode.fillColor = SKColor(red: 0.8, green: 0.2, blue: 0.2, alpha: 1.0)
+        backgroundNode.fillColor = SKColor(red: 0.8, green: 0.2, blue: 0.2, alpha: 0.85)
         backgroundNode.strokeColor = .clear
         backgroundNode.lineWidth = 0
 
         // Health bar (green - shows current health)
         let healthPath = CGMutablePath()
-        healthPath.addRect(CGRect(x: -width/2, y: 0, width: width, height: height))
+        if cornerRadius > 0 {
+            healthPath.addRoundedRect(in: barRect, cornerWidth: cornerRadius, cornerHeight: cornerRadius)
+        } else {
+            healthPath.addRect(barRect)
+        }
         healthNode = SKShapeNode(path: healthPath)
         healthNode.fillColor = SKColor(red: 0.2, green: 0.7, blue: 0.2, alpha: 1.0)
         healthNode.strokeColor = .clear
@@ -132,10 +156,14 @@ class HealthBar {
 
         // Border (white outline)
         let borderPath = CGMutablePath()
-        borderPath.addRect(CGRect(x: -width/2, y: 0, width: width, height: height))
+        if cornerRadius > 0 {
+            borderPath.addRoundedRect(in: barRect, cornerWidth: cornerRadius, cornerHeight: cornerRadius)
+        } else {
+            borderPath.addRect(barRect)
+        }
         borderNode = SKShapeNode(path: borderPath)
         borderNode.fillColor = .clear
-        borderNode.strokeColor = .white
+        borderNode.strokeColor = SKColor.white.withAlphaComponent(0.8)
         borderNode.lineWidth = 1
 
         // Add in order: background, health, border
@@ -149,10 +177,16 @@ class HealthBar {
         guard maxHP > 0 else { return }
 
         let healthPercent = CGFloat(currentHP) / CGFloat(maxHP)
+        let healthWidth = width * healthPercent
 
         // Update green health bar width
         let healthPath = CGMutablePath()
-        healthPath.addRect(CGRect(x: -width/2, y: 0, width: width * healthPercent, height: height))
+        let healthRect = CGRect(x: -width / 2, y: 0, width: healthWidth, height: height)
+        if cornerRadius > 0, healthWidth > cornerRadius * 2 {
+            healthPath.addRoundedRect(in: healthRect, cornerWidth: cornerRadius, cornerHeight: cornerRadius)
+        } else {
+            healthPath.addRect(healthRect)
+        }
         healthNode.path = healthPath
 
         // Hide when full (optional)
@@ -169,7 +203,6 @@ class HealthBar {
 
 /// Base class for all game characters (players, enemies)
 class Character: GameEntity {
-
     // MARK: - GameEntity Properties
 
     let sprite: SKSpriteNode
@@ -228,7 +261,7 @@ class Character: GameEntity {
 
     /// Collision radius for circle collision detection
     var collisionRadius: CGFloat {
-        return sprite.size.width * 0.4
+        sprite.size.width * 0.4
     }
 
     // MARK: - Animation
@@ -250,15 +283,15 @@ class Character: GameEntity {
     init(name: String, maxHP: Int, speed: CGFloat, spriteSheetCols: Int = 8, spriteSheetRows: Int = 2) {
         self.name = name
         self.maxHP = maxHP
-        self.currentHP = maxHP
+        currentHP = maxHP
         self.speed = speed
-        self.maxSpeed = speed
+        maxSpeed = speed
         self.spriteSheetCols = spriteSheetCols
         self.spriteSheetRows = spriteSheetRows
 
         // Create sprite node (will be configured by subclasses)
-        self.sprite = SKSpriteNode()
-        self.sprite.name = name
+        sprite = SKSpriteNode()
+        sprite.name = name
     }
 
     // MARK: - Texture Setup
@@ -292,9 +325,9 @@ class Character: GameEntity {
 
         // Slice the sprite sheet into individual textures
         frameTextures = []
-        for row in 0..<spriteSheetRows {
+        for row in 0 ..< spriteSheetRows {
             var rowTextures: [SKTexture] = []
-            for col in 0..<spriteSheetCols {
+            for col in 0 ..< spriteSheetCols {
                 // Calculate normalized rect (SpriteKit textures have origin at bottom-left)
                 let x = CGFloat(col) / CGFloat(spriteSheetCols)
                 let y = 1.0 - CGFloat(row + 1) / CGFloat(spriteSheetRows)
@@ -335,7 +368,7 @@ class Character: GameEntity {
     // MARK: - GameEntity Methods
 
     func update(deltaTime: TimeInterval) {
-        guard isActive && isAlive else { return }
+        guard isActive, isAlive else { return }
 
         updateMovement(deltaTime: deltaTime)
         updateAnimation()
@@ -385,11 +418,18 @@ class Character: GameEntity {
     // MARK: - Health Bar
 
     /// Set up a health bar for this character
-    func setupHealthBar(width: CGFloat? = nil, yOffset: CGFloat = 4) {
+    /// - Parameters:
+    ///   - width: Width of the health bar (defaults to sprite width)
+    ///   - yOffset: Vertical offset above sprite
+    ///   - compact: Use compact style (smaller height, rounded corners)
+    func setupHealthBar(width: CGFloat? = nil, yOffset: CGFloat = 4, compact: Bool = false) {
         let barWidth = width ?? sprite.size.width
-        healthBar = HealthBar(width: barWidth, yOffset: yOffset)
+        let height = compact ? HealthBar.compactHeight : HealthBar.standardHeight
+        let cornerRadius = compact ? HealthBar.compactCornerRadius : HealthBar.standardCornerRadius
 
-        if let healthBar = healthBar {
+        healthBar = HealthBar(width: barWidth, yOffset: yOffset, height: height, cornerRadius: cornerRadius)
+
+        if let healthBar {
             healthBar.positionAbove(spriteHeight: sprite.size.height)
             sprite.addChild(healthBar.node)
             healthBar.update(currentHP: currentHP, maxHP: maxHP)
