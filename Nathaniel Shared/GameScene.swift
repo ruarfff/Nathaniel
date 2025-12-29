@@ -121,6 +121,10 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     }
 
     override func didMove(to view: SKView) {
+        // Remove default SpriteKit template content from GameScene.sks
+        backgroundColor = SKColor.black
+        childNode(withName: "helloLabel")?.removeFromParent()
+
         setupCamera()
         setupLevelManager()
         setupEnemyManager()
@@ -551,10 +555,10 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
             logger
                 .debug(
-                    "HUD setup: view=\(viewWidth)x\(viewHeight), scene=\(size.width)x\(size.height), scale=\(scale), hudSize=\(hudSize.width)x\(hudSize.height)"
+                    "HUD setup: view=\(viewWidth)x\(viewHeight), scene=\(self.size.width)x\(self.size.height), scale=\(scale), hudSize=\(hudSize.width)x\(hudSize.height)"
                 )
         } else {
-            hudSize = size
+            hudSize = self.size
         }
 
         // Store the visible viewport size for camera clamping
