@@ -6,7 +6,9 @@ import SpriteKit
 
 private let logger = Logger(subsystem: "com.ruarfff.Nathaniel", category: "GameScene")
 
-class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPlacementControllerDelegate {
+class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPlacementControllerDelegate,
+    StructureManagerDelegate
+{
     // MARK: - Properties
 
     /// The level configuration to use
@@ -177,6 +179,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         structureManager.structureZPosition = characterZPosition
         structureManager.structureScale = 2.5
         structureManager.enemyManager = enemyManager
+        structureManager.delegate = self
     }
 
     private func setupBuildSystem() {
@@ -759,6 +762,11 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
                 hermes.setupHealthBar(width: 40, yOffset: 8)
                 hermes.healthBar?.hideWhenFull = false // Always show player health
 
+                // Wire up death callback for tower destruction
+                hermes.onDeathCallback = { [weak self] in
+                    self?.handleHermesDeath()
+                }
+
                 addChild(hermes.sprite)
                 print("GameScene: Spawned Hermes at \(spawnPos.x), \(spawnPos.y)")
             }
@@ -1083,6 +1091,18 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         }
     }
 
+    /// Handle Hermes death - destroy towers without recoup
+    private func handleHermesDeath() {
+        // Destroy all Hermes towers immediately without recoup (penalty for death)
+        if structureManager.hasHermesTowers {
+            print("GameScene: Hermes died - destroying \(structureManager.hermesTowerCount) towers without recoup")
+            structureManager.destroyAllHermesTowersImmediate()
+        }
+
+        // Unlock Hermes state (will be needed for respawn)
+        hermes?.unlock()
+    }
+
     /// Respawn Nathaniel at start position
     private func respawnNathaniel() {
         guard let nathaniel else { return }
@@ -1172,8 +1192,8 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         // Lock Hermes in build mode
         hermes?.isInBuildMode = true
 
-        // Update HUD
-        hud.showReleaseHermesButton()
+        // Update HUD with recoup preview
+        hud.showReleaseHermesButton(recoupAmount: structureManager.potentialRecoupAmount)
         hud.updateTowerCount(structureManager.hermesTowerCount)
 
         // Update affordability
@@ -1201,6 +1221,24 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             logger.debug("Placement failed: overlaps character")
         case .overlapsEnemy:
             logger.debug("Placement failed: overlaps enemy")
+        }
+    }
+
+    // MARK: - StructureManagerDelegate
+
+    func structureManager(
+        _ manager: StructureManager,
+        hermesTowerDestroyed remainingCount: Int,
+        potentialRecoup: Int
+    ) {
+        // Update HUD when a Hermes tower is destroyed by enemies
+        hud.updateTowerCount(remainingCount)
+        hud.updateReleaseButtonRecoup(potentialRecoup)
+
+        // Hide release button if all towers are destroyed
+        if remainingCount == 0 {
+            hud.hideReleaseHermesButton()
+            hermes?.unlock()
         }
     }
 

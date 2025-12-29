@@ -633,10 +633,16 @@ class HUD: SKNode {
 
     // MARK: - Release Hermes Button
 
-    /// Show the Release Hermes button
-    func showReleaseHermesButton() {
+    /// Label for release button (for updating text)
+    private weak var releaseButtonLabel: SKLabelNode?
+    private weak var releaseButtonRecoupLabel: SKLabelNode?
+
+    /// Show the Release Hermes button with optional recoup preview
+    /// - Parameter recoupAmount: Amount of resources that will be recovered (0 = no recoup)
+    func showReleaseHermesButton(recoupAmount: Int = 0) {
         guard releaseHermesButton == nil else {
             releaseHermesButton?.isHidden = false
+            updateReleaseButtonRecoup(recoupAmount)
             return
         }
 
@@ -671,8 +677,22 @@ class HUD: SKNode {
         label.text = "RELEASE HERMES"
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
+        label.position = CGPoint(x: 0, y: 6)
         label.name = releaseButtonName
         button.addChild(label)
+        releaseButtonLabel = label
+
+        // Recoup preview text (below main label)
+        let recoupLabel = SKLabelNode(fontNamed: "Helvetica")
+        recoupLabel.fontSize = 11
+        recoupLabel.fontColor = SKColor(red: 0.5, green: 1.0, blue: 0.5, alpha: 1.0) // Light green
+        recoupLabel.text = recoupAmount > 0 ? "+\(recoupAmount) resources" : ""
+        recoupLabel.verticalAlignmentMode = .center
+        recoupLabel.horizontalAlignmentMode = .center
+        recoupLabel.position = CGPoint(x: 0, y: -10)
+        recoupLabel.name = releaseButtonName
+        button.addChild(recoupLabel)
+        releaseButtonRecoupLabel = recoupLabel
 
         // Add subtle pulse animation
         let scaleUp = SKAction.scale(to: 1.05, duration: 0.5)
@@ -703,6 +723,16 @@ class HUD: SKNode {
             self?.releaseHermesButton = nil
         }
         button.run(SKAction.sequence([SKAction.group([fadeOut, scaleOut]), remove]))
+    }
+
+    /// Update the recoup preview amount on the release button
+    /// - Parameter amount: New recoup amount (0 = hide recoup text)
+    func updateReleaseButtonRecoup(_ amount: Int) {
+        if amount > 0 {
+            releaseButtonRecoupLabel?.text = "+\(amount) resources"
+        } else {
+            releaseButtonRecoupLabel?.text = ""
+        }
     }
 
     // MARK: - Build Button

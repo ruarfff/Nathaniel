@@ -1,22 +1,14 @@
-//
-//  DefensiveStructure.swift
-//  Nathaniel Shared
-//
-//  Defensive structures: stationary player buildings that attack enemies or provide support.
-//
-
 import SpriteKit
 
 // MARK: - Build Configuration
 
 /// Configuration for Hermes's build system
-struct BuildConfig {
-
+enum BuildConfig {
     /// Radius around Hermes within which towers can be placed
     static let buildRadius: CGFloat = 250.0
 
     /// Tower costs (in resources)
-    struct TowerCosts {
+    enum TowerCosts {
         static let gunTower: Int = 5
         static let laserTower: Int = 10
         static let healTower: Int = 15
@@ -40,7 +32,6 @@ enum PlacementResult {
 
 /// Validates tower placement positions
 class PlacementValidator {
-
     // MARK: - Properties
 
     /// Reference to Hermes for build radius check
@@ -94,14 +85,14 @@ class PlacementValidator {
 
     /// Convenience method for boolean check
     func isValidPlacement(at position: CGPoint) -> Bool {
-        return validate(position: position) == .valid
+        validate(position: position) == .valid
     }
 
     // MARK: - Individual Checks
 
     /// Check if position is within build radius of Hermes
     private func isWithinBuildRadius(_ position: CGPoint) -> Bool {
-        guard let hermes = hermes else { return false }
+        guard let hermes else { return false }
 
         let dx = position.x - hermes.position.x
         let dy = position.y - hermes.position.y
@@ -171,7 +162,6 @@ class PlacementValidator {
 /// Base class for all defensive structures (towers)
 /// Structures are stationary, cannot move, and perform automated actions
 class DefensiveStructure: Character {
-
     // MARK: - Properties
 
     /// Structures cannot move
@@ -179,6 +169,9 @@ class DefensiveStructure: Character {
         get { nil }
         set { /* Structures don't move */ }
     }
+
+    /// Original resource cost paid to build this structure (for recoup calculation)
+    var buildCost: Int = 0
 
     /// Attack range for finding targets
     var attackRange: CGFloat = 300
@@ -205,7 +198,7 @@ class DefensiveStructure: Character {
     // MARK: - GameEntity Methods
 
     override func update(deltaTime: TimeInterval) {
-        guard isActive && isAlive else { return }
+        guard isActive, isAlive else { return }
 
         // Find target if we don't have one or current target is dead
         if currentTarget?.isAlive != true {
@@ -220,7 +213,7 @@ class DefensiveStructure: Character {
 
     /// Find the nearest enemy within attack range
     func findTargetInRange() -> Enemy? {
-        return findNearestEnemy?()
+        findNearestEnemy?()
     }
 
     /// Attack the current target (override in subclasses)
@@ -283,9 +276,9 @@ class DefensiveStructure: Character {
         let textureSize = texture.size()
         print("DefensiveStructure: Loading texture '\(textureName)', size: \(textureSize)")
 
-        if let size = size {
+        if let size {
             sprite.size = size
-        } else if textureSize.width > 0 && textureSize.height > 0 {
+        } else if textureSize.width > 0, textureSize.height > 0 {
             sprite.size = textureSize
         } else {
             // Fallback size if texture failed to load
@@ -301,7 +294,6 @@ class DefensiveStructure: Character {
 
 /// Armed tower that fires bullets at enemies
 class GunTower: DefensiveStructure {
-
     // MARK: - Constants
 
     /// Resource cost to build this tower
@@ -331,6 +323,9 @@ class GunTower: DefensiveStructure {
         )
 
         super.init(name: "GunTower", maxHP: 600, attackRange: 500)
+
+        // Track build cost for recoup calculation
+        buildCost = GunTower.cost
 
         // Load tower texture
         loadTexture(named: "guntower", size: CGSize(width: 48, height: 64))
@@ -375,7 +370,6 @@ class GunTower: DefensiveStructure {
 
 /// Support tower that heals nearby player characters
 class HealTower: DefensiveStructure {
-
     // MARK: - Constants
 
     /// Resource cost to build this tower
@@ -403,6 +397,9 @@ class HealTower: DefensiveStructure {
     init() {
         super.init(name: "HealTower", maxHP: 600, attackRange: 400)
 
+        // Track build cost for recoup calculation
+        buildCost = HealTower.cost
+
         // Load tower texture
         loadTexture(named: "healtower", size: CGSize(width: 48, height: 64))
 
@@ -424,7 +421,7 @@ class HealTower: DefensiveStructure {
     // MARK: - Update
 
     override func update(deltaTime: TimeInterval) {
-        guard isActive && isAlive else { return }
+        guard isActive, isAlive else { return }
 
         healTimer += deltaTime
 
@@ -445,7 +442,7 @@ class HealTower: DefensiveStructure {
             let distance = sqrt(dx * dx + dy * dy)
 
             // Heal if in range and not at full health
-            if distance < attackRange && target.currentHP < target.maxHP - healAmount {
+            if distance < attackRange, target.currentHP < target.maxHP - healAmount {
                 target.currentHP = min(target.maxHP, target.currentHP + healAmount)
                 target.updateHealthBar()
 
@@ -470,14 +467,13 @@ class HealTower: DefensiveStructure {
 
     // Override attack methods - heal tower doesn't attack
     override func findTargetInRange() -> Enemy? { nil }
-    override func attackTarget(_ target: Enemy, deltaTime: TimeInterval) { }
+    override func attackTarget(_ target: Enemy, deltaTime: TimeInterval) {}
 }
 
 // MARK: - Laser Beam
 
 /// Visual representation of a laser beam
 class LaserBeam {
-
     /// The line node representing the beam
     let node: SKShapeNode
 
@@ -534,7 +530,6 @@ class LaserBeam {
 
 /// Armed tower that fires continuous laser beams at enemies
 class LaserTower: DefensiveStructure {
-
     // MARK: - Constants
 
     /// Resource cost to build this tower
@@ -573,6 +568,9 @@ class LaserTower: DefensiveStructure {
 
         super.init(name: "LaserTower", maxHP: 600, attackRange: 350)
 
+        // Track build cost for recoup calculation
+        buildCost = LaserTower.cost
+
         // Load tower texture
         loadTexture(named: "lasertower", size: CGSize(width: 48, height: 64))
     }
@@ -585,7 +583,7 @@ class LaserTower: DefensiveStructure {
     // MARK: - Update
 
     override func update(deltaTime: TimeInterval) {
-        guard isActive && isAlive else {
+        guard isActive, isAlive else {
             beam.deactivate()
             return
         }
@@ -600,7 +598,7 @@ class LaserTower: DefensiveStructure {
 
     override func attackTarget(_ target: Enemy, deltaTime: TimeInterval) {
         // Check if ready to fire
-        if !isFiring && cooldownElapsed >= cooldownTime {
+        if !isFiring, cooldownElapsed >= cooldownTime {
             // Start firing
             isFiring = true
             burstElapsed = 0
@@ -612,7 +610,7 @@ class LaserTower: DefensiveStructure {
             burstElapsed += deltaTime
 
             // Play sound during burst (once)
-            if !hasPlayedSound && burstElapsed > 0.1 {
+            if !hasPlayedSound, burstElapsed > 0.1 {
                 if let scene = sprite.scene {
                     AudioManager.shared.playSoundEffect(.laser, on: scene)
                 }
@@ -646,12 +644,30 @@ class LaserTower: DefensiveStructure {
     }
 }
 
+// MARK: - Structure Manager Delegate
+
+/// Delegate for structure manager events
+protocol StructureManagerDelegate: AnyObject {
+    /// Called when a Hermes-owned tower is destroyed by enemies
+    /// - Parameters:
+    ///   - manager: The structure manager
+    ///   - remainingCount: Number of Hermes towers still standing
+    ///   - potentialRecoup: New potential recoup amount
+    func structureManager(
+        _ manager: StructureManager,
+        hermesTowerDestroyed remainingCount: Int,
+        potentialRecoup: Int
+    )
+}
+
 // MARK: - Structure Manager
 
 /// Manages all defensive structures in the game
 class StructureManager {
-
     // MARK: - Properties
+
+    /// Delegate for tower destruction events
+    weak var delegate: StructureManagerDelegate?
 
     /// All structures
     private var structures: [DefensiveStructure] = []
@@ -676,12 +692,20 @@ class StructureManager {
 
     /// Whether Hermes has any deployed towers
     var hasHermesTowers: Bool {
-        return !hermesTowers.isEmpty
+        !hermesTowers.isEmpty
     }
 
     /// Count of Hermes's deployed towers
     var hermesTowerCount: Int {
-        return hermesTowers.count
+        hermesTowers.count
+    }
+
+    /// Calculate potential recoup if all surviving towers are released now
+    /// Used by HUD to show preview on release button
+    var potentialRecoupAmount: Int {
+        hermesTowers.reduce(0) { total, tower in
+            total + TowerConfig.calculateRecoup(for: tower.buildCost)
+        }
     }
 
     // MARK: - Initialization
@@ -709,8 +733,8 @@ class StructureManager {
         }
 
         tower.findNearestEnemy = { [weak self, weak tower] in
-            guard let self = self, let tower = tower else { return nil }
-            return self.findNearestEnemy(to: tower.position, range: tower.attackRange)
+            guard let self, let tower else { return nil }
+            return findNearestEnemy(to: tower.position, range: tower.attackRange)
         }
 
         return tower
@@ -733,13 +757,13 @@ class StructureManager {
         setupStructure(tower, at: position)
 
         // Add beam node to scene
-        if let scene = scene {
+        if let scene {
             tower.setupBeamNode(in: scene)
         }
 
         tower.findNearestEnemy = { [weak self, weak tower] in
-            guard let self = self, let tower = tower else { return nil }
-            return self.findNearestEnemy(to: tower.position, range: tower.attackRange)
+            guard let self, let tower else { return nil }
+            return findNearestEnemy(to: tower.position, range: tower.attackRange)
         }
 
         return tower
@@ -754,15 +778,13 @@ class StructureManager {
     /// - Returns: The created tower
     @discardableResult
     func addHermesTower(type: TowerType, at position: CGPoint) -> DefensiveStructure {
-        let tower: DefensiveStructure
-
-        switch type {
+        let tower: DefensiveStructure = switch type {
         case .gunTower:
-            tower = addGunTower(at: position)
+            addGunTower(at: position)
         case .laserTower:
-            tower = addLaserTower(at: position)
+            addLaserTower(at: position)
         case .healTower:
-            tower = addHealTower(at: position)
+            addHealTower(at: position)
         }
 
         // Track as Hermes tower
@@ -779,18 +801,36 @@ class StructureManager {
         hermesTowers.append(tower)
     }
 
-    /// Destroy all towers owned by Hermes
+    /// Destroy all towers owned by Hermes and return 20% of their costs
     /// Called when releasing Hermes to move again
     /// - Parameters:
     ///   - camera: Camera for screen shake effects (optional)
     ///   - completion: Called when all towers are destroyed
-    func destroyAllHermesTowers(camera: SKCameraNode? = nil, completion: (() -> Void)? = nil) {
+    /// - Returns: Total resources recovered from surviving towers
+    @discardableResult
+    func destroyAllHermesTowers(camera: SKCameraNode? = nil, completion: (() -> Void)? = nil) -> Int {
         print("StructureManager: Destroying \(hermesTowerCount) Hermes towers with effects")
 
-        guard let scene = scene, !hermesTowers.isEmpty else {
+        guard let scene, !hermesTowers.isEmpty else {
             hermesTowers.removeAll()
             completion?()
-            return
+            return 0
+        }
+
+        // Calculate recoup BEFORE destroying - only surviving towers count
+        let recoupAmount = hermesTowers.reduce(0) { total, tower in
+            total + TowerConfig.calculateRecoup(for: tower.buildCost)
+        }
+
+        // Add recoup to resources
+        if recoupAmount > 0 {
+            ResourceManager.shared.addResources(recoupAmount)
+            print("StructureManager: Recouped \(recoupAmount) resources from \(hermesTowerCount) towers")
+
+            // Show visual feedback at first tower's position
+            if let firstTower = hermesTowers.first {
+                showRecoupEffect(amount: recoupAmount, at: firstTower.position, in: scene)
+            }
         }
 
         // Capture towers to destroy
@@ -807,6 +847,37 @@ class StructureManager {
             delayBetween: 0.12,
             completion: completion
         )
+
+        return recoupAmount
+    }
+
+    /// Show floating text effect for resource recoup
+    private func showRecoupEffect(amount: Int, at position: CGPoint, in scene: SKScene) {
+        let label = SKLabelNode(text: "+\(amount)")
+        label.fontName = "AvenirNext-Bold"
+        label.fontSize = 24
+        label.fontColor = SKColor(red: 0.5, green: 1.0, blue: 0.5, alpha: 1.0) // Light green
+        label.position = CGPoint(x: position.x, y: position.y + 40)
+        label.zPosition = 500
+        scene.addChild(label)
+
+        // Float up and fade out
+        let moveUp = SKAction.moveBy(x: 0, y: 60, duration: 1.2)
+        moveUp.timingMode = .easeOut
+        let fadeIn = SKAction.fadeIn(withDuration: 0.1)
+        let wait = SKAction.wait(forDuration: 0.6)
+        let fadeOut = SKAction.fadeOut(withDuration: 0.5)
+        let remove = SKAction.removeFromParent()
+
+        let sequence = SKAction.sequence([
+            fadeIn,
+            SKAction.group([moveUp, SKAction.sequence([wait, fadeOut])]),
+            remove,
+        ])
+        label.run(sequence)
+
+        // Play collect sound
+        AudioManager.shared.playSoundEffect(.collect, on: scene)
     }
 
     /// Destroy all towers immediately without effects (for cleanup/reset)
@@ -832,7 +903,7 @@ class StructureManager {
 
         // Add destruction callback
         structure.onDestroyed = { [weak self, weak structure] in
-            guard let structure = structure else { return }
+            guard let structure else { return }
             self?.removeStructure(structure)
         }
 
@@ -840,7 +911,9 @@ class StructureManager {
         scene?.addChild(structure.sprite)
         structures.append(structure)
 
-        print("StructureManager: Added \(structure.name) at (\(Int(position.x)), \(Int(position.y))), sprite size: \(structure.sprite.size), scale: \(structureScale)")
+        print(
+            "StructureManager: Added \(structure.name) at (\(Int(position.x)), \(Int(position.y))), sprite size: \(structure.sprite.size), scale: \(structureScale)"
+        )
     }
 
     /// Remove a structure from the manager
@@ -852,6 +925,13 @@ class StructureManager {
         if let hermesIndex = hermesTowers.firstIndex(where: { $0 === structure }) {
             hermesTowers.remove(at: hermesIndex)
             print("StructureManager: Hermes tower destroyed, remaining: \(hermesTowerCount)")
+
+            // Notify delegate of tower destruction (for HUD updates)
+            delegate?.structureManager(
+                self,
+                hermesTowerDestroyed: hermesTowerCount,
+                potentialRecoup: potentialRecoupAmount
+            )
         }
     }
 
@@ -868,7 +948,7 @@ class StructureManager {
 
     /// Find the nearest enemy to a position within range
     func findNearestEnemy(to position: CGPoint, range: CGFloat) -> Enemy? {
-        guard let enemyManager = enemyManager else { return nil }
+        guard let enemyManager else { return nil }
 
         var nearestEnemy: Enemy?
         var nearestDistance: CGFloat = range
@@ -889,12 +969,12 @@ class StructureManager {
 
     /// Get all active structures
     var activeStructures: [DefensiveStructure] {
-        return structures.filter { $0.isActive }
+        structures.filter(\.isActive)
     }
 
     /// Get count of active structures
     var count: Int {
-        return structures.count
+        structures.count
     }
 
     /// Clear all structures

@@ -1,10 +1,3 @@
-//
-//  ResourceManager.swift
-//  Nathaniel Shared
-//
-//  Manages resource drops, collection, and player resource totals.
-//
-
 import SpriteKit
 
 // MARK: - ResourceManager Delegate
@@ -22,7 +15,6 @@ protocol ResourceManagerDelegate: AnyObject {
 
 /// Central manager for the resource system
 class ResourceManager {
-
     // MARK: - Singleton
 
     static let shared = ResourceManager()
@@ -120,8 +112,8 @@ class ResourceManager {
         guard amount > 0 else { return }
 
         // Spawn at enemy position with slight random offset
-        let offsetX = CGFloat.random(in: -10...10)
-        let offsetY = CGFloat.random(in: -10...10)
+        let offsetX = CGFloat.random(in: -10 ... 10)
+        let offsetY = CGFloat.random(in: -10 ... 10)
         let position = CGPoint(
             x: enemy.position.x + offsetX,
             y: enemy.position.y + offsetY
@@ -132,14 +124,14 @@ class ResourceManager {
 
     /// Add a visual spawn effect
     private func addSpawnEffect(at position: CGPoint) {
-        guard let scene = scene else { return }
+        guard let scene else { return }
 
         // Create a brief flash/pop effect
         let flash = SKShapeNode(circleOfRadius: 15)
         flash.fillColor = SKColor(red: 0.5, green: 1.0, blue: 0.5, alpha: 0.8)
         flash.strokeColor = .clear
         flash.position = position
-        flash.zPosition = 49  // Just below resources
+        flash.zPosition = 49 // Just below resources
         scene.addChild(flash)
 
         // Animate: expand and fade out
@@ -223,30 +215,30 @@ class ResourceManager {
 
     /// Check if player has enough resources
     func canAfford(_ amount: Int) -> Bool {
-        return totalCollected >= amount
+        totalCollected >= amount
+    }
+
+    /// Add resources to player's total (e.g., tower recoup, bonuses)
+    /// - Parameter amount: Amount to add (must be positive)
+    func addResources(_ amount: Int) {
+        guard amount > 0 else { return }
+        totalCollected += amount
+        delegate?.resourceManager(self, didUpdateTotal: totalCollected)
     }
 
     // MARK: - Queries
 
     /// Get count of active resources on battlefield
     var activeCount: Int {
-        return resources.count
+        resources.count
     }
 
     /// Get resources near a point
     func resources(near point: CGPoint, radius: CGFloat) -> [Resource] {
-        return resources.filter { resource in
+        resources.filter { resource in
             let dx = resource.position.x - point.x
             let dy = resource.position.y - point.y
             return hypot(dx, dy) <= radius
         }
     }
-
-    #if DEBUG
-    /// Add resources directly (for development/testing only)
-    func addResources(_ amount: Int) {
-        totalCollected += amount
-        delegate?.resourceManager(self, didUpdateTotal: totalCollected)
-    }
-    #endif
 }

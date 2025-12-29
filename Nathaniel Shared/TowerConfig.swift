@@ -1,10 +1,3 @@
-//
-//  TowerConfig.swift
-//  Nathaniel Shared
-//
-//  Configuration for tower building system - costs, build radius, and tower types.
-//
-
 import Foundation
 import SpriteKit
 
@@ -19,27 +12,27 @@ enum TowerType: String, CaseIterable {
     /// Display name for the tower type
     var displayName: String {
         switch self {
-        case .gunTower: return "Gun Tower"
-        case .laserTower: return "Laser Tower"
-        case .healTower: return "Heal Tower"
+        case .gunTower: "Gun Tower"
+        case .laserTower: "Laser Tower"
+        case .healTower: "Heal Tower"
         }
     }
 
     /// Resource cost to build this tower type
     var cost: Int {
         switch self {
-        case .gunTower: return TowerConfig.gunTowerCost
-        case .laserTower: return TowerConfig.laserTowerCost
-        case .healTower: return TowerConfig.healTowerCost
+        case .gunTower: TowerConfig.gunTowerCost
+        case .laserTower: TowerConfig.laserTowerCost
+        case .healTower: TowerConfig.healTowerCost
         }
     }
 
     /// Texture name for the tower icon in build menu
     var iconTextureName: String {
         switch self {
-        case .gunTower: return "guntower"
-        case .laserTower: return "lasertower"
-        case .healTower: return "healtower"
+        case .gunTower: "guntower"
+        case .laserTower: "lasertower"
+        case .healTower: "healtower"
         }
     }
 
@@ -47,11 +40,11 @@ enum TowerType: String, CaseIterable {
     func createTower() -> DefensiveStructure {
         switch self {
         case .gunTower:
-            return GunTower()
+            GunTower()
         case .laserTower:
-            return LaserTower()
+            LaserTower()
         case .healTower:
-            return HealTower()
+            HealTower()
         }
     }
 }
@@ -60,34 +53,33 @@ enum TowerType: String, CaseIterable {
 
 /// Central configuration for tower building system
 /// Adjust these values for game balance
-struct TowerConfig {
-
+enum TowerConfig {
     // MARK: - Tower Costs (in resources)
 
     /// Cost to build a Gun Tower
     static var gunTowerCost: Int {
         #if DEBUG
-        return DevSettings.shared.towerCostGun
+            return DevSettings.shared.towerCostGun
         #else
-        return 5
+            return 5
         #endif
     }
 
     /// Cost to build a Laser Tower
     static var laserTowerCost: Int {
         #if DEBUG
-        return DevSettings.shared.towerCostLaser
+            return DevSettings.shared.towerCostLaser
         #else
-        return 10
+            return 10
         #endif
     }
 
     /// Cost to build a Heal Tower
     static var healTowerCost: Int {
         #if DEBUG
-        return DevSettings.shared.towerCostHeal
+            return DevSettings.shared.towerCostHeal
         #else
-        return 15
+            return 15
         #endif
     }
 
@@ -104,11 +96,17 @@ struct TowerConfig {
     /// Minimum distance between towers to prevent overlap
     static let towerSpacing: CGFloat = 60
 
+    // MARK: - Recoup System
+
+    /// Percentage of tower cost returned when Hermes releases towers (0.0 to 1.0)
+    /// Only towers still standing are eligible - towers destroyed by enemies give nothing
+    static let recoupPercentage: Double = 0.20
+
     // MARK: - Helper Methods
 
     /// Check if the player can afford a tower type
     static func canAfford(_ type: TowerType, currentResources: Int) -> Bool {
-        return currentResources >= type.cost
+        currentResources >= type.cost
     }
 
     /// Check if a position is within valid build range of Hermes
@@ -118,5 +116,12 @@ struct TowerConfig {
         let distance = sqrt(dx * dx + dy * dy)
 
         return distance >= minBuildDistance && distance <= buildRadius
+    }
+
+    /// Calculate recoup amount for a tower cost
+    /// - Parameter cost: Original build cost of the tower
+    /// - Returns: Amount of resources to return (rounded down)
+    static func calculateRecoup(for cost: Int) -> Int {
+        Int(Double(cost) * recoupPercentage)
     }
 }
