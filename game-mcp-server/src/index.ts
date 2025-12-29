@@ -163,6 +163,106 @@ const tools: Tool[] = [
       required: [],
     },
   },
+  {
+    name: 'game_debug_overlay',
+    description: 'Toggle, show, or hide the debug overlay that highlights interactive UI elements with color-coded bounding boxes. Useful for visually identifying clickable elements during testing.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          enum: ['show', 'hide', 'toggle'],
+          description: 'Action to perform on the debug overlay',
+        },
+      },
+      required: ['action'],
+    },
+  },
+  {
+    name: 'game_visual_diff',
+    description: 'Compare two images and highlight differences. Returns match status, diff percentage, and optionally a diff image showing changed pixels in red.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        image1: {
+          type: 'string',
+          description: 'First image as base64-encoded PNG',
+        },
+        image2: {
+          type: 'string',
+          description: 'Second image as base64-encoded PNG',
+        },
+        threshold: {
+          type: 'number',
+          description: 'Percentage threshold for considering images as matching (0-100, default: 1.0)',
+        },
+        generateDiffImage: {
+          type: 'boolean',
+          description: 'Whether to generate a visual diff image (default: true)',
+        },
+      },
+      required: ['image1', 'image2'],
+    },
+  },
+  {
+    name: 'game_diff_baseline',
+    description: 'Compare current screenshot against a saved baseline image. Use for visual regression testing.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        baseline: {
+          type: 'string',
+          description: 'Name of the baseline to compare against',
+        },
+        threshold: {
+          type: 'number',
+          description: 'Percentage threshold for considering images as matching (0-100, default: 1.0)',
+        },
+        generateDiffImage: {
+          type: 'boolean',
+          description: 'Whether to generate a visual diff image (default: true)',
+        },
+      },
+      required: ['baseline'],
+    },
+  },
+  {
+    name: 'game_list_baselines',
+    description: 'List all saved baseline images for visual regression testing.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: 'game_save_baseline',
+    description: 'Save the current screenshot as a baseline for visual regression testing.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'Unique name for the baseline (e.g., "MainMenu_Default", "GameScene_Level1")',
+        },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'game_delete_baseline',
+    description: 'Delete a saved baseline image.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'Name of the baseline to delete',
+        },
+      },
+      required: ['name'],
+    },
+  },
 ];
 
 // Create MCP server
@@ -345,6 +445,113 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'game_wait_for_scene': {
         const waitArgs = args as { scene?: string; timeout?: number };
         const result = await gameClient.waitForScene(waitArgs.timeout ?? 10, waitArgs.scene);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'game_debug_overlay': {
+        const overlayArgs = args as { action: 'show' | 'hide' | 'toggle' };
+        const result = await gameClient.debugOverlay(overlayArgs.action);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'game_visual_diff': {
+        const diffArgs = args as {
+          image1: string;
+          image2: string;
+          threshold?: number;
+          generateDiffImage?: boolean;
+        };
+        const result = await gameClient.visualDiff(
+          diffArgs.image1,
+          diffArgs.image2,
+          diffArgs.threshold ?? 1.0,
+          diffArgs.generateDiffImage ?? true
+        );
+        const content: Array<{ type: string; text?: string; data?: string; mimeType?: string }> = [
+          {
+            type: 'text',
+            text: JSON.stringify({ ...result, diffImage: result.diffImage ? '[base64 image]' : null }, null, 2),
+          },
+        ];
+        if (result.diffImage) {
+          content.push({
+            type: 'image',
+            data: result.diffImage,
+            mimeType: 'image/png',
+          });
+        }
+        return { content };
+      }
+
+      case 'game_diff_baseline': {
+        const baselineArgs = args as {
+          baseline: string;
+          threshold?: number;
+          generateDiffImage?: boolean;
+        };
+        const result = await gameClient.diffAgainstBaseline(
+          baselineArgs.baseline,
+          baselineArgs.threshold ?? 1.0,
+          baselineArgs.generateDiffImage ?? true
+        );
+        const content: Array<{ type: string; text?: string; data?: string; mimeType?: string }> = [
+          {
+            type: 'text',
+            text: JSON.stringify({ ...result, diffImage: result.diffImage ? '[base64 image]' : null }, null, 2),
+          },
+        ];
+        if (result.diffImage) {
+          content.push({
+            type: 'image',
+            data: result.diffImage,
+            mimeType: 'image/png',
+          });
+        }
+        return { content };
+      }
+
+      case 'game_list_baselines': {
+        const result = await gameClient.listBaselines();
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'game_save_baseline': {
+        const saveArgs = args as { name: string };
+        const result = await gameClient.saveBaseline(saveArgs.name);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'game_delete_baseline': {
+        const deleteArgs = args as { name: string };
+        const result = await gameClient.deleteBaseline(deleteArgs.name);
         return {
           content: [
             {

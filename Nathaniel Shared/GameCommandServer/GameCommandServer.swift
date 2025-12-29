@@ -395,6 +395,29 @@
             case ("GET", _) where path.hasPrefix("/wait_for_scene"):
                 handleWaitForScene(path: path, connection: connection)
 
+            // Debug overlay
+            case ("POST", "/debug/overlay"):
+                handleDebugOverlay(body: body, connection: connection)
+
+            case ("GET", "/debug/overlay"):
+                handleGetDebugOverlayState(connection: connection)
+
+            // Visual diff and baselines
+            case ("POST", "/diff"):
+                handleVisualDiff(body: body, connection: connection)
+
+            case ("POST", "/diff/baseline"):
+                handleDiffAgainstBaseline(body: body, connection: connection)
+
+            case ("GET", "/baselines"):
+                handleListBaselines(connection: connection)
+
+            case ("POST", "/baselines"):
+                handleSaveBaseline(body: body, connection: connection)
+
+            case ("DELETE", _) where path.hasPrefix("/baselines/"):
+                handleDeleteBaseline(path: path, connection: connection)
+
             default:
                 sendErrorResponse(connection: connection, status: 404, message: "Not found: \(method) \(path)")
             }
@@ -894,6 +917,192 @@
             case 503: "Service Unavailable"
             default: "Unknown"
             }
+        }
+
+        // MARK: - Debug Overlay Handlers
+
+        private func handleDebugOverlay(body: Data?, connection: NWConnection) {
+            guard let body,
+                  let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+                  let action = json["action"] as? String
+            else {
+                sendErrorResponse(connection: connection, status: 400, message: "Missing 'action' field")
+                return
+            }
+
+            DispatchQueue.main.async { [weak self] in
+                guard let scene = self?.delegate as? SKScene else {
+                    self?.sendErrorResponse(connection: connection, status: 503, message: "No scene available")
+                    return
+                }
+
+                switch action {
+                case "show":
+                    scene.showDebugOverlay()
+                case "hide":
+                    scene.hideDebugOverlay()
+                case "toggle":
+                    scene.toggleDebugOverlay()
+                default:
+                    self?.sendErrorResponse(connection: connection, status: 400, message: "Invalid action: \(action)")
+                    return
+                }
+
+                let response: [String: Any] = [
+                    "success": true,
+                    "visible": scene.isDebugOverlayVisible,
+                ]
+                self?.sendJSONResponse(connection: connection, json: response)
+            }
+        }
+
+        private func handleGetDebugOverlayState(connection: NWConnection) {
+            DispatchQueue.main.async { [weak self] in
+                guard let scene = self?.delegate as? SKScene else {
+                    self?.sendErrorResponse(connection: connection, status: 503, message: "No scene available")
+                    return
+                }
+
+                let response: [String: Any] = [
+                    "visible": scene.isDebugOverlayVisible,
+                ]
+                self?.sendJSONResponse(connection: connection, json: response)
+            }
+        }
+
+        // MARK: - Visual Diff Handlers
+
+        private func handleVisualDiff(body: Data?, connection: NWConnection) {
+            guard let body,
+                  let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+                  let image1Base64 = json["image1"] as? String,
+                  let image2Base64 = json["image2"] as? String,
+                  let image1Data = Data(base64Encoded: image1Base64),
+                  let image2Data = Data(base64Encoded: image2Base64)
+            else {
+                sendErrorResponse(
+                    connection: connection,
+                    status: 400,
+                    message: "Missing or invalid 'image1' and 'image2' fields"
+                )
+                return
+            }
+
+            let threshold = json["threshold"] as? Double ?? 1.0
+            let generateDiff = json["generateDiffImage"] as? Bool ?? true
+
+            let result = VisualDiff.compare(
+                image1Data,
+                image2Data,
+                threshold: threshold,
+                shouldGenerateDiffImage: generateDiff
+            )
+            sendCodableResponse(connection: connection, value: result)
+        }
+
+        private func handleDiffAgainstBaseline(body: Data?, connection: NWConnection) {
+            guard let body,
+                  let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+                  let baselineName = json["baseline"] as? String
+            else {
+                sendErrorResponse(connection: connection, status: 400, message: "Missing 'baseline' field")
+                return
+            }
+
+            let threshold = json["threshold"] as? Double ?? 1.0
+            let generateDiff = json["generateDiffImage"] as? Bool ?? true
+
+            // If current image provided, use it; otherwise capture screenshot
+            DispatchQueue.main.async { [weak self] in
+                let currentImageData: Data? = if let imageBase64 = json["image"] as? String {
+                    Data(base64Encoded: imageBase64)
+                } else {
+                    self?.delegate?.captureScreenshot()
+                }
+
+                guard let currentData = currentImageData else {
+                    self?.sendErrorResponse(connection: connection, status: 503, message: "Failed to get current image")
+                    return
+                }
+
+                guard let baselineData = BaselineStorage.shared.loadBaseline(name: baselineName) else {
+                    self?.sendErrorResponse(
+                        connection: connection,
+                        status: 404,
+                        message: "Baseline '\(baselineName)' not found"
+                    )
+                    return
+                }
+
+                let result = VisualDiff.compare(
+                    baselineData,
+                    currentData,
+                    threshold: threshold,
+                    shouldGenerateDiffImage: generateDiff
+                )
+                self?.sendCodableResponse(connection: connection, value: result)
+            }
+        }
+
+        // MARK: - Baseline Handlers
+
+        private func handleListBaselines(connection: NWConnection) {
+            let baselines = BaselineStorage.shared.listBaselines()
+            let response: [String: Any] = [
+                "baselines": baselines,
+                "count": baselines.count,
+            ]
+            sendJSONResponse(connection: connection, json: response)
+        }
+
+        private func handleSaveBaseline(body: Data?, connection: NWConnection) {
+            guard let body,
+                  let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+                  let name = json["name"] as? String
+            else {
+                sendErrorResponse(connection: connection, status: 400, message: "Missing 'name' field")
+                return
+            }
+
+            DispatchQueue.main.async { [weak self] in
+                let imageData: Data? = if let imageBase64 = json["image"] as? String {
+                    Data(base64Encoded: imageBase64)
+                } else {
+                    // Capture current screenshot as baseline
+                    self?.delegate?.captureScreenshot()
+                }
+
+                guard let data = imageData else {
+                    self?.sendErrorResponse(connection: connection, status: 503, message: "Failed to get image data")
+                    return
+                }
+
+                let success = BaselineStorage.shared.saveBaseline(name: name, imageData: data)
+                let response: [String: Any] = [
+                    "success": success,
+                    "name": name,
+                    "message": success ? "Baseline saved" : "Failed to save baseline",
+                ]
+                self?.sendJSONResponse(connection: connection, json: response)
+            }
+        }
+
+        private func handleDeleteBaseline(path: String, connection: NWConnection) {
+            // Extract baseline name from path: /baselines/{name}
+            let components = path.components(separatedBy: "/")
+            guard components.count >= 3 else {
+                sendErrorResponse(connection: connection, status: 400, message: "Invalid path")
+                return
+            }
+
+            let name = components[2]
+            let success = BaselineStorage.shared.deleteBaseline(name: name)
+            let response: [String: Any] = [
+                "success": success,
+                "name": name,
+                "message": success ? "Baseline deleted" : "Baseline not found or could not be deleted",
+            ]
+            sendJSONResponse(connection: connection, json: response)
         }
     }
 

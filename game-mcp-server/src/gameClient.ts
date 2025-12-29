@@ -62,6 +62,32 @@ export interface SceneChangeEvent {
   timedOut: boolean;
 }
 
+export interface DebugOverlayResponse {
+  success?: boolean;
+  visible: boolean;
+}
+
+export interface VisualDiffResult {
+  match: boolean;
+  diffPercentage: number;
+  diffPixelCount: number;
+  totalPixels: number;
+  threshold: number;
+  diffImage?: string;  // base64 encoded
+  error?: string;
+}
+
+export interface BaselineListResponse {
+  baselines: string[];
+  count: number;
+}
+
+export interface BaselineResponse {
+  success: boolean;
+  name: string;
+  message: string;
+}
+
 export class GameClient {
   private baseUrl: string;
   private timeout: number;
@@ -151,6 +177,90 @@ export class GameClient {
     return this.fetch<CommandResponse>('/action', {
       method: 'POST',
       body: JSON.stringify({ name, params }),
+    });
+  }
+
+  // Debug Overlay
+
+  /**
+   * Toggle, show, or hide the debug overlay
+   */
+  async debugOverlay(action: 'show' | 'hide' | 'toggle'): Promise<DebugOverlayResponse> {
+    return this.fetch<DebugOverlayResponse>('/debug/overlay', {
+      method: 'POST',
+      body: JSON.stringify({ action }),
+    });
+  }
+
+  /**
+   * Get the current debug overlay state
+   */
+  async getDebugOverlayState(): Promise<DebugOverlayResponse> {
+    return this.fetch<DebugOverlayResponse>('/debug/overlay', { method: 'GET' });
+  }
+
+  // Visual Diff
+
+  /**
+   * Compare two images and return diff result
+   */
+  async visualDiff(
+    image1: string,
+    image2: string,
+    threshold: number = 1.0,
+    generateDiffImage: boolean = true
+  ): Promise<VisualDiffResult> {
+    return this.fetch<VisualDiffResult>('/diff', {
+      method: 'POST',
+      body: JSON.stringify({ image1, image2, threshold, generateDiffImage }),
+    });
+  }
+
+  /**
+   * Compare current screenshot against a saved baseline
+   */
+  async diffAgainstBaseline(
+    baselineName: string,
+    threshold: number = 1.0,
+    generateDiffImage: boolean = true,
+    currentImage?: string
+  ): Promise<VisualDiffResult> {
+    return this.fetch<VisualDiffResult>('/diff/baseline', {
+      method: 'POST',
+      body: JSON.stringify({
+        baseline: baselineName,
+        threshold,
+        generateDiffImage,
+        ...(currentImage && { image: currentImage }),
+      }),
+    });
+  }
+
+  // Baselines
+
+  /**
+   * List all saved baselines
+   */
+  async listBaselines(): Promise<BaselineListResponse> {
+    return this.fetch<BaselineListResponse>('/baselines', { method: 'GET' });
+  }
+
+  /**
+   * Save current screenshot or provided image as a baseline
+   */
+  async saveBaseline(name: string, image?: string): Promise<BaselineResponse> {
+    return this.fetch<BaselineResponse>('/baselines', {
+      method: 'POST',
+      body: JSON.stringify({ name, ...(image && { image }) }),
+    });
+  }
+
+  /**
+   * Delete a baseline
+   */
+  async deleteBaseline(name: string): Promise<BaselineResponse> {
+    return this.fetch<BaselineResponse>(`/baselines/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
     });
   }
 
