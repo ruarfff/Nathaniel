@@ -371,9 +371,9 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             waveSpawner?.restore(wave: currentWave, timeUntilNext: state.timeUntilNextWave ?? 0)
         }
 
-        // Update camera to follow restored Nathaniel position
+        // Update camera to follow restored Nathaniel position (clamped to map bounds)
         if let nathaniel {
-            cameraNode.position = nathaniel.position
+            clampCameraToMapBounds(targetPosition: nathaniel.position)
         }
 
         // Update HUD
@@ -555,10 +555,10 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
             logger
                 .debug(
-                    "HUD setup: view=\(viewWidth)x\(viewHeight), scene=\(self.size.width)x\(self.size.height), scale=\(scale), hudSize=\(hudSize.width)x\(hudSize.height)"
+                    "HUD setup: view=\(viewWidth)x\(viewHeight), scene=\(size.width)x\(size.height), scale=\(scale), hudSize=\(hudSize.width)x\(hudSize.height)"
                 )
         } else {
-            hudSize = self.size
+            hudSize = size
         }
 
         // Store the visible viewport size for camera clamping
@@ -769,9 +769,9 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         // Select Nathaniel by default
         selectedCharacter = nathaniel
 
-        // Position camera at Nathaniel
+        // Position camera at Nathaniel (clamped to map bounds)
         if let nathaniel {
-            cameraNode.position = nathaniel.position
+            clampCameraToMapBounds(targetPosition: nathaniel.position)
         }
 
         // Spawn test enemies
@@ -1268,6 +1268,40 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             x: currentPos.x + (clampedPos.x - currentPos.x) * smoothFactor,
             y: currentPos.y + (clampedPos.y - currentPos.y) * smoothFactor
         )
+    }
+
+    /// Immediately clamp camera to map bounds (no smoothing)
+    /// Use this for initial positioning or teleporting the camera
+    private func clampCameraToMapBounds(targetPosition: CGPoint) {
+        guard let renderer = mapRenderer else {
+            cameraNode.position = targetPosition
+            return
+        }
+
+        let effectiveViewport = visibleViewportSize.width > 0 ? visibleViewportSize : size
+        let halfWidth = (effectiveViewport.width / 2) * cameraZoom
+        let halfHeight = (effectiveViewport.height / 2) * cameraZoom
+
+        let mapWidth = CGFloat(renderer.map.pixelWidth)
+        let mapHeight = CGFloat(renderer.map.pixelHeight)
+
+        var clampedPos = targetPosition
+
+        // Handle X clamping: if map is narrower than viewport, center on map
+        if mapWidth <= halfWidth * 2 {
+            clampedPos.x = mapWidth / 2
+        } else {
+            clampedPos.x = max(halfWidth, min(mapWidth - halfWidth, clampedPos.x))
+        }
+
+        // Handle Y clamping: if map is shorter than viewport, center on map
+        if mapHeight <= halfHeight * 2 {
+            clampedPos.y = mapHeight / 2
+        } else {
+            clampedPos.y = max(halfHeight, min(mapHeight - halfHeight, clampedPos.y))
+        }
+
+        cameraNode.position = clampedPos
     }
 
     // MARK: - Camera Movement
