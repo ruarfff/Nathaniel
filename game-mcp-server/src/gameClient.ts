@@ -55,6 +55,13 @@ export interface DescribeResponse {
   nodeCount: number;
 }
 
+export interface SceneChangeEvent {
+  previousScene: string | null;
+  currentScene: string;
+  timestamp: number;
+  timedOut: boolean;
+}
+
 export class GameClient {
   private baseUrl: string;
   private timeout: number;
@@ -148,11 +155,42 @@ export class GameClient {
   }
 
   /**
-   * Internal fetch helper with timeout
+   * Wait for a scene change with long-polling.
+   * If expectedScene is specified, waits until that specific scene is active.
+   * If not specified, waits for any scene change.
+   * @param timeout Timeout in seconds (default 10)
+   * @param expectedScene Optional scene name to wait for
+   */
+  async waitForScene(timeout: number = 10, expectedScene?: string): Promise<SceneChangeEvent> {
+    // Build query string
+    const params = new URLSearchParams();
+    params.set('timeout', timeout.toString());
+    if (expectedScene) {
+      params.set('scene', expectedScene);
+    }
+
+    // Use a longer timeout for this request since it's long-polling
+    const requestTimeout = (timeout + 2) * 1000;
+    return this.fetchWithTimeout<SceneChangeEvent>(
+      `/wait_for_scene?${params.toString()}`,
+      { method: 'GET' },
+      requestTimeout
+    );
+  }
+
+  /**
+   * Internal fetch helper with default timeout
    */
   private async fetch<T = unknown>(path: string, options: RequestInit): Promise<T> {
+    return this.fetchWithTimeout<T>(path, options, this.timeout);
+  }
+
+  /**
+   * Internal fetch helper with custom timeout
+   */
+  private async fetchWithTimeout<T = unknown>(path: string, options: RequestInit, timeout: number): Promise<T> {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
       const response = await fetch(`${this.baseUrl}${path}`, {
@@ -175,7 +213,7 @@ export class GameClient {
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error(`Request timeout after ${this.timeout}ms`);
+        throw new Error(`Request timeout after ${timeout}ms`);
       }
       throw error;
     }

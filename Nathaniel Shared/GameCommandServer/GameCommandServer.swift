@@ -73,6 +73,21 @@
             let error: String?
         }
 
+        // MARK: - Types for Scene Change Notifications
+
+        public struct SceneChangeEvent: Codable {
+            let previousScene: String?
+            let currentScene: String
+            let timestamp: TimeInterval
+            let timedOut: Bool
+        }
+
+        private struct PendingSceneWaiter {
+            let connection: NWConnection
+            let expectedScene: String?
+            let deadline: Date
+        }
+
         // MARK: - Properties
 
         public static let shared = GameCommandServer()
@@ -88,10 +103,108 @@
         /// Whether the server is currently running
         public private(set) var isRunning = false
 
+        /// Track the current scene name for change detection
+        private var currentSceneName: String?
+
+        /// Pending connections waiting for scene changes
+        private var sceneWaiters: [PendingSceneWaiter] = []
+
+        /// Timer for checking waiter timeouts
+        private var waiterTimeoutTimer: Timer?
+
         // MARK: - Initialization
 
         public init(port: UInt16 = 8_765) {
             self.port = port
+            setupSceneChangeObserver()
+        }
+
+        private func setupSceneChangeObserver() {
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(handleSceneChange(_:)),
+                name: .skViewDidPresentScene,
+                object: nil
+            )
+        }
+
+        @objc
+        private func handleSceneChange(_ notification: Notification) {
+            // Get the new scene name from the delegate
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                let newSceneName = delegate?.getCurrentGameState().scene ?? "Unknown"
+                let previousScene = currentSceneName
+                currentSceneName = newSceneName
+
+                // Only notify if scene actually changed
+                if previousScene != newSceneName {
+                    notifySceneWaiters(previousScene: previousScene, newScene: newSceneName)
+                }
+            }
+        }
+
+        private func notifySceneWaiters(previousScene: String?, newScene: String) {
+            queue.async { [weak self] in
+                guard let self else { return }
+
+                // Find waiters that should be notified
+                let (toNotify, remaining) = sceneWaiters.reduce(
+                    into: ([PendingSceneWaiter](), [PendingSceneWaiter]())
+                ) { result, waiter in
+                    // Notify if no expected scene specified, or if it matches
+                    if waiter.expectedScene == nil || waiter.expectedScene == newScene {
+                        result.0.append(waiter)
+                    } else {
+                        result.1.append(waiter)
+                    }
+                }
+
+                sceneWaiters = remaining
+
+                // Send response to each notified waiter
+                let event = SceneChangeEvent(
+                    previousScene: previousScene,
+                    currentScene: newScene,
+                    timestamp: Date().timeIntervalSince1970,
+                    timedOut: false
+                )
+
+                for waiter in toNotify {
+                    sendCodableResponse(connection: waiter.connection, value: event)
+                }
+            }
+        }
+
+        private func checkWaiterTimeouts() {
+            queue.async { [weak self] in
+                guard let self else { return }
+                let now = Date()
+
+                let (timedOut, remaining) = sceneWaiters.reduce(
+                    into: ([PendingSceneWaiter](), [PendingSceneWaiter]())
+                ) { result, waiter in
+                    if now >= waiter.deadline {
+                        result.0.append(waiter)
+                    } else {
+                        result.1.append(waiter)
+                    }
+                }
+
+                sceneWaiters = remaining
+
+                // Send timeout response to timed out waiters
+                for waiter in timedOut {
+                    let currentScene = currentSceneName ?? "Unknown"
+                    let event = SceneChangeEvent(
+                        previousScene: nil,
+                        currentScene: currentScene,
+                        timestamp: Date().timeIntervalSince1970,
+                        timedOut: true
+                    )
+                    sendCodableResponse(connection: waiter.connection, value: event)
+                }
+            }
         }
 
         // MARK: - Server Control
@@ -131,6 +244,14 @@
 
                 listener?.start(queue: queue)
 
+                // Start timeout checker timer on main queue
+                DispatchQueue.main.async { [weak self] in
+                    self?.waiterTimeoutTimer = Timer
+                        .scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+                            self?.checkWaiterTimeouts()
+                        }
+                }
+
             } catch {
                 print("[GameCommandServer] Failed to create listener: \(error)")
             }
@@ -142,11 +263,21 @@
             listener = nil
             isRunning = false
 
+            // Stop timeout timer
+            waiterTimeoutTimer?.invalidate()
+            waiterTimeoutTimer = nil
+
             // Close all connections
             for connection in connections {
                 connection.cancel()
             }
             connections.removeAll()
+
+            // Cancel all pending scene waiters
+            for waiter in sceneWaiters {
+                waiter.connection.cancel()
+            }
+            sceneWaiters.removeAll()
 
             print("[GameCommandServer] Stopped")
         }
@@ -260,6 +391,9 @@
 
             case ("POST", "/settings/reset"):
                 handleResetSettings(connection: connection)
+
+            case ("GET", _) where path.hasPrefix("/wait_for_scene"):
+                handleWaitForScene(path: path, connection: connection)
 
             default:
                 sendErrorResponse(connection: connection, status: 404, message: "Not found: \(method) \(path)")
@@ -587,6 +721,73 @@
                 ]
                 self?.sendJSONResponse(connection: connection, json: response)
             }
+        }
+
+        // MARK: - Scene Change Notification Handler
+
+        private func handleWaitForScene(path: String, connection: NWConnection) {
+            // Parse query parameters from path (e.g., /wait_for_scene?timeout=10&scene=GameScene)
+            let params = parseQueryParameters(from: path)
+
+            let timeout = Double(params["timeout"] ?? "") ?? 10.0
+            let expectedScene = params["scene"]
+
+            // Check if we're already at the expected scene
+            if let expectedScene {
+                DispatchQueue.main.async { [weak self] in
+                    let currentScene = self?.delegate?.getCurrentGameState().scene ?? "Unknown"
+                    if currentScene == expectedScene {
+                        // Already at expected scene - return immediately
+                        let event = SceneChangeEvent(
+                            previousScene: nil,
+                            currentScene: currentScene,
+                            timestamp: Date().timeIntervalSince1970,
+                            timedOut: false
+                        )
+                        self?.sendCodableResponse(connection: connection, value: event)
+                        return
+                    }
+
+                    // Not at expected scene - add to waiters
+                    self?.addSceneWaiter(connection: connection, expectedScene: expectedScene, timeout: timeout)
+                }
+            } else {
+                // No expected scene - wait for any scene change
+                addSceneWaiter(connection: connection, expectedScene: nil, timeout: timeout)
+            }
+        }
+
+        private func addSceneWaiter(connection: NWConnection, expectedScene: String?, timeout: TimeInterval) {
+            let deadline = Date().addingTimeInterval(timeout)
+            let waiter = PendingSceneWaiter(
+                connection: connection,
+                expectedScene: expectedScene,
+                deadline: deadline
+            )
+
+            queue.async { [weak self] in
+                self?.sceneWaiters.append(waiter)
+            }
+        }
+
+        private func parseQueryParameters(from path: String) -> [String: String] {
+            guard let queryStart = path.firstIndex(of: "?") else {
+                return [:]
+            }
+
+            let queryString = String(path[path.index(after: queryStart)...])
+            var params: [String: String] = [:]
+
+            for pair in queryString.components(separatedBy: "&") {
+                let parts = pair.components(separatedBy: "=")
+                if parts.count == 2 {
+                    let key = parts[0].removingPercentEncoding ?? parts[0]
+                    let value = parts[1].removingPercentEncoding ?? parts[1]
+                    params[key] = value
+                }
+            }
+
+            return params
         }
 
         /// Convert DevSettings to dictionary for JSON response

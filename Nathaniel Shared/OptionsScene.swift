@@ -1,14 +1,6 @@
-//
-//  OptionsScene.swift
-//  Nathaniel Shared
-//
-//  Options screen with audio settings toggles.
-//
-
 import SpriteKit
 
 class OptionsScene: SKScene {
-
     // MARK: - Properties
 
     private var backButton: SKLabelNode!
@@ -18,7 +10,7 @@ class OptionsScene: SKScene {
     // MARK: - Scene Setup
 
     class func newOptionsScene() -> OptionsScene {
-        let scene = OptionsScene(size: CGSize(width: 1366, height: 1024))
+        let scene = OptionsScene(size: CGSize(width: 1_366, height: 1_024))
         scene.scaleMode = .aspectFill
         return scene
     }
@@ -30,8 +22,8 @@ class OptionsScene: SKScene {
         setupBackButton()
 
         #if DEBUG
-        // Set this scene as the command server delegate
-        GameCommandServer.shared.delegate = self
+            // Set this scene as the command server delegate
+            GameCommandServer.shared.delegate = self
         #endif
     }
 
@@ -94,7 +86,14 @@ class OptionsScene: SKScene {
         let toggle = SKLabelNode(fontNamed: "Copperplate-Bold")
         toggle.text = enabled ? "ON" : "OFF"
         toggle.fontSize = 28
-        toggle.fontColor = enabled ? SKColor(red: 0.4, green: 0.8, blue: 0.4, alpha: 1.0) : SKColor(red: 0.6, green: 0.4, blue: 0.4, alpha: 1.0)
+        toggle.fontColor = enabled
+            ? SKColor(red: 0.4, green: 0.8, blue: 0.4, alpha: 1.0)
+            : SKColor(
+                red: 0.6,
+                green: 0.4,
+                blue: 0.4,
+                alpha: 1.0
+            )
         toggle.position = CGPoint(x: size.width / 2 + 100, y: yPosition)
         toggle.horizontalAlignmentMode = .left
         toggle.name = name
@@ -103,7 +102,14 @@ class OptionsScene: SKScene {
 
     private func updateToggle(_ toggle: SKLabelNode, enabled: Bool) {
         toggle.text = enabled ? "ON" : "OFF"
-        toggle.fontColor = enabled ? SKColor(red: 0.4, green: 0.8, blue: 0.4, alpha: 1.0) : SKColor(red: 0.6, green: 0.4, blue: 0.4, alpha: 1.0)
+        toggle.fontColor = enabled
+            ? SKColor(red: 0.4, green: 0.8, blue: 0.4, alpha: 1.0)
+            : SKColor(
+                red: 0.6,
+                green: 0.4,
+                blue: 0.4,
+                alpha: 1.0
+            )
     }
 
     private func setupBackButton() {
@@ -171,7 +177,7 @@ class OptionsScene: SKScene {
     }
 
     private func animateButtonPress(_ button: SKLabelNode?, completion: @escaping () -> Void) {
-        guard let button = button else {
+        guard let button else {
             completion()
             return
         }
@@ -185,31 +191,29 @@ class OptionsScene: SKScene {
     private func returnToMenu() {
         let menuScene = MainMenuScene.newMenuScene()
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentScene(menuScene, transition: transition)
+        view?.presentSceneWithNotification(menuScene, transition: transition)
     }
 }
 
 // MARK: - iOS Touch Handling
 
 #if os(iOS) || os(tvOS)
-extension OptionsScene {
-
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first else { return }
-        let location = touch.location(in: self)
-        handleButtonTap(at: location)
+    extension OptionsScene {
+        override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+            guard let touch = touches.first else { return }
+            let location = touch.location(in: self)
+            handleButtonTap(at: location)
+        }
     }
-}
 #endif
 
 // MARK: - macOS Mouse Handling
 
 #if os(OSX)
-extension OptionsScene {
-
-    override func mouseDown(with event: NSEvent) {
-        let location = event.location(in: self)
-        handleButtonTap(at: location)
+    extension OptionsScene {
+        override func mouseDown(with event: NSEvent) {
+            let location = event.location(in: self)
+            handleButtonTap(at: location)
+        }
     }
-}
 #endif

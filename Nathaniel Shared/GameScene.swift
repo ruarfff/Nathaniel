@@ -393,21 +393,21 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
         let nextScene = GameScene.newGameScene(levelConfig: nextConfig)
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentScene(nextScene, transition: transition)
+        view?.presentSceneWithNotification(nextScene, transition: transition)
     }
 
     /// Restart the current level
     private func restartLevel() {
         let restartScene = GameScene.newGameScene(levelConfig: levelConfig)
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentScene(restartScene, transition: transition)
+        view?.presentSceneWithNotification(restartScene, transition: transition)
     }
 
     /// Return to the main menu
     private func returnToMainMenu() {
         let menuScene = MainMenuScene.newMenuScene()
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentScene(menuScene, transition: transition)
+        view?.presentSceneWithNotification(menuScene, transition: transition)
     }
 
     // MARK: - Pause/Resume

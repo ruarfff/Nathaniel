@@ -1,14 +1,6 @@
-//
-//  LevelSelectScene.swift
-//  Nathaniel Shared
-//
-//  Level selection screen allowing players to choose which level to play.
-//
-
 import SpriteKit
 
 class LevelSelectScene: SKScene {
-
     // MARK: - Properties
 
     /// Title label
@@ -26,7 +18,7 @@ class LevelSelectScene: SKScene {
     // MARK: - Scene Setup
 
     class func newLevelSelectScene() -> LevelSelectScene {
-        let scene = LevelSelectScene(size: CGSize(width: 1366, height: 1024))
+        let scene = LevelSelectScene(size: CGSize(width: 1_366, height: 1_024))
         scene.scaleMode = .aspectFill
         return scene
     }
@@ -38,8 +30,8 @@ class LevelSelectScene: SKScene {
         setupBackButton()
 
         #if DEBUG
-        // Set this scene as the command server delegate
-        GameCommandServer.shared.delegate = self
+            // Set this scene as the command server delegate
+            GameCommandServer.shared.delegate = self
         #endif
     }
 
@@ -66,7 +58,8 @@ class LevelSelectScene: SKScene {
 
         // Campaign levels (5 levels in a row)
         let campaignLevels = LevelConfig.campaignLevels
-        let totalCampaignWidth = CGFloat(campaignLevels.count) * buttonWidth + CGFloat(campaignLevels.count - 1) * padding
+        let totalCampaignWidth = CGFloat(campaignLevels.count) * buttonWidth + CGFloat(campaignLevels.count - 1) *
+            padding
         let startX = (size.width - totalCampaignWidth) / 2 + buttonWidth / 2
 
         // Campaign section label
@@ -111,14 +104,13 @@ class LevelSelectScene: SKScene {
         let button = SKLabelNode(fontNamed: "Copperplate-Bold")
 
         // Level name
-        let levelName: String
-        switch level {
-        case 1: levelName = "Level 1"
-        case 2: levelName = "Level 2"
-        case 3: levelName = "Level 3"
-        case 4: levelName = "Level 4"
-        case 5: levelName = "Final"
-        default: levelName = "Level \(level)"
+        let levelName = switch level {
+        case 1: "Level 1"
+        case 2: "Level 2"
+        case 3: "Level 3"
+        case 4: "Level 4"
+        case 5: "Final"
+        default: "Level \(level)"
         }
 
         // Check if level is completed
@@ -176,7 +168,7 @@ class LevelSelectScene: SKScene {
         let button = SKLabelNode(fontNamed: "Copperplate-Bold")
         button.text = "Endless Survival"
         button.fontSize = 32
-        button.fontColor = SKColor(red: 1.0, green: 0.8, blue: 0.3, alpha: 1.0)  // Golden color
+        button.fontColor = SKColor(red: 1.0, green: 0.8, blue: 0.3, alpha: 1.0) // Golden color
         button.horizontalAlignmentMode = .center
         button.verticalAlignmentMode = .center
 
@@ -255,7 +247,7 @@ class LevelSelectScene: SKScene {
     }
 
     private func animateButtonPress(_ button: SKLabelNode?, completion: @escaping () -> Void) {
-        guard let button = button else {
+        guard let button else {
             completion()
             return
         }
@@ -274,37 +266,35 @@ class LevelSelectScene: SKScene {
 
         let gameScene = GameScene.newGameScene(levelConfig: config)
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentScene(gameScene, transition: transition)
+        view?.presentSceneWithNotification(gameScene, transition: transition)
     }
 
     private func goBack() {
         let mainMenu = MainMenuScene.newMenuScene()
         let transition = SKTransition.fade(withDuration: 0.3)
-        view?.presentScene(mainMenu, transition: transition)
+        view?.presentSceneWithNotification(mainMenu, transition: transition)
     }
 }
 
 // MARK: - iOS Touch Handling
 
 #if os(iOS) || os(tvOS)
-extension LevelSelectScene {
-
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first else { return }
-        let location = touch.location(in: self)
-        handleButtonTap(at: location)
+    extension LevelSelectScene {
+        override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+            guard let touch = touches.first else { return }
+            let location = touch.location(in: self)
+            handleButtonTap(at: location)
+        }
     }
-}
 #endif
 
 // MARK: - macOS Mouse Handling
 
 #if os(OSX)
-extension LevelSelectScene {
-
-    override func mouseDown(with event: NSEvent) {
-        let location = event.location(in: self)
-        handleButtonTap(at: location)
+    extension LevelSelectScene {
+        override func mouseDown(with event: NSEvent) {
+            let location = event.location(in: self)
+            handleButtonTap(at: location)
+        }
     }
-}
 #endif

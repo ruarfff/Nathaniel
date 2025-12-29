@@ -1,14 +1,6 @@
-//
-//  MainMenuScene.swift
-//  Nathaniel Shared
-//
-//  Main menu scene with Start Game, Options, and Credits buttons.
-//
-
 import SpriteKit
 
 class MainMenuScene: SKScene {
-
     // MARK: - Properties
 
     /// Title label
@@ -30,7 +22,7 @@ class MainMenuScene: SKScene {
     // MARK: - Scene Setup
 
     class func newMenuScene() -> MainMenuScene {
-        let scene = MainMenuScene(size: CGSize(width: 1366, height: 1024))
+        let scene = MainMenuScene(size: CGSize(width: 1_366, height: 1_024))
         scene.scaleMode = .aspectFill
         return scene
     }
@@ -45,8 +37,8 @@ class MainMenuScene: SKScene {
         AudioManager.shared.playMusic(.menu)
 
         #if DEBUG
-        // Set this scene as the command server delegate
-        GameCommandServer.shared.delegate = self
+            // Set this scene as the command server delegate
+            GameCommandServer.shared.delegate = self
         #endif
     }
 
@@ -68,13 +60,13 @@ class MainMenuScene: SKScene {
         // Create a simple decorative pattern at the bottom
         let grassColor = SKColor(red: 0.2, green: 0.4, blue: 0.2, alpha: 0.5)
 
-        for i in 0..<20 {
+        for i in 0 ..< 20 {
             let grass = SKShapeNode(rectOf: CGSize(width: 60, height: 8))
             grass.fillColor = grassColor
             grass.strokeColor = .clear
             grass.position = CGPoint(
                 x: CGFloat(i - 10) * 70,
-                y: CGFloat.random(in: -20...20)
+                y: CGFloat.random(in: -20 ... 20)
             )
             container.addChild(grass)
         }
@@ -151,7 +143,7 @@ class MainMenuScene: SKScene {
 
     private func setupSaveSlotSelector() {
         let selector = SaveSlotSelector(size: size)
-        selector.zPosition = 1000  // Above everything else
+        selector.zPosition = 1_000 // Above everything else
         // Position at center of scene (SaveSlotSelector is centered at origin)
         selector.position = CGPoint(x: size.width / 2, y: size.height / 2)
         addChild(selector)
@@ -226,7 +218,7 @@ class MainMenuScene: SKScene {
     }
 
     private func animateButtonPress(_ button: SKLabelNode?, completion: @escaping () -> Void) {
-        guard let button = button else {
+        guard let button else {
             completion()
             return
         }
@@ -248,25 +240,25 @@ class MainMenuScene: SKScene {
 
         let gameScene = GameScene.newGameScene(levelConfig: levelConfig)
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentScene(gameScene, transition: transition)
+        view?.presentSceneWithNotification(gameScene, transition: transition)
     }
 
     private func startGame() {
         let levelSelectScene = LevelSelectScene.newLevelSelectScene()
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentScene(levelSelectScene, transition: transition)
+        view?.presentSceneWithNotification(levelSelectScene, transition: transition)
     }
 
     private func showOptions() {
         let optionsScene = OptionsScene.newOptionsScene()
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentScene(optionsScene, transition: transition)
+        view?.presentSceneWithNotification(optionsScene, transition: transition)
     }
 
     private func showCredits() {
         let creditsScene = CreditsScene.newCreditsScene()
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentScene(creditsScene, transition: transition)
+        view?.presentSceneWithNotification(creditsScene, transition: transition)
     }
 
     private func showLoadGameSelector() {
@@ -283,31 +275,29 @@ class MainMenuScene: SKScene {
         let gameScene = GameScene.newGameScene(fromSave: savedState)
 
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentScene(gameScene, transition: transition)
+        view?.presentSceneWithNotification(gameScene, transition: transition)
     }
 }
 
 // MARK: - iOS Touch Handling
 
 #if os(iOS) || os(tvOS)
-extension MainMenuScene {
-
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first else { return }
-        let location = touch.location(in: self)
-        handleButtonTap(at: location)
+    extension MainMenuScene {
+        override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+            guard let touch = touches.first else { return }
+            let location = touch.location(in: self)
+            handleButtonTap(at: location)
+        }
     }
-}
 #endif
 
 // MARK: - macOS Mouse Handling
 
 #if os(OSX)
-extension MainMenuScene {
-
-    override func mouseDown(with event: NSEvent) {
-        let location = event.location(in: self)
-        handleButtonTap(at: location)
+    extension MainMenuScene {
+        override func mouseDown(with event: NSEvent) {
+            let location = event.location(in: self)
+            handleButtonTap(at: location)
+        }
     }
-}
 #endif

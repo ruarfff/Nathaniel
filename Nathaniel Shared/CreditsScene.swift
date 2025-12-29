@@ -1,14 +1,6 @@
-//
-//  CreditsScene.swift
-//  Nathaniel Shared
-//
-//  Credits screen showing game information and developer attribution.
-//
-
 import SpriteKit
 
 class CreditsScene: SKScene {
-
     // MARK: - Properties
 
     private var backButton: SKLabelNode!
@@ -16,7 +8,7 @@ class CreditsScene: SKScene {
     // MARK: - Scene Setup
 
     class func newCreditsScene() -> CreditsScene {
-        let scene = CreditsScene(size: CGSize(width: 1366, height: 1024))
+        let scene = CreditsScene(size: CGSize(width: 1_366, height: 1_024))
         scene.scaleMode = .aspectFill
         return scene
     }
@@ -27,8 +19,8 @@ class CreditsScene: SKScene {
         setupBackButton()
 
         #if DEBUG
-        // Set this scene as the command server delegate
-        GameCommandServer.shared.delegate = self
+            // Set this scene as the command server delegate
+            GameCommandServer.shared.delegate = self
         #endif
     }
 
@@ -61,14 +53,14 @@ class CreditsScene: SKScene {
             ("", ""),
             ("Special Thanks", ""),
             ("", "The XNA Community"),
-            ("", "Apple Developer Tools")
+            ("", "Apple Developer Tools"),
         ]
 
         var yPosition = size.height * 0.65
         let lineSpacing: CGFloat = 40
 
         for (title, value) in credits {
-            if title.isEmpty && value.isEmpty {
+            if title.isEmpty, value.isEmpty {
                 yPosition -= lineSpacing / 2
                 continue
             }
@@ -155,7 +147,7 @@ class CreditsScene: SKScene {
     }
 
     private func animateButtonPress(_ button: SKLabelNode?, completion: @escaping () -> Void) {
-        guard let button = button else {
+        guard let button else {
             completion()
             return
         }
@@ -169,31 +161,29 @@ class CreditsScene: SKScene {
     private func returnToMenu() {
         let menuScene = MainMenuScene.newMenuScene()
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentScene(menuScene, transition: transition)
+        view?.presentSceneWithNotification(menuScene, transition: transition)
     }
 }
 
 // MARK: - iOS Touch Handling
 
 #if os(iOS) || os(tvOS)
-extension CreditsScene {
-
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first else { return }
-        let location = touch.location(in: self)
-        handleButtonTap(at: location)
+    extension CreditsScene {
+        override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+            guard let touch = touches.first else { return }
+            let location = touch.location(in: self)
+            handleButtonTap(at: location)
+        }
     }
-}
 #endif
 
 // MARK: - macOS Mouse Handling
 
 #if os(OSX)
-extension CreditsScene {
-
-    override func mouseDown(with event: NSEvent) {
-        let location = event.location(in: self)
-        handleButtonTap(at: location)
+    extension CreditsScene {
+        override func mouseDown(with event: NSEvent) {
+            let location = event.location(in: self)
+            handleButtonTap(at: location)
+        }
     }
-}
 #endif

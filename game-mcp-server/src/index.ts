@@ -145,6 +145,24 @@ const tools: Tool[] = [
       required: ['name'],
     },
   },
+  {
+    name: 'game_wait_for_scene',
+    description: 'Wait for a scene change using long-polling. Use this after triggering a scene transition (e.g., startGame, level_1) to wait until the new scene is loaded. Returns immediately if already at the expected scene. Useful for reliable scene navigation without manual delays.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        scene: {
+          type: 'string',
+          description: 'Scene name to wait for (e.g., "GameScene", "MainMenuScene", "LevelSelectScene"). If not specified, waits for any scene change.',
+        },
+        timeout: {
+          type: 'number',
+          description: 'Timeout in seconds (default: 10). Request will return after this time even if scene has not changed.',
+        },
+      },
+      required: [],
+    },
+  },
 ];
 
 // Create MCP server
@@ -314,6 +332,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'game_action': {
         const actionArgs = args as { name: string; params?: Record<string, string> };
         const result = await gameClient.action(actionArgs.name, actionArgs.params);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'game_wait_for_scene': {
+        const waitArgs = args as { scene?: string; timeout?: number };
+        const result = await gameClient.waitForScene(waitArgs.timeout ?? 10, waitArgs.scene);
         return {
           content: [
             {

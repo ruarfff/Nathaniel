@@ -320,3 +320,26 @@
     }
 
 #endif
+
+// Available in all builds - notification only posted in DEBUG
+extension SKView {
+    /// Present a scene and post a notification for scene change tracking.
+    /// Use this instead of presentScene() directly for proper command server integration.
+    public func presentSceneWithNotification(_ scene: SKScene, transition: SKTransition? = nil) {
+        if let transition {
+            presentScene(scene, transition: transition)
+            #if DEBUG
+                // Delay notification until after transition completes so skView.scene returns new scene
+                // Use 0.6s delay which covers most common transition durations (0.3-0.5s)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    NotificationCenter.default.post(name: .skViewDidPresentScene, object: self)
+                }
+            #endif
+        } else {
+            presentScene(scene)
+            #if DEBUG
+                NotificationCenter.default.post(name: .skViewDidPresentScene, object: self)
+            #endif
+        }
+    }
+}
