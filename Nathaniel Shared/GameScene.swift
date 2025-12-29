@@ -1234,9 +1234,24 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         let halfWidth = (effectiveViewport.width / 2) * cameraZoom
         let halfHeight = (effectiveViewport.height / 2) * cameraZoom
 
+        let mapWidth = CGFloat(renderer.map.pixelWidth)
+        let mapHeight = CGFloat(renderer.map.pixelHeight)
+
         var clampedPos = targetPos
-        clampedPos.x = max(halfWidth, min(CGFloat(renderer.map.pixelWidth) - halfWidth, clampedPos.x))
-        clampedPos.y = max(halfHeight, min(CGFloat(renderer.map.pixelHeight) - halfHeight, clampedPos.y))
+
+        // Handle X clamping: if map is narrower than viewport, center on map
+        if mapWidth <= halfWidth * 2 {
+            clampedPos.x = mapWidth / 2
+        } else {
+            clampedPos.x = max(halfWidth, min(mapWidth - halfWidth, clampedPos.x))
+        }
+
+        // Handle Y clamping: if map is shorter than viewport, center on map
+        if mapHeight <= halfHeight * 2 {
+            clampedPos.y = mapHeight / 2
+        } else {
+            clampedPos.y = max(halfHeight, min(mapHeight - halfHeight, clampedPos.y))
+        }
 
         // Smooth camera movement (lerp)
         #if DEBUG
@@ -1265,8 +1280,22 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         let halfWidth = (effectiveViewport.width / 2) * cameraZoom
         let halfHeight = (effectiveViewport.height / 2) * cameraZoom
 
-        newPos.x = max(halfWidth, min(CGFloat(renderer.map.pixelWidth) - halfWidth, newPos.x))
-        newPos.y = max(halfHeight, min(CGFloat(renderer.map.pixelHeight) - halfHeight, newPos.y))
+        let mapWidth = CGFloat(renderer.map.pixelWidth)
+        let mapHeight = CGFloat(renderer.map.pixelHeight)
+
+        // Handle X clamping: if map is narrower than viewport, center on map
+        if mapWidth <= halfWidth * 2 {
+            newPos.x = mapWidth / 2
+        } else {
+            newPos.x = max(halfWidth, min(mapWidth - halfWidth, newPos.x))
+        }
+
+        // Handle Y clamping: if map is shorter than viewport, center on map
+        if mapHeight <= halfHeight * 2 {
+            newPos.y = mapHeight / 2
+        } else {
+            newPos.y = max(halfHeight, min(mapHeight - halfHeight, newPos.y))
+        }
 
         cameraNode.position = newPos
     }
@@ -1621,13 +1650,29 @@ extension GameScene {
         // Mark as animating to prevent updateCameraFollow from interfering
         isCameraAnimating = true
 
-        // Clamp target position to map bounds
-        let halfWidth = (size.width / 2) * cameraZoom
-        let halfHeight = (size.height / 2) * cameraZoom
+        // Clamp target position to map bounds - use visible viewport size for correct clamping
+        let effectiveViewport = visibleViewportSize.width > 0 ? visibleViewportSize : size
+        let halfWidth = (effectiveViewport.width / 2) * cameraZoom
+        let halfHeight = (effectiveViewport.height / 2) * cameraZoom
+
+        let mapWidth = CGFloat(renderer.map.pixelWidth)
+        let mapHeight = CGFloat(renderer.map.pixelHeight)
 
         var clampedPos = position
-        clampedPos.x = max(halfWidth, min(CGFloat(renderer.map.pixelWidth) - halfWidth, clampedPos.x))
-        clampedPos.y = max(halfHeight, min(CGFloat(renderer.map.pixelHeight) - halfHeight, clampedPos.y))
+
+        // Handle X clamping: if map is narrower than viewport, center on map
+        if mapWidth <= halfWidth * 2 {
+            clampedPos.x = mapWidth / 2
+        } else {
+            clampedPos.x = max(halfWidth, min(mapWidth - halfWidth, clampedPos.x))
+        }
+
+        // Handle Y clamping: if map is shorter than viewport, center on map
+        if mapHeight <= halfHeight * 2 {
+            clampedPos.y = mapHeight / 2
+        } else {
+            clampedPos.y = max(halfHeight, min(mapHeight - halfHeight, clampedPos.y))
+        }
 
         // Animate to the clamped position
         let moveAction = SKAction.move(to: clampedPos, duration: 0.3)
