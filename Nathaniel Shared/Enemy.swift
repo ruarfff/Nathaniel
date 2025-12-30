@@ -176,7 +176,7 @@ class Enemy: Character {
     func updateAI(deltaTime: TimeInterval) {
         guard let target, target.isAlive else {
             // No target or target dead - stop
-            destination = nil
+            stop()
             isAttacking = false
             return
         }
@@ -188,7 +188,7 @@ class Enemy: Character {
         // Check if target is in visible range
         if distanceToTarget > visibleRange {
             // Target too far - don't pursue
-            destination = nil
+            stop()
             isAttacking = false
             return
         }
@@ -197,7 +197,7 @@ class Enemy: Character {
         if distanceToTarget <= attackRange {
             // In range - attack!
             isAttacking = true
-            destination = nil // Stop moving when attacking
+            stop() // Stop moving when attacking
 
             // Face target
             let direction = CGVector(dx: dx, dy: dy)
@@ -206,11 +206,11 @@ class Enemy: Character {
             // Perform attack
             performAttack()
         } else {
-            // Not in range - move toward target
+            // Not in range - move toward target using pathfinding
             isAttacking = false
 
-            // Move toward target (stop slightly before attack range)
-            destination = target.position
+            // Move toward target (pathfinding handles obstacles)
+            moveTo(target.position)
         }
     }
 
@@ -435,7 +435,7 @@ class Boss: Enemy {
     /// Boss-specific AI: approach target but maintain comfortable attack distance
     override func updateAI(deltaTime: TimeInterval) {
         guard let target, target.isAlive else {
-            destination = nil
+            stop()
             isAttacking = false
             return
         }
@@ -446,7 +446,7 @@ class Boss: Enemy {
 
         // Check if target is in visible range
         if distanceToTarget > visibleRange {
-            destination = nil
+            stop()
             isAttacking = false
             return
         }
@@ -462,17 +462,17 @@ class Boss: Enemy {
             // Move closer while attacking if in attack range
             if distanceToTarget <= attackRange {
                 isAttacking = true
-                destination = target.position
+                moveTo(target.position)
                 performAttack()
             } else {
-                // Just move closer
+                // Just move closer using pathfinding
                 isAttacking = false
-                destination = target.position
+                moveTo(target.position)
             }
         } else {
             // Close enough - stop and attack
             isAttacking = true
-            destination = nil
+            stop()
             performAttack()
         }
     }
@@ -586,7 +586,7 @@ class Soldier: Enemy {
     /// Soldier-specific AI: maintain distance while shooting
     override func updateAI(deltaTime: TimeInterval) {
         guard let target, target.isAlive else {
-            destination = nil
+            stop()
             isAttacking = false
             return
         }
@@ -597,7 +597,7 @@ class Soldier: Enemy {
 
         // Check if target is in visible range
         if distanceToTarget > visibleRange {
-            destination = nil
+            stop()
             isAttacking = false
             return
         }
@@ -610,14 +610,14 @@ class Soldier: Enemy {
         let preferredDistance = attackRange * Soldier.preferredDistanceRatio
 
         if distanceToTarget > preferredDistance {
-            // Too far - move closer while attacking
+            // Too far - move closer while attacking using pathfinding
             isAttacking = true
-            destination = target.position
+            moveTo(target.position)
             performAttack()
         } else {
             // In preferred range - stop and attack
             isAttacking = true
-            destination = nil
+            stop()
             performAttack()
         }
     }

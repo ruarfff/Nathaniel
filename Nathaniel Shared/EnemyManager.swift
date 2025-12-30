@@ -26,6 +26,9 @@ class EnemyManager {
     /// Delegate for events
     weak var delegate: EnemyManagerDelegate?
 
+    /// Reference to the map renderer for pathfinding configuration
+    weak var renderer: TMXRenderer?
+
     /// Z-position for enemy sprites
     var enemyZPosition: CGFloat = 100
 
@@ -105,6 +108,11 @@ class EnemyManager {
         if enemy is Soldier { numSoldiers += 1 }
         if enemy is Boss { numBosses += 1 }
 
+        // Configure pathfinding if renderer is available
+        if let renderer {
+            enemy.configurePathfinding(with: renderer)
+        }
+
         // Add to scene
         scene?.addChild(enemy.sprite)
 
@@ -154,6 +162,11 @@ class EnemyManager {
         enemy.setupHealthBar(width: 32, yOffset: 3, compact: true)
         enemy.healthBar?.hideWhenFull = true
 
+        // Configure pathfinding if renderer is available
+        if let renderer {
+            enemy.configurePathfinding(with: renderer)
+        }
+
         // Add to scene
         scene?.addChild(enemy.sprite)
 
@@ -171,6 +184,9 @@ class EnemyManager {
     ///   - objects: Array of map objects with spawn info
     ///   - renderer: TMX renderer for coordinate conversion
     func spawnFromMapObjects(_ objects: [TMXObject], renderer: TMXRenderer) {
+        // Store renderer for pathfinding configuration
+        self.renderer = renderer
+
         for obj in objects {
             // Only process enemy spawns (by type or name prefix)
             let name = obj.name
