@@ -1508,10 +1508,15 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             }
 
             // Check if build menu handles the touch (in HUD/camera space)
-            if let controller = towerPlacementController,
-               controller.handleTouchBegan(at: hudLocation)
-            {
-                return
+            if let controller = towerPlacementController {
+                if controller.handleTouchBegan(at: hudLocation) {
+                    // Touch was on a menu item - start dragging
+                    return
+                } else if controller.buildMenu.isVisible {
+                    // Build menu is visible but touch was outside - close it
+                    controller.hideMenu()
+                    return
+                }
             }
 
             handleTap(at: location)
@@ -1520,21 +1525,23 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
             guard let touch = touches.first else { return }
             let location = touch.location(in: self)
+            let hudLocation = self.cameraNode.convert(location, from: self)
 
             // Forward to build menu if dragging
             if let controller = towerPlacementController, controller.isDragging {
-                // Placement indicator works in world space
-                _ = controller.handleTouchMoved(to: location, in: self)
+                // Pass both coordinate spaces - HUD for ghost tower, world for placement
+                _ = controller.handleTouchMoved(to: location, hudLocation: hudLocation, in: self)
             }
         }
 
         override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
             guard let touch = touches.first else { return }
             let location = touch.location(in: self)
+            let hudLocation = self.cameraNode.convert(location, from: self)
 
             // Forward to build menu if dragging
             if let controller = towerPlacementController, controller.isDragging {
-                _ = controller.handleTouchEnded(at: location)
+                _ = controller.handleTouchEnded(at: location, hudLocation: hudLocation)
             }
         }
 
@@ -1571,14 +1578,41 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
                 return
             }
 
+            // Check if build menu handles the click (in HUD/camera space)
+            if let controller = towerPlacementController {
+                if controller.handleTouchBegan(at: hudLocation) {
+                    // Click was on a menu item - start dragging
+                    return
+                } else if controller.buildMenu.isVisible {
+                    // Build menu is visible but click was outside - close it
+                    controller.hideMenu()
+                    return
+                }
+            }
+
             handleTap(at: location)
         }
 
         override func mouseDragged(with event: NSEvent) {
-            // Right-click drag to pan camera manually (optional)
+            let location = event.location(in: self)
+            let hudLocation = self.cameraNode.convert(location, from: self)
+
+            // Forward to build menu if dragging
+            if let controller = towerPlacementController, controller.isDragging {
+                // Pass both coordinate spaces - HUD for ghost tower, world for placement
+                _ = controller.handleTouchMoved(to: location, hudLocation: hudLocation, in: self)
+            }
         }
 
-        override func mouseUp(with event: NSEvent) {}
+        override func mouseUp(with event: NSEvent) {
+            let location = event.location(in: self)
+            let hudLocation = self.cameraNode.convert(location, from: self)
+
+            // Forward to build menu if dragging
+            if let controller = towerPlacementController, controller.isDragging {
+                _ = controller.handleTouchEnded(at: location, hudLocation: hudLocation)
+            }
+        }
 
         override func scrollWheel(with event: NSEvent) {
             // Use scroll delta for zoom - positive deltaY = scroll up = zoom in
@@ -1952,3 +1986,49 @@ extension GameScene {
         ripple.run(SKAction.sequence([group, remove]))
     }
 }
+
+// MARK: - DEBUG Touch Injection
+
+#if DEBUG
+    extension GameScene {
+        /// Handle a programmatic touch that goes through all menu checks
+        /// Used by TouchInjector for testing build menu and other UI
+        func handleInjectedTouchBegan(at point: CGPoint) {
+            // Convert world coordinates to HUD coordinates for menu checks
+            let hudLocation = self.cameraNode.convert(point, from: self)
+
+            // Check if save slot selector handles the touch
+            if self.saveSlotSelector.isVisible {
+                _ = self.saveSlotSelector.handleTouch(at: hudLocation)
+                return
+            }
+
+            // Check if settings menu handles the touch
+            if self.settingsMenu.isVisible {
+                _ = self.settingsMenu.handleTouch(at: hudLocation)
+                return
+            }
+
+            // Check if pause menu handles the touch
+            if self.pauseMenu.isVisible {
+                _ = self.pauseMenu.handleTouch(at: hudLocation)
+                return
+            }
+
+            // Check if build menu handles the touch
+            if let controller = towerPlacementController {
+                if controller.handleTouchBegan(at: hudLocation) {
+                    // Touch was on a menu item - start dragging
+                    return
+                } else if controller.buildMenu.isVisible {
+                    // Build menu is visible but touch was outside - close it
+                    controller.hideMenu()
+                    return
+                }
+            }
+
+            // Fall through to normal tap handling
+            self.handleTap(at: point)
+        }
+    }
+#endif

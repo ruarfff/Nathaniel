@@ -380,18 +380,21 @@ class BuildMenu: SKNode {
     }
 
     /// Handle touch ended - returns true if touch was handled
-    func handleTouchEnded(at point: CGPoint) -> Bool {
+    /// - Parameters:
+    ///   - hudPoint: Touch position in HUD/camera coordinates (for menu bounds check)
+    ///   - worldPosition: Touch position in world/scene coordinates (for tower placement)
+    func handleTouchEnded(at hudPoint: CGPoint, worldPosition: CGPoint) -> Bool {
         guard self.isVisible, let dragging = draggingItem else { return false }
 
         dragging.isDragging = false
         self.draggingItem = nil
         self.removeGhostTower()
 
-        // Check if released outside menu
-        let localPoint = convert(point, from: parent ?? self)
+        // Check if released outside menu (using HUD coordinates)
+        let localPoint = convert(hudPoint, from: parent ?? self)
         if !self.backgroundPanel.contains(localPoint) {
-            // Valid placement attempt
-            self.delegate?.buildMenu(self, didEndDragging: dragging.towerType, at: point)
+            // Valid placement attempt - use world coordinates for placement
+            self.delegate?.buildMenu(self, didEndDragging: dragging.towerType, at: worldPosition)
         } else {
             // Released back on menu - cancel
             self.delegate?.buildMenu(self, didCancelDragging: dragging.towerType)
