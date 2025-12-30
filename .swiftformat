@@ -33,7 +33,9 @@
 --ranges spaced
 
 # Declarations
---self remove
+# Swift 6 with if-let shorthand requires explicit self in some cases
+# Using 'insert' to ensure self is always explicit (safer for Swift 6)
+--self insert
 --importgrouping alpha
 --extensionacl on-declarations
 

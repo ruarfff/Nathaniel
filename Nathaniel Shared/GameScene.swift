@@ -132,22 +132,22 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         backgroundColor = SKColor.black
         childNode(withName: "helloLabel")?.removeFromParent()
 
-        setupCamera()
-        setupLevelManager()
-        setupEnemyManager()
-        setupStructureManager()
-        setupOverlay()
-        setupHUD()
-        loadMap()
-        setupFogOfWar()
-        spawnCharacters()
-        setupBuildSystem()
-        setupHaptics()
-        if showDebugInfo {
-            setupDebugLabel()
+        self.setupCamera()
+        self.setupLevelManager()
+        self.setupEnemyManager()
+        self.setupStructureManager()
+        self.setupOverlay()
+        self.setupHUD()
+        self.loadMap()
+        self.setupFogOfWar()
+        self.spawnCharacters()
+        self.setupBuildSystem()
+        self.setupHaptics()
+        if self.showDebugInfo {
+            self.setupDebugLabel()
         }
         #if DEBUG
-            setupPathfindingDebugOverlay()
+            self.setupPathfindingDebugOverlay()
         #endif
 
         // Start gameplay music
@@ -159,59 +159,59 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         #endif
 
         // Restore from save if loading from saved game
-        restoreFromSavedState()
+        self.restoreFromSavedState()
     }
 
     private func setupHaptics() {
         #if os(iOS)
-            hapticGenerator = UIImpactFeedbackGenerator(style: .medium)
-            hapticGenerator?.prepare()
+            self.hapticGenerator = UIImpactFeedbackGenerator(style: .medium)
+            self.hapticGenerator?.prepare()
         #endif
     }
 
     #if DEBUG
         private func setupPathfindingDebugOverlay() {
             let overlay = PathfindingDebugOverlay()
-            overlay.configure(player: nathaniel, companion: hermes)
+            overlay.configure(player: self.nathaniel, companion: self.hermes)
             // Add to mapNode so paths render in world coordinates
             if let mapNode {
                 mapNode.addChild(overlay)
             } else {
                 addChild(overlay)
             }
-            pathfindingDebugOverlay = overlay
+            self.pathfindingDebugOverlay = overlay
         }
 
         private func updatePathfindingDebugOverlay() {
             guard DevSettings.shared.showPathfindingDebug else {
-                pathfindingDebugOverlay?.isHidden = true
+                self.pathfindingDebugOverlay?.isHidden = true
                 return
             }
-            pathfindingDebugOverlay?.isHidden = false
-            pathfindingDebugOverlay?.updateEnemies(enemyManager.enemies)
-            pathfindingDebugOverlay?.update()
+            self.pathfindingDebugOverlay?.isHidden = false
+            self.pathfindingDebugOverlay?.updateEnemies(self.enemyManager.enemies)
+            self.pathfindingDebugOverlay?.update()
         }
     #endif
 
     private func setupLevelManager() {
-        levelManager = LevelManager(config: levelConfig)
-        levelManager.delegate = self
+        self.levelManager = LevelManager(config: self.levelConfig)
+        self.levelManager.delegate = self
     }
 
     private func setupEnemyManager() {
-        enemyManager = EnemyManager(scene: self)
-        enemyManager.enemyZPosition = characterZPosition
-        enemyManager.enemyScale = 3.0
-        enemyManager.delegate = levelManager
-        levelManager.enemyManager = enemyManager
+        self.enemyManager = EnemyManager(scene: self)
+        self.enemyManager.enemyZPosition = self.characterZPosition
+        self.enemyManager.enemyScale = 3.0
+        self.enemyManager.delegate = self.levelManager
+        self.levelManager.enemyManager = self.enemyManager
     }
 
     private func setupStructureManager() {
-        structureManager = StructureManager(scene: self)
-        structureManager.structureZPosition = characterZPosition
-        structureManager.structureScale = 2.5
-        structureManager.enemyManager = enemyManager
-        structureManager.delegate = self
+        self.structureManager = StructureManager(scene: self)
+        self.structureManager.structureZPosition = self.characterZPosition
+        self.structureManager.structureScale = 2.5
+        self.structureManager.enemyManager = self.enemyManager
+        self.structureManager.delegate = self
     }
 
     private func setupBuildSystem() {
@@ -219,96 +219,96 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         let controller = TowerPlacementController(viewportSize: size)
         controller.setup(
             scene: self,
-            structureManager: structureManager,
+            structureManager: self.structureManager,
             resourceManager: ResourceManager.shared,
-            hermes: hermes
+            hermes: self.hermes
         )
         controller.delegate = self
 
         // Add build menu to camera (HUD layer)
         controller.buildMenu.zPosition = 400
-        cameraNode.addChild(controller.buildMenu)
+        self.cameraNode.addChild(controller.buildMenu)
 
         // Add placement indicator to scene (world space)
         addChild(controller.placementIndicator)
 
-        towerPlacementController = controller
+        self.towerPlacementController = controller
 
         // Wire up HUD callbacks
-        hud.onBuildTapped = { [weak self] in
+        self.hud.onBuildTapped = { [weak self] in
             self?.towerPlacementController?.toggleMenu()
         }
 
-        hud.onReleaseHermes = { [weak self] in
+        self.hud.onReleaseHermes = { [weak self] in
             self?.releaseHermes()
         }
     }
 
     private func setupOverlay() {
-        gameOverlay = GameOverlay(size: size)
-        gameOverlay.zPosition = 1_000
-        cameraNode.addChild(gameOverlay)
+        self.gameOverlay = GameOverlay(size: size)
+        self.gameOverlay.zPosition = 1_000
+        self.cameraNode.addChild(self.gameOverlay)
 
         // Set up overlay callbacks
-        gameOverlay.onNextLevel = { [weak self] in
+        self.gameOverlay.onNextLevel = { [weak self] in
             self?.transitionToNextLevel()
         }
 
-        gameOverlay.onRetry = { [weak self] in
+        self.gameOverlay.onRetry = { [weak self] in
             self?.restartLevel()
         }
 
-        gameOverlay.onMainMenu = { [weak self] in
+        self.gameOverlay.onMainMenu = { [weak self] in
             self?.returnToMainMenu()
         }
 
         // Set up pause menu
-        pauseMenu = PauseMenu(size: size)
-        pauseMenu.zPosition = 900 // Below game overlay but above HUD
-        cameraNode.addChild(pauseMenu)
+        self.pauseMenu = PauseMenu(size: size)
+        self.pauseMenu.zPosition = 900 // Below game overlay but above HUD
+        self.cameraNode.addChild(self.pauseMenu)
 
         // Wire up pause menu callbacks
-        pauseMenu.onResume = { [weak self] in
+        self.pauseMenu.onResume = { [weak self] in
             self?.resumeGame()
         }
 
-        pauseMenu.onSettings = { [weak self] in
+        self.pauseMenu.onSettings = { [weak self] in
             self?.showSettings()
         }
 
-        pauseMenu.onSaveGame = { [weak self] in
+        self.pauseMenu.onSaveGame = { [weak self] in
             self?.showSaveSlotSelector()
         }
 
         // Set up settings menu
-        settingsMenu = SettingsMenu(size: size)
-        settingsMenu.zPosition = 920 // Above pause menu, below save slot selector
-        cameraNode.addChild(settingsMenu)
+        self.settingsMenu = SettingsMenu(size: size)
+        self.settingsMenu.zPosition = 920 // Above pause menu, below save slot selector
+        self.cameraNode.addChild(self.settingsMenu)
 
-        settingsMenu.onBack = { [weak self] in
+        self.settingsMenu.onBack = { [weak self] in
             // Return focus to pause menu (which is still visible underneath)
             logger.debug("Settings menu closed")
         }
 
-        settingsMenu.onSettingChanged = { setting, value in
+        self.settingsMenu.onSettingChanged = { setting, value in
             logger.debug("Setting changed: \(setting.rawValue) = \(value)")
         }
 
         // Set up save slot selector
-        saveSlotSelector = SaveSlotSelector(size: size)
-        saveSlotSelector.zPosition = 950 // Above pause menu
-        cameraNode.addChild(saveSlotSelector)
+        self.saveSlotSelector = SaveSlotSelector(size: size)
+        self.saveSlotSelector.zPosition = 950 // Above pause menu
+        self.cameraNode.addChild(self.saveSlotSelector)
 
-        saveSlotSelector.onSlotSelected = { [weak self] slotId in
+        self.saveSlotSelector.onSlotSelected = { [weak self] slotId in
             self?.saveGameToSlot(slotId)
         }
 
-        saveSlotSelector.onCancel = { [weak self] in
+        self.saveSlotSelector.onCancel = { [weak self] in
             // Return focus to pause menu
             logger.debug("Save slot selection cancelled")
         }
 
-        pauseMenu.onExitToMenu = { [weak self] in
+        self.pauseMenu.onExitToMenu = { [weak self] in
             self?.returnToMainMenu()
         }
     }
@@ -324,7 +324,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         let levelConfig = LevelConfig.level(state.levelNumber) ?? .levelOne
 
         // Create scene with that config
-        let scene = newGameScene(levelConfig: levelConfig)
+        let scene = self.newGameScene(levelConfig: levelConfig)
 
         // Store the save state to restore after setup
         scene.pendingSaveState = state
@@ -335,12 +335,12 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     /// Called after scene setup to restore saved state
     private func restoreFromSavedState() {
         guard let state = pendingSaveState else { return }
-        pendingSaveState = nil
+        self.pendingSaveState = nil
 
         logger.info("Restoring game from save: Level \(state.levelNumber)")
 
         // Restore level manager state
-        levelManager.restore(
+        self.levelManager.restore(
             elapsedTime: state.elapsedTime,
             score: state.score,
             lives: state.lives
@@ -352,7 +352,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         // Restore Nathaniel
         if let nathaniel {
             nathaniel.restoreFromSavedState(state.nathaniel)
-            startPosition = nathaniel.position // Update respawn point
+            self.startPosition = nathaniel.position // Update respawn point
         }
 
         // Restore Hermes
@@ -361,7 +361,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         }
 
         // Clear existing enemies and restore from save
-        enemyManager.removeAllEnemies()
+        self.enemyManager.removeAllEnemies()
         for enemyState in state.enemies {
             let enemy = enemyState.type.createEnemy()
             enemy.restore(from: enemyState)
@@ -375,7 +375,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
                 }
             }
 
-            enemyManager.addEnemy(enemy)
+            self.enemyManager.addEnemy(enemy)
         }
 
         // Restore towers
@@ -383,11 +383,11 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             let position = towerState.position.cgPoint
             var tower: DefensiveStructure? = switch towerState.type {
             case .gunTower:
-                structureManager.addGunTower(at: position)
+                self.structureManager.addGunTower(at: position)
             case .laserTower:
-                structureManager.addLaserTower(at: position)
+                self.structureManager.addLaserTower(at: position)
             case .healTower:
-                structureManager.addHealTower(at: position)
+                self.structureManager.addHealTower(at: position)
             }
 
             // Restore tower HP
@@ -396,23 +396,23 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
                 // Mark as Hermes-owned if applicable
                 if towerState.isHermesOwned {
-                    structureManager.markAsHermesOwned(tower)
+                    self.structureManager.markAsHermesOwned(tower)
                 }
             }
         }
 
         // Restore wave state if applicable
         if let currentWave = state.currentWave {
-            waveSpawner?.restore(wave: currentWave, timeUntilNext: state.timeUntilNextWave ?? 0)
+            self.waveSpawner?.restore(wave: currentWave, timeUntilNext: state.timeUntilNextWave ?? 0)
         }
 
         // Update camera to follow restored Nathaniel position (clamped to map bounds)
         if let nathaniel {
-            clampCameraToMapBounds(targetPosition: nathaniel.position)
+            self.clampCameraToMapBounds(targetPosition: nathaniel.position)
         }
 
         // Update HUD
-        updateHUD()
+        self.updateHUD()
 
         logger.info("Save state restored successfully")
     }
@@ -422,7 +422,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     /// Transition to the next level
     private func transitionToNextLevel() {
         guard let nextConfig = levelConfig.nextLevel else {
-            returnToMainMenu()
+            self.returnToMainMenu()
             return
         }
 
@@ -433,7 +433,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     /// Restart the current level
     private func restartLevel() {
-        let restartScene = GameScene.newGameScene(levelConfig: levelConfig)
+        let restartScene = GameScene.newGameScene(levelConfig: self.levelConfig)
         let transition = SKTransition.fade(withDuration: 0.5)
         view?.presentSceneWithNotification(restartScene, transition: transition)
     }
@@ -449,16 +449,16 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     /// Pause the game
     func pauseGame() {
-        guard levelManager.state == .playing else { return }
-        levelManager.pause()
-        pauseMenu.show()
+        guard self.levelManager.state == .playing else { return }
+        self.levelManager.pause()
+        self.pauseMenu.show()
         logger.info("Game paused")
     }
 
     /// Resume the game from pause
     func resumeGame() {
-        guard levelManager.state == .paused else { return }
-        pauseMenu.hide { [weak self] in
+        guard self.levelManager.state == .paused else { return }
+        self.pauseMenu.hide { [weak self] in
             self?.levelManager.resume()
             logger.info("Game resumed")
         }
@@ -466,13 +466,13 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     /// Show the settings menu
     private func showSettings() {
-        settingsMenu.show()
+        self.settingsMenu.show()
         logger.debug("Showing settings menu")
     }
 
     /// Show the save slot selector
     private func showSaveSlotSelector() {
-        saveSlotSelector.show(mode: .save)
+        self.saveSlotSelector.show(mode: .save)
         logger.debug("Showing save slot selector")
     }
 
@@ -482,7 +482,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         let displayName = "Level \(levelConfig.levelNumber)"
         guard let saveState = createSaveState(displayName: displayName) else {
             logger.error("Failed to create save state")
-            showSaveNotification(success: false)
+            self.showSaveNotification(success: false)
             return
         }
 
@@ -490,7 +490,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         let success = SaveManager.shared.saveToSlot(saveState, slotId: slotId)
 
         // Show notification
-        showSaveNotification(success: success)
+        self.showSaveNotification(success: success)
 
         logger.info("Saved to slot \(slotId): \(success ? "success" : "failed")")
     }
@@ -508,7 +508,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         notification.zPosition = 1_000
         notification.alpha = 0
 
-        cameraNode.addChild(notification)
+        self.cameraNode.addChild(notification)
 
         // Fade in, hold, fade out
         let fadeIn = SKAction.fadeIn(withDuration: 0.2)
@@ -590,68 +590,68 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
             logger
                 .debug(
-                    "HUD: view=\(viewWidth)x\(viewHeight) scene=\(size.width)x\(size.height) hud=\(hudSize.width)x\(hudSize.height)"
+                    "HUD: view=\(viewWidth)x\(viewHeight) scene=\(self.size.width)x\(self.size.height) hud=\(hudSize.width)x\(hudSize.height)"
                 )
         } else {
             hudSize = size
         }
 
         // Store the visible viewport size for camera clamping
-        visibleViewportSize = hudSize
+        self.visibleViewportSize = hudSize
 
-        hud = HUD(size: hudSize, safeAreaInsets: safeInsets)
-        hud.zPosition = 500
-        cameraNode.addChild(hud)
+        self.hud = HUD(size: hudSize, safeAreaInsets: safeInsets)
+        self.hud.zPosition = 500
+        self.cameraNode.addChild(self.hud)
 
         // Set up Release Hermes button callback
-        hud.onReleaseHermes = { [weak self] in
+        self.hud.onReleaseHermes = { [weak self] in
             self?.releaseHermes()
         }
 
         // Set up character toggle button callback
-        hud.onCharacterToggle = { [weak self] in
+        self.hud.onCharacterToggle = { [weak self] in
             self?.toggleSelectedCharacter()
         }
 
         // Set up follow mode toggle button callback
-        hud.onFollowModeToggle = { [weak self] in
+        self.hud.onFollowModeToggle = { [weak self] in
             self?.toggleHermesFollowMode()
         }
 
         // Set up pause button callback
-        hud.onPauseTapped = { [weak self] in
+        self.hud.onPauseTapped = { [weak self] in
             self?.pauseGame()
         }
 
         // Initialize with starting values
-        hud.update(
-            lives: levelManager.lives,
-            score: levelManager.score,
+        self.hud.update(
+            lives: self.levelManager.lives,
+            score: self.levelManager.score,
             resources: ResourceManager.shared.totalCollected,
-            elapsedTime: levelManager.elapsedTime
+            elapsedTime: self.levelManager.elapsedTime
         )
     }
 
     private func setupCamera() {
-        cameraNode = SKCameraNode()
-        cameraNode.name = "camera"
-        addChild(cameraNode)
-        camera = cameraNode
+        self.cameraNode = SKCameraNode()
+        self.cameraNode.name = "camera"
+        addChild(self.cameraNode)
+        camera = self.cameraNode
 
         // Start camera at a reasonable position
-        cameraNode.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        self.cameraNode.position = CGPoint(x: size.width / 2, y: size.height / 2)
     }
 
     private func loadMap() {
-        let mapName = levelConfig.mapName
-        let levelNum = levelConfig.levelNumber
+        let mapName = self.levelConfig.mapName
+        let levelNum = self.levelConfig.levelNumber
         logger.info("loadMap() called for level \(levelNum): \(mapName)")
         let parser = TMXParser()
 
         // Try to load the map from the bundle using level config
         guard let mapURL = Bundle.main.url(forResource: mapName, withExtension: "tmx") else {
             logger.error("Could not find \(mapName).tmx in bundle")
-            showLoadError("Could not find \(mapName).tmx")
+            self.showLoadError("Could not find \(mapName).tmx")
             return
         }
 
@@ -659,7 +659,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
         guard let map = parser.parse(url: mapURL) else {
             logger.error("Failed to parse map")
-            showLoadError("Failed to parse map")
+            self.showLoadError("Failed to parse map")
             return
         }
 
@@ -681,11 +681,11 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         }
 
         // Create renderer and load tilesets
-        mapRenderer = TMXRenderer(map: map)
-        mapRenderer?.loadTilesets()
+        self.mapRenderer = TMXRenderer(map: map)
+        self.mapRenderer?.loadTilesets()
 
         // Create and add map node
-        mapNode = mapRenderer?.createMapNode()
+        mapNode = self.mapRenderer?.createMapNode()
         if let mapNode {
             addChild(mapNode)
             print("GameScene: Map node added with \(mapNode.children.count) layer nodes")
@@ -695,7 +695,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         if let objects = mapRenderer?.getSpawnObjects() {
             print("GameScene: Found \(objects.count) spawn objects:")
             for obj in objects {
-                let pos = mapRenderer?.convertToSpriteKit(point: obj.center) ?? CGPoint.zero
+                let pos = self.mapRenderer?.convertToSpriteKit(point: obj.center) ?? CGPoint.zero
                 print("  - \(obj.name) (\(obj.type)) at \(pos)")
             }
         }
@@ -709,7 +709,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         }
 
         let map = renderer.map
-        fogOfWar = FogOfWar(
+        self.fogOfWar = FogOfWar(
             mapWidth: map.width,
             mapHeight: map.height,
             tileSize: CGFloat(map.tileWidth)
@@ -743,13 +743,13 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             let spawnPos = renderer.convertToSpriteKit(point: spawnObject.center)
 
             // Store start position for respawning
-            startPosition = spawnPos
-            levelManager.startPosition = spawnPos
+            self.startPosition = spawnPos
+            self.levelManager.startPosition = spawnPos
 
             nathaniel = Nathaniel()
             if let nathaniel {
                 nathaniel.position = spawnPos
-                nathaniel.sprite.zPosition = characterZPosition
+                nathaniel.sprite.zPosition = self.characterZPosition
                 nathaniel.sprite.setScale(3.0)
                 addChild(nathaniel.sprite)
 
@@ -786,7 +786,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             hermes = Hermes()
             if let hermes {
                 hermes.position = spawnPos
-                hermes.sprite.zPosition = characterZPosition
+                hermes.sprite.zPosition = self.characterZPosition
                 hermes.sprite.setScale(3.0)
 
                 // Set Hermes to follow Nathaniel
@@ -813,15 +813,15 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         }
 
         // Select Nathaniel by default
-        selectedCharacter = nathaniel
+        self.selectedCharacter = nathaniel
 
         // Position camera at Nathaniel (clamped to map bounds)
         if let nathaniel {
-            clampCameraToMapBounds(targetPosition: nathaniel.position)
+            self.clampCameraToMapBounds(targetPosition: nathaniel.position)
         }
 
         // Spawn test enemies
-        spawnEnemies()
+        self.spawnEnemies()
     }
 
     /// Spawn enemies based on level config (map-based or wave-based)
@@ -832,13 +832,13 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         var players: [Character] = []
         if let nathanielChar = self.nathaniel { players.append(nathanielChar) }
         if let hermesChar = hermes { players.append(hermesChar) }
-        enemyManager.playerCharacters = players
+        self.enemyManager.playerCharacters = players
 
         // Set up weapon collision callback for Nathaniel's bullets to hit enemies
-        nathaniel.weapon.onCheckCollision = enemyManager.createCollisionCallback()
+        nathaniel.weapon.onCheckCollision = self.enemyManager.createCollisionCallback()
 
         // Set up structure manager with player characters for heal tower
-        structureManager.playerCharacters = players
+        self.structureManager.playerCharacters = players
 
         // Set up resource manager for resource drops
         ResourceManager.shared.scene = self
@@ -846,14 +846,14 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         ResourceManager.shared.delegate = self
 
         // Spawn enemies based on spawn mode
-        switch levelConfig.spawnMode {
+        switch self.levelConfig.spawnMode {
         case .mapBased:
             // Spawn from map object layer
-            spawnEnemiesFromMap()
+            self.spawnEnemiesFromMap()
 
         case .waveBased:
             // Set up wave spawner for survival-style levels
-            setupWaveSpawner()
+            self.setupWaveSpawner()
         }
     }
 
@@ -865,7 +865,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         let allObjects = renderer.getSpawnObjects()
 
         // Filter to enemy spawns and spawn them
-        enemyManager.spawnFromMapObjects(allObjects, renderer: renderer)
+        self.enemyManager.spawnFromMapObjects(allObjects, renderer: renderer)
 
         logger.info("Spawned enemies from map objects")
     }
@@ -874,16 +874,16 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     private func setupWaveSpawner() {
         guard let renderer = mapRenderer else { return }
 
-        waveSpawner = WaveSpawner()
-        waveSpawner?.enemyManager = enemyManager
-        waveSpawner?.mapWidth = CGFloat(renderer.map.pixelWidth)
-        waveSpawner?.mapHeight = CGFloat(renderer.map.pixelHeight)
+        self.waveSpawner = WaveSpawner()
+        self.waveSpawner?.enemyManager = self.enemyManager
+        self.waveSpawner?.mapWidth = CGFloat(renderer.map.pixelWidth)
+        self.waveSpawner?.mapHeight = CGFloat(renderer.map.pixelHeight)
 
         // Set difficulty based on level
-        if levelConfig.levelNumber == 5 { // Final level
-            waveSpawner?.difficulty = .hard
+        if self.levelConfig.levelNumber == 5 { // Final level
+            self.waveSpawner?.difficulty = .hard
         } else {
-            waveSpawner?.difficulty = .normal
+            self.waveSpawner?.difficulty = .normal
         }
 
         logger.info("Wave spawner set up for survival-style level")
@@ -894,19 +894,19 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         guard let nathaniel else { return }
 
         // Spawn a gun tower near Nathaniel
-        structureManager.addGunTower(at: CGPoint(
+        self.structureManager.addGunTower(at: CGPoint(
             x: nathaniel.position.x + 150,
             y: nathaniel.position.y - 50
         ))
 
         // Spawn a heal tower nearby
-        structureManager.addHealTower(at: CGPoint(
+        self.structureManager.addHealTower(at: CGPoint(
             x: nathaniel.position.x - 100,
             y: nathaniel.position.y + 50
         ))
 
         // Spawn a laser tower
-        structureManager.addLaserTower(at: CGPoint(
+        self.structureManager.addLaserTower(at: CGPoint(
             x: nathaniel.position.x + 100,
             y: nathaniel.position.y + 150
         ))
@@ -915,17 +915,17 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     }
 
     private func setupDebugLabel() {
-        debugLabel = SKLabelNode(fontNamed: "Menlo")
-        debugLabel?.fontSize = 14
-        debugLabel?.fontColor = .white
-        debugLabel?.horizontalAlignmentMode = .left
-        debugLabel?.verticalAlignmentMode = .top
-        debugLabel?.position = CGPoint(x: -size.width / 2 + 10, y: size.height / 2 - 10)
-        debugLabel?.zPosition = 1_000
+        self.debugLabel = SKLabelNode(fontNamed: "Menlo")
+        self.debugLabel?.fontSize = 14
+        self.debugLabel?.fontColor = .white
+        self.debugLabel?.horizontalAlignmentMode = .left
+        self.debugLabel?.verticalAlignmentMode = .top
+        self.debugLabel?.position = CGPoint(x: -size.width / 2 + 10, y: size.height / 2 - 10)
+        self.debugLabel?.zPosition = 1_000
         if let label = debugLabel {
-            cameraNode.addChild(label)
+            self.cameraNode.addChild(label)
         }
-        updateDebugLabel()
+        self.updateDebugLabel()
     }
 
     private func showLoadError(_ message: String) {
@@ -939,14 +939,14 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     private func updateDebugLabel() {
         guard let renderer = mapRenderer else {
-            debugLabel?.text = "Map not loaded"
+            self.debugLabel?.text = "Map not loaded"
             return
         }
 
         var debugText = ""
 
         // Show game state
-        debugText += "Lives: \(levelManager.lives) | Score: \(levelManager.score)\n"
+        debugText += "Lives: \(self.levelManager.lives) | Score: \(self.levelManager.score)\n"
 
         // Show selected character info
         if let selected = selectedCharacter {
@@ -973,70 +973,70 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         }
 
         // Show enemy count
-        let aliveEnemies = enemyManager.aliveCount
+        let aliveEnemies = self.enemyManager.aliveCount
         if aliveEnemies > 0 {
             debugText += "\n\nEnemies: \(aliveEnemies)"
         }
 
-        debugLabel?.text = debugText
-        debugLabel?.numberOfLines = 0
+        self.debugLabel?.text = debugText
+        self.debugLabel?.numberOfLines = 0
     }
 
     // MARK: - Update Loop
 
     override func update(_ currentTime: TimeInterval) {
         // Calculate delta time
-        let deltaTime: TimeInterval = if lastUpdateTime == 0 {
+        let deltaTime: TimeInterval = if self.lastUpdateTime == 0 {
             0
         } else {
-            currentTime - lastUpdateTime
+            currentTime - self.lastUpdateTime
         }
-        lastUpdateTime = currentTime
+        self.lastUpdateTime = currentTime
 
         // Don't update game logic if not playing
-        guard levelManager.state == .playing else {
+        guard self.levelManager.state == .playing else {
             return
         }
 
         // Update level manager
-        levelManager.update(deltaTime: deltaTime)
+        self.levelManager.update(deltaTime: deltaTime)
 
         // Update player characters
-        nathaniel?.update(deltaTime: deltaTime)
-        hermes?.update(deltaTime: deltaTime)
+        self.nathaniel?.update(deltaTime: deltaTime)
+        self.hermes?.update(deltaTime: deltaTime)
 
         // Update wave spawner for survival-style levels
-        waveSpawner?.update(deltaTime: deltaTime)
+        self.waveSpawner?.update(deltaTime: deltaTime)
 
         // Update enemies via manager
-        enemyManager.update(deltaTime: deltaTime)
+        self.enemyManager.update(deltaTime: deltaTime)
 
         // Update resources (collection, expiration)
         ResourceManager.shared.update(deltaTime: deltaTime)
 
         // Update defensive structures
-        structureManager.update(deltaTime: deltaTime)
+        self.structureManager.update(deltaTime: deltaTime)
 
         // Update target indicator and check if target died
-        updateTargetIndicator()
+        self.updateTargetIndicator()
 
         // Update fog of war
-        updateFogOfWar(currentTime: currentTime)
+        self.updateFogOfWar(currentTime: currentTime)
 
         // Camera follows selected character
-        updateCameraFollow()
+        self.updateCameraFollow()
 
         // Update HUD
-        updateHUD()
+        self.updateHUD()
 
         // Update debug display (if enabled)
-        if showDebugInfo {
-            updateDebugLabel()
+        if self.showDebugInfo {
+            self.updateDebugLabel()
         }
 
         #if DEBUG
             // Update pathfinding visualization
-            updatePathfindingDebugOverlay()
+            self.updatePathfindingDebugOverlay()
         #endif
     }
 
@@ -1044,16 +1044,16 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     private func updateHUD() {
         // Update all HUD values from level manager and resource manager
-        hud.update(
-            lives: levelManager.lives,
-            score: levelManager.score,
+        self.hud.update(
+            lives: self.levelManager.lives,
+            score: self.levelManager.score,
             resources: ResourceManager.shared.totalCollected,
-            elapsedTime: levelManager.elapsedTime
+            elapsedTime: self.levelManager.elapsedTime
         )
 
         // Update selected character info
         if let selected = selectedCharacter {
-            hud.updateSelectedCharacter(
+            self.hud.updateSelectedCharacter(
                 name: selected.name,
                 health: selected.currentHP,
                 maxHealth: selected.maxHP
@@ -1061,11 +1061,11 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         }
 
         // Update player health bars
-        hud.updatePlayerHealth(
-            nathanielHP: nathaniel?.currentHP ?? 0,
-            nathanielMaxHP: nathaniel?.maxHP ?? 1,
-            hermesHP: hermes?.currentHP ?? 0,
-            hermesMaxHP: hermes?.maxHP ?? 1
+        self.hud.updatePlayerHealth(
+            nathanielHP: self.nathaniel?.currentHP ?? 0,
+            nathanielMaxHP: self.nathaniel?.maxHP ?? 1,
+            hermesHP: self.hermes?.currentHP ?? 0,
+            hermesMaxHP: self.hermes?.maxHP ?? 1
         )
     }
 
@@ -1111,14 +1111,14 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         fog.updateThrottled(visibleFrom: visiblePositions, currentTime: currentTime)
 
         // Update enemy visibility based on fog
-        updateEnemyVisibility()
+        self.updateEnemyVisibility()
     }
 
     /// Update enemy sprite visibility based on fog of war
     private func updateEnemyVisibility() {
         guard let fog = fogOfWar else { return }
 
-        for enemy in enemyManager.enemies {
+        for enemy in self.enemyManager.enemies {
             let isVisible = fog.isVisible(at: enemy.position)
             // Smoothly fade enemies in/out
             let targetAlpha: CGFloat = isVisible ? 1.0 : 0.0
@@ -1132,7 +1132,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     /// Handle Nathaniel's death
     private func handleNathanielDeath() {
-        let shouldRespawn = levelManager.handlePlayerDeath()
+        let shouldRespawn = self.levelManager.handlePlayerDeath()
 
         if shouldRespawn {
             // Schedule respawn after a brief delay
@@ -1147,13 +1147,13 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     /// Handle Hermes death - destroy towers without recoup
     private func handleHermesDeath() {
         // Destroy all Hermes towers immediately without recoup (penalty for death)
-        if structureManager.hasHermesTowers {
-            print("GameScene: Hermes died - destroying \(structureManager.hermesTowerCount) towers without recoup")
-            structureManager.destroyAllHermesTowersImmediate()
+        if self.structureManager.hasHermesTowers {
+            print("GameScene: Hermes died - destroying \(self.structureManager.hermesTowerCount) towers without recoup")
+            self.structureManager.destroyAllHermesTowersImmediate()
         }
 
         // Unlock Hermes state (will be needed for respawn)
-        hermes?.unlock()
+        self.hermes?.unlock()
     }
 
     /// Respawn Nathaniel at start position
@@ -1170,22 +1170,22 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         nathaniel.sprite.removeAllActions()
 
         // Respawn at start position
-        nathaniel.respawn(at: startPosition)
+        nathaniel.respawn(at: self.startPosition)
 
         // Update health bar
         nathaniel.updateHealthBar()
 
         // Set as selected character
-        selectedCharacter = nathaniel
+        self.selectedCharacter = nathaniel
 
         // Re-register with enemy manager
-        enemyManager.playerCharacters = [nathaniel]
+        self.enemyManager.playerCharacters = [nathaniel]
         if let hermes, hermes.isAlive {
-            enemyManager.playerCharacters.append(hermes)
+            self.enemyManager.playerCharacters.append(hermes)
         }
 
         // Update resource collectors
-        ResourceManager.shared.collectors = enemyManager.playerCharacters
+        ResourceManager.shared.collectors = self.enemyManager.playerCharacters
 
         logger.info("Nathaniel respawned at start position")
     }
@@ -1194,45 +1194,45 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     func levelManagerDidGameOver(_ manager: LevelManager) {
         logger.info("Game Over!")
-        gameOverlay.showGameOver(score: manager.score, time: manager.elapsedTime)
+        self.gameOverlay.showGameOver(score: manager.score, time: manager.elapsedTime)
     }
 
     func levelManagerDidWin(_ manager: LevelManager) {
         logger.info("Victory!")
 
         // Save progress for campaign levels (not survival mode)
-        if levelConfig.levelNumber > 0 {
+        if self.levelConfig.levelNumber > 0 {
             GameSettings.shared.recordLevelCompletion(
-                levelNumber: levelConfig.levelNumber,
+                levelNumber: self.levelConfig.levelNumber,
                 score: manager.score,
                 time: manager.elapsedTime
             )
         }
 
         // Check if there's a next level
-        let hasNextLevel = levelConfig.nextLevel != nil
+        let hasNextLevel = self.levelConfig.nextLevel != nil
 
-        gameOverlay.showVictory(score: manager.score, time: manager.elapsedTime, hasNextLevel: hasNextLevel)
+        self.gameOverlay.showVictory(score: manager.score, time: manager.elapsedTime, hasNextLevel: hasNextLevel)
     }
 
     func levelManager(_ manager: LevelManager, didLoseLife remainingLives: Int) {
         logger.info("Life lost! Remaining: \(remainingLives)")
-        gameOverlay.showLifeLost(remainingLives: remainingLives)
-        hud.flashLifeLost()
+        self.gameOverlay.showLifeLost(remainingLives: remainingLives)
+        self.hud.flashLifeLost()
     }
 
     func levelManager(_ manager: LevelManager, didUpdateScore newScore: Int) {
-        hud.updateScore(newScore)
+        self.hud.updateScore(newScore)
     }
 
     // MARK: - ResourceManagerDelegate
 
     func resourceManager(_ manager: ResourceManager, didUpdateTotal total: Int) {
-        hud.updateResources(total)
+        self.hud.updateResources(total)
     }
 
     func resourceManager(_ manager: ResourceManager, didCollectResource amount: Int) {
-        hud.highlightResourceCollected(amount: amount)
+        self.hud.highlightResourceCollected(amount: amount)
     }
 
     // MARK: - TowerPlacementControllerDelegate
@@ -1243,14 +1243,14 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         at position: CGPoint
     ) {
         // Lock Hermes in build mode
-        hermes?.isInBuildMode = true
+        self.hermes?.isInBuildMode = true
 
         // Update HUD with recoup preview
-        hud.showReleaseHermesButton(recoupAmount: structureManager.potentialRecoupAmount)
-        hud.updateTowerCount(structureManager.hermesTowerCount)
+        self.hud.showReleaseHermesButton(recoupAmount: self.structureManager.potentialRecoupAmount)
+        self.hud.updateTowerCount(self.structureManager.hermesTowerCount)
 
         // Update affordability
-        towerPlacementController?.updateAffordability()
+        self.towerPlacementController?.updateAffordability()
 
         logger.debug("Placed \(type.displayName) at (\(position.x), \(position.y))")
     }
@@ -1285,13 +1285,13 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         potentialRecoup: Int
     ) {
         // Update HUD when a Hermes tower is destroyed by enemies
-        hud.updateTowerCount(remainingCount)
-        hud.updateReleaseButtonRecoup(potentialRecoup)
+        self.hud.updateTowerCount(remainingCount)
+        self.hud.updateReleaseButtonRecoup(potentialRecoup)
 
         // Hide release button if all towers are destroyed
         if remainingCount == 0 {
-            hud.hideReleaseHermesButton()
-            hermes?.unlock()
+            self.hud.hideReleaseHermesButton()
+            self.hermes?.unlock()
         }
     }
 
@@ -1309,13 +1309,13 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
             // Apply zoom from dev settings if changed
             let targetZoom = DevSettings.shared.cameraZoom
-            if abs(cameraZoom - targetZoom) > 0.01 {
-                setZoom(targetZoom)
+            if abs(self.cameraZoom - targetZoom) > 0.01 {
+                self.setZoom(targetZoom)
             }
         #endif
 
         // Skip if camera is animating (e.g., during character switch)
-        guard !isCameraAnimating else { return }
+        guard !self.isCameraAnimating else { return }
         guard let selected = selectedCharacter, let renderer = mapRenderer else { return }
 
         // Target position is the selected character's position
@@ -1325,9 +1325,9 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         // This accounts for aspectFill scaling where visible area differs from scene size
         // When zoomed in (cameraZoom > 1), visible area is smaller so half dimensions decrease
         // When zoomed out (cameraZoom < 1), visible area is larger so half dimensions increase
-        let effectiveViewport = visibleViewportSize.width > 0 ? visibleViewportSize : size
-        let halfWidth = (effectiveViewport.width / 2) * cameraZoom
-        let halfHeight = (effectiveViewport.height / 2) * cameraZoom
+        let effectiveViewport = self.visibleViewportSize.width > 0 ? self.visibleViewportSize : size
+        let halfWidth = (effectiveViewport.width / 2) * self.cameraZoom
+        let halfHeight = (effectiveViewport.height / 2) * self.cameraZoom
 
         let mapWidth = CGFloat(renderer.map.pixelWidth)
         let mapHeight = CGFloat(renderer.map.pixelHeight)
@@ -1354,8 +1354,8 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         #else
             let smoothFactor: CGFloat = 0.1
         #endif
-        let currentPos = cameraNode.position
-        cameraNode.position = CGPoint(
+        let currentPos = self.cameraNode.position
+        self.cameraNode.position = CGPoint(
             x: currentPos.x + (clampedPos.x - currentPos.x) * smoothFactor,
             y: currentPos.y + (clampedPos.y - currentPos.y) * smoothFactor
         )
@@ -1365,13 +1365,13 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     /// Use this for initial positioning or teleporting the camera
     private func clampCameraToMapBounds(targetPosition: CGPoint) {
         guard let renderer = mapRenderer else {
-            cameraNode.position = targetPosition
+            self.cameraNode.position = targetPosition
             return
         }
 
-        let effectiveViewport = visibleViewportSize.width > 0 ? visibleViewportSize : size
-        let halfWidth = (effectiveViewport.width / 2) * cameraZoom
-        let halfHeight = (effectiveViewport.height / 2) * cameraZoom
+        let effectiveViewport = self.visibleViewportSize.width > 0 ? self.visibleViewportSize : size
+        let halfWidth = (effectiveViewport.width / 2) * self.cameraZoom
+        let halfHeight = (effectiveViewport.height / 2) * self.cameraZoom
 
         let mapWidth = CGFloat(renderer.map.pixelWidth)
         let mapHeight = CGFloat(renderer.map.pixelHeight)
@@ -1392,7 +1392,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             clampedPos.y = max(halfHeight, min(mapHeight - halfHeight, clampedPos.y))
         }
 
-        cameraNode.position = clampedPos
+        self.cameraNode.position = clampedPos
     }
 
     // MARK: - Camera Movement
@@ -1400,14 +1400,14 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     private func moveCamera(by delta: CGPoint) {
         guard let renderer = mapRenderer else { return }
 
-        var newPos = cameraNode.position
+        var newPos = self.cameraNode.position
         newPos.x += delta.x
         newPos.y += delta.y
 
         // Clamp to map bounds - use visible viewport size for correct clamping
-        let effectiveViewport = visibleViewportSize.width > 0 ? visibleViewportSize : size
-        let halfWidth = (effectiveViewport.width / 2) * cameraZoom
-        let halfHeight = (effectiveViewport.height / 2) * cameraZoom
+        let effectiveViewport = self.visibleViewportSize.width > 0 ? self.visibleViewportSize : size
+        let halfWidth = (effectiveViewport.width / 2) * self.cameraZoom
+        let halfHeight = (effectiveViewport.height / 2) * self.cameraZoom
 
         let mapWidth = CGFloat(renderer.map.pixelWidth)
         let mapHeight = CGFloat(renderer.map.pixelHeight)
@@ -1426,7 +1426,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             newPos.y = max(halfHeight, min(mapHeight - halfHeight, newPos.y))
         }
 
-        cameraNode.position = newPos
+        self.cameraNode.position = newPos
     }
 
     // MARK: - Camera Zoom
@@ -1436,7 +1436,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         #if DEBUG
             return DevSettings.shared.cameraMinZoom
         #else
-            return minZoom
+            return self.minZoom
         #endif
     }
 
@@ -1445,38 +1445,38 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         #if DEBUG
             return DevSettings.shared.cameraMaxZoom
         #else
-            return maxZoom
+            return self.maxZoom
         #endif
     }
 
     /// Update camera zoom by a scale factor
     /// - Parameter scale: Multiplier for current zoom (>1 zooms in, <1 zooms out)
     func updateZoom(by scale: CGFloat) {
-        let newZoom = cameraZoom * scale
-        cameraZoom = max(effectiveMinZoom, min(effectiveMaxZoom, newZoom))
-        cameraNode.setScale(cameraZoom)
-        updateUIScaleForZoom()
+        let newZoom = self.cameraZoom * scale
+        self.cameraZoom = max(self.effectiveMinZoom, min(self.effectiveMaxZoom, newZoom))
+        self.cameraNode.setScale(self.cameraZoom)
+        self.updateUIScaleForZoom()
     }
 
     /// Set camera zoom to an absolute value
     /// - Parameter zoom: Target zoom level (clamped to min/max)
     func setZoom(_ zoom: CGFloat) {
-        cameraZoom = max(effectiveMinZoom, min(effectiveMaxZoom, zoom))
-        cameraNode.setScale(cameraZoom)
-        updateUIScaleForZoom()
+        self.cameraZoom = max(self.effectiveMinZoom, min(self.effectiveMaxZoom, zoom))
+        self.cameraNode.setScale(self.cameraZoom)
+        self.updateUIScaleForZoom()
     }
 
     /// Handle pinch gesture zoom (called from iOS GameViewController)
     /// - Parameter scale: Gesture scale factor
     func handlePinchZoom(scale: CGFloat) {
-        updateZoom(by: scale)
+        self.updateZoom(by: scale)
     }
 
     /// Keep HUD and overlay at consistent screen size when zooming
     private func updateUIScaleForZoom() {
-        let inverseScale = 1.0 / cameraZoom
-        hud?.setScale(inverseScale)
-        gameOverlay?.setScale(inverseScale)
+        let inverseScale = 1.0 / self.cameraZoom
+        self.hud?.setScale(inverseScale)
+        self.gameOverlay?.setScale(inverseScale)
     }
 }
 
@@ -1489,21 +1489,21 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             let location = touch.location(in: self)
 
             // Check if save slot selector handles the touch (in HUD/camera space)
-            let hudLocation = cameraNode.convert(location, from: self)
-            if saveSlotSelector.isVisible {
-                _ = saveSlotSelector.handleTouch(at: hudLocation)
+            let hudLocation = self.cameraNode.convert(location, from: self)
+            if self.saveSlotSelector.isVisible {
+                _ = self.saveSlotSelector.handleTouch(at: hudLocation)
                 return
             }
 
             // Check if settings menu handles the touch (in HUD/camera space)
-            if settingsMenu.isVisible {
-                _ = settingsMenu.handleTouch(at: hudLocation)
+            if self.settingsMenu.isVisible {
+                _ = self.settingsMenu.handleTouch(at: hudLocation)
                 return
             }
 
             // Check if pause menu handles the touch (in HUD/camera space)
-            if pauseMenu.isVisible {
-                _ = pauseMenu.handleTouch(at: hudLocation)
+            if self.pauseMenu.isVisible {
+                _ = self.pauseMenu.handleTouch(at: hudLocation)
                 return
             }
 
@@ -1540,7 +1540,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
         override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
             // Cancel any active build menu drag
-            towerPlacementController?.handleTouchCancelled()
+            self.towerPlacementController?.handleTouchCancelled()
         }
     }
 #endif
@@ -1553,21 +1553,21 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             let location = event.location(in: self)
 
             // Check if save slot selector handles the click (in HUD/camera space)
-            let hudLocation = cameraNode.convert(location, from: self)
-            if saveSlotSelector.isVisible {
-                _ = saveSlotSelector.handleTouch(at: hudLocation)
+            let hudLocation = self.cameraNode.convert(location, from: self)
+            if self.saveSlotSelector.isVisible {
+                _ = self.saveSlotSelector.handleTouch(at: hudLocation)
                 return
             }
 
             // Check if settings menu handles the click (in HUD/camera space)
-            if settingsMenu.isVisible {
-                _ = settingsMenu.handleTouch(at: hudLocation)
+            if self.settingsMenu.isVisible {
+                _ = self.settingsMenu.handleTouch(at: hudLocation)
                 return
             }
 
             // Check if pause menu handles the click (in HUD/camera space)
-            if pauseMenu.isVisible {
-                _ = pauseMenu.handleTouch(at: hudLocation)
+            if self.pauseMenu.isVisible {
+                _ = self.pauseMenu.handleTouch(at: hudLocation)
                 return
             }
 
@@ -1584,7 +1584,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             // Use scroll delta for zoom - positive deltaY = scroll up = zoom in
             let zoomSensitivity: CGFloat = 0.02
             let zoomDelta = event.scrollingDeltaY * zoomSensitivity
-            updateZoom(by: 1.0 + zoomDelta)
+            self.updateZoom(by: 1.0 + zoomDelta)
         }
 
         override func rightMouseDown(with event: NSEvent) {
@@ -1600,28 +1600,28 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         override func keyDown(with event: NSEvent) {
             // Escape key toggles pause (works in both playing and paused states)
             if event.keyCode == 53 { // Escape key
-                if levelManager.state == .paused {
-                    resumeGame()
-                } else if levelManager.state == .playing {
-                    pauseGame()
+                if self.levelManager.state == .paused {
+                    self.resumeGame()
+                } else if self.levelManager.state == .playing {
+                    self.pauseGame()
                 }
                 return
             }
 
             // Check if the overlay is showing (victory/game over)
-            if gameOverlay.state == .victory || gameOverlay.state == .gameOver {
-                gameOverlay.handleInteraction()
+            if self.gameOverlay.state == .victory || self.gameOverlay.state == .gameOver {
+                self.gameOverlay.handleInteraction()
                 return
             }
 
             // Don't handle other keys if game is not in playing state
-            guard levelManager.state == .playing else { return }
+            guard self.levelManager.state == .playing else { return }
 
             switch event.keyCode {
             case 1: // S key - stop movement
-                selectedCharacter?.stop()
+                self.selectedCharacter?.stop()
             case 3: // F key - fire weapon at mouse position
-                fireAtMousePosition()
+                self.fireAtMousePosition()
             case 15: // R key - toggle Hermes follow mode
                 if let hermes {
                     hermes.isInBuildMode.toggle()
@@ -1658,41 +1658,41 @@ extension GameScene {
     /// Handle tap/click - either select a character, target an enemy, or move the selected character
     func handleTap(at location: CGPoint) {
         // Check if the overlay is showing (victory/game over)
-        if gameOverlay.state == .victory || gameOverlay.state == .gameOver {
-            gameOverlay.handleInteraction()
+        if self.gameOverlay.state == .victory || self.gameOverlay.state == .gameOver {
+            self.gameOverlay.handleInteraction()
             return
         }
 
         // Don't handle taps if game is not in playing state
-        guard levelManager.state == .playing else { return }
+        guard self.levelManager.state == .playing else { return }
 
         // Check if tap is on HUD elements (in camera/HUD coordinate space)
-        let hudLocation = cameraNode.convert(location, from: self)
-        if hud.handleTouch(at: hudLocation) {
+        let hudLocation = self.cameraNode.convert(location, from: self)
+        if self.hud.handleTouch(at: hudLocation) {
             return
         }
 
         // Check if tapping on a character to select them
         if let nathaniel, nathaniel.contains(point: location) {
-            selectCharacter(nathaniel)
+            self.selectCharacter(nathaniel)
             logger.debug("Selected Nathaniel")
             return
         }
 
         if let hermes, hermes.contains(point: location) {
-            selectCharacter(hermes)
+            self.selectCharacter(hermes)
             logger.debug("Selected Hermes")
             return
         }
 
         // Check if tapping on an enemy to target them
         if let enemy = enemyAtPoint(location) {
-            targetEnemy(enemy, tapLocation: location)
+            self.targetEnemy(enemy, tapLocation: location)
             return
         }
 
         // Otherwise, move the selected character to the location
-        handleMoveCommand(to: location)
+        self.handleMoveCommand(to: location)
     }
 
     /// Select a character for control
@@ -1700,57 +1700,57 @@ extension GameScene {
         // Hide previous selection visuals
         hermes?.hideSelectionHighlight()
 
-        selectedCharacter = character
+        self.selectedCharacter = character
 
         // If selecting Hermes, show build button and put in independent control
         if let hermes, character === hermes {
             hermes.isInBuildMode = true // Stops following, allows independent control
             hermes.showSelectionHighlight() // Show build radius indicator
-            hud.showBuildButton()
-            hud.hideFollowModeButton() // Hide follow button when Hermes is selected
+            self.hud.showBuildButton()
+            self.hud.hideFollowModeButton() // Hide follow button when Hermes is selected
 
             // Update placement controller with Hermes reference
-            towerPlacementController?.validator.hermes = hermes
-            towerPlacementController?.updateAffordability()
+            self.towerPlacementController?.validator.hermes = hermes
+            self.towerPlacementController?.updateAffordability()
 
             // Configure validator with current game state
             if let mapRenderer {
                 var players: [Character] = []
                 if let nathanielChar = nathaniel { players.append(nathanielChar) }
                 players.append(hermes) // hermes is known non-nil here
-                towerPlacementController?.configureValidator(
+                self.towerPlacementController?.configureValidator(
                     tmxRenderer: mapRenderer,
-                    enemyManager: enemyManager,
+                    enemyManager: self.enemyManager,
                     playerCharacters: players
                 )
             }
         } else {
             // Selecting Nathaniel - hide build button, menu, and Hermes visuals
-            hud.hideBuildButton()
-            towerPlacementController?.hideMenu()
+            self.hud.hideBuildButton()
+            self.towerPlacementController?.hideMenu()
             hermes?.hideSelectionHighlight()
 
             // Show follow mode button when Nathaniel is selected (to control Hermes)
             if let hermes {
                 let isFollowing = hermes.mode == .following
-                hud.showFollowModeButton(isFollowing: isFollowing)
+                self.hud.showFollowModeButton(isFollowing: isFollowing)
             }
         }
 
         // Animate camera to new character position
-        animateCameraTo(character.position)
+        self.animateCameraTo(character.position)
     }
 
     /// Toggle between Nathaniel and Hermes
     func toggleSelectedCharacter() {
-        if selectedCharacter === nathaniel {
+        if self.selectedCharacter === self.nathaniel {
             if let hermes {
-                selectCharacter(hermes)
+                self.selectCharacter(hermes)
                 logger.debug("Switched to Hermes")
             }
         } else {
             if let nathaniel {
-                selectCharacter(nathaniel)
+                self.selectCharacter(nathaniel)
                 logger.debug("Switched to Nathaniel")
             }
         }
@@ -1768,7 +1768,7 @@ extension GameScene {
 
         hermes.toggleMode()
         let isFollowing = hermes.mode == .following
-        hud.updateFollowMode(isFollowing: isFollowing)
+        self.hud.updateFollowMode(isFollowing: isFollowing)
         logger.debug("Hermes follow mode: \(isFollowing)")
     }
 
@@ -1777,12 +1777,12 @@ extension GameScene {
         guard let renderer = mapRenderer else { return }
 
         // Mark as animating to prevent updateCameraFollow from interfering
-        isCameraAnimating = true
+        self.isCameraAnimating = true
 
         // Clamp target position to map bounds - use visible viewport size for correct clamping
-        let effectiveViewport = visibleViewportSize.width > 0 ? visibleViewportSize : size
-        let halfWidth = (effectiveViewport.width / 2) * cameraZoom
-        let halfHeight = (effectiveViewport.height / 2) * cameraZoom
+        let effectiveViewport = self.visibleViewportSize.width > 0 ? self.visibleViewportSize : size
+        let halfWidth = (effectiveViewport.width / 2) * self.cameraZoom
+        let halfHeight = (effectiveViewport.height / 2) * self.cameraZoom
 
         let mapWidth = CGFloat(renderer.map.pixelWidth)
         let mapHeight = CGFloat(renderer.map.pixelHeight)
@@ -1807,7 +1807,7 @@ extension GameScene {
         let moveAction = SKAction.move(to: clampedPos, duration: 0.3)
         moveAction.timingMode = .easeInEaseOut
 
-        cameraNode.run(moveAction) { [weak self] in
+        self.cameraNode.run(moveAction) { [weak self] in
             self?.isCameraAnimating = false
         }
     }
@@ -1819,12 +1819,12 @@ extension GameScene {
         logger.info("Releasing Hermes - destroying all towers with visual effects")
 
         // Hide UI elements immediately
-        hud.hideReleaseHermesButton()
-        hud.updateTowerCount(0)
-        towerPlacementController?.hideMenu()
+        self.hud.hideReleaseHermesButton()
+        self.hud.updateTowerCount(0)
+        self.towerPlacementController?.hideMenu()
 
         // Destroy all Hermes-owned towers with staggered visual effects
-        structureManager?.destroyAllHermesTowers(camera: cameraNode) { [weak self, weak hermes] in
+        self.structureManager?.destroyAllHermesTowers(camera: self.cameraNode) { [weak self, weak hermes] in
             guard let hermes else { return }
 
             // Unlock Hermes to allow movement after destruction completes
@@ -1861,7 +1861,7 @@ extension GameScene {
         // Use 1.5x sprite size for easier touch targeting
         let hitAreaMultiplier: CGFloat = 1.5
 
-        for enemy in enemyManager.enemies {
+        for enemy in self.enemyManager.enemies {
             guard enemy.isAlive else { continue }
 
             // Get the sprite's frame and expand it
@@ -1892,33 +1892,33 @@ extension GameScene {
         nathaniel.target = enemy
 
         // Remove existing indicator
-        targetIndicator?.remove()
+        self.targetIndicator?.remove()
 
         // Create new indicator
-        targetIndicator = TargetIndicator.create(for: enemy.sprite, in: self)
+        self.targetIndicator = TargetIndicator.create(for: enemy.sprite, in: self)
 
         // Play feedback
-        playTargetFeedback(at: tapLocation)
+        self.playTargetFeedback(at: tapLocation)
 
         logger.debug("Targeted enemy at (\(enemy.position.x), \(enemy.position.y))")
     }
 
     /// Clear the current target (called when enemy dies)
     private func clearTarget() {
-        nathaniel?.target = nil
-        targetIndicator?.remove()
-        targetIndicator = nil
+        self.nathaniel?.target = nil
+        self.targetIndicator?.remove()
+        self.targetIndicator = nil
     }
 
     /// Play haptic and visual feedback when targeting
     private func playTargetFeedback(at location: CGPoint) {
         // Haptic feedback (iOS only)
         #if os(iOS)
-            hapticGenerator?.impactOccurred()
+            self.hapticGenerator?.impactOccurred()
         #endif
 
         // Visual ripple effect
-        showTapRipple(at: location)
+        self.showTapRipple(at: location)
     }
 
     /// Show an expanding ripple effect at the tap location
