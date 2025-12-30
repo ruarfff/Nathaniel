@@ -1,11 +1,3 @@
-//
-//  BuildMenu.swift
-//  Nathaniel Shared
-//
-//  Bottom panel build menu for Hermes to construct defensive towers.
-//  Shows tower types with icons, names, and costs. Supports drag-to-place.
-//
-
 import SpriteKit
 
 // MARK: - BuildMenu Delegate
@@ -29,7 +21,6 @@ protocol BuildMenuDelegate: AnyObject {
 
 /// Visual representation of a tower type in the build menu
 class BuildMenuItemNode: SKNode {
-
     // MARK: - Properties
 
     let towerType: TowerType
@@ -42,14 +33,14 @@ class BuildMenuItemNode: SKNode {
     /// Whether this item can currently be afforded
     var isAffordable: Bool = true {
         didSet {
-            updateAffordabilityVisuals()
+            self.updateAffordabilityVisuals()
         }
     }
 
     /// Whether this item is currently being dragged
     var isDragging: Bool = false {
         didSet {
-            updateDraggingVisuals()
+            self.updateDraggingVisuals()
         }
     }
 
@@ -64,38 +55,42 @@ class BuildMenuItemNode: SKNode {
         self.towerType = type
 
         // Create background
-        backgroundNode = SKShapeNode(rectOf: CGSize(width: Self.itemWidth, height: Self.itemHeight), cornerRadius: 8)
-        backgroundNode.fillColor = SKColor(white: 0.2, alpha: 0.8)
-        backgroundNode.strokeColor = SKColor.white.withAlphaComponent(0.5)
-        backgroundNode.lineWidth = 2
+        self.backgroundNode = SKShapeNode(
+            rectOf: CGSize(width: Self.itemWidth, height: Self.itemHeight),
+            cornerRadius: 8
+        )
+        self.backgroundNode.fillColor = SKColor(white: 0.2, alpha: 0.8)
+        self.backgroundNode.strokeColor = SKColor.white.withAlphaComponent(0.5)
+        self.backgroundNode.lineWidth = 2
 
         // Create icon (using tower texture or placeholder)
         let iconTexture = SKTexture(imageNamed: type.iconTextureName)
-        iconNode = SKSpriteNode(texture: iconTexture)
-        iconNode.size = CGSize(width: 40, height: 40)
+        self.iconNode = SKSpriteNode(texture: iconTexture)
+        self.iconNode.size = CGSize(width: 40, height: 40)
 
         // Create name label
-        nameLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        nameLabel.fontSize = 12
-        nameLabel.fontColor = .white
-        nameLabel.text = type.displayName
-        nameLabel.horizontalAlignmentMode = .center
-        nameLabel.verticalAlignmentMode = .top
+        self.nameLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        self.nameLabel.fontSize = 12
+        self.nameLabel.fontColor = .white
+        self.nameLabel.text = type.displayName
+        self.nameLabel.horizontalAlignmentMode = .center
+        self.nameLabel.verticalAlignmentMode = .top
 
         // Create cost label
-        costLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-        costLabel.fontSize = 14
-        costLabel.fontColor = SKColor(red: 0.3, green: 0.9, blue: 0.5, alpha: 1.0)
-        costLabel.text = "\(type.cost)"
-        costLabel.horizontalAlignmentMode = .center
-        costLabel.verticalAlignmentMode = .top
+        self.costLabel = SKLabelNode(fontNamed: "Menlo-Bold")
+        self.costLabel.fontSize = 14
+        self.costLabel.fontColor = SKColor(red: 0.3, green: 0.9, blue: 0.5, alpha: 1.0)
+        self.costLabel.text = "\(type.cost)"
+        self.costLabel.horizontalAlignmentMode = .center
+        self.costLabel.verticalAlignmentMode = .top
 
         super.init()
 
-        setupLayout()
+        self.setupLayout()
         name = "buildMenuItem_\(type.rawValue)"
     }
 
+    @available(*, unavailable)
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
@@ -104,47 +99,49 @@ class BuildMenuItemNode: SKNode {
 
     private func setupLayout() {
         // Background
-        addChild(backgroundNode)
+        addChild(self.backgroundNode)
 
         // Icon at top
-        iconNode.position = CGPoint(x: 0, y: 15)
-        iconNode.zPosition = 1
-        addChild(iconNode)
+        self.iconNode.position = CGPoint(x: 0, y: 15)
+        self.iconNode.zPosition = 1
+        addChild(self.iconNode)
 
         // Name below icon
-        nameLabel.position = CGPoint(x: 0, y: -15)
-        nameLabel.zPosition = 1
-        addChild(nameLabel)
+        self.nameLabel.position = CGPoint(x: 0, y: -15)
+        self.nameLabel.zPosition = 1
+        addChild(self.nameLabel)
 
         // Cost at bottom
-        costLabel.position = CGPoint(x: 0, y: -32)
-        costLabel.zPosition = 1
-        addChild(costLabel)
+        self.costLabel.position = CGPoint(x: 0, y: -32)
+        self.costLabel.zPosition = 1
+        addChild(self.costLabel)
     }
 
     // MARK: - Visual Updates
 
     private func updateAffordabilityVisuals() {
-        if isAffordable {
+        if self.isAffordable {
             alpha = 1.0
-            backgroundNode.fillColor = SKColor(white: 0.2, alpha: 0.8)
-            backgroundNode.strokeColor = SKColor.white.withAlphaComponent(0.5)
-            costLabel.fontColor = SKColor(red: 0.3, green: 0.9, blue: 0.5, alpha: 1.0)
+            self.backgroundNode.fillColor = SKColor(white: 0.2, alpha: 0.8)
+            self.backgroundNode.strokeColor = SKColor.white.withAlphaComponent(0.5)
+            self.costLabel.fontColor = SKColor(red: 0.3, green: 0.9, blue: 0.5, alpha: 1.0)
         } else {
             alpha = 0.5
-            backgroundNode.fillColor = SKColor(white: 0.1, alpha: 0.8)
-            backgroundNode.strokeColor = SKColor.gray.withAlphaComponent(0.3)
-            costLabel.fontColor = SKColor.red.withAlphaComponent(0.7)
+            self.backgroundNode.fillColor = SKColor(white: 0.1, alpha: 0.8)
+            self.backgroundNode.strokeColor = SKColor.gray.withAlphaComponent(0.3)
+            self.costLabel.fontColor = SKColor.red.withAlphaComponent(0.7)
         }
     }
 
     private func updateDraggingVisuals() {
-        if isDragging {
-            backgroundNode.strokeColor = SKColor.yellow
-            backgroundNode.lineWidth = 3
+        if self.isDragging {
+            self.backgroundNode.strokeColor = SKColor.yellow
+            self.backgroundNode.lineWidth = 3
         } else {
-            backgroundNode.strokeColor = isAffordable ? SKColor.white.withAlphaComponent(0.5) : SKColor.gray.withAlphaComponent(0.3)
-            backgroundNode.lineWidth = 2
+            self.backgroundNode.strokeColor = self.isAffordable
+                ? SKColor.white.withAlphaComponent(0.5)
+                : SKColor.gray.withAlphaComponent(0.3)
+            self.backgroundNode.lineWidth = 2
         }
     }
 
@@ -152,7 +149,7 @@ class BuildMenuItemNode: SKNode {
 
     func containsTouchPoint(_ point: CGPoint) -> Bool {
         let localPoint = convert(point, from: parent ?? self)
-        return backgroundNode.contains(localPoint)
+        return self.backgroundNode.contains(localPoint)
     }
 }
 
@@ -160,7 +157,6 @@ class BuildMenuItemNode: SKNode {
 
 /// Bottom panel build menu for tower construction
 class BuildMenu: SKNode {
-
     // MARK: - Properties
 
     weak var delegate: BuildMenuDelegate?
@@ -203,21 +199,22 @@ class BuildMenu: SKNode {
         let menuHeight = size.height * Self.menuHeightRatio
 
         // Create background panel
-        backgroundPanel = SKShapeNode(rectOf: CGSize(width: menuWidth, height: menuHeight), cornerRadius: 12)
-        backgroundPanel.fillColor = SKColor.black.withAlphaComponent(0.7)
-        backgroundPanel.strokeColor = SKColor.white.withAlphaComponent(0.4)
-        backgroundPanel.lineWidth = 2
+        self.backgroundPanel = SKShapeNode(rectOf: CGSize(width: menuWidth, height: menuHeight), cornerRadius: 12)
+        self.backgroundPanel.fillColor = SKColor.black.withAlphaComponent(0.7)
+        self.backgroundPanel.strokeColor = SKColor.white.withAlphaComponent(0.4)
+        self.backgroundPanel.lineWidth = 2
 
         super.init()
 
-        setupMenu()
-        zPosition = 400  // Below HUD but above game elements
+        self.setupMenu()
+        zPosition = 400 // Below HUD but above game elements
 
         // Start hidden
         isHidden = true
         alpha = 0
     }
 
+    @available(*, unavailable)
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
@@ -225,53 +222,58 @@ class BuildMenu: SKNode {
     // MARK: - Setup
 
     private func setupMenu() {
-        let halfHeight = viewportSize.height / 2
-        let menuHeight = viewportSize.height * Self.menuHeightRatio
+        let halfHeight = self.viewportSize.height / 2
+        let menuHeight = self.viewportSize.height * Self.menuHeightRatio
 
-        // Position panel at bottom center
-        position = CGPoint(x: 0, y: -halfHeight + menuHeight / 2 + 10)
+        // Position panel at bottom center with extra offset for safe areas
+        // Add 60 points to clear the home indicator on iPhone
+        let bottomOffset: CGFloat = 60
+        position = CGPoint(x: 0, y: -halfHeight + menuHeight / 2 + bottomOffset)
 
         // Add background
-        addChild(backgroundPanel)
+        addChild(self.backgroundPanel)
 
-        // Create menu items for each tower type
-        let types = TowerType.allCases
-        let totalWidth = CGFloat(types.count) * BuildMenuItemNode.itemWidth + CGFloat(types.count - 1) * Self.itemSpacing
-        let startX = -totalWidth / 2 + BuildMenuItemNode.itemWidth / 2
-
-        for (index, type) in types.enumerated() {
-            let item = BuildMenuItemNode(type: type)
-            item.position = CGPoint(
-                x: startX + CGFloat(index) * (BuildMenuItemNode.itemWidth + Self.itemSpacing),
-                y: 5
-            )
-            item.zPosition = 1
-            addChild(item)
-            menuItems.append(item)
-        }
-
-        // Add title label
+        // Add title label at the top of the panel
         let titleLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
         titleLabel.fontSize = 14
         titleLabel.fontColor = SKColor.white.withAlphaComponent(0.7)
         titleLabel.text = "BUILD TOWERS"
         titleLabel.horizontalAlignmentMode = .center
-        titleLabel.verticalAlignmentMode = .top
-        titleLabel.position = CGPoint(x: 0, y: viewportSize.height * Self.menuHeightRatio / 2 - 10)
+        titleLabel.verticalAlignmentMode = .center
+        titleLabel.position = CGPoint(x: 0, y: menuHeight / 2 - 20)
         titleLabel.zPosition = 1
         addChild(titleLabel)
+
+        // Create menu items for each tower type
+        // Position items below the title, centered vertically in remaining space
+        let types = TowerType.allCases
+        let totalWidth = CGFloat(types.count) * BuildMenuItemNode.itemWidth + CGFloat(types.count - 1) * Self
+            .itemSpacing
+        let startX = -totalWidth / 2 + BuildMenuItemNode.itemWidth / 2
+        let itemY: CGFloat = -10 // Slightly below center to leave room for title
+
+        for (index, type) in types.enumerated() {
+            let item = BuildMenuItemNode(type: type)
+            item.position = CGPoint(
+                x: startX + CGFloat(index) * (BuildMenuItemNode.itemWidth + Self.itemSpacing),
+                y: itemY
+            )
+            item.zPosition = 1
+            addChild(item)
+            self.menuItems.append(item)
+        }
     }
 
     // MARK: - Visibility
 
     /// Show the build menu with animation
     func show() {
-        guard !isVisible else { return }
-        isVisible = true
+        guard !self.isVisible else { return }
+        self.isVisible = true
         isHidden = false
 
         // Update affordability before showing
-        updateAffordability()
+        self.updateAffordability()
 
         // Animate in from bottom
         let targetY = position.y
@@ -285,16 +287,16 @@ class BuildMenu: SKNode {
 
     /// Hide the build menu with animation
     func hide() {
-        guard isVisible else { return }
-        isVisible = false
+        guard self.isVisible else { return }
+        self.isVisible = false
 
         // Cancel any active drag
         if let item = draggingItem {
             item.isDragging = false
-            delegate?.buildMenu(self, didCancelDragging: item.towerType)
-            draggingItem = nil
+            self.delegate?.buildMenu(self, didCancelDragging: item.towerType)
+            self.draggingItem = nil
         }
-        removeGhostTower()
+        self.removeGhostTower()
 
         // Animate out
         let moveDown = SKAction.moveBy(x: 0, y: -50, duration: 0.2)
@@ -305,20 +307,21 @@ class BuildMenu: SKNode {
             SKAction.group([moveDown, fadeOut]),
             SKAction.run { [weak self] in
                 self?.isHidden = true
-                // Reset position for next show
+                // Reset position for next show (with safe area offset)
                 if let halfHeight = self?.viewportSize.height {
-                    self?.position.y = -halfHeight / 2 + halfHeight * Self.menuHeightRatio / 2 + 10
+                    let bottomOffset: CGFloat = 60
+                    self?.position.y = -halfHeight / 2 + halfHeight * Self.menuHeightRatio / 2 + bottomOffset
                 }
-            }
+            },
         ]))
     }
 
     /// Toggle visibility
     func toggle() {
-        if isVisible {
-            hide()
+        if self.isVisible {
+            self.hide()
         } else {
-            show()
+            self.show()
         }
     }
 
@@ -326,10 +329,10 @@ class BuildMenu: SKNode {
 
     /// Update which items can be afforded
     func updateAffordability() {
-        guard let delegate = delegate else { return }
+        guard let delegate else { return }
         let resources = delegate.buildMenuCurrentResources(self)
 
-        for item in menuItems {
+        for item in self.menuItems {
             item.isAffordable = TowerConfig.canAfford(item.towerType, currentResources: resources)
         }
     }
@@ -338,29 +341,29 @@ class BuildMenu: SKNode {
 
     /// Handle touch began - returns true if touch was handled
     func handleTouchBegan(at point: CGPoint) -> Bool {
-        guard isVisible else { return false }
+        guard self.isVisible else { return false }
 
         let localPoint = convert(point, from: parent ?? self)
 
         // Check if touch is on a menu item
-        for item in menuItems {
-            if item.containsTouchPoint(localPoint) && item.isAffordable {
+        for item in self.menuItems {
+            if item.containsTouchPoint(localPoint), item.isAffordable {
                 // Start dragging
-                draggingItem = item
+                self.draggingItem = item
                 item.isDragging = true
 
                 // Create ghost tower
-                createGhostTower(for: item.towerType, at: point)
+                self.createGhostTower(for: item.towerType, at: point)
 
                 // Notify delegate
-                delegate?.buildMenu(self, didStartDragging: item.towerType, from: point)
+                self.delegate?.buildMenu(self, didStartDragging: item.towerType, from: point)
                 return true
             }
         }
 
         // Check if touch is on menu background
-        if backgroundPanel.contains(localPoint) {
-            return true  // Consume touch but don't do anything
+        if self.backgroundPanel.contains(localPoint) {
+            return true // Consume touch but don't do anything
         }
 
         return false
@@ -368,30 +371,30 @@ class BuildMenu: SKNode {
 
     /// Handle touch moved - returns true if touch was handled
     func handleTouchMoved(to point: CGPoint) -> Bool {
-        guard isVisible, draggingItem != nil else { return false }
+        guard self.isVisible, self.draggingItem != nil else { return false }
 
         // Move ghost tower
-        ghostTower?.position = point
+        self.ghostTower?.position = point
 
         return true
     }
 
     /// Handle touch ended - returns true if touch was handled
     func handleTouchEnded(at point: CGPoint) -> Bool {
-        guard isVisible, let dragging = draggingItem else { return false }
+        guard self.isVisible, let dragging = draggingItem else { return false }
 
         dragging.isDragging = false
-        draggingItem = nil
-        removeGhostTower()
+        self.draggingItem = nil
+        self.removeGhostTower()
 
         // Check if released outside menu
         let localPoint = convert(point, from: parent ?? self)
-        if !backgroundPanel.contains(localPoint) {
+        if !self.backgroundPanel.contains(localPoint) {
             // Valid placement attempt
-            delegate?.buildMenu(self, didEndDragging: dragging.towerType, at: point)
+            self.delegate?.buildMenu(self, didEndDragging: dragging.towerType, at: point)
         } else {
             // Released back on menu - cancel
-            delegate?.buildMenu(self, didCancelDragging: dragging.towerType)
+            self.delegate?.buildMenu(self, didCancelDragging: dragging.towerType)
         }
 
         return true
@@ -402,43 +405,43 @@ class BuildMenu: SKNode {
         guard let dragging = draggingItem else { return }
 
         dragging.isDragging = false
-        draggingItem = nil
-        removeGhostTower()
+        self.draggingItem = nil
+        self.removeGhostTower()
 
-        delegate?.buildMenu(self, didCancelDragging: dragging.towerType)
+        self.delegate?.buildMenu(self, didCancelDragging: dragging.towerType)
     }
 
     // MARK: - Ghost Tower
 
     /// Create a ghost tower sprite that follows the drag
     private func createGhostTower(for type: TowerType, at position: CGPoint) {
-        removeGhostTower()
+        self.removeGhostTower()
 
         let ghost = SKSpriteNode(imageNamed: type.iconTextureName)
         ghost.size = CGSize(width: 50, height: 50)
         ghost.position = position
         ghost.alpha = 0.6
-        ghost.zPosition = 450  // Above menu but below HUD
+        ghost.zPosition = 450 // Above menu but below HUD
         ghost.name = "ghostTower"
 
         parent?.addChild(ghost)
-        ghostTower = ghost
+        self.ghostTower = ghost
     }
 
     /// Remove the ghost tower
     private func removeGhostTower() {
-        ghostTower?.removeFromParent()
-        ghostTower = nil
+        self.ghostTower?.removeFromParent()
+        self.ghostTower = nil
     }
 
     /// Update ghost tower validity visual (red if invalid, normal if valid)
     func updateGhostValidity(isValid: Bool) {
         if isValid {
-            ghostTower?.color = .white
-            ghostTower?.colorBlendFactor = 0
+            self.ghostTower?.color = .white
+            self.ghostTower?.colorBlendFactor = 0
         } else {
-            ghostTower?.color = .red
-            ghostTower?.colorBlendFactor = 0.7
+            self.ghostTower?.color = .red
+            self.ghostTower?.colorBlendFactor = 0.7
         }
     }
 
@@ -446,11 +449,11 @@ class BuildMenu: SKNode {
 
     /// Check if currently dragging
     var isDragging: Bool {
-        return draggingItem != nil
+        self.draggingItem != nil
     }
 
     /// Get currently dragging tower type
     var draggingTowerType: TowerType? {
-        return draggingItem?.towerType
+        self.draggingItem?.towerType
     }
 }

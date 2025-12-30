@@ -1772,6 +1772,16 @@ extension GameScene {
         logger.debug("Hermes follow mode: \(isFollowing)")
     }
 
+    /// Toggle the build menu visibility
+    func toggleBuildMenu() {
+        self.towerPlacementController?.toggleMenu()
+    }
+
+    /// Check if build menu is currently visible
+    var isBuildMenuVisible: Bool {
+        self.towerPlacementController?.buildMenu.isVisible ?? false
+    }
+
     /// Animate camera to a target position with smooth easing
     private func animateCameraTo(_ position: CGPoint) {
         guard let renderer = mapRenderer else { return }

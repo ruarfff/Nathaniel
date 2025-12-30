@@ -9,7 +9,7 @@
             // Determine game status and pause state
             let status: String
             let isPaused: Bool
-            let levelInfo = findLevelManager()
+            let levelInfo = self.findLevelManager()
 
             if levelInfo?.isPaused == true {
                 status = "paused"
@@ -53,7 +53,7 @@
                 isPaused: isPaused,
                 playerPosition: nathanielPos,
                 hermesPosition: hermesPos,
-                enemyCount: findEnemyManager()?.aliveCount ?? 0
+                enemyCount: self.findEnemyManager()?.aliveCount ?? 0
             )
         }
 
@@ -216,8 +216,8 @@
                 return .success("Toggled character selection")
 
             case "toggleBuildMenu":
-                // Simulate tapping the build button
-                return .failure("Build menu action not yet implemented")
+                self.toggleBuildMenu()
+                return .success("Build menu \(self.isBuildMenuVisible ? "opened" : "closed")")
 
             case "restartLevel":
                 // Trigger restart via overlay
@@ -237,7 +237,7 @@
                 }
 
                 let position = CGPoint(x: x, y: y)
-                let target = findNathaniel()
+                let target = self.findNathaniel()
 
                 // Spawn the appropriate enemy type
                 switch typeStr.lowercased() {
@@ -347,7 +347,7 @@
                 guard towerCount > 0 else {
                     return .failure("No towers deployed")
                 }
-                let recoupAmount = structMgr.destroyAllHermesTowers(camera: findCameraNode())
+                let recoupAmount = structMgr.destroyAllHermesTowers(camera: self.findCameraNode())
                 // Unlock Hermes if locked
                 if hermes.mode == .locked {
                     hermes.unlock()
