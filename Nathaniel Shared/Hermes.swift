@@ -1,10 +1,3 @@
-//
-//  Hermes.swift
-//  Nathaniel Shared
-//
-//  The robot companion character - Hermes.
-//
-
 import SpriteKit
 
 /// Hermes operational modes - determines movement and ability behavior
@@ -19,11 +12,10 @@ enum HermesMode {
 
 /// The robot companion character class
 class Hermes: Character {
-
     // MARK: - Constants (from legacy code)
 
     /// Starting/maximum health points
-    static let defaultMaxHP = 2000
+    static let defaultMaxHP = 2_000
 
     /// Movement speed in points per second
     static let defaultSpeed: CGFloat = 40
@@ -79,21 +71,21 @@ class Hermes: Character {
     var mode: HermesMode = .independent {
         didSet {
             // Update visuals when mode changes
-            if oldValue != mode {
-                updateModeVisual()
+            if oldValue != self.mode {
+                self.updateModeVisual()
             }
         }
     }
 
     /// Whether Hermes is in build mode (placing structures) - computed for backward compatibility
     var isInBuildMode: Bool {
-        get { mode == .independent }
-        set { mode = newValue ? .independent : .following }
+        get { self.mode == .independent }
+        set { self.mode = newValue ? .independent : .following }
     }
 
     /// Whether Hermes is locked (has deployed towers and cannot move) - computed for backward compatibility
     var isLocked: Bool {
-        mode == .locked
+        self.mode == .locked
     }
 
     /// Visual indicator node for locked state
@@ -111,7 +103,7 @@ class Hermes: Character {
     /// Whether to show build radius (when selected in build mode)
     var showBuildRadius: Bool = false {
         didSet {
-            updateBuildRadiusVisual()
+            self.updateBuildRadiusVisual()
         }
     }
 
@@ -138,18 +130,18 @@ class Hermes: Character {
         print("Hermes: Initializing...")
 
         // Load both sprite sheets
-        loadIdleSpriteSheet()
-        loadMovingSpriteSheet()
+        self.loadIdleSpriteSheet()
+        self.loadMovingSpriteSheet()
 
         print("Hermes: Sprite size after loading: \(sprite.size)")
-        print("Hermes: Idle textures count: \(idleTextures.count)")
-        print("Hermes: Moving textures count: \(movingTextures.count)")
+        print("Hermes: Idle textures count: \(self.idleTextures.count)")
+        print("Hermes: Moving textures count: \(self.movingTextures.count)")
 
         // Set initial facing direction
         facingDirection = .south
 
         // Start in independent mode (legacy build mode behavior)
-        mode = .independent
+        self.mode = .independent
     }
 
     // MARK: - Texture Loading
@@ -179,20 +171,20 @@ class Hermes: Character {
         sprite.size = CGSize(width: frameWidth, height: frameHeight)
 
         // Slice the idle sprite sheet into individual textures
-        idleTextures = []
-        for col in 0..<Hermes.idleSheetCols {
+        self.idleTextures = []
+        for col in 0 ..< Hermes.idleSheetCols {
             let x = CGFloat(col) / CGFloat(Hermes.idleSheetCols)
             let w = 1.0 / CGFloat(Hermes.idleSheetCols)
 
             let rect = CGRect(x: x, y: 0, width: w, height: 1.0)
             let frameTexture = SKTexture(rect: rect, in: texture)
             frameTexture.filteringMode = .nearest
-            idleTextures.append(frameTexture)
+            self.idleTextures.append(frameTexture)
         }
 
         // Set initial texture
-        if !idleTextures.isEmpty {
-            sprite.texture = idleTextures[0]
+        if !self.idleTextures.isEmpty {
+            sprite.texture = self.idleTextures[0]
         }
     }
 
@@ -212,15 +204,15 @@ class Hermes: Character {
         }
 
         // Slice the moving sprite sheet into individual textures
-        movingTextures = []
-        for col in 0..<Hermes.movingSheetCols {
+        self.movingTextures = []
+        for col in 0 ..< Hermes.movingSheetCols {
             let x = CGFloat(col) / CGFloat(Hermes.movingSheetCols)
             let w = 1.0 / CGFloat(Hermes.movingSheetCols)
 
             let rect = CGRect(x: x, y: 0, width: w, height: 1.0)
             let frameTexture = SKTexture(rect: rect, in: texture)
             frameTexture.filteringMode = .nearest
-            movingTextures.append(frameTexture)
+            self.movingTextures.append(frameTexture)
         }
     }
 
@@ -228,15 +220,15 @@ class Hermes: Character {
 
     /// Override to use Hermes-specific sprite sheets
     override func updateTexture() {
-        if isMoving && !movingTextures.isEmpty {
+        if isMoving, !self.movingTextures.isEmpty {
             // Use moving sprite based on direction
             // Legacy mapping: direction -> moving frame index
-            let movingIndex = movingTextureIndex(for: facingDirection)
-            sprite.texture = movingTextures[movingIndex]
-        } else if !idleTextures.isEmpty {
+            let movingIndex = self.movingTextureIndex(for: facingDirection)
+            sprite.texture = self.movingTextures[movingIndex]
+        } else if !self.idleTextures.isEmpty {
             // Use idle sprite based on direction
-            let idleIndex = idleTextureIndex(for: facingDirection)
-            sprite.texture = idleTextures[idleIndex]
+            let idleIndex = self.idleTextureIndex(for: facingDirection)
+            sprite.texture = self.idleTextures[idleIndex]
         }
     }
 
@@ -244,7 +236,7 @@ class Hermes: Character {
     /// Legacy mapping from UpdateState():
     /// South=0, SouthWest=1, North=2, West=3, SouthEast=4, NorthEast=5, East=6, NorthWest=7
     private func idleTextureIndex(for direction: FacingDirection) -> Int {
-        return direction.rawValue
+        direction.rawValue
     }
 
     /// Map facing direction to moving texture index
@@ -253,15 +245,15 @@ class Hermes: Character {
     private func movingTextureIndex(for direction: FacingDirection) -> Int {
         switch direction {
         case .north, .south:
-            return 1
+            1
         case .southEast:
-            return 2
+            2
         case .northEast, .east:
-            return 3
+            3
         case .northWest, .west:
-            return 4
+            4
         case .southWest:
-            return 0
+            0
         }
     }
 
@@ -269,13 +261,13 @@ class Hermes: Character {
 
     override func update(deltaTime: TimeInterval) {
         #if DEBUG
-        // Apply dev settings for live updates
-        speed = DevSettings.shared.hermesSpeed
+            // Apply dev settings for live updates
+            speed = DevSettings.shared.hermesSpeed
         #endif
 
         // Handle follow behavior only in following mode
-        if mode == .following, let target = followTarget {
-            updateFollowBehavior(target: target)
+        if self.mode == .following, let target = followTarget {
+            self.updateFollowBehavior(target: target)
         }
 
         super.update(deltaTime: deltaTime)
@@ -284,9 +276,9 @@ class Hermes: Character {
     /// Override takeDamage to support invincibility setting
     override func takeDamage(_ amount: Int) {
         #if DEBUG
-        if DevSettings.shared.playerInvincible {
-            return  // Ignore damage when invincible
-        }
+            if DevSettings.shared.playerInvincible {
+                return // Ignore damage when invincible
+            }
         #endif
         super.takeDamage(amount)
     }
@@ -295,7 +287,7 @@ class Hermes: Character {
     private func updateFollowBehavior(target: Character) {
         // Calculate target position with formation offset
         // Offset is relative to target's facing direction
-        let targetPos = calculateFormationPosition(for: target)
+        let targetPos = self.calculateFormationPosition(for: target)
 
         let dx = targetPos.x - position.x
         let dy = targetPos.y - position.y
@@ -303,14 +295,14 @@ class Hermes: Character {
 
         // Teleport if too far behind
         if distance > Hermes.teleportDistance {
-            teleportToFormation(target: target)
+            self.teleportToFormation(target: target)
             return
         }
 
         // Determine behavior based on distance zones
         if distance <= Hermes.followStopDistance {
             // Arrival zone - stop and match target's facing direction
-            destination = nil
+            self.destination = nil
             speed = Hermes.defaultSpeed
 
             // Face the same direction as the target when idle
@@ -319,19 +311,22 @@ class Hermes: Character {
             }
         } else if distance <= Hermes.followSlowDistance {
             // Deceleration zone - slow approach
-            destination = targetPos
+            self.destination = targetPos
             // Smoothly reduce speed as we get closer
             let t = (distance - Hermes.followStopDistance) / (Hermes.followSlowDistance - Hermes.followStopDistance)
             speed = Hermes.defaultSpeed + (Hermes.baseFollowSpeed - Hermes.defaultSpeed) * t
         } else if distance <= Hermes.followStartDistance {
             // Normal follow zone
-            destination = targetPos
+            self.destination = targetPos
             speed = Hermes.baseFollowSpeed
         } else {
             // Catch-up zone - move faster to close the gap
-            destination = targetPos
+            self.destination = targetPos
             // Interpolate speed based on distance (faster when further)
-            let catchUpT = min(1.0, (distance - Hermes.followStartDistance) / (Hermes.teleportDistance - Hermes.followStartDistance))
+            let catchUpT = min(
+                1.0,
+                (distance - Hermes.followStartDistance) / (Hermes.teleportDistance - Hermes.followStartDistance)
+            )
             speed = Hermes.baseFollowSpeed + (Hermes.catchUpSpeed - Hermes.baseFollowSpeed) * catchUpT
         }
     }
@@ -340,7 +335,7 @@ class Hermes: Character {
     private func calculateFormationPosition(for target: Character) -> CGPoint {
         // Rotate the formation offset based on target's facing direction
         let offset = Hermes.formationOffset
-        let angle = facingAngle(for: target.facingDirection)
+        let angle = self.facingAngle(for: target.facingDirection)
 
         // Rotate offset by the facing angle
         let cos_a = cos(angle)
@@ -357,22 +352,22 @@ class Hermes: Character {
     /// Convert facing direction to angle in radians
     private func facingAngle(for direction: FacingDirection) -> CGFloat {
         switch direction {
-        case .south: return 0
-        case .southWest: return .pi * 0.25
-        case .west: return .pi * 0.5
-        case .northWest: return .pi * 0.75
-        case .north: return .pi
-        case .northEast: return .pi * 1.25
-        case .east: return .pi * 1.5
-        case .southEast: return .pi * 1.75
+        case .south: 0
+        case .southWest: .pi * 0.25
+        case .west: .pi * 0.5
+        case .northWest: .pi * 0.75
+        case .north: .pi
+        case .northEast: .pi * 1.25
+        case .east: .pi * 1.5
+        case .southEast: .pi * 1.75
         }
     }
 
     /// Teleport Hermes to formation position when too far behind
     private func teleportToFormation(target: Character) {
-        let targetPos = calculateFormationPosition(for: target)
+        let targetPos = self.calculateFormationPosition(for: target)
         position = targetPos
-        destination = nil
+        self.destination = nil
         facingDirection = target.facingDirection
         speed = Hermes.defaultSpeed
         print("Hermes: Teleported to formation (was too far behind)")
@@ -382,7 +377,7 @@ class Hermes: Character {
 
     override func onDeath() {
         super.onDeath()
-        onDeathCallback?()
+        self.onDeathCallback?()
     }
 
     // MARK: - Respawn
@@ -395,45 +390,45 @@ class Hermes: Character {
         self.facingDirection = .south
         self.animationState = .idle
         self.isActive = true
-        updateTexture()
+        self.updateTexture()
     }
 
     // MARK: - Mode Control
 
     /// Toggle between following and independent modes
     func toggleMode() {
-        guard mode != .locked else { return }  // Can't toggle while locked
-        mode = (mode == .following) ? .independent : .following
+        guard self.mode != .locked else { return } // Can't toggle while locked
+        self.mode = (self.mode == .following) ? .independent : .following
     }
 
     /// Toggle build mode on/off (backward compatible alias for toggleMode)
     func toggleBuildMode() {
-        toggleMode()
+        self.toggleMode()
     }
 
     /// Enter independent mode (stop following, allow tower placement)
     func enterBuildMode() {
-        guard mode != .locked else { return }
-        mode = .independent
+        guard self.mode != .locked else { return }
+        self.mode = .independent
         stop()
     }
 
     /// Exit build mode (resume following)
     func exitBuildMode() {
-        guard mode != .locked else { return }
-        mode = .following
+        guard self.mode != .locked else { return }
+        self.mode = .following
     }
 
     /// Enter following mode
     func enterFollowMode() {
-        guard mode != .locked else { return }
-        mode = .following
+        guard self.mode != .locked else { return }
+        self.mode = .following
     }
 
     /// Enter independent mode (player controls directly)
     func enterIndependentMode() {
-        guard mode != .locked else { return }
-        mode = .independent
+        guard self.mode != .locked else { return }
+        self.mode = .independent
     }
 
     // MARK: - Locked State (Tower Deployment)
@@ -441,19 +436,19 @@ class Hermes: Character {
     /// Lock Hermes when towers are deployed
     /// Prevents all movement until towers are released
     func lock() {
-        guard mode != .locked else { return }
-        preLockMode = mode  // Remember current mode
-        mode = .locked
-        destination = nil  // Stop any current movement
+        guard self.mode != .locked else { return }
+        self.preLockMode = self.mode // Remember current mode
+        stop() // Stop any current movement AND clear pathfinding BEFORE locking
+        self.mode = .locked
         print("Hermes: Locked - towers deployed")
     }
 
     /// Unlock Hermes when towers are destroyed/released
     /// Allows movement again, restoring previous mode
     func unlock() {
-        guard mode == .locked else { return }
-        mode = preLockMode ?? .independent  // Restore previous mode
-        preLockMode = nil
+        guard self.mode == .locked else { return }
+        self.mode = self.preLockMode ?? .independent // Restore previous mode
+        self.preLockMode = nil
         print("Hermes: Unlocked - can move again")
     }
 
@@ -461,7 +456,7 @@ class Hermes: Character {
     override var destination: CGPoint? {
         get { super.destination }
         set {
-            if mode == .locked {
+            if self.mode == .locked {
                 // Reject movement commands when locked
                 return
             }
@@ -469,34 +464,44 @@ class Hermes: Character {
         }
     }
 
+    /// Override moveTo to prevent all movement when locked
+    /// This blocks the entire movement pipeline including pathfinding
+    override func moveTo(_ point: CGPoint) {
+        guard self.mode != .locked else {
+            // Reject movement commands when locked
+            return
+        }
+        super.moveTo(point)
+    }
+
     /// Update visual indicators based on current mode
     private func updateModeVisual() {
-        switch mode {
+        switch self.mode {
         case .locked:
             // Show locked indicator (anchor-like symbol)
-            showLockedIndicator()
-            hideFollowIndicator()
+            self.showLockedIndicator()
+            self.hideFollowIndicator()
             sprite.color = .yellow
             sprite.colorBlendFactor = 0.15
 
         case .following:
             // Show follow indicator (chain link)
-            hideLockedIndicator()
-            showFollowIndicator()
+            self.hideLockedIndicator()
+            self.showFollowIndicator()
             sprite.color = .cyan
             sprite.colorBlendFactor = 0.12
 
         case .independent:
             // No indicators, no tint
-            hideLockedIndicator()
-            hideFollowIndicator()
+            self.hideLockedIndicator()
+            self.hideFollowIndicator()
             sprite.colorBlendFactor = 0
         }
     }
 
     /// Show the locked state indicator
     private func showLockedIndicator() {
-        if lockedIndicator == nil {
+        if self.lockedIndicator == nil {
             let indicator = SKSpriteNode(color: .clear, size: CGSize(width: 24, height: 24))
 
             // Create an anchor shape using a shape node
@@ -517,7 +522,7 @@ class Hermes: Character {
             indicator.position = CGPoint(x: 0, y: sprite.size.height / 2 + 16)
             indicator.zPosition = 200
             sprite.addChild(indicator)
-            lockedIndicator = indicator
+            self.lockedIndicator = indicator
 
             // Pulse animation
             let scaleUp = SKAction.scale(to: 1.2, duration: 0.5)
@@ -525,17 +530,17 @@ class Hermes: Character {
             let pulse = SKAction.sequence([scaleUp, scaleDown])
             indicator.run(SKAction.repeatForever(pulse))
         }
-        lockedIndicator?.isHidden = false
+        self.lockedIndicator?.isHidden = false
     }
 
     /// Hide the locked state indicator
     private func hideLockedIndicator() {
-        lockedIndicator?.isHidden = true
+        self.lockedIndicator?.isHidden = true
     }
 
     /// Show the follow state indicator (chain link above head)
     private func showFollowIndicator() {
-        if followIndicator == nil {
+        if self.followIndicator == nil {
             let indicator = SKSpriteNode(color: .clear, size: CGSize(width: 24, height: 24))
 
             // Create a chain link shape
@@ -553,7 +558,7 @@ class Hermes: Character {
             indicator.position = CGPoint(x: 0, y: sprite.size.height / 2 + 16)
             indicator.zPosition = 200
             sprite.addChild(indicator)
-            followIndicator = indicator
+            self.followIndicator = indicator
 
             // Gentle bob animation
             let moveUp = SKAction.moveBy(x: 0, y: 3, duration: 0.6)
@@ -563,45 +568,48 @@ class Hermes: Character {
             let bob = SKAction.sequence([moveUp, moveDown])
             indicator.run(SKAction.repeatForever(bob))
         }
-        followIndicator?.isHidden = false
+        self.followIndicator?.isHidden = false
     }
 
     /// Hide the follow state indicator
     private func hideFollowIndicator() {
-        followIndicator?.isHidden = true
+        self.followIndicator?.isHidden = true
     }
 
     // MARK: - Build Radius Visual
 
     /// Update the build radius indicator
     private func updateBuildRadiusVisual() {
-        if showBuildRadius {
+        if self.showBuildRadius {
             // Create build radius circle if needed
-            if buildRadiusIndicator == nil {
+            if self.buildRadiusIndicator == nil {
                 let radius = TowerConfig.buildRadius
                 let circle = SKShapeNode(circleOfRadius: radius)
                 circle.strokeColor = SKColor.cyan.withAlphaComponent(0.5)
                 circle.fillColor = SKColor.cyan.withAlphaComponent(0.05)
                 circle.lineWidth = 2
                 circle.glowWidth = 1
-                circle.zPosition = -1  // Below Hermes sprite
+                circle.zPosition = -1 // Below Hermes sprite
 
                 // Add dashed line effect
                 let pattern: [CGFloat] = [10, 5]
-                let path = CGPath(ellipseIn: CGRect(x: -radius, y: -radius, width: radius * 2, height: radius * 2), transform: nil)
+                let path = CGPath(
+                    ellipseIn: CGRect(x: -radius, y: -radius, width: radius * 2, height: radius * 2),
+                    transform: nil
+                )
                 circle.path = path.copy(dashingWithPhase: 0, lengths: pattern)
 
                 sprite.addChild(circle)
-                buildRadiusIndicator = circle
+                self.buildRadiusIndicator = circle
 
                 // Subtle rotation animation
                 let rotate = SKAction.rotate(byAngle: .pi * 2, duration: 20)
                 circle.run(SKAction.repeatForever(rotate))
             }
-            buildRadiusIndicator?.isHidden = false
+            self.buildRadiusIndicator?.isHidden = false
         } else {
             // Hide build radius
-            buildRadiusIndicator?.isHidden = true
+            self.buildRadiusIndicator?.isHidden = true
         }
         // Note: Color tint is now handled by updateModeVisual()
     }
@@ -609,13 +617,13 @@ class Hermes: Character {
     /// Add a selection highlight ring (called externally when Hermes is selected)
     func showSelectionHighlight() {
         // The build radius indicator serves as the selection highlight in build mode
-        if isInBuildMode {
-            showBuildRadius = true
+        if self.isInBuildMode {
+            self.showBuildRadius = true
         }
     }
 
     /// Remove selection highlight
     func hideSelectionHighlight() {
-        showBuildRadius = false
+        self.showBuildRadius = false
     }
 }

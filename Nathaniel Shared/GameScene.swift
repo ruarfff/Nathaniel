@@ -1244,8 +1244,8 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         didPlaceTower type: TowerType,
         at position: CGPoint
     ) {
-        // Lock Hermes in build mode
-        self.hermes?.isInBuildMode = true
+        // Lock Hermes - prevents all movement until towers are released
+        self.hermes?.lock()
 
         // Update HUD with recoup preview
         self.hud.showReleaseHermesButton(recoupAmount: self.structureManager.potentialRecoupAmount)
