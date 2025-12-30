@@ -19,15 +19,25 @@
 
         // MARK: - Constants
 
-        private let panelWidth: CGFloat = 900
-        private let panelHeight: CGFloat = 800
-        private let headerHeight: CGFloat = 60
-        private let tabBarHeight: CGFloat = 50
-        private let footerHeight: CGFloat = 60
-        private let contentPadding: CGFloat = 15
+        private let headerHeight: CGFloat = 50
+        private let tabBarHeight: CGFloat = 44
+        private let footerHeight: CGFloat = 50
+        private let contentPadding: CGFloat = 12
         private let animationDuration: TimeInterval = 0.25
-        private let tabWidth: CGFloat = 110
-        private let tabHeight: CGFloat = 38
+        private let tabWidth: CGFloat = 100
+        private let tabHeight: CGFloat = 34
+
+        // MARK: - Computed Dimensions
+
+        /// Panel width based on viewport (max 850, with 60pt margin)
+        private var panelWidth: CGFloat {
+            min(850, viewportSize.width - 60)
+        }
+
+        /// Panel height based on viewport (max 550, with 50pt margin)
+        private var panelHeight: CGFloat {
+            min(550, viewportSize.height - 50)
+        }
 
         // MARK: - Colors
 

@@ -6,7 +6,7 @@
     class DevSettingsSlider: SKNode {
         // MARK: - Constants
 
-        private let trackWidth: CGFloat = 220
+        private let trackWidth: CGFloat = 180
         private let trackHeight: CGFloat = 8
         private let thumbRadius: CGFloat = 14
         private let trackColor = SKColor(red: 0.3, green: 0.3, blue: 0.35, alpha: 1.0)
