@@ -1,18 +1,9 @@
-//
-//  PathFinder.swift
-//  Nathaniel Shared
-//
-//  A* pathfinding implementation for navigating the tile-based map.
-//  Ported from Legacy/PathFinding/
-//
-
 import Foundation
 
 // MARK: - Path Node
 
 /// Represents a node in the A* search tree
 class PathNode {
-
     /// Parent node in the path (nil for start node)
     var parent: PathNode?
 
@@ -27,7 +18,7 @@ class PathNode {
 
     /// Total estimated cost (f-score = g + h)
     var totalCost: Float {
-        return directCost + heuristicCost
+        directCost + heuristicCost
     }
 
     /// Heuristic cost to goal (h-score)
@@ -48,7 +39,7 @@ class PathNode {
 
     /// Check if this node represents the same position as another
     func isEqual(to other: PathNode) -> Bool {
-        return gridPosition == other.gridPosition
+        gridPosition == other.gridPosition
     }
 }
 
@@ -60,7 +51,7 @@ struct GridPosition: Hashable, Equatable {
     let y: Int
 
     static func == (lhs: GridPosition, rhs: GridPosition) -> Bool {
-        return lhs.x == rhs.x && lhs.y == rhs.y
+        lhs.x == rhs.x && lhs.y == rhs.y
     }
 
     func hash(into hasher: inout Hasher) {
@@ -87,14 +78,13 @@ protocol CollisionGrid {
 
 /// A* pathfinding algorithm for finding paths on a tile grid
 class PathFinder {
-
     // MARK: - Constants
 
     /// Cost for moving straight (horizontal/vertical)
     private let costStraight: Float = 10.0
 
     /// Cost for moving diagonally
-    private let costDiagonal: Float = 14.14  // ~sqrt(2) * 10
+    private let costDiagonal: Float = 14.14 // ~sqrt(2) * 10
 
     // MARK: - Properties
 
@@ -106,7 +96,7 @@ class PathFinder {
 
     // MARK: - Initialization
 
-    init(grid: CollisionGrid, maxIterations: Int = 10000) {
+    init(grid: CollisionGrid, maxIterations: Int = 10_000) {
         self.grid = grid
         self.maxIterations = maxIterations
     }
@@ -145,7 +135,7 @@ class PathFinder {
         var iterations = 0
 
         // A* main loop
-        while !openList.isEmpty && iterations < maxIterations {
+        while !openList.isEmpty, iterations < maxIterations {
             iterations += 1
 
             // Get node with lowest cost (last in sorted list)
@@ -193,7 +183,7 @@ class PathFinder {
         var index = 0
 
         // Find insertion point (sorted descending so lowest cost is last)
-        while index < list.count && cost < list[index].totalCost {
+        while index < list.count, cost < list[index].totalCost {
             index += 1
         }
 
@@ -215,7 +205,7 @@ class PathFinder {
 
         // Check cardinal directions
         // Left
-        if x > 0 && !grid.isBlocked(x: x - 1, y: y) {
+        if x > 0, !grid.isBlocked(x: x - 1, y: y) {
             leftOpen = true
             neighbors.append(PathNode(
                 parent: node,
@@ -226,7 +216,7 @@ class PathFinder {
         }
 
         // Right
-        if x < grid.gridWidth - 1 && !grid.isBlocked(x: x + 1, y: y) {
+        if x < grid.gridWidth - 1, !grid.isBlocked(x: x + 1, y: y) {
             rightOpen = true
             neighbors.append(PathNode(
                 parent: node,
@@ -237,7 +227,7 @@ class PathFinder {
         }
 
         // Up
-        if y > 0 && !grid.isBlocked(x: x, y: y - 1) {
+        if y > 0, !grid.isBlocked(x: x, y: y - 1) {
             upOpen = true
             neighbors.append(PathNode(
                 parent: node,
@@ -248,7 +238,7 @@ class PathFinder {
         }
 
         // Down
-        if y < grid.gridHeight - 1 && !grid.isBlocked(x: x, y: y + 1) {
+        if y < grid.gridHeight - 1, !grid.isBlocked(x: x, y: y + 1) {
             downOpen = true
             neighbors.append(PathNode(
                 parent: node,
@@ -260,7 +250,7 @@ class PathFinder {
 
         // Check diagonal directions (only if both adjacent cardinal directions are open)
         // Up-Left
-        if upOpen && leftOpen && !grid.isBlocked(x: x - 1, y: y - 1) {
+        if upOpen, leftOpen, !grid.isBlocked(x: x - 1, y: y - 1) {
             neighbors.append(PathNode(
                 parent: node,
                 endNode: endNode,
@@ -270,7 +260,7 @@ class PathFinder {
         }
 
         // Up-Right
-        if upOpen && rightOpen && !grid.isBlocked(x: x + 1, y: y - 1) {
+        if upOpen, rightOpen, !grid.isBlocked(x: x + 1, y: y - 1) {
             neighbors.append(PathNode(
                 parent: node,
                 endNode: endNode,
@@ -280,7 +270,7 @@ class PathFinder {
         }
 
         // Down-Left
-        if downOpen && leftOpen && !grid.isBlocked(x: x - 1, y: y + 1) {
+        if downOpen, leftOpen, !grid.isBlocked(x: x - 1, y: y + 1) {
             neighbors.append(PathNode(
                 parent: node,
                 endNode: endNode,
@@ -290,7 +280,7 @@ class PathFinder {
         }
 
         // Down-Right
-        if downOpen && rightOpen && !grid.isBlocked(x: x + 1, y: y + 1) {
+        if downOpen, rightOpen, !grid.isBlocked(x: x + 1, y: y + 1) {
             neighbors.append(PathNode(
                 parent: node,
                 endNode: endNode,
@@ -320,7 +310,6 @@ class PathFinder {
 
 /// Adapter to use TMXRenderer's collision layer as a CollisionGrid
 class TMXCollisionGrid: CollisionGrid {
-
     private let renderer: TMXRenderer
 
     var gridWidth: Int { renderer.map.width }
@@ -331,7 +320,7 @@ class TMXCollisionGrid: CollisionGrid {
     }
 
     func isBlocked(x: Int, y: Int) -> Bool {
-        return !renderer.isWalkable(tileX: x, tileY: y)
+        !renderer.isWalkable(tileX: x, tileY: y)
     }
 }
 
@@ -339,7 +328,6 @@ class TMXCollisionGrid: CollisionGrid {
 
 /// Helper class for following a path smoothly
 class PathFollower {
-
     /// The path to follow (grid positions)
     private var path: [GridPosition] = []
 
@@ -351,14 +339,26 @@ class PathFollower {
 
     /// Whether the follower has reached the end of the path
     var isComplete: Bool {
-        return path.isEmpty || currentIndex >= path.count
+        path.isEmpty || currentIndex >= path.count
     }
 
     /// Current target position in world coordinates
     var currentTarget: CGPoint? {
-        guard !isComplete, let renderer = renderer else { return nil }
+        guard !isComplete, let renderer else { return nil }
         let gridPos = path[currentIndex]
         return renderer.tileToWorld(x: gridPos.x, y: gridPos.y)
+    }
+
+    /// Full path converted to world coordinates for debug visualization
+    var pathInWorldCoordinates: [CGPoint] {
+        guard let renderer else { return [] }
+        return path.map { renderer.tileToWorld(x: $0.x, y: $0.y) }
+    }
+
+    /// Remaining path (from current index to end) in world coordinates
+    var remainingPathInWorldCoordinates: [CGPoint] {
+        guard let renderer, currentIndex < path.count else { return [] }
+        return path[currentIndex...].map { renderer.tileToWorld(x: $0.x, y: $0.y) }
     }
 
     init(renderer: TMXRenderer?) {
@@ -368,7 +368,7 @@ class PathFollower {
     /// Set a new path to follow
     func setPath(_ path: [GridPosition]) {
         self.path = path
-        self.currentIndex = 0
+        currentIndex = 0
     }
 
     /// Clear the current path

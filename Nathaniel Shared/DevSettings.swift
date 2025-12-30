@@ -115,6 +115,9 @@
         /// Visualize collision bounds when true
         public var showCollisionBounds: Bool = false
 
+        /// Visualize pathfinding (paths, waypoints) when true
+        public var showPathfindingDebug: Bool = false
+
         // MARK: - Initialization
 
         private init() {
@@ -168,6 +171,7 @@
             infiniteResources = false
             showDebugInfo = false
             showCollisionBounds = false
+            showPathfindingDebug = false
         }
 
         // MARK: - Codable
@@ -192,7 +196,7 @@
             case towerCostGun, towerCostLaser, towerCostHeal
             case instantBuild
             // Debug
-            case infiniteResources, showDebugInfo, showCollisionBounds
+            case infiniteResources, showDebugInfo, showCollisionBounds, showPathfindingDebug
         }
 
         public required init(from decoder: Decoder) throws {
@@ -241,6 +245,7 @@
             infiniteResources = try container.decodeIfPresent(Bool.self, forKey: .infiniteResources) ?? false
             showDebugInfo = try container.decodeIfPresent(Bool.self, forKey: .showDebugInfo) ?? false
             showCollisionBounds = try container.decodeIfPresent(Bool.self, forKey: .showCollisionBounds) ?? false
+            showPathfindingDebug = try container.decodeIfPresent(Bool.self, forKey: .showPathfindingDebug) ?? false
         }
 
         // MARK: - Apply Partial Updates
@@ -251,10 +256,8 @@
         public func apply(updates: [String: Any]) -> Int {
             var updatedCount = 0
 
-            for (key, value) in updates {
-                if applySetting(key: key, value: value) {
-                    updatedCount += 1
-                }
+            for (key, value) in updates where applySetting(key: key, value: value) {
+                updatedCount += 1
             }
 
             return updatedCount
@@ -330,6 +333,8 @@
                 if let v = asBool(value) { showDebugInfo = v; return true }
             case "showCollisionBounds":
                 if let v = asBool(value) { showCollisionBounds = v; return true }
+            case "showPathfindingDebug":
+                if let v = asBool(value) { showPathfindingDebug = v; return true }
             default:
                 print("[DevSettings] Unknown setting key: \(key)")
                 return false

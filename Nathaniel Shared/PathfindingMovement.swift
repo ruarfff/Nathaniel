@@ -1,10 +1,3 @@
-//
-//  PathfindingMovement.swift
-//  Nathaniel Shared
-//
-//  Component for A* pathfinding-based character movement.
-//
-
 import Foundation
 
 // MARK: - Pathfinding Movement
@@ -37,7 +30,18 @@ class PathfindingMovement {
 
     /// Current waypoint target (in world coordinates)
     var currentWaypoint: CGPoint? {
-        return pathFollower?.currentTarget
+        pathFollower?.currentTarget
+    }
+
+    /// Get the full path as world coordinates for debug visualization
+    /// - Returns: Array of CGPoints representing the path, or empty if no path
+    var pathWorldCoordinates: [CGPoint] {
+        pathFollower?.pathInWorldCoordinates ?? []
+    }
+
+    /// Get remaining path (from current position to end) as world coordinates
+    var remainingPathWorldCoordinates: [CGPoint] {
+        pathFollower?.remainingPathInWorldCoordinates ?? []
     }
 
     // MARK: - Initialization
@@ -67,9 +71,9 @@ class PathfindingMovement {
     @discardableResult
     func calculatePath(from start: CGPoint, to end: CGPoint) -> Bool {
         guard isEnabled,
-              let renderer = renderer,
-              let pathFinder = pathFinder,
-              let pathFollower = pathFollower
+              let renderer,
+              let pathFinder,
+              let pathFollower
         else {
             return false
         }
@@ -97,7 +101,7 @@ class PathfindingMovement {
     /// - Parameter currentPosition: Character's current world position
     /// - Returns: The next waypoint to move toward, or nil if path is complete
     func update(currentPosition: CGPoint) -> CGPoint? {
-        guard let pathFollower = pathFollower, !pathFollower.isComplete else {
+        guard let pathFollower, !pathFollower.isComplete else {
             return nil
         }
 
@@ -116,7 +120,7 @@ class PathfindingMovement {
     /// - Parameter point: World position to check
     /// - Returns: true if the tile at this position is walkable
     func isWalkable(at point: CGPoint) -> Bool {
-        guard let renderer = renderer else { return true }
+        guard let renderer else { return true }
         let tile = renderer.worldToTile(point: point)
         return renderer.isWalkable(tileX: tile.x, tileY: tile.y)
     }

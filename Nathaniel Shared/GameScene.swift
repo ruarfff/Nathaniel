@@ -103,6 +103,11 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     /// Tower placement controller for Hermes build system
     private var towerPlacementController: TowerPlacementController?
 
+    #if DEBUG
+        /// Pathfinding debug visualization overlay
+        private var pathfindingDebugOverlay: PathfindingDebugOverlay?
+    #endif
+
     #if os(iOS)
         /// Haptic feedback generator for targeting
         private var hapticGenerator: UIImpactFeedbackGenerator?
@@ -141,6 +146,9 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         if showDebugInfo {
             setupDebugLabel()
         }
+        #if DEBUG
+            setupPathfindingDebugOverlay()
+        #endif
 
         // Start gameplay music
         AudioManager.shared.playMusic(.gameplay)
@@ -160,6 +168,30 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             hapticGenerator?.prepare()
         #endif
     }
+
+    #if DEBUG
+        private func setupPathfindingDebugOverlay() {
+            let overlay = PathfindingDebugOverlay()
+            overlay.configure(player: nathaniel, companion: hermes)
+            // Add to mapNode so paths render in world coordinates
+            if let mapNode {
+                mapNode.addChild(overlay)
+            } else {
+                addChild(overlay)
+            }
+            pathfindingDebugOverlay = overlay
+        }
+
+        private func updatePathfindingDebugOverlay() {
+            guard DevSettings.shared.showPathfindingDebug else {
+                pathfindingDebugOverlay?.isHidden = true
+                return
+            }
+            pathfindingDebugOverlay?.isHidden = false
+            pathfindingDebugOverlay?.updateEnemies(enemyManager.enemies)
+            pathfindingDebugOverlay?.update()
+        }
+    #endif
 
     private func setupLevelManager() {
         levelManager = LevelManager(config: levelConfig)
@@ -550,16 +582,18 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
                     left: landscapeSafeInsets.left / scale,
                     right: landscapeSafeInsets.right / scale
                 )
-                logger
-                    .debug(
-                        "Safe area insets (scene coords): top=\(safeInsets.top), bottom=\(safeInsets.bottom), left=\(safeInsets.left), right=\(safeInsets.right)"
-                    )
+                logger.debug(
+                    "Safe area insets (scene coords): " +
+                        "top=\(safeInsets.top), bottom=\(safeInsets.bottom), " +
+                        "left=\(safeInsets.left), right=\(safeInsets.right)"
+                )
             #endif
 
-            logger
-                .debug(
-                    "HUD setup: view=\(viewWidth)x\(viewHeight), scene=\(self.size.width)x\(self.size.height), scale=\(scale), hudSize=\(hudSize.width)x\(hudSize.height)"
-                )
+            logger.debug(
+                "HUD setup: view=\(viewWidth)x\(viewHeight), " +
+                    "scene=\(size.width)x\(size.height), " +
+                    "scale=\(scale), hudSize=\(hudSize.width)x\(hudSize.height)"
+            )
         } else {
             hudSize = size
         }
@@ -637,10 +671,11 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
         // Log tileset info
         for tileset in map.tilesets {
-            logger
-                .info(
-                    "Tileset: \(tileset.name), firstGid: \(tileset.firstGid), image: \(tileset.imageSource), size: \(tileset.imageWidth)x\(tileset.imageHeight)"
-                )
+            logger.info(
+                "Tileset: \(tileset.name), firstGid: \(tileset.firstGid), " +
+                    "image: \(tileset.imageSource), " +
+                    "size: \(tileset.imageWidth)x\(tileset.imageHeight)"
+            )
         }
 
         // Log layer info
@@ -798,8 +833,8 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
         // Register player characters with enemy manager
         var players: [Character] = []
-        if let n = self.nathaniel { players.append(n) }
-        if let h = hermes { players.append(h) }
+        if let nathanielChar = self.nathaniel { players.append(nathanielChar) }
+        if let hermesChar = hermes { players.append(hermesChar) }
         enemyManager.playerCharacters = players
 
         // Set up weapon collision callback for Nathaniel's bullets to hit enemies
@@ -890,7 +925,9 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         debugLabel?.verticalAlignmentMode = .top
         debugLabel?.position = CGPoint(x: -size.width / 2 + 10, y: size.height / 2 - 10)
         debugLabel?.zPosition = 1_000
-        cameraNode.addChild(debugLabel!)
+        if let label = debugLabel {
+            cameraNode.addChild(label)
+        }
         updateDebugLabel()
     }
 
@@ -999,6 +1036,11 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         if showDebugInfo {
             updateDebugLabel()
         }
+
+        #if DEBUG
+            // Update pathfinding visualization
+            updatePathfindingDebugOverlay()
+        #endif
     }
 
     // MARK: - HUD Update
@@ -1585,7 +1627,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
                 fireAtMousePosition()
             case 15: // R key - toggle Hermes follow mode
                 if let hermes {
-                    hermes.isInBuildMode = !hermes.isInBuildMode
+                    hermes.isInBuildMode.toggle()
                     logger.debug("Hermes follow mode: \(!hermes.isInBuildMode)")
                 }
             case 49: // Space key - switch selected character
@@ -1677,7 +1719,7 @@ extension GameScene {
             // Configure validator with current game state
             if let mapRenderer {
                 var players: [Character] = []
-                if let n = nathaniel { players.append(n) }
+                if let nathanielChar = nathaniel { players.append(nathanielChar) }
                 players.append(hermes) // hermes is known non-nil here
                 towerPlacementController?.configureValidator(
                     tmxRenderer: mapRenderer,
