@@ -1,23 +1,16 @@
-//
-//  SettingsMenu.swift
-//  Nathaniel Shared
-//
-//  Settings menu overlay with audio toggles accessible from pause menu.
-//
-
 import SpriteKit
 
 // MARK: - Settings Menu
 
 /// Overlay menu displayed for game settings
 class SettingsMenu: SKNode {
-
     // MARK: - Types
 
     /// Setting item identifiers
     enum SettingItem: String {
         case soundEffects = "soundEffectsToggle"
         case music = "musicToggle"
+        case devSettings = "devSettingsButton"
         case back = "backButton"
     }
 
@@ -52,7 +45,11 @@ class SettingsMenu: SKNode {
     // MARK: - Constants
 
     private let panelWidth: CGFloat = 320
-    private let panelHeight: CGFloat = 280
+    #if DEBUG
+        private let panelHeight: CGFloat = 340 // Taller to fit Dev Settings button
+    #else
+        private let panelHeight: CGFloat = 280
+    #endif
     private let rowWidth: CGFloat = 280
     private let rowHeight: CGFloat = 50
     private let rowSpacing: CGFloat = 15
@@ -65,10 +62,15 @@ class SettingsMenu: SKNode {
     private var soundEffectsToggle: SKNode?
     private var musicToggle: SKNode?
 
+    #if DEBUG
+        /// DevSettings panel (DEBUG builds only)
+        private var devSettingsPanel: DevSettingsPanel?
+    #endif
+
     // MARK: - Initialization
 
     init(size: CGSize) {
-        self.viewportSize = size
+        viewportSize = size
         super.init()
 
         // Load current settings
@@ -83,6 +85,7 @@ class SettingsMenu: SKNode {
         alpha = 0
     }
 
+    @available(*, unavailable)
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
@@ -142,6 +145,17 @@ class SettingsMenu: SKNode {
             yPosition: rowStartY - (rowHeight + rowSpacing)
         )
 
+        #if DEBUG
+            // Dev Settings button (DEBUG builds only)
+            createButton(
+                in: panel,
+                name: SettingItem.devSettings.rawValue,
+                title: "Developer Settings",
+                yPosition: rowStartY - 2 * (rowHeight + rowSpacing),
+                color: SKColor(red: 0.6, green: 0.4, blue: 0.2, alpha: 1.0)
+            )
+        #endif
+
         // Back button
         createButton(
             in: panel,
@@ -153,9 +167,26 @@ class SettingsMenu: SKNode {
 
         addChild(panel)
         menuPanel = panel
+
+        #if DEBUG
+            // Setup DevSettingsPanel
+            devSettingsPanel = DevSettingsPanel(size: viewportSize)
+            devSettingsPanel?.zPosition = 10
+            addChild(devSettingsPanel!)
+
+            devSettingsPanel?.onBack = { [weak self] in
+                // Panel handles its own hide animation
+            }
+        #endif
     }
 
-    private func createToggleRow(in parent: SKNode, name: String, title: String, isOn: Bool, yPosition: CGFloat) -> SKNode {
+    private func createToggleRow(
+        in parent: SKNode,
+        name: String,
+        title: String,
+        isOn: Bool,
+        yPosition: CGFloat
+    ) -> SKNode {
         let row = SKNode()
         row.name = name
         row.position = CGPoint(x: 0, y: yPosition)
@@ -195,7 +226,14 @@ class SettingsMenu: SKNode {
         let trackWidth: CGFloat = 55
         let trackHeight: CGFloat = 28
         let track = SKShapeNode(rectOf: CGSize(width: trackWidth, height: trackHeight), cornerRadius: trackHeight / 2)
-        track.fillColor = isOn ? SKColor(red: 0.2, green: 0.7, blue: 0.3, alpha: 1.0) : SKColor(red: 0.4, green: 0.4, blue: 0.4, alpha: 1.0)
+        track.fillColor = isOn
+            ? SKColor(red: 0.2, green: 0.7, blue: 0.3, alpha: 1.0)
+            : SKColor(
+                red: 0.4,
+                green: 0.4,
+                blue: 0.4,
+                alpha: 1.0
+            )
         track.strokeColor = .clear
         track.name = name
         toggle.addChild(track)
@@ -242,14 +280,21 @@ class SettingsMenu: SKNode {
     // MARK: - Toggle Animation
 
     private func updateToggle(_ toggle: SKNode?, isOn: Bool, name: String) {
-        guard let toggle = toggle else { return }
+        guard let toggle else { return }
 
         // Find switch node
         guard let switchNode = toggle.childNode(withName: "\(name)Switch") else { return }
 
         // Find track and update color
         if let track = switchNode.children.first as? SKShapeNode {
-            let targetColor = isOn ? SKColor(red: 0.2, green: 0.7, blue: 0.3, alpha: 1.0) : SKColor(red: 0.4, green: 0.4, blue: 0.4, alpha: 1.0)
+            let targetColor = isOn
+                ? SKColor(red: 0.2, green: 0.7, blue: 0.3, alpha: 1.0)
+                : SKColor(
+                    red: 0.4,
+                    green: 0.4,
+                    blue: 0.4,
+                    alpha: 1.0
+                )
             track.fillColor = targetColor
         }
 
@@ -323,6 +368,13 @@ class SettingsMenu: SKNode {
     func handleTouch(at point: CGPoint) -> Bool {
         guard isVisible else { return false }
 
+        #if DEBUG
+            // If DevSettingsPanel is visible, route touches to it
+            if let devPanel = devSettingsPanel, devPanel.isVisible {
+                return devPanel.handleTouch(at: point)
+            }
+        #endif
+
         // Convert point to local coordinates
         let localPoint = convert(point, from: parent!)
 
@@ -332,7 +384,8 @@ class SettingsMenu: SKNode {
 
         // Sound Effects toggle
         if let row = panel.childNode(withName: SettingItem.soundEffects.rawValue),
-           nodeContainsPoint(row, point: panelPoint) {
+           nodeContainsPoint(row, point: panelPoint)
+        {
             animateButtonPress(row)
             soundEffectsEnabled = !soundEffectsEnabled
             GameSettings.shared.soundEffectsEnabled = soundEffectsEnabled
@@ -343,7 +396,8 @@ class SettingsMenu: SKNode {
 
         // Music toggle
         if let row = panel.childNode(withName: SettingItem.music.rawValue),
-           nodeContainsPoint(row, point: panelPoint) {
+           nodeContainsPoint(row, point: panelPoint)
+        {
             animateButtonPress(row)
             musicEnabled = !musicEnabled
             GameSettings.shared.musicEnabled = musicEnabled
@@ -360,9 +414,21 @@ class SettingsMenu: SKNode {
             return true
         }
 
+        #if DEBUG
+            // Dev Settings button
+            if let button = panel.childNode(withName: SettingItem.devSettings.rawValue),
+               nodeContainsPoint(button, point: panelPoint)
+            {
+                animateButtonPress(button)
+                devSettingsPanel?.show()
+                return true
+            }
+        #endif
+
         // Back button
         if let button = panel.childNode(withName: SettingItem.back.rawValue),
-           nodeContainsPoint(button, point: panelPoint) {
+           nodeContainsPoint(button, point: panelPoint)
+        {
             animateButtonPress(button)
             hide {
                 self.onBack?()
@@ -374,6 +440,18 @@ class SettingsMenu: SKNode {
         return true
     }
 
+    #if DEBUG
+        /// Handle drag for slider adjustment in DevSettingsPanel
+        func handleDrag(from start: CGPoint, to end: CGPoint) -> Bool {
+            guard isVisible else { return false }
+
+            if let devPanel = devSettingsPanel, devPanel.isVisible {
+                return devPanel.handleDrag(from: start, to: end)
+            }
+            return false
+        }
+    #endif
+
     private func nodeContainsPoint(_ node: SKNode, point: CGPoint) -> Bool {
         // Check if point is within the node's bounding box
         let nodePoint = node.convert(point, from: node.parent!)
@@ -381,7 +459,7 @@ class SettingsMenu: SKNode {
             return shape.contains(nodePoint)
         }
         // Fallback to frame check for rows
-        let frame = CGRect(x: -rowWidth/2, y: -rowHeight/2, width: rowWidth, height: rowHeight)
+        let frame = CGRect(x: -rowWidth / 2, y: -rowHeight / 2, width: rowWidth, height: rowHeight)
         return frame.contains(nodePoint)
     }
 

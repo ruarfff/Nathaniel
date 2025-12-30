@@ -582,18 +582,16 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
                     left: landscapeSafeInsets.left / scale,
                     right: landscapeSafeInsets.right / scale
                 )
-                logger.debug(
-                    "Safe area insets (scene coords): " +
-                        "top=\(safeInsets.top), bottom=\(safeInsets.bottom), " +
-                        "left=\(safeInsets.left), right=\(safeInsets.right)"
-                )
+                logger
+                    .debug(
+                        "Safe insets: t=\(safeInsets.top) b=\(safeInsets.bottom) l=\(safeInsets.left) r=\(safeInsets.right)"
+                    )
             #endif
 
-            logger.debug(
-                "HUD setup: view=\(viewWidth)x\(viewHeight), " +
-                    "scene=\(size.width)x\(size.height), " +
-                    "scale=\(scale), hudSize=\(hudSize.width)x\(hudSize.height)"
-            )
+            logger
+                .debug(
+                    "HUD: view=\(viewWidth)x\(viewHeight) scene=\(size.width)x\(size.height) hud=\(hudSize.width)x\(hudSize.height)"
+                )
         } else {
             hudSize = size
         }
@@ -671,11 +669,10 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
         // Log tileset info
         for tileset in map.tilesets {
-            logger.info(
-                "Tileset: \(tileset.name), firstGid: \(tileset.firstGid), " +
-                    "image: \(tileset.imageSource), " +
-                    "size: \(tileset.imageWidth)x\(tileset.imageHeight)"
-            )
+            logger
+                .info(
+                    "Tileset: \(tileset.name), gid: \(tileset.firstGid), \(tileset.imageWidth)x\(tileset.imageHeight)"
+                )
         }
 
         // Log layer info

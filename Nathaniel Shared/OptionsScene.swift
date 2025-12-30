@@ -7,6 +7,11 @@ class OptionsScene: SKScene {
     private var soundToggle: SKLabelNode!
     private var musicToggle: SKLabelNode!
 
+    #if DEBUG
+        private var devSettingsPanel: DevSettingsPanel?
+        private var devSettingsButton: SKLabelNode?
+    #endif
+
     // MARK: - Scene Setup
 
     class func newOptionsScene() -> OptionsScene {
@@ -19,6 +24,9 @@ class OptionsScene: SKScene {
         setupBackground()
         setupTitle()
         setupOptions()
+        #if DEBUG
+            setupDevSettings()
+        #endif
         setupBackButton()
 
         #if DEBUG
@@ -82,6 +90,41 @@ class OptionsScene: SKScene {
         addChild(musicToggle)
     }
 
+    #if DEBUG
+        private func setupDevSettings() {
+            let sectionY = size.height * 0.35
+
+            // Section header
+            let headerLabel = SKLabelNode(fontNamed: "Copperplate-Bold")
+            headerLabel.text = "DEVELOPER"
+            headerLabel.fontSize = 24
+            headerLabel.fontColor = SKColor(red: 0.9, green: 0.6, blue: 0.2, alpha: 1.0)
+            headerLabel.position = CGPoint(x: size.width / 2, y: sectionY)
+            headerLabel.horizontalAlignmentMode = .center
+            addChild(headerLabel)
+
+            // Dev Settings button
+            devSettingsButton = SKLabelNode(fontNamed: "Copperplate-Bold")
+            devSettingsButton?.text = "Open Dev Settings"
+            devSettingsButton?.fontSize = 22
+            devSettingsButton?.fontColor = SKColor(red: 0.8, green: 0.5, blue: 0.2, alpha: 1.0)
+            devSettingsButton?.position = CGPoint(x: size.width / 2, y: sectionY - 50)
+            devSettingsButton?.horizontalAlignmentMode = .center
+            devSettingsButton?.name = "devSettingsButton"
+            addChild(devSettingsButton!)
+
+            // Create DevSettingsPanel
+            devSettingsPanel = DevSettingsPanel(size: size)
+            devSettingsPanel?.position = CGPoint(x: size.width / 2, y: size.height / 2)
+            devSettingsPanel?.zPosition = 1_000
+            addChild(devSettingsPanel!)
+
+            devSettingsPanel?.onBack = { [weak self] in
+                // Panel handles its own hide
+            }
+        }
+    #endif
+
     private func createToggleButton(enabled: Bool, yPosition: CGFloat, name: String) -> SKLabelNode {
         let toggle = SKLabelNode(fontNamed: "Copperplate-Bold")
         toggle.text = enabled ? "ON" : "OFF"
@@ -132,6 +175,14 @@ class OptionsScene: SKScene {
     }
 
     private func handleButtonTap(at location: CGPoint) {
+        #if DEBUG
+            // If DevSettingsPanel is visible, route touches to it
+            if let devPanel = devSettingsPanel, devPanel.isVisible {
+                _ = devPanel.handleTouch(at: location)
+                return
+            }
+        #endif
+
         let nodesAtPoint = nodes(at: location)
 
         for node in nodesAtPoint {
@@ -146,6 +197,11 @@ class OptionsScene: SKScene {
                 toggleSound()
             case "musicToggle":
                 toggleMusic()
+            #if DEBUG
+                case "devSettingsButton":
+                    animateToggle(devSettingsButton!)
+                    devSettingsPanel?.show()
+            #endif
             default:
                 break
             }
@@ -204,6 +260,18 @@ class OptionsScene: SKScene {
             let location = touch.location(in: self)
             handleButtonTap(at: location)
         }
+
+        #if DEBUG
+            override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+                guard let touch = touches.first else { return }
+                let location = touch.location(in: self)
+                let previousLocation = touch.previousLocation(in: self)
+
+                if let devPanel = devSettingsPanel, devPanel.isVisible {
+                    _ = devPanel.handleDrag(from: previousLocation, to: location)
+                }
+            }
+        #endif
     }
 #endif
 
@@ -215,5 +283,20 @@ class OptionsScene: SKScene {
             let location = event.location(in: self)
             handleButtonTap(at: location)
         }
+
+        #if DEBUG
+            override func mouseDragged(with event: NSEvent) {
+                let location = event.location(in: self)
+                // For macOS, we use the delta from the event
+                let previousLocation = CGPoint(
+                    x: location.x - event.deltaX,
+                    y: location.y + event.deltaY // deltaY is inverted on macOS
+                )
+
+                if let devPanel = devSettingsPanel, devPanel.isVisible {
+                    _ = devPanel.handleDrag(from: previousLocation, to: location)
+                }
+            }
+        #endif
     }
 #endif
