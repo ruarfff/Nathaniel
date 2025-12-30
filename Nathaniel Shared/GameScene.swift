@@ -558,7 +558,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
             logger
                 .debug(
-                    "HUD setup: view=\(viewWidth)x\(viewHeight), scene=\(size.width)x\(size.height), scale=\(scale), hudSize=\(hudSize.width)x\(hudSize.height)"
+                    "HUD setup: view=\(viewWidth)x\(viewHeight), scene=\(self.size.width)x\(self.size.height), scale=\(scale), hudSize=\(hudSize.width)x\(hudSize.height)"
                 )
         } else {
             hudSize = size
@@ -725,6 +725,9 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
                 nathaniel.setupHealthBar(width: 40, yOffset: 8)
                 nathaniel.healthBar?.hideWhenFull = false // Always show player health
 
+                // Configure pathfinding for A* navigation around obstacles
+                nathaniel.configurePathfinding(with: renderer)
+
                 // Wire up weapon callbacks
                 nathaniel.weapon.onFire = { [weak self] projectile in
                     guard let self else { return }
@@ -761,6 +764,9 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
                 // Set up health bar
                 hermes.setupHealthBar(width: 40, yOffset: 8)
                 hermes.healthBar?.hideWhenFull = false // Always show player health
+
+                // Configure pathfinding for A* navigation around obstacles
+                hermes.configurePathfinding(with: renderer)
 
                 // Wire up death callback for tower destruction
                 hermes.onDeathCallback = { [weak self] in

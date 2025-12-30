@@ -278,6 +278,14 @@ class Character: GameEntity {
     /// Base texture (sprite sheet)
     var baseTexture: SKTexture?
 
+    // MARK: - Pathfinding
+
+    /// Pathfinding component for A* navigation (optional)
+    var pathfinding: PathfindingMovement?
+
+    /// Final destination when using pathfinding (may differ from current waypoint)
+    private var finalDestination: CGPoint?
+
     // MARK: - Initialization
 
     init(name: String, maxHP: Int, speed: CGFloat, spriteSheetCols: Int = 8, spriteSheetRows: Int = 2) {
@@ -378,20 +386,54 @@ class Character: GameEntity {
 
     /// Update movement toward destination
     private func updateMovement(deltaTime: TimeInterval) {
+        // If using pathfinding, get next waypoint
+        if let pathfinding = pathfinding, pathfinding.hasActivePath {
+            updatePathfindingMovement(deltaTime: deltaTime, pathfinding: pathfinding)
+            return
+        }
+
+        // Direct movement (no pathfinding)
         guard let dest = destination else {
             animationState = .idle
             return
         }
 
+        moveTowardPoint(dest, deltaTime: deltaTime)
+
+        // Check if we've arrived at final destination
         let direction = CGVector(dx: dest.x - position.x, dy: dest.y - position.y)
         let distance = sqrt(direction.dx * direction.dx + direction.dy * direction.dy)
-
-        // Check if we've arrived (within 5 points, matching legacy)
         if distance <= 5 {
             destination = nil
+            finalDestination = nil
+            animationState = .idle
+        }
+    }
+
+    /// Update movement using pathfinding waypoints
+    private func updatePathfindingMovement(deltaTime: TimeInterval, pathfinding: PathfindingMovement) {
+        // Get next waypoint from path follower
+        guard let waypoint = pathfinding.update(currentPosition: position) else {
+            // Path complete - clear destinations
+            destination = nil
+            finalDestination = nil
             animationState = .idle
             return
         }
+
+        // Move toward current waypoint
+        moveTowardPoint(waypoint, deltaTime: deltaTime)
+
+        // Update destination to current waypoint for isMoving check
+        destination = waypoint
+    }
+
+    /// Move toward a specific point (shared by direct and pathfinding movement)
+    private func moveTowardPoint(_ target: CGPoint, deltaTime: TimeInterval) {
+        let direction = CGVector(dx: target.x - position.x, dy: target.y - position.y)
+        let distance = sqrt(direction.dx * direction.dx + direction.dy * direction.dy)
+
+        guard distance > 0 else { return }
 
         // Normalize and move
         let normalizedDir = CGVector(dx: direction.dx / distance, dy: direction.dy / distance)
@@ -400,10 +442,34 @@ class Character: GameEntity {
         // Don't overshoot
         let actualMove = min(moveDistance, distance)
 
-        position = CGPoint(
+        // Calculate new position
+        let newPosition = CGPoint(
             x: position.x + normalizedDir.dx * actualMove,
             y: position.y + normalizedDir.dy * actualMove
         )
+
+        // Check collision if pathfinding is configured
+        if let pathfinding = pathfinding {
+            if pathfinding.isWalkable(at: newPosition) {
+                position = newPosition
+            } else {
+                // Try sliding along X axis
+                let slideX = CGPoint(x: newPosition.x, y: position.y)
+                if pathfinding.isWalkable(at: slideX) {
+                    position = slideX
+                } else {
+                    // Try sliding along Y axis
+                    let slideY = CGPoint(x: position.x, y: newPosition.y)
+                    if pathfinding.isWalkable(at: slideY) {
+                        position = slideY
+                    }
+                    // If both blocked, don't move (character is stuck)
+                }
+            }
+        } else {
+            // No pathfinding - direct movement without collision check
+            position = newPosition
+        }
 
         // Update facing direction
         facingDirection = FacingDirection.from(direction: direction)
@@ -507,12 +573,37 @@ class Character: GameEntity {
     // MARK: - Movement Commands
 
     /// Move toward a destination point
+    /// If pathfinding is configured, calculates an A* path around obstacles.
+    /// Otherwise, moves in a direct line.
     func moveTo(_ point: CGPoint) {
+        finalDestination = point
+
+        // Try pathfinding if available
+        if let pathfinding = pathfinding, pathfinding.isEnabled {
+            if pathfinding.calculatePath(from: position, to: point) {
+                // Path found - movement will follow waypoints
+                destination = pathfinding.currentWaypoint ?? point
+                return
+            }
+            // No path found - fall through to direct movement
+        }
+
+        // Direct movement (no pathfinding or path not found)
         destination = point
     }
 
     /// Stop movement immediately
     func stop() {
         destination = nil
+        finalDestination = nil
+        pathfinding?.clearPath()
+    }
+
+    /// Configure pathfinding for this character
+    /// - Parameter renderer: The TMXRenderer providing collision data
+    func configurePathfinding(with renderer: TMXRenderer) {
+        let pathfinding = PathfindingMovement()
+        pathfinding.configure(with: renderer)
+        self.pathfinding = pathfinding
     }
 }
