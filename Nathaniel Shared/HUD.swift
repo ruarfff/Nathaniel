@@ -31,11 +31,8 @@ class HUD: SKNode {
     /// Safe area insets (in scene coordinates, already scaled)
     private let safeInsets: HUDSafeAreaInsets
 
-    /// Container for top-left info (lives, score)
+    /// Container for top-left info (lives, score, resources)
     private let topLeftContainer: SKNode
-
-    /// Container for top-right info (resources)
-    private let topRightContainer: SKNode
 
     /// Container for bottom info (selected character)
     private let bottomContainer: SKNode
@@ -148,7 +145,6 @@ class HUD: SKNode {
 
         // Create containers
         topLeftContainer = SKNode()
-        topRightContainer = SKNode()
         bottomContainer = SKNode()
 
         // Lives label
@@ -178,14 +174,14 @@ class HUD: SKNode {
         resourcesLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
         resourcesLabel.fontSize = 16
         resourcesLabel.fontColor = .white
-        resourcesLabel.horizontalAlignmentMode = .right
+        resourcesLabel.horizontalAlignmentMode = .left
         resourcesLabel.verticalAlignmentMode = .top
         resourcesLabel.text = "RESOURCES"
 
         resourcesValueLabel = SKLabelNode(fontNamed: "Menlo-Bold")
         resourcesValueLabel.fontSize = 24
         resourcesValueLabel.fontColor = SKColor(red: 0.3, green: 0.8, blue: 1.0, alpha: 1.0)
-        resourcesValueLabel.horizontalAlignmentMode = .right
+        resourcesValueLabel.horizontalAlignmentMode = .left
         resourcesValueLabel.verticalAlignmentMode = .top
         resourcesValueLabel.text = "30"
 
@@ -245,9 +241,9 @@ class HUD: SKNode {
         )
         addChild(topLeftContainer)
 
-        // Add background panel for top-left
-        let topLeftBg = createBackgroundPanel(width: 120, height: 100)
-        topLeftBg.position = CGPoint(x: 50, y: -40)
+        // Add background panel for top-left (expanded to include resources)
+        let topLeftBg = createBackgroundPanel(width: 130, height: 165)
+        topLeftBg.position = CGPoint(x: 55, y: -72)
         topLeftContainer.addChild(topLeftBg)
 
         // Lives display
@@ -267,28 +263,14 @@ class HUD: SKNode {
         scoreValueLabel.zPosition = 1
         topLeftContainer.addChild(scoreValueLabel)
 
-        // Top-right container position (RESOURCES)
-        topRightContainer.position = CGPoint(
-            x: halfWidth - insetRight - 100, // Extra offset for panel width
-            y: halfHeight - insetTop
-        )
-        addChild(topRightContainer)
-
-        // Add background panel for top-right
-        let topRightBg = createBackgroundPanel(width: 120, height: 60)
-        topRightBg.position = CGPoint(x: 50, y: -20)
-        topRightContainer.addChild(topRightBg)
-
-        // Resources display
-        resourcesLabel.position = CGPoint(x: 0, y: 0)
+        // Resources display (below score in top-left panel)
+        resourcesLabel.position = CGPoint(x: 0, y: -100)
         resourcesLabel.zPosition = 1
-        resourcesLabel.horizontalAlignmentMode = .left
-        topRightContainer.addChild(resourcesLabel)
+        topLeftContainer.addChild(resourcesLabel)
 
-        resourcesValueLabel.position = CGPoint(x: 0, y: -20)
+        resourcesValueLabel.position = CGPoint(x: 0, y: -120)
         resourcesValueLabel.zPosition = 1
-        resourcesValueLabel.horizontalAlignmentMode = .left
-        topRightContainer.addChild(resourcesValueLabel)
+        topLeftContainer.addChild(resourcesValueLabel)
 
         // Timer (top center)
         timerLabel.position = CGPoint(x: 0, y: halfHeight - insetTop)
@@ -885,7 +867,7 @@ class HUD: SKNode {
         floater.text = "+\(amount)"
         floater.position = CGPoint(x: resourcesValueLabel.position.x + 60, y: resourcesValueLabel.position.y - 10)
         floater.zPosition = 1
-        topRightContainer.addChild(floater)
+        topLeftContainer.addChild(floater)
 
         // Animate up and fade out
         let moveUp = SKAction.moveBy(x: 0, y: 30, duration: 0.8)
@@ -1089,9 +1071,9 @@ class HUD: SKNode {
             label.verticalAlignmentMode = .top
             label.zPosition = 1
 
-            // Position below resources
-            label.position = CGPoint(x: 0, y: -45)
-            topRightContainer.addChild(label)
+            // Position below resources in top-left panel
+            label.position = CGPoint(x: 0, y: -145)
+            topLeftContainer.addChild(label)
             towerCountLabel = label
         }
 
