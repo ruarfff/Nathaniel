@@ -216,7 +216,9 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     private func setupBuildSystem() {
         // Create tower placement controller
-        let controller = TowerPlacementController(viewportSize: size)
+        // Use visibleViewportSize (calculated in setupHUD) to account for aspectFill cropping on iOS
+        let viewportSize = self.visibleViewportSize.width > 0 ? self.visibleViewportSize : size
+        let controller = TowerPlacementController(viewportSize: viewportSize)
         controller.setup(
             scene: self,
             structureManager: self.structureManager,
