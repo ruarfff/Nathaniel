@@ -19,13 +19,15 @@
 
         // MARK: - Constants
 
-        private let panelWidth: CGFloat = 420
-        private let panelHeight: CGFloat = 520
-        private let headerHeight: CGFloat = 50
-        private let tabBarHeight: CGFloat = 40
+        private let panelWidth: CGFloat = 900
+        private let panelHeight: CGFloat = 800
+        private let headerHeight: CGFloat = 60
+        private let tabBarHeight: CGFloat = 50
         private let footerHeight: CGFloat = 60
         private let contentPadding: CGFloat = 15
         private let animationDuration: TimeInterval = 0.25
+        private let tabWidth: CGFloat = 110
+        private let tabHeight: CGFloat = 38
 
         // MARK: - Colors
 
@@ -145,13 +147,12 @@
             let tabBarY = panelHeight / 2 - headerHeight - tabBarHeight / 2
 
             let tabs = Tab.allCases
-            let tabWidth: CGFloat = 52
-            let tabSpacing: CGFloat = 4
+            let tabSpacing: CGFloat = 8
             let totalWidth = CGFloat(tabs.count) * tabWidth + CGFloat(tabs.count - 1) * tabSpacing
             var startX = -totalWidth / 2 + tabWidth / 2
 
             for tab in tabs {
-                let tabButton = createTabButton(tab: tab, width: tabWidth)
+                let tabButton = createTabButton(tab: tab)
                 tabButton.position = CGPoint(x: startX, y: tabBarY)
                 tabButton.name = "tab_\(tab.rawValue)"
                 panelNode.addChild(tabButton)
@@ -162,18 +163,18 @@
             updateTabSelection()
         }
 
-        private func createTabButton(tab: Tab, width: CGFloat) -> SKNode {
+        private func createTabButton(tab: Tab) -> SKNode {
             let button = SKNode()
 
-            let bg = SKShapeNode(rectOf: CGSize(width: width, height: 32), cornerRadius: 6)
+            let bg = SKShapeNode(rectOf: CGSize(width: tabWidth, height: tabHeight), cornerRadius: 6)
             bg.fillColor = tab == selectedTab ? tabSelectedColor : tabUnselectedColor
             bg.strokeColor = .clear
             bg.name = "tabBg"
             button.addChild(bg)
 
             let label = SKLabelNode(fontNamed: "Helvetica-Bold")
-            label.text = String(tab.rawValue.prefix(4))
-            label.fontSize = 11
+            label.text = tab.rawValue
+            label.fontSize = 14
             label.fontColor = .white
             label.horizontalAlignmentMode = .center
             label.verticalAlignmentMode = .center
@@ -547,7 +548,7 @@
 
             // Check tabs
             for (tab, button) in tabButtons {
-                if nodeContainsPoint(button, point: panelPoint, size: CGSize(width: 52, height: 32)) {
+                if nodeContainsPoint(button, point: panelPoint, size: CGSize(width: tabWidth, height: tabHeight)) {
                     animateButtonPress(button)
                     selectTab(tab)
                     return true
@@ -623,7 +624,7 @@
 
             // Otherwise handle as scroll
             let deltaY = panelEnd.y - panelStart.y
-            scrollOffset = max(0, min(maxScrollOffset, scrollOffset - deltaY))
+            scrollOffset = max(0, min(maxScrollOffset, scrollOffset + deltaY))
             scrollContent.position.y = scrollOffset
 
             return true

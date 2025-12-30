@@ -6,7 +6,7 @@
     enum DevSettingsControls {
         // MARK: - Layout Constants
 
-        static let rowWidth: CGFloat = 380
+        static let rowWidth: CGFloat = 500
         static let rowHeight: CGFloat = 45
         static let rowSpacing: CGFloat = 8
         static let labelFontSize: CGFloat = 16
