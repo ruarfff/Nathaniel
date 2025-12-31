@@ -38,6 +38,9 @@ class EnemyManager {
     /// Player characters that enemies can target
     var playerCharacters: [Character] = []
 
+    /// Callback to check structure collision (for pathfinding around towers)
+    var structureCollisionCheck: ((CGPoint, CGFloat) -> Bool)?
+
     // MARK: - Statistics
 
     /// Count of spawners
@@ -111,6 +114,7 @@ class EnemyManager {
         // Configure pathfinding if renderer is available
         if let renderer {
             enemy.configurePathfinding(with: renderer)
+            enemy.pathfinding?.structureCollisionCheck = structureCollisionCheck
         }
 
         // Add to scene
@@ -165,6 +169,7 @@ class EnemyManager {
         // Configure pathfinding if renderer is available
         if let renderer {
             enemy.configurePathfinding(with: renderer)
+            enemy.pathfinding?.structureCollisionCheck = structureCollisionCheck
         }
 
         // Add to scene

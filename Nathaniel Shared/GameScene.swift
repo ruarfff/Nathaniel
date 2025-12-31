@@ -209,9 +209,14 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     private func setupStructureManager() {
         self.structureManager = StructureManager(scene: self)
         self.structureManager.structureZPosition = self.characterZPosition
-        self.structureManager.structureScale = 2.5
+        self.structureManager.structureScale = 1.25
         self.structureManager.enemyManager = self.enemyManager
         self.structureManager.delegate = self
+
+        // Wire up structure collision callback for enemy pathfinding
+        self.enemyManager.structureCollisionCheck = { [weak self] position, radius in
+            self?.structureManager.collidesWithStructure(at: position, entityRadius: radius) ?? false
+        }
     }
 
     private func setupBuildSystem() {
@@ -762,6 +767,11 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
                 // Configure pathfinding for A* navigation around obstacles
                 nathaniel.configurePathfinding(with: renderer)
 
+                // Add structure collision check so characters path around towers
+                nathaniel.pathfinding?.structureCollisionCheck = { [weak self] position, radius in
+                    self?.structureManager.collidesWithStructure(at: position, entityRadius: radius) ?? false
+                }
+
                 // Wire up weapon callbacks
                 nathaniel.weapon.onFire = { [weak self] projectile in
                     guard let self else { return }
@@ -801,6 +811,11 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
                 // Configure pathfinding for A* navigation around obstacles
                 hermes.configurePathfinding(with: renderer)
+
+                // Add structure collision check so characters path around towers
+                hermes.pathfinding?.structureCollisionCheck = { [weak self] position, radius in
+                    self?.structureManager.collidesWithStructure(at: position, entityRadius: radius) ?? false
+                }
 
                 // Wire up death callback for tower destruction
                 hermes.onDeathCallback = { [weak self] in

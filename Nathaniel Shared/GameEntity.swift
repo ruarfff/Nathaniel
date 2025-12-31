@@ -450,17 +450,18 @@ class Character: GameEntity {
 
         // Check collision if pathfinding is configured
         if let pathfinding = pathfinding {
-            if pathfinding.isWalkable(at: newPosition) {
+            let radius = collisionRadius
+            if pathfinding.isWalkable(at: newPosition, entityRadius: radius) {
                 position = newPosition
             } else {
                 // Try sliding along X axis
                 let slideX = CGPoint(x: newPosition.x, y: position.y)
-                if pathfinding.isWalkable(at: slideX) {
+                if pathfinding.isWalkable(at: slideX, entityRadius: radius) {
                     position = slideX
                 } else {
                     // Try sliding along Y axis
                     let slideY = CGPoint(x: position.x, y: newPosition.y)
-                    if pathfinding.isWalkable(at: slideY) {
+                    if pathfinding.isWalkable(at: slideY, entityRadius: radius) {
                         position = slideY
                     }
                     // If both blocked, don't move (character is stuck)

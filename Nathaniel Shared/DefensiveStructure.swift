@@ -15,7 +15,8 @@ enum BuildConfig {
     }
 
     /// Tower placement collision radius (for overlap checks)
-    static let towerCollisionRadius: CGFloat = 30.0
+    /// Adjusted to match 1.25x scale (50% smaller than original 2.5x)
+    static let towerCollisionRadius: CGFloat = 15.0
 }
 
 // MARK: - Placement Validation
@@ -895,11 +896,14 @@ class StructureManager {
     private func setupStructure(_ structure: DefensiveStructure, at position: CGPoint) {
         structure.position = position
         structure.sprite.zPosition = structureZPosition
-        structure.sprite.setScale(structureScale)
 
-        // Set up health bar
-        structure.setupHealthBar(width: 40, yOffset: 8)
+        // Start with zero scale for placement animation
+        structure.sprite.setScale(0)
+
+        // Set up health bar (scaled for smaller tower size)
+        structure.setupHealthBar(width: 25, yOffset: 5)
         structure.healthBar?.hideWhenFull = false
+        structure.healthBar?.node.alpha = 0 // Hide health bar during animation
 
         // Add destruction callback
         structure.onDestroyed = { [weak self, weak structure] in
@@ -911,9 +915,42 @@ class StructureManager {
         scene?.addChild(structure.sprite)
         structures.append(structure)
 
-        print(
-            "StructureManager: Added \(structure.name) at (\(Int(position.x)), \(Int(position.y))), sprite size: \(structure.sprite.size), scale: \(structureScale)"
-        )
+        // Play placement animation and sound
+        playPlacementFeedback(for: structure)
+
+        let pos = "(\(Int(position.x)), \(Int(position.y)))"
+        print("StructureManager: Added \(structure.name) at \(pos), scale: \(structureScale)")
+    }
+
+    /// Play visual and audio feedback when a tower is placed
+    private func playPlacementFeedback(for structure: DefensiveStructure) {
+        guard let scene else { return }
+
+        // Play placement sound
+        AudioManager.shared.playSoundEffect(.collect, on: scene)
+
+        // Scale-in animation with slight overshoot for "pop" effect
+        let targetScale = structureScale
+        let scaleUp = SKAction.scale(to: targetScale * 1.15, duration: 0.15)
+        scaleUp.timingMode = .easeOut
+        let scaleDown = SKAction.scale(to: targetScale, duration: 0.1)
+        scaleDown.timingMode = .easeIn
+        let scaleSequence = SKAction.sequence([scaleUp, scaleDown])
+
+        // Brief white flash effect
+        let flashWhite = SKAction.colorize(with: .white, colorBlendFactor: 0.6, duration: 0.1)
+        let flashBack = SKAction.colorize(withColorBlendFactor: 0, duration: 0.15)
+        let flashSequence = SKAction.sequence([flashWhite, flashBack])
+
+        // Run animations together
+        let animationGroup = SKAction.group([scaleSequence, flashSequence])
+
+        // Fade in health bar after animation completes
+        let showHealthBar = SKAction.run { [weak structure] in
+            structure?.healthBar?.node.alpha = 1.0
+        }
+
+        structure.sprite.run(SKAction.sequence([animationGroup, showHealthBar]))
     }
 
     /// Remove a structure from the manager
@@ -975,6 +1012,25 @@ class StructureManager {
     /// Get count of active structures
     var count: Int {
         structures.count
+    }
+
+    /// Check if a position collides with any active structure
+    /// - Parameters:
+    ///   - position: World position to check
+    ///   - radius: Collision radius of the entity checking (default 0)
+    /// - Returns: true if position overlaps any structure
+    func collidesWithStructure(at position: CGPoint, entityRadius: CGFloat = 0) -> Bool {
+        for structure in structures where structure.isActive {
+            let dx = position.x - structure.position.x
+            let dy = position.y - structure.position.y
+            let distance = hypot(dx, dy)
+
+            // Use tower collision radius plus entity radius
+            if distance < BuildConfig.towerCollisionRadius + entityRadius {
+                return true
+            }
+        }
+        return false
     }
 
     /// Clear all structures

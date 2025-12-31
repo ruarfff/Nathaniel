@@ -19,6 +19,10 @@ class PathfindingMovement {
     /// Whether pathfinding is enabled (falls back to direct movement if false)
     var isEnabled: Bool = true
 
+    /// Optional callback to check structure collision at a position
+    /// Returns true if the position collides with a structure
+    var structureCollisionCheck: ((CGPoint, CGFloat) -> Bool)?
+
     /// Distance at which waypoints are considered reached
     var waypointArrivalDistance: CGFloat = 16
 
@@ -116,13 +120,26 @@ class PathfindingMovement {
         pathFollower?.clear()
     }
 
-    /// Check if a position is walkable
-    /// - Parameter point: World position to check
-    /// - Returns: true if the tile at this position is walkable
-    func isWalkable(at point: CGPoint) -> Bool {
+    /// Check if a position is walkable (terrain + structures)
+    /// - Parameters:
+    ///   - point: World position to check
+    ///   - entityRadius: Collision radius of the entity (default 0)
+    /// - Returns: true if the position is walkable (no terrain or structure collision)
+    func isWalkable(at point: CGPoint, entityRadius: CGFloat = 0) -> Bool {
         guard let renderer else { return true }
+
+        // Check terrain collision
         let tile = renderer.worldToTile(point: point)
-        return renderer.isWalkable(tileX: tile.x, tileY: tile.y)
+        if !renderer.isWalkable(tileX: tile.x, tileY: tile.y) {
+            return false
+        }
+
+        // Check structure collision if callback is set
+        if let check = structureCollisionCheck, check(point, entityRadius) {
+            return false
+        }
+
+        return true
     }
 
     /// Recalculate path if blocked
