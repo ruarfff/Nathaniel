@@ -25,10 +25,10 @@ class Enemy: Character {
 
     /// Calculate a random resource drop amount within the configured range
     func calculateResourceDrop() -> Int {
-        guard resourceDropMax >= resourceDropMin, resourceDropMin > 0 else {
+        guard self.resourceDropMax >= self.resourceDropMin, self.resourceDropMin > 0 else {
             return 0
         }
-        return Int.random(in: resourceDropMin ... resourceDropMax)
+        return Int.random(in: self.resourceDropMin ... self.resourceDropMax)
     }
 
     /// Current target (usually a player character)
@@ -54,7 +54,7 @@ class Enemy: Character {
 
     /// Whether this enemy has projectiles still in flight
     var hasActiveProjectiles: Bool {
-        weapon?.hasActiveProjectiles ?? false
+        self.weapon?.hasActiveProjectiles ?? false
     }
 
     // MARK: - Threat System
@@ -110,16 +110,16 @@ class Enemy: Character {
     ///   - target: The character generating threat
     ///   - amount: Amount of threat to add (will be scaled by threatMultiplier)
     func addThreat(from target: Character, amount: Float) {
-        let scaledAmount = amount * threatMultiplier
-        threatTable.addThreat(for: target, amount: scaledAmount)
+        let scaledAmount = amount * self.threatMultiplier
+        self.threatTable.addThreat(for: target, amount: scaledAmount)
     }
 
     /// Generate initial aggro threat when first spotting a player
     /// - Parameter target: The player that was spotted
     func generateInitialAggro(for target: Character) {
-        guard !hasInitialAggro else { return }
-        hasInitialAggro = true
-        threatTable.addThreat(for: target, amount: ThreatConfig.initialAggroThreat)
+        guard !self.hasInitialAggro else { return }
+        self.hasInitialAggro = true
+        self.threatTable.addThreat(for: target, amount: ThreatConfig.initialAggroThreat)
     }
 
     /// Generate proximity threat for being near a target
@@ -128,17 +128,17 @@ class Enemy: Character {
     ///   - deltaTime: Time since last update
     func generateProximityThreat(for target: Character, deltaTime: TimeInterval) {
         let amount = ThreatConfig.proximityThreatPerSecond * Float(deltaTime)
-        threatTable.addThreat(for: target, amount: amount)
+        self.threatTable.addThreat(for: target, amount: amount)
     }
 
     /// Get the target with highest threat, or nil if no threats
     func getHighestThreatTarget() -> Character? {
-        threatTable.getHighestThreatTarget()
+        self.threatTable.getHighestThreatTarget()
     }
 
     /// Update threat decay
     func updateThreatDecay(deltaTime: TimeInterval) {
-        threatTable.decayThreat(deltaTime: deltaTime)
+        self.threatTable.decayThreat(deltaTime: deltaTime)
     }
 
     // MARK: - Update
@@ -146,20 +146,20 @@ class Enemy: Character {
     override func update(deltaTime: TimeInterval) {
         // Always update weapon projectiles, even after death
         // This ensures projectiles complete their trajectory instead of freezing
-        weapon?.update(deltaTime: deltaTime)
+        self.weapon?.update(deltaTime: deltaTime)
 
         guard isActive, isAlive else { return }
 
         #if DEBUG
             // Apply dev settings for live updates (speed set by subclasses)
-            applyDevSettings()
+            self.applyDevSettings()
         #endif
 
         // Update melee timer
-        meleeAttackTimer += deltaTime
+        self.meleeAttackTimer += deltaTime
 
         // Run AI behavior
-        updateAI(deltaTime: deltaTime)
+        self.updateAI(deltaTime: deltaTime)
 
         // Call parent update for movement
         super.update(deltaTime: deltaTime)
@@ -177,7 +177,7 @@ class Enemy: Character {
         guard let target, target.isAlive else {
             // No target or target dead - stop
             stop()
-            isAttacking = false
+            self.isAttacking = false
             return
         }
 
@@ -186,17 +186,17 @@ class Enemy: Character {
         let distanceToTarget = hypot(dx, dy)
 
         // Check if target is in visible range
-        if distanceToTarget > visibleRange {
+        if distanceToTarget > self.visibleRange {
             // Target too far - don't pursue
             stop()
-            isAttacking = false
+            self.isAttacking = false
             return
         }
 
         // Check if in attack range
-        if distanceToTarget <= attackRange {
+        if distanceToTarget <= self.attackRange {
             // In range - attack!
-            isAttacking = true
+            self.isAttacking = true
             stop() // Stop moving when attacking
 
             // Face target
@@ -204,10 +204,10 @@ class Enemy: Character {
             facingDirection = FacingDirection.from(direction: direction)
 
             // Perform attack
-            performAttack()
+            self.performAttack()
         } else {
             // Not in range - move toward target using pathfinding
-            isAttacking = false
+            self.isAttacking = false
 
             // Move toward target (pathfinding handles obstacles)
             moveTo(target.position)
@@ -218,14 +218,14 @@ class Enemy: Character {
     func performAttack() {
         guard let target, target.isAlive else { return }
 
-        if hasRangedWeapon, let weapon {
+        if self.hasRangedWeapon, let weapon {
             // Ranged attack
             _ = weapon.use(target: target.position)
-        } else if meleeDamage > 0 {
+        } else if self.meleeDamage > 0 {
             // Melee attack
-            if meleeAttackTimer >= meleeAttackCooldown {
-                meleeAttackTimer = 0
-                target.takeDamage(meleeDamage)
+            if self.meleeAttackTimer >= self.meleeAttackCooldown {
+                self.meleeAttackTimer = 0
+                target.takeDamage(self.meleeDamage)
             }
         }
     }
@@ -238,12 +238,16 @@ class Enemy: Character {
     ///   - attacker: The character dealing the damage (for threat tracking)
     func takeDamage(_ amount: Int, from attacker: Character?) {
         // First, take the damage
-        takeDamage(amount)
+        self.takeDamage(amount)
 
         // Generate threat if we have an attacker
         if let attacker {
-            let threatAmount = Float(amount) * ThreatConfig.damageThreatMultiplier
-            addThreat(from: attacker, amount: threatAmount)
+            // Apply tower multiplier if attacker is a structure (towers generate less threat)
+            let multiplier = (attacker is DefensiveStructure)
+                ? ThreatConfig.towerDamageThreatMultiplier
+                : ThreatConfig.damageThreatMultiplier
+            let threatAmount = Float(amount) * multiplier
+            self.addThreat(from: attacker, amount: threatAmount)
         }
     }
 
@@ -256,7 +260,7 @@ class Enemy: Character {
 
         // Row 0 = idle/attack, Row 1 = moving
         // Note: The grunt has 4 rows - rows 2 and 3 might be attack frames
-        let row = if isAttacking || !isMoving {
+        let row = if self.isAttacking || !isMoving {
             0
         } else {
             1
@@ -515,7 +519,7 @@ class Boss: Enemy {
     // MARK: - Death Override
 
     override func onDeath() {
-        isDefeated = true
+        self.isDefeated = true
         super.onDeath()
     }
 }

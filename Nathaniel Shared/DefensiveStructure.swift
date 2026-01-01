@@ -346,9 +346,9 @@ class GunTower: DefensiveStructure {
         // Check bullet collisions
         for projectile in self.gun.activeBullets {
             if let hit = onCheckCollision?(projectile) {
-                // Towers don't generate player threat
+                // Towers generate threat so enemies will retaliate
                 if let enemy = hit as? Enemy {
-                    enemy.takeDamage(projectile.damage, from: nil)
+                    enemy.takeDamage(projectile.damage, from: self)
                 } else {
                     hit.takeDamage(projectile.damage)
                 }
@@ -621,11 +621,11 @@ class LaserTower: DefensiveStructure {
             // Update beam visual
             self.beam.fire(from: position, to: target.position)
 
-            // Deal damage over time (towers don't generate player threat)
+            // Deal damage over time - towers generate threat so enemies retaliate
             let damage = Int(CGFloat(damagePerSecond) * CGFloat(deltaTime))
             if damage > 0 {
-                // target is already Enemy, use threat-aware damage with nil attacker
-                target.takeDamage(damage, from: nil)
+                // target is already Enemy, use threat-aware damage
+                target.takeDamage(damage, from: self)
             }
 
             // Check if burst is over
@@ -671,7 +671,7 @@ class StructureManager {
     weak var delegate: StructureManagerDelegate?
 
     /// All structures
-    private var structures: [DefensiveStructure] = []
+    private(set) var structures: [DefensiveStructure] = []
 
     /// Towers owned by Hermes's current deployment
     private var hermesTowers: [DefensiveStructure] = []

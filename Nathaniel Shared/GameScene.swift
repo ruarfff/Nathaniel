@@ -217,6 +217,9 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         self.enemyManager.structureCollisionCheck = { [weak self] position, radius in
             self?.structureManager.collidesWithStructure(at: position, entityRadius: radius) ?? false
         }
+
+        // Wire up structure manager for tower threat tracking
+        self.enemyManager.structureManager = self.structureManager
     }
 
     private func setupBuildSystem() {

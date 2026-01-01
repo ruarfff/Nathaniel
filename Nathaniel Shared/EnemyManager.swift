@@ -41,6 +41,9 @@ class EnemyManager {
     /// Callback to check structure collision (for pathfinding around towers)
     var structureCollisionCheck: ((CGPoint, CGFloat) -> Bool)?
 
+    /// Reference to structure manager for tower threat tracking
+    weak var structureManager: StructureManager?
+
     // MARK: - Statistics
 
     /// Count of spawners
@@ -274,7 +277,7 @@ class EnemyManager {
 
     // MARK: - Threat System
 
-    /// Update threat for an enemy based on nearby players
+    /// Update threat for an enemy based on nearby players and towers
     private func updateThreat(for enemy: Enemy, deltaTime: TimeInterval) {
         // Decay existing threat over time
         enemy.updateThreatDecay(deltaTime: deltaTime)
@@ -292,6 +295,20 @@ class EnemyManager {
 
                 // Generate continuous proximity threat
                 enemy.generateProximityThreat(for: player, deltaTime: deltaTime)
+            }
+        }
+
+        // Generate proximity threat for towers in range
+        // Towers don't get initial aggro - only proximity and damage threat
+        guard let structures = structureManager?.structures else { return }
+        for structure in structures where structure.isAlive && structure.isActive {
+            let dx = structure.position.x - enemy.position.x
+            let dy = structure.position.y - enemy.position.y
+            let distance = hypot(dx, dy)
+
+            if distance <= enemy.visibleRange {
+                let amount = ThreatConfig.towerProximityThreatPerSecond * Float(deltaTime)
+                enemy.threatTable.addThreat(for: structure, amount: amount * enemy.threatMultiplier)
             }
         }
     }
