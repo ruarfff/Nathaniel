@@ -124,9 +124,9 @@ class HealthBar {
         self.cornerRadius = cornerRadius
 
         // Create container node
-        node = SKNode()
-        node.name = "healthBar"
-        node.zPosition = 200 // Above character sprites
+        self.node = SKNode()
+        self.node.name = "healthBar"
+        self.node.zPosition = 200 // Above character sprites
 
         let barRect = CGRect(x: -width / 2, y: 0, width: width, height: height)
 
@@ -137,10 +137,10 @@ class HealthBar {
         } else {
             bgPath.addRect(barRect)
         }
-        backgroundNode = SKShapeNode(path: bgPath)
-        backgroundNode.fillColor = SKColor(red: 0.8, green: 0.2, blue: 0.2, alpha: 0.85)
-        backgroundNode.strokeColor = .clear
-        backgroundNode.lineWidth = 0
+        self.backgroundNode = SKShapeNode(path: bgPath)
+        self.backgroundNode.fillColor = SKColor(red: 0.8, green: 0.2, blue: 0.2, alpha: 0.85)
+        self.backgroundNode.strokeColor = .clear
+        self.backgroundNode.lineWidth = 0
 
         // Health bar (green - shows current health)
         let healthPath = CGMutablePath()
@@ -149,10 +149,10 @@ class HealthBar {
         } else {
             healthPath.addRect(barRect)
         }
-        healthNode = SKShapeNode(path: healthPath)
-        healthNode.fillColor = SKColor(red: 0.2, green: 0.7, blue: 0.2, alpha: 1.0)
-        healthNode.strokeColor = .clear
-        healthNode.lineWidth = 0
+        self.healthNode = SKShapeNode(path: healthPath)
+        self.healthNode.fillColor = SKColor(red: 0.2, green: 0.7, blue: 0.2, alpha: 1.0)
+        self.healthNode.strokeColor = .clear
+        self.healthNode.lineWidth = 0
 
         // Border (white outline)
         let borderPath = CGMutablePath()
@@ -161,15 +161,15 @@ class HealthBar {
         } else {
             borderPath.addRect(barRect)
         }
-        borderNode = SKShapeNode(path: borderPath)
-        borderNode.fillColor = .clear
-        borderNode.strokeColor = SKColor.white.withAlphaComponent(0.8)
-        borderNode.lineWidth = 1
+        self.borderNode = SKShapeNode(path: borderPath)
+        self.borderNode.fillColor = .clear
+        self.borderNode.strokeColor = SKColor.white.withAlphaComponent(0.8)
+        self.borderNode.lineWidth = 1
 
         // Add in order: background, health, border
-        node.addChild(backgroundNode)
-        node.addChild(healthNode)
-        node.addChild(borderNode)
+        self.node.addChild(self.backgroundNode)
+        self.node.addChild(self.healthNode)
+        self.node.addChild(self.borderNode)
     }
 
     /// Update the health bar to reflect current health
@@ -177,27 +177,27 @@ class HealthBar {
         guard maxHP > 0 else { return }
 
         let healthPercent = CGFloat(currentHP) / CGFloat(maxHP)
-        let healthWidth = width * healthPercent
+        let healthWidth = self.width * healthPercent
 
         // Update green health bar width
         let healthPath = CGMutablePath()
-        let healthRect = CGRect(x: -width / 2, y: 0, width: healthWidth, height: height)
-        if cornerRadius > 0, healthWidth > cornerRadius * 2 {
-            healthPath.addRoundedRect(in: healthRect, cornerWidth: cornerRadius, cornerHeight: cornerRadius)
+        let healthRect = CGRect(x: -self.width / 2, y: 0, width: healthWidth, height: self.height)
+        if self.cornerRadius > 0, healthWidth > self.cornerRadius * 2 {
+            healthPath.addRoundedRect(in: healthRect, cornerWidth: self.cornerRadius, cornerHeight: self.cornerRadius)
         } else {
             healthPath.addRect(healthRect)
         }
-        healthNode.path = healthPath
+        self.healthNode.path = healthPath
 
         // Hide when full (optional)
-        if hideWhenFull {
-            node.isHidden = currentHP >= maxHP
+        if self.hideWhenFull {
+            self.node.isHidden = currentHP >= maxHP
         }
     }
 
     /// Position the health bar above a sprite
     func positionAbove(spriteHeight: CGFloat) {
-        node.position = CGPoint(x: 0, y: spriteHeight / 2 + yOffset)
+        self.node.position = CGPoint(x: 0, y: spriteHeight / 2 + self.yOffset)
     }
 }
 
@@ -211,8 +211,8 @@ class Character: GameEntity {
     var healthBar: HealthBar?
 
     var position: CGPoint {
-        get { sprite.position }
-        set { sprite.position = newValue }
+        get { self.sprite.position }
+        set { self.sprite.position = newValue }
     }
 
     var isActive: Bool = true
@@ -225,9 +225,9 @@ class Character: GameEntity {
     /// Current health points
     var currentHP: Int {
         didSet {
-            if currentHP <= 0 {
-                currentHP = 0
-                onDeath()
+            if self.currentHP <= 0 {
+                self.currentHP = 0
+                self.onDeath()
             }
         }
     }
@@ -236,7 +236,7 @@ class Character: GameEntity {
     let maxHP: Int
 
     /// Whether the character is alive
-    var isAlive: Bool { currentHP > 0 }
+    var isAlive: Bool { self.currentHP > 0 }
 
     /// Movement speed in points per second
     var speed: CGFloat
@@ -248,7 +248,7 @@ class Character: GameEntity {
     var destination: CGPoint?
 
     /// Whether the character is currently moving
-    var isMoving: Bool { destination != nil }
+    var isMoving: Bool { self.destination != nil }
 
     /// Current facing direction
     var facingDirection: FacingDirection = .south
@@ -261,7 +261,7 @@ class Character: GameEntity {
 
     /// Collision radius for circle collision detection
     var collisionRadius: CGFloat {
-        sprite.size.width * 0.4
+        self.sprite.size.width * 0.4
     }
 
     // MARK: - Animation
@@ -286,20 +286,29 @@ class Character: GameEntity {
     /// Final destination when using pathfinding (may differ from current waypoint)
     private var finalDestination: CGPoint?
 
+    /// Stuck detection: count of frames without significant movement
+    private var stuckFrameCount: Int = 0
+
+    /// Last position for stuck detection
+    private var lastPositionForStuckCheck: CGPoint = .zero
+
+    /// Threshold for stuck detection (frames at 60fps = ~0.5 seconds)
+    private let stuckFrameThreshold: Int = 30
+
     // MARK: - Initialization
 
     init(name: String, maxHP: Int, speed: CGFloat, spriteSheetCols: Int = 8, spriteSheetRows: Int = 2) {
         self.name = name
         self.maxHP = maxHP
-        currentHP = maxHP
+        self.currentHP = maxHP
         self.speed = speed
-        maxSpeed = speed
+        self.maxSpeed = speed
         self.spriteSheetCols = spriteSheetCols
         self.spriteSheetRows = spriteSheetRows
 
         // Create sprite node (will be configured by subclasses)
-        sprite = SKSpriteNode()
-        sprite.name = name
+        self.sprite = SKSpriteNode()
+        self.sprite.name = name
     }
 
     // MARK: - Texture Setup
@@ -310,7 +319,7 @@ class Character: GameEntity {
 
         let texture = SKTexture(imageNamed: textureName)
         texture.filteringMode = .nearest
-        baseTexture = texture
+        self.baseTexture = texture
 
         let textureSize = texture.size()
         print("Character: Texture size: \(textureSize)")
@@ -318,68 +327,68 @@ class Character: GameEntity {
         guard textureSize.width > 0, textureSize.height > 0 else {
             print("Character: ERROR - Failed to load sprite sheet '\(textureName)' - size is zero")
             // Try setting a placeholder color so we can at least see something
-            sprite.color = .blue
-            sprite.size = CGSize(width: 32, height: 48)
+            self.sprite.color = .blue
+            self.sprite.size = CGSize(width: 32, height: 48)
             return
         }
 
-        let frameWidth = textureSize.width / CGFloat(spriteSheetCols)
-        let frameHeight = textureSize.height / CGFloat(spriteSheetRows)
+        let frameWidth = textureSize.width / CGFloat(self.spriteSheetCols)
+        let frameHeight = textureSize.height / CGFloat(self.spriteSheetRows)
         print("Character: Frame size: \(frameWidth) x \(frameHeight)")
 
         // Configure sprite size based on a single frame
-        sprite.size = CGSize(width: frameWidth, height: frameHeight)
-        print("Character: Sprite size set to: \(sprite.size)")
+        self.sprite.size = CGSize(width: frameWidth, height: frameHeight)
+        print("Character: Sprite size set to: \(self.sprite.size)")
 
         // Slice the sprite sheet into individual textures
-        frameTextures = []
-        for row in 0 ..< spriteSheetRows {
+        self.frameTextures = []
+        for row in 0 ..< self.spriteSheetRows {
             var rowTextures: [SKTexture] = []
-            for col in 0 ..< spriteSheetCols {
+            for col in 0 ..< self.spriteSheetCols {
                 // Calculate normalized rect (SpriteKit textures have origin at bottom-left)
-                let x = CGFloat(col) / CGFloat(spriteSheetCols)
-                let y = 1.0 - CGFloat(row + 1) / CGFloat(spriteSheetRows)
-                let w = 1.0 / CGFloat(spriteSheetCols)
-                let h = 1.0 / CGFloat(spriteSheetRows)
+                let x = CGFloat(col) / CGFloat(self.spriteSheetCols)
+                let y = 1.0 - CGFloat(row + 1) / CGFloat(self.spriteSheetRows)
+                let w = 1.0 / CGFloat(self.spriteSheetCols)
+                let h = 1.0 / CGFloat(self.spriteSheetRows)
 
                 let rect = CGRect(x: x, y: y, width: w, height: h)
                 let frameTexture = SKTexture(rect: rect, in: texture)
                 frameTexture.filteringMode = .nearest
                 rowTextures.append(frameTexture)
             }
-            frameTextures.append(rowTextures)
+            self.frameTextures.append(rowTextures)
         }
 
         // Set initial texture
-        updateTexture()
-        print("Character: Sprite sheet loading complete. Frame textures: \(frameTextures.count) rows")
+        self.updateTexture()
+        print("Character: Sprite sheet loading complete. Frame textures: \(self.frameTextures.count) rows")
     }
 
     /// Update the sprite texture based on current state
     func updateTexture() {
-        guard !frameTextures.isEmpty else {
+        guard !self.frameTextures.isEmpty else {
             print("Character: updateTexture - no frame textures loaded!")
             return
         }
 
-        let col = facingDirection.rawValue
-        let row = isMoving ? 1 : 0
+        let col = self.facingDirection.rawValue
+        let row = self.isMoving ? 1 : 0
 
-        guard row < frameTextures.count, col < frameTextures[row].count else {
+        guard row < self.frameTextures.count, col < self.frameTextures[row].count else {
             print("Character: updateTexture - invalid row/col: \(row)/\(col)")
             return
         }
 
-        sprite.texture = frameTextures[row][col]
+        self.sprite.texture = self.frameTextures[row][col]
     }
 
     // MARK: - GameEntity Methods
 
     func update(deltaTime: TimeInterval) {
-        guard isActive, isAlive else { return }
+        guard self.isActive, self.isAlive else { return }
 
-        updateMovement(deltaTime: deltaTime)
-        updateAnimation()
+        self.updateMovement(deltaTime: deltaTime)
+        self.updateAnimation()
     }
 
     // MARK: - Movement
@@ -387,57 +396,78 @@ class Character: GameEntity {
     /// Update movement toward destination
     private func updateMovement(deltaTime: TimeInterval) {
         // If using pathfinding, get next waypoint
-        if let pathfinding = pathfinding, pathfinding.hasActivePath {
-            updatePathfindingMovement(deltaTime: deltaTime, pathfinding: pathfinding)
+        if let pathfinding, pathfinding.hasActivePath {
+            self.updatePathfindingMovement(deltaTime: deltaTime, pathfinding: pathfinding)
             return
         }
 
         // Direct movement (no pathfinding)
         guard let dest = destination else {
-            animationState = .idle
+            self.animationState = .idle
             return
         }
 
-        moveTowardPoint(dest, deltaTime: deltaTime)
+        self.moveTowardPoint(dest, deltaTime: deltaTime)
 
         // Check if we've arrived at final destination
-        let direction = CGVector(dx: dest.x - position.x, dy: dest.y - position.y)
+        let direction = CGVector(dx: dest.x - self.position.x, dy: dest.y - self.position.y)
         let distance = sqrt(direction.dx * direction.dx + direction.dy * direction.dy)
         if distance <= 5 {
-            destination = nil
-            finalDestination = nil
-            animationState = .idle
+            self.destination = nil
+            self.finalDestination = nil
+            self.animationState = .idle
         }
     }
 
     /// Update movement using pathfinding waypoints
     private func updatePathfindingMovement(deltaTime: TimeInterval, pathfinding: PathfindingMovement) {
-        // Get next waypoint from path follower
-        guard let waypoint = pathfinding.update(currentPosition: position) else {
-            // Path complete - clear destinations
-            destination = nil
-            finalDestination = nil
-            animationState = .idle
+        // Get next waypoint from path follower, passing finalDestination for recalculation if blocked
+        guard let waypoint = pathfinding.update(currentPosition: position, destination: finalDestination) else {
+            // Path complete or blocked with no alternative - clear destinations
+            self.destination = nil
+            self.finalDestination = nil
+            self.animationState = .idle
+            self.stuckFrameCount = 0
             return
         }
 
         // Move toward current waypoint
-        moveTowardPoint(waypoint, deltaTime: deltaTime)
+        self.moveTowardPoint(waypoint, deltaTime: deltaTime)
 
         // Update destination to current waypoint for isMoving check
-        destination = waypoint
+        self.destination = waypoint
+
+        // Stuck detection: if character hasn't moved significantly, increment counter
+        let movedDistance = hypot(
+            position.x - self.lastPositionForStuckCheck.x,
+            self.position.y - self.lastPositionForStuckCheck.y
+        )
+        if movedDistance < 0.5 {
+            self.stuckFrameCount += 1
+            if self.stuckFrameCount > self.stuckFrameThreshold {
+                // Character is stuck - clear path and try to recalculate
+                pathfinding.clearPath()
+                if let dest = finalDestination {
+                    _ = pathfinding.calculatePath(from: self.position, to: dest)
+                }
+                self.stuckFrameCount = 0
+            }
+        } else {
+            self.stuckFrameCount = 0
+        }
+        self.lastPositionForStuckCheck = self.position
     }
 
     /// Move toward a specific point (shared by direct and pathfinding movement)
     private func moveTowardPoint(_ target: CGPoint, deltaTime: TimeInterval) {
-        let direction = CGVector(dx: target.x - position.x, dy: target.y - position.y)
+        let direction = CGVector(dx: target.x - self.position.x, dy: target.y - self.position.y)
         let distance = sqrt(direction.dx * direction.dx + direction.dy * direction.dy)
 
         guard distance > 0 else { return }
 
         // Normalize and move
         let normalizedDir = CGVector(dx: direction.dx / distance, dy: direction.dy / distance)
-        let moveDistance = speed * CGFloat(deltaTime)
+        let moveDistance = self.speed * CGFloat(deltaTime)
 
         // Don't overshoot
         let actualMove = min(moveDistance, distance)
@@ -445,41 +475,41 @@ class Character: GameEntity {
         // Calculate new position
         let newPosition = CGPoint(
             x: position.x + normalizedDir.dx * actualMove,
-            y: position.y + normalizedDir.dy * actualMove
+            y: self.position.y + normalizedDir.dy * actualMove
         )
 
         // Check collision if pathfinding is configured
-        if let pathfinding = pathfinding {
-            let radius = collisionRadius
+        if let pathfinding {
+            let radius = self.collisionRadius
             if pathfinding.isWalkable(at: newPosition, entityRadius: radius) {
-                position = newPosition
+                self.position = newPosition
             } else {
                 // Try sliding along X axis
-                let slideX = CGPoint(x: newPosition.x, y: position.y)
+                let slideX = CGPoint(x: newPosition.x, y: self.position.y)
                 if pathfinding.isWalkable(at: slideX, entityRadius: radius) {
-                    position = slideX
+                    self.position = slideX
                 } else {
                     // Try sliding along Y axis
                     let slideY = CGPoint(x: position.x, y: newPosition.y)
                     if pathfinding.isWalkable(at: slideY, entityRadius: radius) {
-                        position = slideY
+                        self.position = slideY
                     }
                     // If both blocked, don't move (character is stuck)
                 }
             }
         } else {
             // No pathfinding - direct movement without collision check
-            position = newPosition
+            self.position = newPosition
         }
 
         // Update facing direction
-        facingDirection = FacingDirection.from(direction: direction)
-        animationState = .moving
+        self.facingDirection = FacingDirection.from(direction: direction)
+        self.animationState = .moving
     }
 
     /// Update animation state and texture
     private func updateAnimation() {
-        updateTexture()
+        self.updateTexture()
     }
 
     // MARK: - Health Bar
@@ -490,55 +520,55 @@ class Character: GameEntity {
     ///   - yOffset: Vertical offset above sprite
     ///   - compact: Use compact style (smaller height, rounded corners)
     func setupHealthBar(width: CGFloat? = nil, yOffset: CGFloat = 4, compact: Bool = false) {
-        let barWidth = width ?? sprite.size.width
+        let barWidth = width ?? self.sprite.size.width
         let height = compact ? HealthBar.compactHeight : HealthBar.standardHeight
         let cornerRadius = compact ? HealthBar.compactCornerRadius : HealthBar.standardCornerRadius
 
         healthBar = HealthBar(width: barWidth, yOffset: yOffset, height: height, cornerRadius: cornerRadius)
 
         if let healthBar {
-            healthBar.positionAbove(spriteHeight: sprite.size.height)
-            sprite.addChild(healthBar.node)
-            healthBar.update(currentHP: currentHP, maxHP: maxHP)
+            healthBar.positionAbove(spriteHeight: self.sprite.size.height)
+            self.sprite.addChild(healthBar.node)
+            healthBar.update(currentHP: self.currentHP, maxHP: self.maxHP)
         }
     }
 
     /// Update the health bar display
     func updateHealthBar() {
-        healthBar?.update(currentHP: currentHP, maxHP: maxHP)
+        self.healthBar?.update(currentHP: self.currentHP, maxHP: self.maxHP)
     }
 
     // MARK: - Combat
 
     /// Take damage from a source
     func takeDamage(_ amount: Int) {
-        guard isAlive else { return }
-        currentHP -= amount
+        guard self.isAlive else { return }
+        self.currentHP -= amount
 
         // Update health bar
-        updateHealthBar()
+        self.updateHealthBar()
 
         // Flash red to indicate damage
-        showDamageFlash()
+        self.showDamageFlash()
     }
 
     /// Flash the sprite red briefly to indicate damage
     func showDamageFlash() {
         // Enable color blending
-        sprite.colorBlendFactor = 0.0
+        self.sprite.colorBlendFactor = 0.0
 
         // Flash sequence: tint red, then back to normal
         let flashRed = SKAction.colorize(with: .red, colorBlendFactor: 0.7, duration: 0.05)
         let flashBack = SKAction.colorize(withColorBlendFactor: 0.0, duration: 0.15)
         let flashSequence = SKAction.sequence([flashRed, flashBack])
 
-        sprite.run(flashSequence)
+        self.sprite.run(flashSequence)
     }
 
     /// Called when the character dies
     func onDeath() {
-        animationState = .dead
-        isActive = false
+        self.animationState = .dead
+        self.isActive = false
 
         // Play explosion sound
         if let scene = sprite.scene {
@@ -550,25 +580,25 @@ class Character: GameEntity {
         let remove = SKAction.removeFromParent()
         let deathSequence = SKAction.sequence([fadeOut, remove])
 
-        sprite.run(deathSequence)
+        self.sprite.run(deathSequence)
     }
 
     // MARK: - Collision
 
     /// Check circle collision with another character
     func isColliding(with other: Character) -> Bool {
-        let dx = position.x - other.position.x
-        let dy = position.y - other.position.y
+        let dx = self.position.x - other.position.x
+        let dy = self.position.y - other.position.y
         let distance = sqrt(dx * dx + dy * dy)
-        return distance < collisionRadius + other.collisionRadius
+        return distance < self.collisionRadius + other.collisionRadius
     }
 
     /// Check if a point is within collision radius
     func contains(point: CGPoint) -> Bool {
-        let dx = position.x - point.x
-        let dy = position.y - point.y
+        let dx = self.position.x - point.x
+        let dy = self.position.y - point.y
         let distance = sqrt(dx * dx + dy * dy)
-        return distance < collisionRadius
+        return distance < self.collisionRadius
     }
 
     // MARK: - Movement Commands
@@ -577,27 +607,27 @@ class Character: GameEntity {
     /// If pathfinding is configured, calculates an A* path around obstacles.
     /// Otherwise, moves in a direct line.
     func moveTo(_ point: CGPoint) {
-        finalDestination = point
+        self.finalDestination = point
 
         // Try pathfinding if available
-        if let pathfinding = pathfinding, pathfinding.isEnabled {
-            if pathfinding.calculatePath(from: position, to: point) {
+        if let pathfinding, pathfinding.isEnabled {
+            if pathfinding.calculatePath(from: self.position, to: point) {
                 // Path found - movement will follow waypoints
-                destination = pathfinding.currentWaypoint ?? point
+                self.destination = pathfinding.currentWaypoint ?? point
                 return
             }
             // No path found - fall through to direct movement
         }
 
         // Direct movement (no pathfinding or path not found)
-        destination = point
+        self.destination = point
     }
 
     /// Stop movement immediately
     func stop() {
-        destination = nil
-        finalDestination = nil
-        pathfinding?.clearPath()
+        self.destination = nil
+        self.finalDestination = nil
+        self.pathfinding?.clearPath()
     }
 
     /// Configure pathfinding for this character

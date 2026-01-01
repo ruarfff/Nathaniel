@@ -67,36 +67,36 @@ class EnemyManager {
     /// Reset all state (for level restart)
     func reset() {
         // Remove all enemy sprites
-        for enemy in enemies {
+        for enemy in self.enemies {
             enemy.sprite.removeFromParent()
         }
-        enemies.removeAll()
+        self.enemies.removeAll()
 
         // Reset counts
-        numSpawners = 0
-        numSoldiers = 0
-        numBosses = 0
-        totalSpawned = 0
-        totalKilled = 0
+        self.numSpawners = 0
+        self.numSoldiers = 0
+        self.numBosses = 0
+        self.totalSpawned = 0
+        self.totalKilled = 0
     }
 
     /// Remove all enemies from the scene (for loading saved game)
     func removeAllEnemies() {
-        for enemy in enemies {
+        for enemy in self.enemies {
             enemy.sprite.removeFromParent()
         }
-        enemies.removeAll()
-        numSpawners = 0
-        numSoldiers = 0
-        numBosses = 0
+        self.enemies.removeAll()
+        self.numSpawners = 0
+        self.numSoldiers = 0
+        self.numBosses = 0
     }
 
     /// Add a pre-created enemy to the manager
     /// - Parameter enemy: The enemy to add
     func addEnemy(_ enemy: Enemy) {
         // Configure display properties
-        enemy.sprite.zPosition = enemyZPosition
-        enemy.sprite.setScale(enemyScale)
+        enemy.sprite.zPosition = self.enemyZPosition
+        enemy.sprite.setScale(self.enemyScale)
 
         // Set up compact health bar (smaller, closer to sprite, rounded)
         enemy.setupHealthBar(width: 32, yOffset: 3, compact: true)
@@ -104,25 +104,25 @@ class EnemyManager {
 
         // Set up ranged weapon if applicable
         if enemy is Soldier || enemy is Boss {
-            setupRangedWeapon(for: enemy)
+            self.setupRangedWeapon(for: enemy)
         }
 
         // Track type counts
-        if enemy is Soldier { numSoldiers += 1 }
-        if enemy is Boss { numBosses += 1 }
+        if enemy is Soldier { self.numSoldiers += 1 }
+        if enemy is Boss { self.numBosses += 1 }
 
         // Configure pathfinding if renderer is available
         if let renderer {
             enemy.configurePathfinding(with: renderer)
-            enemy.pathfinding?.structureCollisionCheck = structureCollisionCheck
+            enemy.pathfinding?.structureCollisionCheck = self.structureCollisionCheck
         }
 
         // Add to scene
-        scene?.addChild(enemy.sprite)
+        self.scene?.addChild(enemy.sprite)
 
         // Track
-        enemies.append(enemy)
-        totalSpawned += 1
+        self.enemies.append(enemy)
+        self.totalSpawned += 1
     }
 
     // MARK: - Enemy Factory
@@ -141,16 +141,16 @@ class EnemyManager {
             enemy = Grunt()
         } else if name.hasPrefix("So") {
             enemy = Soldier()
-            numSoldiers += 1
-            setupRangedWeapon(for: enemy)
+            self.numSoldiers += 1
+            self.setupRangedWeapon(for: enemy)
         } else if name.hasPrefix("Sp") {
             // TODO: Implement Spawner enemy
             print("EnemyManager: Spawner not yet implemented")
             return nil
         } else if name.hasPrefix("Bo") {
             enemy = Boss()
-            numBosses += 1
-            setupRangedWeapon(for: enemy)
+            self.numBosses += 1
+            self.setupRangedWeapon(for: enemy)
         } else {
             print("EnemyManager: Unknown enemy type '\(name)'")
             return nil
@@ -158,8 +158,8 @@ class EnemyManager {
 
         // Configure common properties
         enemy.position = position
-        enemy.sprite.zPosition = enemyZPosition
-        enemy.sprite.setScale(enemyScale)
+        enemy.sprite.zPosition = self.enemyZPosition
+        enemy.sprite.setScale(self.enemyScale)
         enemy.target = target
 
         // Set up compact health bar (smaller, closer to sprite, rounded)
@@ -169,15 +169,15 @@ class EnemyManager {
         // Configure pathfinding if renderer is available
         if let renderer {
             enemy.configurePathfinding(with: renderer)
-            enemy.pathfinding?.structureCollisionCheck = structureCollisionCheck
+            enemy.pathfinding?.structureCollisionCheck = self.structureCollisionCheck
         }
 
         // Add to scene
-        scene?.addChild(enemy.sprite)
+        self.scene?.addChild(enemy.sprite)
 
         // Track
-        enemies.append(enemy)
-        totalSpawned += 1
+        self.enemies.append(enemy)
+        self.totalSpawned += 1
 
         print("EnemyManager: Spawned \(enemy.name) at (\(Int(position.x)), \(Int(position.y)))")
 
@@ -201,9 +201,9 @@ class EnemyManager {
                 let position = renderer.convertToSpriteKit(point: obj.center)
 
                 // Find nearest player to set as initial target
-                let target = findNearestPlayer(to: position)
+                let target = self.findNearestPlayer(to: position)
 
-                addEnemy(name: name, at: position, target: target)
+                self.addEnemy(name: name, at: position, target: target)
             }
         }
     }
@@ -216,13 +216,13 @@ class EnemyManager {
         weapon.onFire = { [weak self] projectile in
             guard let self else { return }
             projectile.sprite.setScale(2.0)
-            scene?.addChild(projectile.sprite)
+            self.scene?.addChild(projectile.sprite)
         }
 
         // Projectile collision callback
         weapon.onCheckCollision = { [weak self] projectile in
             guard let self else { return nil }
-            for player in playerCharacters where player.isAlive {
+            for player in self.playerCharacters where player.isAlive {
                 if projectile.checkCollision(with: player) {
                     return player
                 }
@@ -237,12 +237,12 @@ class EnemyManager {
     func update(deltaTime: TimeInterval) {
         var indicesToRemove: [Int] = []
 
-        for (index, enemy) in enemies.enumerated() {
+        for (index, enemy) in self.enemies.enumerated() {
             // Update threat system
-            updateThreat(for: enemy, deltaTime: deltaTime)
+            self.updateThreat(for: enemy, deltaTime: deltaTime)
 
             // Select target based on threat
-            selectTarget(for: enemy)
+            self.selectTarget(for: enemy)
 
             // Update the enemy
             enemy.update(deltaTime: deltaTime)
@@ -256,19 +256,19 @@ class EnemyManager {
 
         // Remove dead enemies (in reverse order to maintain indices)
         for index in indicesToRemove.reversed() {
-            let enemy = enemies[index]
-            totalKilled += 1
+            let enemy = self.enemies[index]
+            self.totalKilled += 1
 
             // Notify delegate
-            delegate?.enemyManager(self, enemyDidDie: enemy, score: enemy.killScore)
+            self.delegate?.enemyManager(self, enemyDidDie: enemy, score: enemy.killScore)
 
             // Check if this was a boss
             if enemy is Boss {
-                numBosses -= 1
-                delegate?.enemyManagerDidDefeatBoss(self)
+                self.numBosses -= 1
+                self.delegate?.enemyManagerDidDefeatBoss(self)
             }
 
-            enemies.remove(at: index)
+            self.enemies.remove(at: index)
         }
     }
 
@@ -280,7 +280,7 @@ class EnemyManager {
         enemy.updateThreatDecay(deltaTime: deltaTime)
 
         // Generate threat for each player in visible range
-        for player in playerCharacters where player.isAlive {
+        for player in self.playerCharacters where player.isAlive {
             let dx = player.position.x - enemy.position.x
             let dy = player.position.y - enemy.position.y
             let distance = hypot(dx, dy)
@@ -306,7 +306,7 @@ class EnemyManager {
 
         // Fallback: find nearest player if no threat (shouldn't happen often)
         if enemy.target == nil || !enemy.target!.isAlive {
-            enemy.target = findNearestPlayer(to: enemy.position, withinRange: enemy.visibleRange)
+            enemy.target = self.findNearestPlayer(to: enemy.position, withinRange: enemy.visibleRange)
         }
     }
 
@@ -317,7 +317,7 @@ class EnemyManager {
         var nearestPlayer: Character?
         var nearestDistance: CGFloat = .infinity
 
-        for player in playerCharacters where player.isAlive {
+        for player in self.playerCharacters where player.isAlive {
             let dx = player.position.x - position.x
             let dy = player.position.y - position.y
             let distance = hypot(dx, dy)
@@ -338,7 +338,7 @@ class EnemyManager {
 
     /// Find an enemy at the given position (for tap-to-target)
     func enemy(at point: CGPoint) -> Enemy? {
-        for enemy in enemies where enemy.isAlive {
+        for enemy in self.enemies where enemy.isAlive {
             if enemy.contains(point: point) {
                 return enemy
             }
@@ -352,7 +352,7 @@ class EnemyManager {
     func createCollisionCallback() -> (Projectile) -> Character? {
         { [weak self] projectile in
             guard let self else { return nil }
-            for enemy in enemies where enemy.isAlive {
+            for enemy in self.enemies where enemy.isAlive {
                 if projectile.checkCollision(with: enemy) {
                     return enemy
                 }
@@ -363,7 +363,7 @@ class EnemyManager {
 
     /// Check if a projectile collides with any enemy (for tower weapons)
     func checkProjectileCollision(_ projectile: Projectile) -> Character? {
-        for enemy in enemies where enemy.isAlive {
+        for enemy in self.enemies where enemy.isAlive {
             if projectile.checkCollision(with: enemy) {
                 return enemy
             }
@@ -375,16 +375,16 @@ class EnemyManager {
 
     /// Get all alive enemies
     var aliveEnemies: [Enemy] {
-        enemies.filter(\.isAlive)
+        self.enemies.filter(\.isAlive)
     }
 
     /// Count of alive enemies
     var aliveCount: Int {
-        aliveEnemies.count
+        self.aliveEnemies.count
     }
 
     /// Whether any boss is alive
     var isBossAlive: Bool {
-        enemies.contains { $0 is Boss && $0.isAlive }
+        self.enemies.contains { $0 is Boss && $0.isAlive }
     }
 }

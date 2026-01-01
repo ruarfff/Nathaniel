@@ -21,7 +21,12 @@ class PathfindingMovement {
 
     /// Optional callback to check structure collision at a position
     /// Returns true if the position collides with a structure
-    var structureCollisionCheck: ((CGPoint, CGFloat) -> Bool)?
+    var structureCollisionCheck: ((CGPoint, CGFloat) -> Bool)? {
+        didSet {
+            // Propagate to collision grid when set
+            self.collisionGrid?.structureCollisionCheck = self.structureCollisionCheck
+        }
+    }
 
     /// Distance at which waypoints are considered reached
     var waypointArrivalDistance: CGFloat = 16
@@ -34,23 +39,26 @@ class PathfindingMovement {
 
     /// Current waypoint target (in world coordinates)
     var currentWaypoint: CGPoint? {
-        pathFollower?.currentTarget
+        self.pathFollower?.currentTarget
     }
 
     /// Get the full path as world coordinates for debug visualization
     /// - Returns: Array of CGPoints representing the path, or empty if no path
     var pathWorldCoordinates: [CGPoint] {
-        pathFollower?.pathInWorldCoordinates ?? []
+        self.pathFollower?.pathInWorldCoordinates ?? []
     }
 
     /// Get remaining path (from current position to end) as world coordinates
     var remainingPathWorldCoordinates: [CGPoint] {
-        pathFollower?.remainingPathInWorldCoordinates ?? []
+        self.pathFollower?.remainingPathInWorldCoordinates ?? []
     }
 
     // MARK: - Initialization
 
     init() {}
+
+    /// The collision grid used by the pathfinder (stored to update structure callback)
+    private var collisionGrid: TMXCollisionGrid?
 
     /// Configure the pathfinding component with a map renderer
     /// - Parameter renderer: The TMXRenderer providing collision data and coordinate conversion
@@ -58,11 +66,18 @@ class PathfindingMovement {
         self.renderer = renderer
 
         // Create cached pathfinder using the renderer's collision data
-        let collisionGrid = TMXCollisionGrid(renderer: renderer)
-        pathFinder = PathFinder(grid: collisionGrid)
+        let grid = TMXCollisionGrid(renderer: renderer)
+        self.collisionGrid = grid
+        self.pathFinder = PathFinder(grid: grid)
 
         // Create path follower
-        pathFollower = PathFollower(renderer: renderer)
+        self.pathFollower = PathFollower(renderer: renderer)
+    }
+
+    /// Update the structure collision callback on the pathfinding grid
+    /// Call this after setting structureCollisionCheck to ensure it's used during pathfinding
+    func updateCollisionCallback() {
+        self.collisionGrid?.structureCollisionCheck = self.structureCollisionCheck
     }
 
     // MARK: - Path Calculation
@@ -74,7 +89,7 @@ class PathfindingMovement {
     /// - Returns: true if a valid path was found, false otherwise
     @discardableResult
     func calculatePath(from start: CGPoint, to end: CGPoint) -> Bool {
-        guard isEnabled,
+        guard self.isEnabled,
               let renderer,
               let pathFinder,
               let pathFollower
@@ -102,22 +117,38 @@ class PathfindingMovement {
     }
 
     /// Update pathfinding and get the next movement target
-    /// - Parameter currentPosition: Character's current world position
+    /// - Parameters:
+    ///   - currentPosition: Character's current world position
+    ///   - destination: Final destination (optional, used for recalculation if blocked)
     /// - Returns: The next waypoint to move toward, or nil if path is complete
-    func update(currentPosition: CGPoint) -> CGPoint? {
+    func update(currentPosition: CGPoint, destination: CGPoint? = nil) -> CGPoint? {
         guard let pathFollower, !pathFollower.isComplete else {
+            return nil
+        }
+
+        // Check if current waypoint is blocked (e.g., tower placed on path)
+        if let waypoint = currentWaypoint, !isWalkable(at: waypoint) {
+            // Path is blocked - attempt to recalculate
+            if let dest = destination {
+                if self.calculatePath(from: currentPosition, to: dest) {
+                    // Successfully recalculated, return new waypoint
+                    return pathFollower.currentTarget
+                }
+            }
+            // Can't recalculate or no destination - clear path
+            self.clearPath()
             return nil
         }
 
         return pathFollower.update(
             currentPosition: currentPosition,
-            arrivalDistance: waypointArrivalDistance
+            arrivalDistance: self.waypointArrivalDistance
         )
     }
 
     /// Clear the current path (stop following)
     func clearPath() {
-        pathFollower?.clear()
+        self.pathFollower?.clear()
     }
 
     /// Check if a position is walkable (terrain + structures)
@@ -152,7 +183,7 @@ class PathfindingMovement {
         // Check if current waypoint is still valid
         if let waypoint = currentWaypoint, !isWalkable(at: waypoint) {
             // Waypoint became blocked, recalculate
-            return calculatePath(from: currentPosition, to: destination)
+            return self.calculatePath(from: currentPosition, to: destination)
         }
         return true
     }

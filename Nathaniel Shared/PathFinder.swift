@@ -18,7 +18,7 @@ class PathNode {
 
     /// Total estimated cost (f-score = g + h)
     var totalCost: Float {
-        directCost + heuristicCost
+        self.directCost + self.heuristicCost
     }
 
     /// Heuristic cost to goal (h-score)
@@ -39,7 +39,7 @@ class PathNode {
 
     /// Check if this node represents the same position as another
     func isEqual(to other: PathNode) -> Bool {
-        gridPosition == other.gridPosition
+        self.gridPosition == other.gridPosition
     }
 }
 
@@ -55,8 +55,8 @@ struct GridPosition: Hashable, Equatable {
     }
 
     func hash(into hasher: inout Hasher) {
-        hasher.combine(x)
-        hasher.combine(y)
+        hasher.combine(self.x)
+        hasher.combine(self.y)
     }
 }
 
@@ -110,7 +110,7 @@ class PathFinder {
     /// - Returns: Array of grid positions forming the path, or nil if no path found
     func findPath(from start: GridPosition, to end: GridPosition) -> [GridPosition]? {
         // Check if start or end is blocked
-        if grid.isBlocked(x: start.x, y: start.y) || grid.isBlocked(x: end.x, y: end.y) {
+        if self.grid.isBlocked(x: start.x, y: start.y) || self.grid.isBlocked(x: end.x, y: end.y) {
             return nil
         }
 
@@ -129,13 +129,13 @@ class PathFinder {
 
         // Create and add start node
         let startNode = PathNode(parent: nil, endNode: endNode, gridPosition: start, directCost: 0)
-        insertSorted(node: startNode, into: &openList)
+        self.insertSorted(node: startNode, into: &openList)
         nodeCosts[start] = startNode.totalCost
 
         var iterations = 0
 
         // A* main loop
-        while !openList.isEmpty, iterations < maxIterations {
+        while !openList.isEmpty, iterations < self.maxIterations {
             iterations += 1
 
             // Get node with lowest cost (last in sorted list)
@@ -143,14 +143,14 @@ class PathFinder {
 
             // Check if we reached the goal
             if currentNode.gridPosition == end {
-                return reconstructPath(from: currentNode)
+                return self.reconstructPath(from: currentNode)
             }
 
             // Add to closed set
             closedSet.insert(currentNode.gridPosition)
 
             // Explore neighbors
-            for neighbor in getNeighbors(of: currentNode, endNode: endNode) {
+            for neighbor in self.getNeighbors(of: currentNode, endNode: endNode) {
                 // Skip if already evaluated
                 if closedSet.contains(neighbor.gridPosition) {
                     continue
@@ -166,7 +166,7 @@ class PathFinder {
                 }
 
                 // Add to open list
-                insertSorted(node: neighbor, into: &openList)
+                self.insertSorted(node: neighbor, into: &openList)
                 nodeCosts[neighbor.gridPosition] = neighbor.totalCost
             }
         }
@@ -205,87 +205,87 @@ class PathFinder {
 
         // Check cardinal directions
         // Left
-        if x > 0, !grid.isBlocked(x: x - 1, y: y) {
+        if x > 0, !self.grid.isBlocked(x: x - 1, y: y) {
             leftOpen = true
             neighbors.append(PathNode(
                 parent: node,
                 endNode: endNode,
                 gridPosition: GridPosition(x: x - 1, y: y),
-                directCost: node.directCost + costStraight
+                directCost: node.directCost + self.costStraight
             ))
         }
 
         // Right
-        if x < grid.gridWidth - 1, !grid.isBlocked(x: x + 1, y: y) {
+        if x < self.grid.gridWidth - 1, !self.grid.isBlocked(x: x + 1, y: y) {
             rightOpen = true
             neighbors.append(PathNode(
                 parent: node,
                 endNode: endNode,
                 gridPosition: GridPosition(x: x + 1, y: y),
-                directCost: node.directCost + costStraight
+                directCost: node.directCost + self.costStraight
             ))
         }
 
         // Up
-        if y > 0, !grid.isBlocked(x: x, y: y - 1) {
+        if y > 0, !self.grid.isBlocked(x: x, y: y - 1) {
             upOpen = true
             neighbors.append(PathNode(
                 parent: node,
                 endNode: endNode,
                 gridPosition: GridPosition(x: x, y: y - 1),
-                directCost: node.directCost + costStraight
+                directCost: node.directCost + self.costStraight
             ))
         }
 
         // Down
-        if y < grid.gridHeight - 1, !grid.isBlocked(x: x, y: y + 1) {
+        if y < self.grid.gridHeight - 1, !self.grid.isBlocked(x: x, y: y + 1) {
             downOpen = true
             neighbors.append(PathNode(
                 parent: node,
                 endNode: endNode,
                 gridPosition: GridPosition(x: x, y: y + 1),
-                directCost: node.directCost + costStraight
+                directCost: node.directCost + self.costStraight
             ))
         }
 
         // Check diagonal directions (only if both adjacent cardinal directions are open)
         // Up-Left
-        if upOpen, leftOpen, !grid.isBlocked(x: x - 1, y: y - 1) {
+        if upOpen, leftOpen, !self.grid.isBlocked(x: x - 1, y: y - 1) {
             neighbors.append(PathNode(
                 parent: node,
                 endNode: endNode,
                 gridPosition: GridPosition(x: x - 1, y: y - 1),
-                directCost: node.directCost + costDiagonal
+                directCost: node.directCost + self.costDiagonal
             ))
         }
 
         // Up-Right
-        if upOpen, rightOpen, !grid.isBlocked(x: x + 1, y: y - 1) {
+        if upOpen, rightOpen, !self.grid.isBlocked(x: x + 1, y: y - 1) {
             neighbors.append(PathNode(
                 parent: node,
                 endNode: endNode,
                 gridPosition: GridPosition(x: x + 1, y: y - 1),
-                directCost: node.directCost + costDiagonal
+                directCost: node.directCost + self.costDiagonal
             ))
         }
 
         // Down-Left
-        if downOpen, leftOpen, !grid.isBlocked(x: x - 1, y: y + 1) {
+        if downOpen, leftOpen, !self.grid.isBlocked(x: x - 1, y: y + 1) {
             neighbors.append(PathNode(
                 parent: node,
                 endNode: endNode,
                 gridPosition: GridPosition(x: x - 1, y: y + 1),
-                directCost: node.directCost + costDiagonal
+                directCost: node.directCost + self.costDiagonal
             ))
         }
 
         // Down-Right
-        if downOpen, rightOpen, !grid.isBlocked(x: x + 1, y: y + 1) {
+        if downOpen, rightOpen, !self.grid.isBlocked(x: x + 1, y: y + 1) {
             neighbors.append(PathNode(
                 parent: node,
                 endNode: endNode,
                 gridPosition: GridPosition(x: x + 1, y: y + 1),
-                directCost: node.directCost + costDiagonal
+                directCost: node.directCost + self.costDiagonal
             ))
         }
 
@@ -312,15 +312,32 @@ class PathFinder {
 class TMXCollisionGrid: CollisionGrid {
     private let renderer: TMXRenderer
 
-    var gridWidth: Int { renderer.map.width }
-    var gridHeight: Int { renderer.map.height }
+    /// Optional callback to check if a position collides with a structure (tower)
+    /// Parameters: (worldPosition, entityRadius) -> Bool
+    var structureCollisionCheck: ((CGPoint, CGFloat) -> Bool)?
+
+    var gridWidth: Int { self.renderer.map.width }
+    var gridHeight: Int { self.renderer.map.height }
 
     init(renderer: TMXRenderer) {
         self.renderer = renderer
     }
 
     func isBlocked(x: Int, y: Int) -> Bool {
-        !renderer.isWalkable(tileX: x, tileY: y)
+        // Check terrain collision first
+        if !self.renderer.isWalkable(tileX: x, tileY: y) {
+            return true
+        }
+
+        // Check structure collision if callback is set
+        if let check = structureCollisionCheck {
+            let worldPos = self.renderer.tileToWorld(x: x, y: y)
+            if check(worldPos, 0) {
+                return true
+            }
+        }
+
+        return false
     }
 }
 
@@ -339,26 +356,26 @@ class PathFollower {
 
     /// Whether the follower has reached the end of the path
     var isComplete: Bool {
-        path.isEmpty || currentIndex >= path.count
+        self.path.isEmpty || self.currentIndex >= self.path.count
     }
 
     /// Current target position in world coordinates
     var currentTarget: CGPoint? {
-        guard !isComplete, let renderer else { return nil }
-        let gridPos = path[currentIndex]
+        guard !self.isComplete, let renderer else { return nil }
+        let gridPos = self.path[self.currentIndex]
         return renderer.tileToWorld(x: gridPos.x, y: gridPos.y)
     }
 
     /// Full path converted to world coordinates for debug visualization
     var pathInWorldCoordinates: [CGPoint] {
         guard let renderer else { return [] }
-        return path.map { renderer.tileToWorld(x: $0.x, y: $0.y) }
+        return self.path.map { renderer.tileToWorld(x: $0.x, y: $0.y) }
     }
 
     /// Remaining path (from current index to end) in world coordinates
     var remainingPathInWorldCoordinates: [CGPoint] {
         guard let renderer, currentIndex < path.count else { return [] }
-        return path[currentIndex...].map { renderer.tileToWorld(x: $0.x, y: $0.y) }
+        return self.path[self.currentIndex...].map { renderer.tileToWorld(x: $0.x, y: $0.y) }
     }
 
     init(renderer: TMXRenderer?) {
@@ -368,13 +385,13 @@ class PathFollower {
     /// Set a new path to follow
     func setPath(_ path: [GridPosition]) {
         self.path = path
-        currentIndex = 0
+        self.currentIndex = 0
     }
 
     /// Clear the current path
     func clear() {
-        path.removeAll()
-        currentIndex = 0
+        self.path.removeAll()
+        self.currentIndex = 0
     }
 
     /// Update the follower - call when reaching a waypoint
@@ -390,8 +407,8 @@ class PathFollower {
 
         // Check if we've reached the current waypoint
         if distance <= arrivalDistance {
-            currentIndex += 1
-            return currentTarget
+            self.currentIndex += 1
+            return self.currentTarget
         }
 
         return target
