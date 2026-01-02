@@ -826,6 +826,21 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
                 }
 
                 addChild(hermes.sprite)
+
+                // Set up Hermes laser node
+                hermes.setupLaserNode(in: self)
+
+                // Set up targeting callbacks for Hermes combat
+                hermes.findEnemiesInRange = { [weak self] in
+                    self?.enemyManager.aliveEnemies ?? []
+                }
+                hermes.getAllies = { [weak self] in
+                    var allies: [Character] = []
+                    if let nathaniel = self?.nathaniel { allies.append(nathaniel) }
+                    if let hermes = self?.hermes { allies.append(hermes) }
+                    return allies
+                }
+
                 print("GameScene: Spawned Hermes at \(spawnPos.x), \(spawnPos.y)")
             }
         } else {
@@ -1914,6 +1929,14 @@ extension GameScene {
             }
         }
 
+        // Clear manual target when moving (user is redirecting, not targeting)
+        if selected === self.hermes {
+            self.hermes?.clearManualTarget()
+            // Clear target indicator if it was showing Hermes's target
+            self.targetIndicator?.remove()
+            self.targetIndicator = nil
+        }
+
         selected.moveTo(location)
         logger.debug("Moving \(selected.name) to \(location.x), \(location.y)")
     }
@@ -1942,18 +1965,24 @@ extension GameScene {
         return nil
     }
 
-    /// Target an enemy - sets Nathaniel's target and shows indicator
+    /// Target an enemy - sets the selected character's target and shows indicator
     private func targetEnemy(_ enemy: Enemy, tapLocation: CGPoint) {
-        guard let nathaniel else { return }
-
         // Only allow targeting enemies that are currently visible (not in fog of war)
         if let fog = fogOfWar, !fog.isVisible(at: enemy.position) {
             logger.debug("Cannot target enemy - not visible in fog of war")
             return
         }
 
-        // Set as Nathaniel's target for auto-attack
-        nathaniel.target = enemy
+        // Set target based on which character is selected
+        if self.selectedCharacter === self.hermes {
+            // Hermes is selected - set manual target override
+            self.hermes?.setManualTarget(enemy)
+            logger.debug("Hermes targeting enemy at (\(enemy.position.x), \(enemy.position.y))")
+        } else if let nathaniel {
+            // Nathaniel is selected - set his target
+            nathaniel.target = enemy
+            logger.debug("Nathaniel targeting enemy at (\(enemy.position.x), \(enemy.position.y))")
+        }
 
         // Remove existing indicator
         self.targetIndicator?.remove()
@@ -1963,13 +1992,12 @@ extension GameScene {
 
         // Play feedback
         self.playTargetFeedback(at: tapLocation)
-
-        logger.debug("Targeted enemy at (\(enemy.position.x), \(enemy.position.y))")
     }
 
     /// Clear the current target (called when enemy dies)
     private func clearTarget() {
         self.nathaniel?.target = nil
+        self.hermes?.clearManualTarget()
         self.targetIndicator?.remove()
         self.targetIndicator = nil
     }

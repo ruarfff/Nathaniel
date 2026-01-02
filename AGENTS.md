@@ -52,10 +52,12 @@ make help
 
 # Build and run
 make ios                    # iOS simulator
+make ios-device             # Physical iOS device
 make macos                  # macOS native
 
 # Build only (no run)
 make ios-build
+make ios-device-build
 make macos-build
 
 # Fresh install (cleans everything first)
@@ -72,9 +74,11 @@ make stop                   # Stop all running instances
 | Command | Description |
 |---------|-------------|
 | `make ios` | Build and run iOS app in simulator |
+| `make ios-device` | Build and install iOS app on connected device |
 | `make macos` | Build and run macOS app |
 | `make ios-fresh` | Clean install (removes old app data) |
-| `make ios-build` | Build iOS only |
+| `make ios-build` | Build iOS only (simulator) |
+| `make ios-device-build` | Build iOS only (device) |
 | `make macos-build` | Build macOS only |
 | `make test` | Run all smoke tests |
 | `make test-ios` | Run iOS smoke tests |
@@ -85,6 +89,7 @@ make stop                   # Stop all running instances
 | `make stop` | Stop all running instances |
 | `make clean` | Clean build products |
 | `make list-simulators` | List available simulators |
+| `make list-devices` | List connected iOS devices |
 
 ### Running from Xcode
 
@@ -94,6 +99,41 @@ make stop                   # Stop all running instances
    - **Nathaniel macOS** - for Mac
 3. Choose a destination (iOS Simulator or "My Mac")
 4. Press **Cmd+R** to build and run
+
+### Deploying to Physical iOS Device
+
+To install the game on your iPhone or iPad:
+
+**Prerequisites:**
+- Apple Developer account (free or paid)
+- Device connected via USB or WiFi
+- Device unlocked and trusted on your Mac
+- Developer Mode enabled on device (iOS 16+: Settings > Privacy & Security > Developer Mode)
+
+**Quick deployment:**
+```bash
+# Check if device is connected
+make list-devices
+
+# Build, install, and launch on device
+make ios-device
+
+# Build only (no install)
+make ios-device-build
+```
+
+**First-time setup:**
+1. Connect your device via USB
+2. Trust your Mac when prompted on the device
+3. Enable Developer Mode (Settings > Privacy & Security > Developer Mode)
+4. In Xcode, sign in with your Apple ID (Xcode > Settings > Accounts)
+5. Select the "Nathaniel iOS" scheme and your device as destination
+6. If you see signing errors, Xcode will prompt you to fix them
+
+**Troubleshooting:**
+- "Device not found": Run `make list-devices` to verify connection
+- Signing errors: Open Xcode and let it manage provisioning automatically
+- "Untrusted Developer": On device, go to Settings > General > VPN & Device Management, trust your developer certificate
 
 ### Advanced: Raw xcodebuild
 
