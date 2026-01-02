@@ -787,6 +787,17 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
                     self?.handleNathanielDeath()
                 }
 
+                // Set up targeting callbacks for Nathaniel auto-targeting
+                nathaniel.findEnemiesInRange = { [weak self] in
+                    self?.enemyManager.aliveEnemies ?? []
+                }
+                nathaniel.getAllies = { [weak self] in
+                    var allies: [Character] = []
+                    if let nathaniel = self?.nathaniel { allies.append(nathaniel) }
+                    if let hermes = self?.hermes { allies.append(hermes) }
+                    return allies
+                }
+
                 print("GameScene: Spawned Nathaniel at \(spawnPos.x), \(spawnPos.y)")
             }
         } else {
@@ -1979,8 +1990,8 @@ extension GameScene {
             self.hermes?.setManualTarget(enemy)
             logger.debug("Hermes targeting enemy at (\(enemy.position.x), \(enemy.position.y))")
         } else if let nathaniel {
-            // Nathaniel is selected - set his target
-            nathaniel.target = enemy
+            // Nathaniel is selected - set manual target override
+            nathaniel.setManualTarget(enemy)
             logger.debug("Nathaniel targeting enemy at (\(enemy.position.x), \(enemy.position.y))")
         }
 
@@ -1996,7 +2007,7 @@ extension GameScene {
 
     /// Clear the current target (called when enemy dies)
     private func clearTarget() {
-        self.nathaniel?.target = nil
+        self.nathaniel?.clearManualTarget()
         self.hermes?.clearManualTarget()
         self.targetIndicator?.remove()
         self.targetIndicator = nil
