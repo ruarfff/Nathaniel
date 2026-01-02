@@ -735,7 +735,8 @@ class StructureManager {
 
         tower.findNearestEnemy = { [weak self, weak tower] in
             guard let self, let tower else { return nil }
-            return self.findNearestEnemy(to: tower.position, range: tower.attackRange)
+            // Use threat-based targeting: prioritize enemies attacking tower, then allies
+            return self.findBestTarget(for: tower, range: tower.attackRange)
         }
 
         return tower
@@ -764,7 +765,8 @@ class StructureManager {
 
         tower.findNearestEnemy = { [weak self, weak tower] in
             guard let self, let tower else { return nil }
-            return self.findNearestEnemy(to: tower.position, range: tower.attackRange)
+            // Use threat-based targeting: prioritize enemies attacking tower, then allies
+            return self.findBestTarget(for: tower, range: tower.attackRange)
         }
 
         return tower
@@ -985,7 +987,7 @@ class StructureManager {
 
     // MARK: - Helpers
 
-    /// Find the nearest enemy to a position within range
+    /// Find the nearest enemy to a position within range (legacy - prefer findBestTarget)
     func findNearestEnemy(to position: CGPoint, range: CGFloat) -> Enemy? {
         guard let enemyManager else { return nil }
 
@@ -1004,6 +1006,35 @@ class StructureManager {
         }
 
         return nearestEnemy
+    }
+
+    /// Find the best target for a tower using threat assessment
+    /// Priority: 1) Enemies attacking this tower, 2) Enemies attacking allies, 3) Nearest enemy
+    /// - Parameters:
+    ///   - tower: The tower looking for a target
+    ///   - range: Maximum range to search
+    /// - Returns: The best enemy target, or nil if none in range
+    func findBestTarget(for tower: DefensiveStructure, range: CGFloat) -> Enemy? {
+        guard let enemyManager else { return nil }
+
+        let enemies = enemyManager.aliveEnemies
+
+        // Build allies list: tower itself (highest priority) + player characters
+        // The tower is first so ThreatAssessment gives enemies attacking it the protectedAllyBonus
+        var allies: [Character] = [tower]
+        allies.append(contentsOf: self.playerCharacters)
+
+        // Use supportive behavior so:
+        // - Enemies attacking this tower (first ally) get protectedAllyBonus (+5.0)
+        // - Enemies attacking Nathaniel/Hermes get aggroWeight (+3.0)
+        // - Distance and low HP factors still apply
+        return ThreatAssessment.findBestTarget(
+            from: tower.position,
+            enemies: enemies,
+            allies: allies,
+            behavior: .supportive,
+            maxRange: range
+        )
     }
 
     /// Get all active structures
