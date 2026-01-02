@@ -551,3 +551,39 @@ Additional documentation is available in the `docs/` directory:
 - [Adding Towers](docs/adding-towers.md) - How to create new defensive structures
 - [Testing Guide](docs/testing.md) - How to test the game with GameCommandServer
 - [Automation](docs/automation.md) - Smoke tests and CI setup
+
+
+## Wrapping Up
+
+**When the user says "let's wrap up"**, follow this clean session-ending protocol:
+
+1. **File beads issues for any remaining work** that needs follow-up.
+2. **Ensure all quality gates pass** (only if code changes were made) - run tests, linters, builds (file P0 issues if broken)
+3. **Updated beads issues** - close finished work, update status
+4. **Sync issue tracker carefully** - Work methodically to ensure both local and remote issues merge safely. This may require pulling, conflict resolution, syncing database and verification.
+5. **Clean up git state** - Clear old stashes and prune dead remote branches
+6. **Verify clean state** - Ensure all changes are committed, no untracked files remain, and the working directory is clean.
+7. **Choose a follow-up issue for next session**
+    - Provide a prompt for the use to give you in the next session
+    - Format: "Continue work on Nathaniel-X: [issue title]. [Brief context about what's been done and what's next]"
+
+**Example "let's wrap up" session:**
+
+```bash
+# 1. File remaining work
+bd create "Add integration tests for GameCommandServer" -t task -p 2 --json
+
+# 2. Run quality gates
+make test lint format
+
+# 3. Update issue tracker
+bd close "Some task"
+bd update "Some task" -s done
+
+# 4. Clean up git state
+git stash clear
+git remote prune origin
+
+# 5. Verify clean state
+git status
+```
