@@ -130,7 +130,13 @@ class Hermes: Character {
     let laser: LaserBeam
 
     /// Whether currently firing the laser
-    private(set) var isFiring: Bool = false
+    private(set) var isFiring: Bool = false {
+        didSet {
+            if oldValue != self.isFiring {
+                self.updateCombatGlow()
+            }
+        }
+    }
 
     /// Time elapsed in current laser burst
     private var burstElapsed: TimeInterval = 0
@@ -142,7 +148,14 @@ class Hermes: Character {
     private var hasPlayedLaserSound: Bool = false
 
     /// Current target for combat (may be auto-acquired or manual)
-    weak var currentTarget: Character?
+    weak var currentTarget: Character? {
+        didSet {
+            // Update target indicator when target changes
+            if oldValue !== self.currentTarget {
+                self.updateTargetIndicator()
+            }
+        }
+    }
 
     /// Manual target override set by player (takes priority over auto-targeting)
     weak var manualTargetOverride: Character?
@@ -155,6 +168,14 @@ class Hermes: Character {
 
     /// Callback for getting ally list (set by GameScene)
     var getAllies: (() -> [Character])?
+
+    // MARK: - Combat Visual Properties
+
+    /// Visual indicator showing Hermes's current target (cyan ring)
+    private var targetIndicator: TargetIndicator?
+
+    /// Glow effect shown when Hermes is actively firing
+    private var combatGlow: SKShapeNode?
 
     // MARK: - Initialization
 
@@ -326,6 +347,9 @@ class Hermes: Character {
 
         // Update combat (targeting and laser)
         self.updateCombat(deltaTime: deltaTime)
+
+        // Update target indicator position to follow target
+        self.targetIndicator?.updatePosition()
 
         super.update(deltaTime: deltaTime)
     }
@@ -812,6 +836,73 @@ class Hermes: Character {
     /// Hide the follow state indicator
     private func hideFollowIndicator() {
         self.followIndicator?.isHidden = true
+    }
+
+    // MARK: - Combat Visual Feedback
+
+    /// Update the target indicator when current target changes
+    private func updateTargetIndicator() {
+        // Remove existing indicator
+        self.targetIndicator?.remove()
+        self.targetIndicator = nil
+
+        // Create new indicator for current target
+        guard let target = self.currentTarget,
+              let scene = sprite.scene
+        else {
+            return
+        }
+
+        // Create cyan indicator for Hermes's target
+        self.targetIndicator = TargetIndicator.createCyan(for: target.sprite, in: scene)
+    }
+
+    /// Update combat glow effect based on firing state
+    private func updateCombatGlow() {
+        if self.isFiring {
+            self.showCombatGlow()
+        } else {
+            self.hideCombatGlow()
+        }
+    }
+
+    /// Show the combat glow effect (cyan glow around Hermes when firing)
+    private func showCombatGlow() {
+        if self.combatGlow == nil {
+            // Create a subtle glow circle around Hermes
+            let glowRadius: CGFloat = 35
+            let glow = SKShapeNode(circleOfRadius: glowRadius)
+            glow.strokeColor = .clear
+            glow.fillColor = SKColor(red: 0.0, green: 0.8, blue: 1.0, alpha: 0.2)
+            glow.glowWidth = 8
+            glow.zPosition = -1 // Behind sprite
+
+            sprite.addChild(glow)
+            self.combatGlow = glow
+        }
+
+        // Fade in the glow
+        self.combatGlow?.alpha = 0
+        self.combatGlow?.isHidden = false
+        self.combatGlow?.run(SKAction.fadeAlpha(to: 1.0, duration: 0.1))
+
+        // Add pulsing effect while firing
+        let pulse = SKAction.sequence([
+            SKAction.scale(to: 1.15, duration: 0.15),
+            SKAction.scale(to: 1.0, duration: 0.15),
+        ])
+        self.combatGlow?.run(SKAction.repeatForever(pulse), withKey: "combatPulse")
+    }
+
+    /// Hide the combat glow effect
+    private func hideCombatGlow() {
+        self.combatGlow?.removeAction(forKey: "combatPulse")
+        self.combatGlow?.run(SKAction.sequence([
+            SKAction.fadeOut(withDuration: 0.2),
+            SKAction.run { [weak self] in
+                self?.combatGlow?.isHidden = true
+            },
+        ]))
     }
 
     // MARK: - Build Radius Visual

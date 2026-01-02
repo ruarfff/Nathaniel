@@ -18,11 +18,15 @@ class TargetIndicator: SKNode {
     /// Default ring radius (compact - positioned at enemy feet)
     static let defaultRadius: CGFloat = 25
 
-    /// Ring stroke color
+    /// Ring stroke color (red for player targeting)
     static let ringColor = SKColor(red: 1.0, green: 0.2, blue: 0.2, alpha: 1.0)
 
     /// Ring fill color (subtle fill for visibility)
     static let fillColor = SKColor(red: 1.0, green: 0.2, blue: 0.2, alpha: 0.1)
+
+    /// Cyan color for Hermes targeting
+    static let cyanRingColor = SKColor(red: 0.0, green: 0.8, blue: 1.0, alpha: 1.0)
+    static let cyanFillColor = SKColor(red: 0.0, green: 0.8, blue: 1.0, alpha: 0.1)
 
     /// Ring stroke width (thinner for compact look)
     static let strokeWidth: CGFloat = 2.0
@@ -36,22 +40,26 @@ class TargetIndicator: SKNode {
 
     // MARK: - Initialization
 
-    init(radius: CGFloat = TargetIndicator.defaultRadius) {
+    init(
+        radius: CGFloat = TargetIndicator.defaultRadius,
+        strokeColor: SKColor = TargetIndicator.ringColor,
+        fillColor: SKColor = TargetIndicator.fillColor
+    ) {
         self.radius = radius
 
         // Create the ring shape
-        ringNode = SKShapeNode(circleOfRadius: radius)
-        ringNode.strokeColor = TargetIndicator.ringColor
-        ringNode.fillColor = TargetIndicator.fillColor
-        ringNode.lineWidth = TargetIndicator.strokeWidth
-        ringNode.glowWidth = 0.5 // Subtle glow effect
+        self.ringNode = SKShapeNode(circleOfRadius: radius)
+        self.ringNode.strokeColor = strokeColor
+        self.ringNode.fillColor = fillColor
+        self.ringNode.lineWidth = TargetIndicator.strokeWidth
+        self.ringNode.glowWidth = 0.5 // Subtle glow effect
 
         super.init()
 
-        addChild(ringNode)
+        addChild(self.ringNode)
 
         // Start the pulse animation
-        startPulseAnimation()
+        self.startPulseAnimation()
     }
 
     @available(*, unavailable)
@@ -78,7 +86,7 @@ class TargetIndicator: SKNode {
         let pulse = SKAction.sequence([scaleUp, scaleDown])
         let repeatPulse = SKAction.repeatForever(pulse)
 
-        ringNode.run(repeatPulse, withKey: "pulse")
+        self.ringNode.run(repeatPulse, withKey: "pulse")
     }
 
     // MARK: - Target Tracking
@@ -88,7 +96,7 @@ class TargetIndicator: SKNode {
 
     /// Attach the indicator to a target node
     func attach(to target: SKNode) {
-        trackedTarget = target
+        self.trackedTarget = target
 
         // Position at target's feet (below center)
         position = CGPoint(
@@ -122,9 +130,20 @@ class TargetIndicator: SKNode {
 
     // MARK: - Static Factory
 
-    /// Create and attach a target indicator to an enemy
+    /// Create and attach a target indicator to an enemy (red - player targeting)
     static func create(for target: SKNode, in scene: SKScene) -> TargetIndicator {
         let indicator = TargetIndicator()
+        indicator.attach(to: target)
+        scene.addChild(indicator)
+        return indicator
+    }
+
+    /// Create and attach a cyan target indicator (for Hermes targeting)
+    static func createCyan(for target: SKNode, in scene: SKScene) -> TargetIndicator {
+        let indicator = TargetIndicator(
+            strokeColor: cyanRingColor,
+            fillColor: cyanFillColor
+        )
         indicator.attach(to: target)
         scene.addChild(indicator)
         return indicator
