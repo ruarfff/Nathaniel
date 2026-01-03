@@ -283,6 +283,14 @@ class Character: GameEntity {
     /// Pathfinding component for A* navigation (optional)
     var pathfinding: PathfindingMovement?
 
+    // MARK: - Targeting
+
+    /// Callback to find enemies within targeting range
+    var findEnemiesInRange: (() -> [Enemy])?
+
+    /// Callback to get allied characters for group targeting
+    var getAllies: (() -> [Character])?
+
     /// Final destination when using pathfinding (may differ from current waypoint)
     private var finalDestination: CGPoint?
 

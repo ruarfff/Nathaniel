@@ -531,109 +531,99 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         notification.run(SKAction.sequence([fadeIn, wait, fadeOut, remove]))
     }
 
-    private func setupHUD() {
-        // Calculate visible area for HUD positioning
-        // The HUD is attached to the camera, which uses centered coordinates
-        // With .aspectFill, the scene is scaled to FILL the view (no black bars)
-        // The scale factor is: max(viewWidth/sceneWidth, viewHeight/sceneHeight)
-        // This means part of the scene extends beyond the visible area and gets cropped
-        //
-        // IMPORTANT: We assume landscape orientation where width > height
-        // The view.bounds may not be reliable during didMove(to:) as the layout
-        // may not have completed yet. We use max/min to ensure correct orientation.
-        let hudSize: CGSize
-        var safeInsets = HUDSafeAreaInsets.zero
-
-        if let view {
-            // Get view dimensions, ensuring landscape orientation (width > height)
-            let viewWidth = max(view.bounds.width, view.bounds.height)
-            let viewHeight = min(view.bounds.width, view.bounds.height)
-
-            // Calculate scale factors for each dimension
-            let scaleX = viewWidth / size.width
-            let scaleY = viewHeight / size.height
-
-            // aspectFill uses the larger scale (to fill the view completely)
-            let scale = max(scaleX, scaleY)
-
-            // Calculate visible area in scene coordinates
-            // This is the portion of the scene that's actually visible on screen
-            let visibleWidth = viewWidth / scale
-            let visibleHeight = viewHeight / scale
-
-            hudSize = CGSize(width: visibleWidth, height: visibleHeight)
-
-            // Get safe area insets and convert to scene coordinates
-            #if os(iOS)
-                let viewSafeInsets = view.safeAreaInsets
-
-                // Check if the view bounds are in portrait orientation (height > width)
-                // If so, we need to rotate the safe area insets to match landscape
-                let viewIsPortrait = view.bounds.height > view.bounds.width
-
-                let landscapeSafeInsets: UIEdgeInsets
-                if viewIsPortrait {
-                    // View is in portrait but we want landscape coordinates
-                    // Rotate CCW: portrait top->landscape left, portrait bottom->landscape right
-                    // portrait left->landscape bottom, portrait right->landscape top
-                    landscapeSafeInsets = UIEdgeInsets(
-                        top: viewSafeInsets.right,
-                        left: viewSafeInsets.top,
-                        bottom: viewSafeInsets.left,
-                        right: viewSafeInsets.bottom
-                    )
-                    logger.debug("View in portrait, rotating safe insets for landscape")
-                } else {
-                    landscapeSafeInsets = viewSafeInsets
-                }
-
-                // Convert from view points to scene coordinates by dividing by scale
-                safeInsets = HUDSafeAreaInsets(
-                    top: landscapeSafeInsets.top / scale,
-                    bottom: landscapeSafeInsets.bottom / scale,
-                    left: landscapeSafeInsets.left / scale,
-                    right: landscapeSafeInsets.right / scale
-                )
-                logger
-                    .debug(
-                        "Safe insets: t=\(safeInsets.top) b=\(safeInsets.bottom) l=\(safeInsets.left) r=\(safeInsets.right)"
-                    )
-            #endif
-
-            logger
-                .debug(
-                    "HUD: view=\(viewWidth)x\(viewHeight) scene=\(self.size.width)x\(self.size.height) hud=\(hudSize.width)x\(hudSize.height)"
-                )
-        } else {
-            hudSize = size
+    /// Calculate the visible viewport size in scene coordinates.
+    /// With .aspectFill, the scene is scaled to fill the view completely.
+    /// - Returns: Tuple of (viewportSize, scaleFactor) for use in HUD positioning
+    private func calculateVisibleViewport() -> (size: CGSize, scale: CGFloat) {
+        guard let view else {
+            return (size, 1.0)
         }
 
-        // Store the visible viewport size for camera clamping
+        // Get view dimensions, ensuring landscape orientation (width > height)
+        // The view.bounds may not be reliable during didMove(to:) as the layout
+        // may not have completed yet. We use max/min to ensure correct orientation.
+        let viewWidth = max(view.bounds.width, view.bounds.height)
+        let viewHeight = min(view.bounds.width, view.bounds.height)
+
+        // aspectFill uses the larger scale (to fill the view completely)
+        let scaleX = viewWidth / size.width
+        let scaleY = viewHeight / size.height
+        let scale = max(scaleX, scaleY)
+
+        // Calculate visible area in scene coordinates
+        let visibleWidth = viewWidth / scale
+        let visibleHeight = viewHeight / scale
+
+        logger.debug(
+            "HUD: view=\(viewWidth)x\(viewHeight) scene=\(self.size.width)x\(self.size.height) viewport=\(visibleWidth)x\(visibleHeight)"
+        )
+
+        return (CGSize(width: visibleWidth, height: visibleHeight), scale)
+    }
+
+    #if os(iOS)
+        /// Calculate safe area insets in scene coordinates (iOS only).
+        /// Handles rotation from portrait view bounds to landscape scene coordinates.
+        /// - Parameter scale: The scale factor from view to scene coordinates
+        /// - Returns: Safe area insets converted to scene coordinates
+        private func calculateSafeAreaInsets(scale: CGFloat) -> HUDSafeAreaInsets {
+            guard let view else {
+                return .zero
+            }
+
+            let viewSafeInsets = view.safeAreaInsets
+            let viewIsPortrait = view.bounds.height > view.bounds.width
+
+            // If view is portrait, rotate insets to match landscape orientation
+            let landscapeSafeInsets: UIEdgeInsets
+            if viewIsPortrait {
+                // Rotate CCW: portrait top->landscape left, portrait right->landscape top, etc.
+                landscapeSafeInsets = UIEdgeInsets(
+                    top: viewSafeInsets.right,
+                    left: viewSafeInsets.top,
+                    bottom: viewSafeInsets.left,
+                    right: viewSafeInsets.bottom
+                )
+                logger.debug("View in portrait, rotating safe insets for landscape")
+            } else {
+                landscapeSafeInsets = viewSafeInsets
+            }
+
+            // Convert from view points to scene coordinates
+            let safeInsets = HUDSafeAreaInsets(
+                top: landscapeSafeInsets.top / scale,
+                bottom: landscapeSafeInsets.bottom / scale,
+                left: landscapeSafeInsets.left / scale,
+                right: landscapeSafeInsets.right / scale
+            )
+            logger.debug(
+                "Safe insets: t=\(safeInsets.top) b=\(safeInsets.bottom) l=\(safeInsets.left) r=\(safeInsets.right)"
+            )
+
+            return safeInsets
+        }
+    #endif
+
+    private func setupHUD() {
+        let (hudSize, scale) = self.calculateVisibleViewport()
         self.visibleViewportSize = hudSize
+
+        #if os(iOS)
+            let safeInsets = self.calculateSafeAreaInsets(scale: scale)
+        #else
+            let safeInsets = HUDSafeAreaInsets.zero
+            _ = scale // Silence unused warning on macOS
+        #endif
 
         self.hud = HUD(size: hudSize, safeAreaInsets: safeInsets)
         self.hud.zPosition = 500
         self.cameraNode.addChild(self.hud)
 
-        // Set up Release Hermes button callback
-        self.hud.onReleaseHermes = { [weak self] in
-            self?.releaseHermes()
-        }
-
-        // Set up character toggle button callback
-        self.hud.onCharacterToggle = { [weak self] in
-            self?.toggleSelectedCharacter()
-        }
-
-        // Set up follow mode toggle button callback
-        self.hud.onFollowModeToggle = { [weak self] in
-            self?.toggleHermesFollowMode()
-        }
-
-        // Set up pause button callback
-        self.hud.onPauseTapped = { [weak self] in
-            self?.pauseGame()
-        }
+        // Wire up HUD button callbacks
+        self.hud.onReleaseHermes = { [weak self] in self?.releaseHermes() }
+        self.hud.onCharacterToggle = { [weak self] in self?.toggleSelectedCharacter() }
+        self.hud.onFollowModeToggle = { [weak self] in self?.toggleHermesFollowMode() }
+        self.hud.onPauseTapped = { [weak self] in self?.pauseGame() }
 
         // Initialize with starting values
         self.hud.update(
@@ -735,7 +725,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         }
     }
 
-    /// Configure common character properties (position, health bar, pathfinding, collision)
+    /// Configure common character properties (position, health bar, pathfinding, collision, targeting)
     private func configureCharacterCommon(_ character: Character, at position: CGPoint, with renderer: TMXRenderer) {
         character.position = position
         character.sprite.zPosition = self.characterZPosition
@@ -751,6 +741,17 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         // Add structure collision check so characters path around towers
         character.pathfinding?.structureCollisionCheck = { [weak self] position, radius in
             self?.structureManager.collidesWithStructure(at: position, entityRadius: radius) ?? false
+        }
+
+        // Set up targeting callbacks for auto-targeting
+        character.findEnemiesInRange = { [weak self] in
+            self?.enemyManager.aliveEnemies ?? []
+        }
+        character.getAllies = { [weak self] in
+            var allies: [Character] = []
+            if let nathaniel = self?.nathaniel { allies.append(nathaniel) }
+            if let hermes = self?.hermes { allies.append(hermes) }
+            return allies
         }
     }
 
@@ -794,17 +795,6 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
                     self?.handleNathanielDeath()
                 }
 
-                // Set up targeting callbacks for Nathaniel auto-targeting
-                nathaniel.findEnemiesInRange = { [weak self] in
-                    self?.enemyManager.aliveEnemies ?? []
-                }
-                nathaniel.getAllies = { [weak self] in
-                    var allies: [Character] = []
-                    if let nathaniel = self?.nathaniel { allies.append(nathaniel) }
-                    if let hermes = self?.hermes { allies.append(hermes) }
-                    return allies
-                }
-
                 print("GameScene: Spawned Nathaniel at \(spawnPos.x), \(spawnPos.y)")
             }
         } else {
@@ -833,17 +823,6 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
                 // Set up Hermes laser node
                 hermes.setupLaserNode(in: self)
-
-                // Set up targeting callbacks for Hermes combat
-                hermes.findEnemiesInRange = { [weak self] in
-                    self?.enemyManager.aliveEnemies ?? []
-                }
-                hermes.getAllies = { [weak self] in
-                    var allies: [Character] = []
-                    if let nathaniel = self?.nathaniel { allies.append(nathaniel) }
-                    if let hermes = self?.hermes { allies.append(hermes) }
-                    return allies
-                }
 
                 print("GameScene: Spawned Hermes at \(spawnPos.x), \(spawnPos.y)")
             }

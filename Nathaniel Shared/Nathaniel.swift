@@ -44,12 +44,6 @@ class Nathaniel: Character {
     /// Current targeting behavior mode
     var targetingBehavior: TargetingBehavior = .aggressive
 
-    /// Callback for checking enemy collision (set by GameScene)
-    var findEnemiesInRange: (() -> [Enemy])?
-
-    /// Callback for getting ally list (set by GameScene)
-    var getAllies: (() -> [Character])?
-
     /// Visual indicator showing Nathaniel's current target (red ring)
     private var targetIndicator: TargetIndicator?
 

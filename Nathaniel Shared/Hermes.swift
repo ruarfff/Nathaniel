@@ -163,12 +163,6 @@ class Hermes: Character {
     /// Current targeting behavior mode
     var targetingBehavior: TargetingBehavior = .supportive
 
-    /// Callback for checking enemy collision (set by GameScene)
-    var findEnemiesInRange: (() -> [Enemy])?
-
-    /// Callback for getting ally list (set by GameScene)
-    var getAllies: (() -> [Character])?
-
     // MARK: - Combat Visual Properties
 
     /// Visual indicator showing Hermes's current target (cyan ring)
