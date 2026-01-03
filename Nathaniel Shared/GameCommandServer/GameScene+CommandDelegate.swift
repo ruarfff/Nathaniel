@@ -665,6 +665,133 @@
                 SaveManager.shared.deleteAllSlots()
                 return .success("Deleted all save slots")
 
+            // MARK: - Targeting Debug Actions
+
+            case "getCombatState":
+                var state: [String: String] = [:]
+
+                // Nathaniel targeting
+                if let nathaniel = findNathaniel() {
+                    if let target = nathaniel.currentTarget as? Enemy {
+                        let index = self.findEnemyManager()?.enemies.firstIndex(where: { $0 === target }) ?? -1
+                        state["nathanielTarget"] = "enemy_\(index)"
+                    } else {
+                        state["nathanielTarget"] = "none"
+                    }
+                    state["nathanielManualOverride"] = nathaniel.manualTargetOverride != nil ? "true" : "false"
+                    state["nathanielTargetingBehavior"] = "\(nathaniel.targetingBehavior)"
+                }
+
+                // Hermes targeting
+                if let hermes = findHermes() {
+                    if let target = hermes.currentTarget as? Enemy {
+                        let index = self.findEnemyManager()?.enemies.firstIndex(where: { $0 === target }) ?? -1
+                        state["hermesTarget"] = "enemy_\(index)"
+                    } else {
+                        state["hermesTarget"] = "none"
+                    }
+                    state["hermesManualOverride"] = hermes.manualTargetOverride != nil ? "true" : "false"
+                    state["hermesTargetingBehavior"] = "\(hermes.targetingBehavior)"
+                    state["hermesIsFiring"] = hermes.isFiring ? "true" : "false"
+                    let modeString = switch hermes.mode {
+                    case .following: "following"
+                    case .independent: "independent"
+                    case .locked: "locked"
+                    }
+                    state["hermesMode"] = modeString
+                }
+
+                // Tower targeting
+                if let structMgr = findStructureManager() {
+                    var towerTargets: [String] = []
+                    for (idx, tower) in structMgr.structures.enumerated() where tower.isActive {
+                        if let target = tower.currentTarget as? Enemy {
+                            let enemyIdx = findEnemyManager()?.enemies.firstIndex(where: { $0 === target }) ?? -1
+                            towerTargets.append("tower_\(idx)->enemy_\(enemyIdx)")
+                        } else {
+                            towerTargets.append("tower_\(idx)->none")
+                        }
+                    }
+                    state["towerTargets"] = towerTargets.joined(separator: ",")
+                    state["towerCount"] = "\(structMgr.structures.filter(\.isActive).count)"
+                }
+
+                let stateStr = state.map { "\($0.key)=\($0.value)" }.sorted().joined(separator: "; ")
+                return .success(stateStr)
+
+            case "getNathanielTarget":
+                guard let nathaniel = findNathaniel() else {
+                    return .failure("Nathaniel not found")
+                }
+                if let target = nathaniel.currentTarget as? Enemy {
+                    let index = self.findEnemyManager()?.enemies.firstIndex(where: { $0 === target }) ?? -1
+                    let manual = nathaniel.manualTargetOverride != nil ? " (manual)" : " (auto)"
+                    return .success("enemy_\(index)\(manual) at (\(Int(target.position.x)), \(Int(target.position.y)))")
+                }
+                return .success("none")
+
+            case "getHermesTarget":
+                guard let hermes = findHermes() else {
+                    return .failure("Hermes not found")
+                }
+                if let target = hermes.currentTarget as? Enemy {
+                    let index = self.findEnemyManager()?.enemies.firstIndex(where: { $0 === target }) ?? -1
+                    let manual = hermes.manualTargetOverride != nil ? " (manual)" : " (auto)"
+                    return .success("enemy_\(index)\(manual) at (\(Int(target.position.x)), \(Int(target.position.y)))")
+                }
+                return .success("none")
+
+            case "getHermesCombatState":
+                guard let hermes = findHermes() else {
+                    return .failure("Hermes not found")
+                }
+                var state: [String] = []
+                let modeString = switch hermes.mode {
+                case .following: "following"
+                case .independent: "independent"
+                case .locked: "locked"
+                }
+                state.append("mode=\(modeString)")
+                state.append("isFiring=\(hermes.isFiring)")
+                state.append("behavior=\(hermes.targetingBehavior)")
+                if let target = hermes.currentTarget as? Enemy {
+                    let index = self.findEnemyManager()?.enemies.firstIndex(where: { $0 === target }) ?? -1
+                    state.append("target=enemy_\(index)")
+                } else {
+                    state.append("target=none")
+                }
+                state.append("manualOverride=\(hermes.manualTargetOverride != nil)")
+                return .success(state.joined(separator: "; "))
+
+            case "getTowerTargets":
+                guard let structMgr = findStructureManager() else {
+                    return .failure("StructureManager not found")
+                }
+                var results: [String] = []
+                for (idx, tower) in structMgr.structures.enumerated() where tower.isActive {
+                    let typeName = tower.name
+                    if let target = tower.currentTarget as? Enemy {
+                        let enemyIdx = findEnemyManager()?.enemies.firstIndex(where: { $0 === target }) ?? -1
+                        results.append("\(typeName)_\(idx)->enemy_\(enemyIdx)")
+                    } else {
+                        results.append("\(typeName)_\(idx)->none")
+                    }
+                }
+                if results.isEmpty {
+                    return .success("No active towers")
+                }
+                return .success(results.joined(separator: "; "))
+
+            case "waitForCombat":
+                // Wait a brief moment for combat to engage, then return state
+                // This is a synchronous check - caller should poll if needed
+                let hasNathanielTarget = self.findNathaniel()?.currentTarget != nil
+                let hasHermesTarget = self.findHermes()?.currentTarget != nil
+                let enemyCount = self.findEnemyManager()?.aliveCount ?? 0
+                return .success(
+                    "nathanielHasTarget=\(hasNathanielTarget); hermesHasTarget=\(hasHermesTarget); enemies=\(enemyCount)"
+                )
+
             default:
                 return .failure("Unknown action: \(name)")
             }
