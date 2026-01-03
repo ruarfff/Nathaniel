@@ -1961,6 +1961,26 @@ extension GameScene {
     }
 }
 
+// MARK: - DEBUG Internal Accessors
+
+#if DEBUG
+    extension GameScene {
+        /// Internal accessors for GameCommandDelegate to avoid Mirror reflection.
+        /// These expose private properties only in DEBUG builds for testing.
+
+        var internalNathaniel: Nathaniel? { self.nathaniel }
+        var internalHermes: Hermes? { self.hermes }
+        var internalEnemyManager: EnemyManager? { self.enemyManager }
+        var internalStructureManager: StructureManager? { self.structureManager }
+        var internalLevelManager: LevelManager? { self.levelManager }
+        var internalPauseMenu: PauseMenu? { self.pauseMenu }
+        var internalSettingsMenu: SettingsMenu? { self.settingsMenu }
+        var internalSaveSlotSelector: SaveSlotSelector? { self.saveSlotSelector }
+        var internalCameraNode: SKCameraNode? { self.cameraNode }
+        var internalHUD: HUD? { self.hud }
+    }
+#endif
+
 // MARK: - DEBUG Touch Injection
 
 #if DEBUG

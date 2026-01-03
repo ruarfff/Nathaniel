@@ -196,154 +196,19 @@
 
         // MARK: - Public Accessors for Action Handlers
 
-        func findNathanielPublic() -> Nathaniel? {
-            self.findNathaniel()
-        }
+        /// These accessors use internal properties exposed by GameScene in DEBUG builds,
+        /// avoiding slow and fragile Mirror reflection.
 
-        func findHermesPublic() -> Hermes? {
-            self.findHermes()
-        }
-
-        func findEnemyManagerPublic() -> EnemyManager? {
-            self.findEnemyManager()
-        }
-
-        func findLevelManagerPublic() -> LevelManager? {
-            self.findLevelManager()
-        }
-
-        func findHUDPublic() -> HUD? {
-            self.findHUD()
-        }
-
-        func findPauseMenuPublic() -> PauseMenu? {
-            self.findPauseMenu()
-        }
-
-        func findSaveSlotSelectorPublic() -> SaveSlotSelector? {
-            self.findSaveSlotSelector()
-        }
-
-        func findSettingsMenuPublic() -> SettingsMenu? {
-            self.findSettingsMenu()
-        }
-
-        func findStructureManagerPublic() -> StructureManager? {
-            self.findStructureManager()
-        }
-
-        func findCameraNodePublic() -> SKCameraNode? {
-            self.findCameraNode()
-        }
-
-        // MARK: - Private Helper Methods
-
-        private func findNathaniel() -> Nathaniel? {
-            // Look for Nathaniel sprite in scene
-            for child in children {
-                if let nathaniel = child.userData?["character"] as? Nathaniel {
-                    return nathaniel
-                }
-            }
-            // Fallback: use Mirror to access private property
-            let mirror = Mirror(reflecting: self)
-            for child in mirror.children {
-                if child.label == "nathaniel", let nathaniel = child.value as? Nathaniel {
-                    return nathaniel
-                }
-            }
-            return nil
-        }
-
-        private func findHermes() -> Hermes? {
-            let mirror = Mirror(reflecting: self)
-            for child in mirror.children {
-                if child.label == "hermes", let hermes = child.value as? Hermes {
-                    return hermes
-                }
-            }
-            return nil
-        }
-
-        private func findEnemyManager() -> EnemyManager? {
-            let mirror = Mirror(reflecting: self)
-            for child in mirror.children {
-                if child.label == "enemyManager", let manager = child.value as? EnemyManager {
-                    return manager
-                }
-            }
-            return nil
-        }
-
-        private func findLevelManager() -> LevelManager? {
-            let mirror = Mirror(reflecting: self)
-            for child in mirror.children {
-                if child.label == "levelManager", let manager = child.value as? LevelManager {
-                    return manager
-                }
-            }
-            return nil
-        }
-
-        private func findHUD() -> HUD? {
-            let mirror = Mirror(reflecting: self)
-            for child in mirror.children {
-                if child.label == "hud", let hud = child.value as? HUD {
-                    return hud
-                }
-            }
-            return nil
-        }
-
-        private func findPauseMenu() -> PauseMenu? {
-            let mirror = Mirror(reflecting: self)
-            for child in mirror.children {
-                if child.label == "pauseMenu", let pauseMenu = child.value as? PauseMenu {
-                    return pauseMenu
-                }
-            }
-            return nil
-        }
-
-        private func findSaveSlotSelector() -> SaveSlotSelector? {
-            let mirror = Mirror(reflecting: self)
-            for child in mirror.children {
-                if child.label == "saveSlotSelector", let selector = child.value as? SaveSlotSelector {
-                    return selector
-                }
-            }
-            return nil
-        }
-
-        private func findSettingsMenu() -> SettingsMenu? {
-            let mirror = Mirror(reflecting: self)
-            for child in mirror.children {
-                if child.label == "settingsMenu", let menu = child.value as? SettingsMenu {
-                    return menu
-                }
-            }
-            return nil
-        }
-
-        private func findStructureManager() -> StructureManager? {
-            let mirror = Mirror(reflecting: self)
-            for child in mirror.children {
-                if child.label == "structureManager", let manager = child.value as? StructureManager {
-                    return manager
-                }
-            }
-            return nil
-        }
-
-        private func findCameraNode() -> SKCameraNode? {
-            let mirror = Mirror(reflecting: self)
-            for child in mirror.children {
-                if child.label == "cameraNode", let camera = child.value as? SKCameraNode {
-                    return camera
-                }
-            }
-            return nil
-        }
+        func findNathanielPublic() -> Nathaniel? { internalNathaniel }
+        func findHermesPublic() -> Hermes? { internalHermes }
+        func findEnemyManagerPublic() -> EnemyManager? { internalEnemyManager }
+        func findLevelManagerPublic() -> LevelManager? { internalLevelManager }
+        func findHUDPublic() -> HUD? { internalHUD }
+        func findPauseMenuPublic() -> PauseMenu? { internalPauseMenu }
+        func findSaveSlotSelectorPublic() -> SaveSlotSelector? { internalSaveSlotSelector }
+        func findSettingsMenuPublic() -> SettingsMenu? { internalSettingsMenu }
+        func findStructureManagerPublic() -> StructureManager? { internalStructureManager }
+        func findCameraNodePublic() -> SKCameraNode? { internalCameraNode }
     }
 
 #endif
