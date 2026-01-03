@@ -735,6 +735,25 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         }
     }
 
+    /// Configure common character properties (position, health bar, pathfinding, collision)
+    private func configureCharacterCommon(_ character: Character, at position: CGPoint, with renderer: TMXRenderer) {
+        character.position = position
+        character.sprite.zPosition = self.characterZPosition
+        character.sprite.setScale(3.0)
+
+        // Set up health bar (scaled for the 3x sprite size)
+        character.setupHealthBar(width: 40, yOffset: 8)
+        character.healthBar?.hideWhenFull = false // Always show player health
+
+        // Configure pathfinding for A* navigation around obstacles
+        character.configurePathfinding(with: renderer)
+
+        // Add structure collision check so characters path around towers
+        character.pathfinding?.structureCollisionCheck = { [weak self] position, radius in
+            self?.structureManager.collidesWithStructure(at: position, entityRadius: radius) ?? false
+        }
+    }
+
     /// Spawn all player characters at their designated spawn points
     private func spawnCharacters() {
         guard let renderer = mapRenderer else {
@@ -760,22 +779,8 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
             nathaniel = Nathaniel()
             if let nathaniel {
-                nathaniel.position = spawnPos
-                nathaniel.sprite.zPosition = self.characterZPosition
-                nathaniel.sprite.setScale(3.0)
+                self.configureCharacterCommon(nathaniel, at: spawnPos, with: renderer)
                 addChild(nathaniel.sprite)
-
-                // Set up health bar (scaled for the 3x sprite size)
-                nathaniel.setupHealthBar(width: 40, yOffset: 8)
-                nathaniel.healthBar?.hideWhenFull = false // Always show player health
-
-                // Configure pathfinding for A* navigation around obstacles
-                nathaniel.configurePathfinding(with: renderer)
-
-                // Add structure collision check so characters path around towers
-                nathaniel.pathfinding?.structureCollisionCheck = { [weak self] position, radius in
-                    self?.structureManager.collidesWithStructure(at: position, entityRadius: radius) ?? false
-                }
 
                 // Wire up weapon callbacks
                 nathaniel.weapon.onFire = { [weak self] projectile in
@@ -813,25 +818,11 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
             hermes = Hermes()
             if let hermes {
-                hermes.position = spawnPos
-                hermes.sprite.zPosition = self.characterZPosition
-                hermes.sprite.setScale(3.0)
+                self.configureCharacterCommon(hermes, at: spawnPos, with: renderer)
 
                 // Set Hermes to follow Nathaniel
                 hermes.followTarget = nathaniel
                 hermes.isInBuildMode = false // Start following
-
-                // Set up health bar
-                hermes.setupHealthBar(width: 40, yOffset: 8)
-                hermes.healthBar?.hideWhenFull = false // Always show player health
-
-                // Configure pathfinding for A* navigation around obstacles
-                hermes.configurePathfinding(with: renderer)
-
-                // Add structure collision check so characters path around towers
-                hermes.pathfinding?.structureCollisionCheck = { [weak self] position, radius in
-                    self?.structureManager.collidesWithStructure(at: position, entityRadius: radius) ?? false
-                }
 
                 // Wire up death callback for tower destruction
                 hermes.onDeathCallback = { [weak self] in
@@ -1347,6 +1338,41 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         logger.debug("Placement cancelled for \(type.displayName)")
     }
 
+    // MARK: - Camera Position Clamping
+
+    /// Clamp a position to keep the camera within map bounds
+    /// Accounts for zoom level and viewport size. Centers on map if map is smaller than viewport.
+    /// - Parameter position: The desired camera position
+    /// - Returns: The clamped position within map bounds
+    private func clampPositionToMapBounds(_ position: CGPoint) -> CGPoint {
+        guard let renderer = mapRenderer else { return position }
+
+        let effectiveViewport = self.visibleViewportSize.width > 0 ? self.visibleViewportSize : size
+        let halfWidth = (effectiveViewport.width / 2) * self.cameraZoom
+        let halfHeight = (effectiveViewport.height / 2) * self.cameraZoom
+
+        let mapWidth = CGFloat(renderer.map.pixelWidth)
+        let mapHeight = CGFloat(renderer.map.pixelHeight)
+
+        var clampedPos = position
+
+        // Handle X clamping: if map is narrower than viewport, center on map
+        if mapWidth <= halfWidth * 2 {
+            clampedPos.x = mapWidth / 2
+        } else {
+            clampedPos.x = max(halfWidth, min(mapWidth - halfWidth, clampedPos.x))
+        }
+
+        // Handle Y clamping: if map is shorter than viewport, center on map
+        if mapHeight <= halfHeight * 2 {
+            clampedPos.y = mapHeight / 2
+        } else {
+            clampedPos.y = max(halfHeight, min(mapHeight - halfHeight, clampedPos.y))
+        }
+
+        return clampedPos
+    }
+
     /// Make the camera smoothly follow the selected character
     private func updateCameraFollow() {
         #if DEBUG
@@ -1364,37 +1390,10 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
         // Skip if camera is animating (e.g., during character switch)
         guard !self.isCameraAnimating else { return }
-        guard let selected = selectedCharacter, let renderer = mapRenderer else { return }
+        guard let selected = selectedCharacter else { return }
 
-        // Target position is the selected character's position
-        let targetPos = selected.position
-
-        // Clamp to map bounds - use visible viewport size (not scene size) for correct clamping
-        // This accounts for aspectFill scaling where visible area differs from scene size
-        // When zoomed in (cameraZoom > 1), visible area is smaller so half dimensions decrease
-        // When zoomed out (cameraZoom < 1), visible area is larger so half dimensions increase
-        let effectiveViewport = self.visibleViewportSize.width > 0 ? self.visibleViewportSize : size
-        let halfWidth = (effectiveViewport.width / 2) * self.cameraZoom
-        let halfHeight = (effectiveViewport.height / 2) * self.cameraZoom
-
-        let mapWidth = CGFloat(renderer.map.pixelWidth)
-        let mapHeight = CGFloat(renderer.map.pixelHeight)
-
-        var clampedPos = targetPos
-
-        // Handle X clamping: if map is narrower than viewport, center on map
-        if mapWidth <= halfWidth * 2 {
-            clampedPos.x = mapWidth / 2
-        } else {
-            clampedPos.x = max(halfWidth, min(mapWidth - halfWidth, clampedPos.x))
-        }
-
-        // Handle Y clamping: if map is shorter than viewport, center on map
-        if mapHeight <= halfHeight * 2 {
-            clampedPos.y = mapHeight / 2
-        } else {
-            clampedPos.y = max(halfHeight, min(mapHeight - halfHeight, clampedPos.y))
-        }
+        // Clamp target position to map bounds
+        let clampedPos = self.clampPositionToMapBounds(selected.position)
 
         // Smooth camera movement (lerp)
         #if DEBUG
@@ -1412,69 +1411,17 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     /// Immediately clamp camera to map bounds (no smoothing)
     /// Use this for initial positioning or teleporting the camera
     private func clampCameraToMapBounds(targetPosition: CGPoint) {
-        guard let renderer = mapRenderer else {
-            self.cameraNode.position = targetPosition
-            return
-        }
-
-        let effectiveViewport = self.visibleViewportSize.width > 0 ? self.visibleViewportSize : size
-        let halfWidth = (effectiveViewport.width / 2) * self.cameraZoom
-        let halfHeight = (effectiveViewport.height / 2) * self.cameraZoom
-
-        let mapWidth = CGFloat(renderer.map.pixelWidth)
-        let mapHeight = CGFloat(renderer.map.pixelHeight)
-
-        var clampedPos = targetPosition
-
-        // Handle X clamping: if map is narrower than viewport, center on map
-        if mapWidth <= halfWidth * 2 {
-            clampedPos.x = mapWidth / 2
-        } else {
-            clampedPos.x = max(halfWidth, min(mapWidth - halfWidth, clampedPos.x))
-        }
-
-        // Handle Y clamping: if map is shorter than viewport, center on map
-        if mapHeight <= halfHeight * 2 {
-            clampedPos.y = mapHeight / 2
-        } else {
-            clampedPos.y = max(halfHeight, min(mapHeight - halfHeight, clampedPos.y))
-        }
-
-        self.cameraNode.position = clampedPos
+        self.cameraNode.position = self.clampPositionToMapBounds(targetPosition)
     }
 
     // MARK: - Camera Movement
 
     private func moveCamera(by delta: CGPoint) {
-        guard let renderer = mapRenderer else { return }
-
-        var newPos = self.cameraNode.position
-        newPos.x += delta.x
-        newPos.y += delta.y
-
-        // Clamp to map bounds - use visible viewport size for correct clamping
-        let effectiveViewport = self.visibleViewportSize.width > 0 ? self.visibleViewportSize : size
-        let halfWidth = (effectiveViewport.width / 2) * self.cameraZoom
-        let halfHeight = (effectiveViewport.height / 2) * self.cameraZoom
-
-        let mapWidth = CGFloat(renderer.map.pixelWidth)
-        let mapHeight = CGFloat(renderer.map.pixelHeight)
-
-        // Handle X clamping: if map is narrower than viewport, center on map
-        if mapWidth <= halfWidth * 2 {
-            newPos.x = mapWidth / 2
-        } else {
-            newPos.x = max(halfWidth, min(mapWidth - halfWidth, newPos.x))
-        }
-
-        // Handle Y clamping: if map is shorter than viewport, center on map
-        if mapHeight <= halfHeight * 2 {
-            newPos.y = mapHeight / 2
-        } else {
-            newPos.y = max(halfHeight, min(mapHeight - halfHeight, newPos.y))
-        }
-
-        self.cameraNode.position = newPos
+        let newPos = CGPoint(
+            x: self.cameraNode.position.x + delta.x,
+            y: self.cameraNode.position.y + delta.y
+        )
+        self.cameraNode.position = self.clampPositionToMapBounds(newPos)
     }
 
     // MARK: - Camera Zoom
@@ -1536,35 +1483,9 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             guard let touch = touches.first else { return }
             let location = touch.location(in: self)
 
-            // Check if save slot selector handles the touch (in HUD/camera space)
-            let hudLocation = self.cameraNode.convert(location, from: self)
-            if self.saveSlotSelector.isVisible {
-                _ = self.saveSlotSelector.handleTouch(at: hudLocation)
+            // Dispatch to overlay menus first
+            if dispatchInputToOverlayMenus(at: location) {
                 return
-            }
-
-            // Check if settings menu handles the touch (in HUD/camera space)
-            if self.settingsMenu.isVisible {
-                _ = self.settingsMenu.handleTouch(at: hudLocation)
-                return
-            }
-
-            // Check if pause menu handles the touch (in HUD/camera space)
-            if self.pauseMenu.isVisible {
-                _ = self.pauseMenu.handleTouch(at: hudLocation)
-                return
-            }
-
-            // Check if build menu handles the touch (in HUD/camera space)
-            if let controller = towerPlacementController {
-                if controller.handleTouchBegan(at: hudLocation) {
-                    // Touch was on a menu item - start dragging
-                    return
-                } else if controller.buildMenu.isVisible {
-                    // Build menu is visible but touch was outside - close it
-                    controller.hideMenu()
-                    return
-                }
             }
 
             handleTap(at: location)
@@ -1607,35 +1528,9 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         override func mouseDown(with event: NSEvent) {
             let location = event.location(in: self)
 
-            // Check if save slot selector handles the click (in HUD/camera space)
-            let hudLocation = self.cameraNode.convert(location, from: self)
-            if self.saveSlotSelector.isVisible {
-                _ = self.saveSlotSelector.handleTouch(at: hudLocation)
+            // Dispatch to overlay menus first
+            if dispatchInputToOverlayMenus(at: location) {
                 return
-            }
-
-            // Check if settings menu handles the click (in HUD/camera space)
-            if self.settingsMenu.isVisible {
-                _ = self.settingsMenu.handleTouch(at: hudLocation)
-                return
-            }
-
-            // Check if pause menu handles the click (in HUD/camera space)
-            if self.pauseMenu.isVisible {
-                _ = self.pauseMenu.handleTouch(at: hudLocation)
-                return
-            }
-
-            // Check if build menu handles the click (in HUD/camera space)
-            if let controller = towerPlacementController {
-                if controller.handleTouchBegan(at: hudLocation) {
-                    // Click was on a menu item - start dragging
-                    return
-                } else if controller.buildMenu.isVisible {
-                    // Build menu is visible but click was outside - close it
-                    controller.hideMenu()
-                    return
-                }
             }
 
             handleTap(at: location)
@@ -1864,54 +1759,54 @@ extension GameScene {
         self.towerPlacementController?.buildMenu.isVisible ?? false
     }
 
-    /// Handle tap with build menu consideration - closes menu if tap is outside
-    /// Returns true if menu was closed (tap was consumed), false if tap should be processed normally
-    func handleTapWithBuildMenuCheck(at scenePoint: CGPoint) -> Bool {
+    /// Dispatch input to all overlay menus (save slots, settings, pause, build menu)
+    /// - Parameter scenePoint: Touch/click location in scene coordinates
+    /// - Returns: true if input was handled by an overlay menu, false otherwise
+    private func dispatchInputToOverlayMenus(at scenePoint: CGPoint) -> Bool {
         let hudLocation = self.cameraNode.convert(scenePoint, from: self)
+
+        // Check overlays in z-order priority (highest first)
+        if self.saveSlotSelector.isVisible {
+            _ = self.saveSlotSelector.handleTouch(at: hudLocation)
+            return true
+        }
+
+        if self.settingsMenu.isVisible {
+            _ = self.settingsMenu.handleTouch(at: hudLocation)
+            return true
+        }
+
+        if self.pauseMenu.isVisible {
+            _ = self.pauseMenu.handleTouch(at: hudLocation)
+            return true
+        }
 
         if let controller = towerPlacementController {
             if controller.handleTouchBegan(at: hudLocation) {
-                // Touch was on a menu item
                 return true
             } else if controller.buildMenu.isVisible {
-                // Build menu is visible but touch was outside - close it
                 controller.hideMenu()
                 return true
             }
         }
+
         return false
+    }
+
+    /// Handle tap with build menu consideration - closes menu if tap is outside
+    /// Returns true if menu was closed (tap was consumed), false if tap should be processed normally
+    func handleTapWithBuildMenuCheck(at scenePoint: CGPoint) -> Bool {
+        // Use the unified dispatch helper
+        self.dispatchInputToOverlayMenus(at: scenePoint)
     }
 
     /// Animate camera to a target position with smooth easing
     private func animateCameraTo(_ position: CGPoint) {
-        guard let renderer = mapRenderer else { return }
-
         // Mark as animating to prevent updateCameraFollow from interfering
         self.isCameraAnimating = true
 
-        // Clamp target position to map bounds - use visible viewport size for correct clamping
-        let effectiveViewport = self.visibleViewportSize.width > 0 ? self.visibleViewportSize : size
-        let halfWidth = (effectiveViewport.width / 2) * self.cameraZoom
-        let halfHeight = (effectiveViewport.height / 2) * self.cameraZoom
-
-        let mapWidth = CGFloat(renderer.map.pixelWidth)
-        let mapHeight = CGFloat(renderer.map.pixelHeight)
-
-        var clampedPos = position
-
-        // Handle X clamping: if map is narrower than viewport, center on map
-        if mapWidth <= halfWidth * 2 {
-            clampedPos.x = mapWidth / 2
-        } else {
-            clampedPos.x = max(halfWidth, min(mapWidth - halfWidth, clampedPos.x))
-        }
-
-        // Handle Y clamping: if map is shorter than viewport, center on map
-        if mapHeight <= halfHeight * 2 {
-            clampedPos.y = mapHeight / 2
-        } else {
-            clampedPos.y = max(halfHeight, min(mapHeight - halfHeight, clampedPos.y))
-        }
+        // Clamp target position to map bounds
+        let clampedPos = self.clampPositionToMapBounds(position)
 
         // Animate to the clamped position
         let moveAction = SKAction.move(to: clampedPos, duration: 0.3)
@@ -2073,37 +1968,9 @@ extension GameScene {
         /// Handle a programmatic touch that goes through all menu checks
         /// Used by TouchInjector for testing build menu and other UI
         func handleInjectedTouchBegan(at point: CGPoint) {
-            // Convert world coordinates to HUD coordinates for menu checks
-            let hudLocation = self.cameraNode.convert(point, from: self)
-
-            // Check if save slot selector handles the touch
-            if self.saveSlotSelector.isVisible {
-                _ = self.saveSlotSelector.handleTouch(at: hudLocation)
+            // Dispatch to overlay menus first
+            if self.dispatchInputToOverlayMenus(at: point) {
                 return
-            }
-
-            // Check if settings menu handles the touch
-            if self.settingsMenu.isVisible {
-                _ = self.settingsMenu.handleTouch(at: hudLocation)
-                return
-            }
-
-            // Check if pause menu handles the touch
-            if self.pauseMenu.isVisible {
-                _ = self.pauseMenu.handleTouch(at: hudLocation)
-                return
-            }
-
-            // Check if build menu handles the touch
-            if let controller = towerPlacementController {
-                if controller.handleTouchBegan(at: hudLocation) {
-                    // Touch was on a menu item - start dragging
-                    return
-                } else if controller.buildMenu.isVisible {
-                    // Build menu is visible but touch was outside - close it
-                    controller.hideMenu()
-                    return
-                }
             }
 
             // Fall through to normal tap handling
