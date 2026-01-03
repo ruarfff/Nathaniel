@@ -236,7 +236,8 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         controller.delegate = self
 
         // Add build menu to camera (HUD layer)
-        controller.buildMenu.zPosition = 400
+        // zPosition 700: Above HUD (500) and HUD buttons (600), below PauseMenu (900)
+        controller.buildMenu.zPosition = 700
         self.cameraNode.addChild(controller.buildMenu)
 
         // Add placement indicator to scene (world space)

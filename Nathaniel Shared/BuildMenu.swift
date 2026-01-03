@@ -424,7 +424,7 @@ class BuildMenu: SKNode {
         ghost.size = CGSize(width: 50, height: 50)
         ghost.position = position
         ghost.alpha = 0.6
-        ghost.zPosition = 450 // Above menu but below HUD
+        ghost.zPosition = 750 // Above BuildMenu (700) but below PauseMenu (900)
         ghost.name = "ghostTower"
 
         parent?.addChild(ghost)
