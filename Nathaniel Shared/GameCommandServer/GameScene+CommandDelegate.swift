@@ -155,7 +155,12 @@
         // MARK: - Input Injection
 
         public func injectTap(at point: CGPoint) -> Bool {
-            // Use the existing handleTap method
+            // Check if build menu should handle this tap (close if outside)
+            if handleTapWithBuildMenuCheck(at: point) {
+                return true
+            }
+
+            // Use the existing handleTap method for other interactions
             handleTap(at: point)
             return true
         }

@@ -462,6 +462,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     func pauseGame() {
         guard self.levelManager.state == .playing else { return }
         self.levelManager.pause()
+        self.towerPlacementController?.hideMenu() // Close build menu if open
         self.pauseMenu.show()
         logger.info("Game paused")
     }
@@ -1861,6 +1862,24 @@ extension GameScene {
     /// Check if build menu is currently visible
     var isBuildMenuVisible: Bool {
         self.towerPlacementController?.buildMenu.isVisible ?? false
+    }
+
+    /// Handle tap with build menu consideration - closes menu if tap is outside
+    /// Returns true if menu was closed (tap was consumed), false if tap should be processed normally
+    func handleTapWithBuildMenuCheck(at scenePoint: CGPoint) -> Bool {
+        let hudLocation = self.cameraNode.convert(scenePoint, from: self)
+
+        if let controller = towerPlacementController {
+            if controller.handleTouchBegan(at: hudLocation) {
+                // Touch was on a menu item
+                return true
+            } else if controller.buildMenu.isVisible {
+                // Build menu is visible but touch was outside - close it
+                controller.hideMenu()
+                return true
+            }
+        }
+        return false
     }
 
     /// Animate camera to a target position with smooth easing
