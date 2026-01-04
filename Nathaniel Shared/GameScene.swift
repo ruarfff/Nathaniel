@@ -17,6 +17,9 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     /// The camera node for viewport control
     private var cameraNode: SKCameraNode!
 
+    /// Camera controller for following, zoom, and movement
+    private var cameraController: CameraController!
+
     /// The map renderer
     private var mapRenderer: TMXRenderer?
 
@@ -73,20 +76,6 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
     /// Z-position for character sprites (above map tiles)
     private let characterZPosition: CGFloat = 100
-
-    // MARK: - Camera Zoom Properties
-
-    /// Current camera zoom level (1.0 = default, higher = zoomed in)
-    private var cameraZoom: CGFloat = 1.0
-
-    /// Minimum zoom level (zoomed out)
-    private let minZoom: CGFloat = 0.5
-
-    /// Maximum zoom level (zoomed in)
-    private let maxZoom: CGFloat = 2.0
-
-    /// Whether camera is currently animating to a new position
-    private var isCameraAnimating: Bool = false
 
     /// Visible viewport size in scene coordinates (accounts for aspectFill scaling)
     /// This is the portion of the scene that's actually visible on screen
@@ -419,7 +408,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
         // Update camera to follow restored Nathaniel position (clamped to map bounds)
         if let nathaniel {
-            self.clampCameraToMapBounds(targetPosition: nathaniel.position)
+            self.cameraController.setPosition(nathaniel.position)
         }
 
         // Update HUD
@@ -642,6 +631,12 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
         // Start camera at a reasonable position
         self.cameraNode.position = CGPoint(x: size.width / 2, y: size.height / 2)
+
+        // Create camera controller
+        self.cameraController = CameraController(camera: self.cameraNode)
+        self.cameraController.onZoomChanged = { [weak self] _ in
+            self?.updateUIScaleForZoom()
+        }
     }
 
     private func loadMap() {
@@ -701,6 +696,12 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
                 print("  - \(obj.name) (\(obj.type)) at \(pos)")
             }
         }
+
+        // Configure camera controller with map bounds
+        self.cameraController.configure(
+            mapSize: CGSize(width: map.pixelWidth, height: map.pixelHeight),
+            viewportSize: self.visibleViewportSize.width > 0 ? self.visibleViewportSize : size
+        )
     }
 
     /// Set up fog of war system
@@ -835,7 +836,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
         // Position camera at Nathaniel (clamped to map bounds)
         if let nathaniel {
-            self.clampCameraToMapBounds(targetPosition: nathaniel.position)
+            self.cameraController.setPosition(nathaniel.position)
         }
 
         // Spawn test enemies
@@ -1317,40 +1318,7 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
         logger.debug("Placement cancelled for \(type.displayName)")
     }
 
-    // MARK: - Camera Position Clamping
-
-    /// Clamp a position to keep the camera within map bounds
-    /// Accounts for zoom level and viewport size. Centers on map if map is smaller than viewport.
-    /// - Parameter position: The desired camera position
-    /// - Returns: The clamped position within map bounds
-    private func clampPositionToMapBounds(_ position: CGPoint) -> CGPoint {
-        guard let renderer = mapRenderer else { return position }
-
-        let effectiveViewport = self.visibleViewportSize.width > 0 ? self.visibleViewportSize : size
-        let halfWidth = (effectiveViewport.width / 2) * self.cameraZoom
-        let halfHeight = (effectiveViewport.height / 2) * self.cameraZoom
-
-        let mapWidth = CGFloat(renderer.map.pixelWidth)
-        let mapHeight = CGFloat(renderer.map.pixelHeight)
-
-        var clampedPos = position
-
-        // Handle X clamping: if map is narrower than viewport, center on map
-        if mapWidth <= halfWidth * 2 {
-            clampedPos.x = mapWidth / 2
-        } else {
-            clampedPos.x = max(halfWidth, min(mapWidth - halfWidth, clampedPos.x))
-        }
-
-        // Handle Y clamping: if map is shorter than viewport, center on map
-        if mapHeight <= halfHeight * 2 {
-            clampedPos.y = mapHeight / 2
-        } else {
-            clampedPos.y = max(halfHeight, min(mapHeight - halfHeight, clampedPos.y))
-        }
-
-        return clampedPos
-    }
+    // MARK: - Camera Following
 
     /// Make the camera smoothly follow the selected character
     private func updateCameraFollow() {
@@ -1362,93 +1330,45 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
 
             // Apply zoom from dev settings if changed
             let targetZoom = DevSettings.shared.cameraZoom
-            if abs(self.cameraZoom - targetZoom) > 0.01 {
-                self.setZoom(targetZoom)
+            if abs(self.cameraController.currentZoom - targetZoom) > 0.01 {
+                self.cameraController.setZoom(targetZoom)
             }
         #endif
 
-        // Skip if camera is animating (e.g., during character switch)
-        guard !self.isCameraAnimating else { return }
         guard let selected = selectedCharacter else { return }
 
-        // Clamp target position to map bounds
-        let clampedPos = self.clampPositionToMapBounds(selected.position)
-
-        // Smooth camera movement (lerp)
         #if DEBUG
             let smoothFactor = DevSettings.shared.cameraFollowSmoothing
         #else
             let smoothFactor: CGFloat = 0.1
         #endif
-        let currentPos = self.cameraNode.position
-        self.cameraNode.position = CGPoint(
-            x: currentPos.x + (clampedPos.x - currentPos.x) * smoothFactor,
-            y: currentPos.y + (clampedPos.y - currentPos.y) * smoothFactor
-        )
-    }
 
-    /// Immediately clamp camera to map bounds (no smoothing)
-    /// Use this for initial positioning or teleporting the camera
-    private func clampCameraToMapBounds(targetPosition: CGPoint) {
-        self.cameraNode.position = self.clampPositionToMapBounds(targetPosition)
-    }
-
-    // MARK: - Camera Movement
-
-    private func moveCamera(by delta: CGPoint) {
-        let newPos = CGPoint(
-            x: self.cameraNode.position.x + delta.x,
-            y: self.cameraNode.position.y + delta.y
-        )
-        self.cameraNode.position = self.clampPositionToMapBounds(newPos)
+        self.cameraController.updateFollow(target: selected.position, smoothing: smoothFactor)
     }
 
     // MARK: - Camera Zoom
 
-    /// Get effective min zoom (from DevSettings in DEBUG)
-    private var effectiveMinZoom: CGFloat {
-        #if DEBUG
-            return DevSettings.shared.cameraMinZoom
-        #else
-            return self.minZoom
-        #endif
-    }
-
-    /// Get effective max zoom (from DevSettings in DEBUG)
-    private var effectiveMaxZoom: CGFloat {
-        #if DEBUG
-            return DevSettings.shared.cameraMaxZoom
-        #else
-            return self.maxZoom
-        #endif
-    }
-
     /// Update camera zoom by a scale factor
     /// - Parameter scale: Multiplier for current zoom (>1 zooms in, <1 zooms out)
     func updateZoom(by scale: CGFloat) {
-        let newZoom = self.cameraZoom * scale
-        self.cameraZoom = max(self.effectiveMinZoom, min(self.effectiveMaxZoom, newZoom))
-        self.cameraNode.setScale(self.cameraZoom)
-        self.updateUIScaleForZoom()
+        self.cameraController.updateZoom(by: scale)
     }
 
     /// Set camera zoom to an absolute value
     /// - Parameter zoom: Target zoom level (clamped to min/max)
     func setZoom(_ zoom: CGFloat) {
-        self.cameraZoom = max(self.effectiveMinZoom, min(self.effectiveMaxZoom, zoom))
-        self.cameraNode.setScale(self.cameraZoom)
-        self.updateUIScaleForZoom()
+        self.cameraController.setZoom(zoom)
     }
 
     /// Handle pinch gesture zoom (called from iOS GameViewController)
     /// - Parameter scale: Gesture scale factor
     func handlePinchZoom(scale: CGFloat) {
-        self.updateZoom(by: scale)
+        self.cameraController.handlePinchZoom(scale: scale)
     }
 
     /// Keep HUD and overlay at consistent screen size when zooming
     private func updateUIScaleForZoom() {
-        let inverseScale = 1.0 / self.cameraZoom
+        let inverseScale = 1.0 / self.cameraController.currentZoom
         self.hud?.setScale(inverseScale)
         self.gameOverlay?.setScale(inverseScale)
     }
@@ -1694,7 +1614,7 @@ extension GameScene {
         }
 
         // Animate camera to new character position
-        self.animateCameraTo(character.position)
+        self.cameraController.animateTo(character.position)
     }
 
     /// Toggle between Nathaniel and Hermes
@@ -1777,23 +1697,6 @@ extension GameScene {
     func handleTapWithBuildMenuCheck(at scenePoint: CGPoint) -> Bool {
         // Use the unified dispatch helper
         self.dispatchInputToOverlayMenus(at: scenePoint)
-    }
-
-    /// Animate camera to a target position with smooth easing
-    private func animateCameraTo(_ position: CGPoint) {
-        // Mark as animating to prevent updateCameraFollow from interfering
-        self.isCameraAnimating = true
-
-        // Clamp target position to map bounds
-        let clampedPos = self.clampPositionToMapBounds(position)
-
-        // Animate to the clamped position
-        let moveAction = SKAction.move(to: clampedPos, duration: 0.3)
-        moveAction.timingMode = .easeInEaseOut
-
-        self.cameraNode.run(moveAction) { [weak self] in
-            self?.isCameraAnimating = false
-        }
     }
 
     /// Release Hermes from build mode - destroy all towers and allow movement
