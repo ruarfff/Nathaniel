@@ -275,32 +275,32 @@ class Enemy: Character {
 
 /// Basic melee enemy that chases and attacks players
 class Grunt: Enemy {
-    // MARK: - Constants (from legacy code)
+    // MARK: - Constants
 
     /// Maximum health points
-    static let defaultMaxHP = 150
+    static var defaultMaxHP: Int { GameBalance.Grunt.maxHP }
 
     /// Movement speed
-    static let defaultSpeed: CGFloat = 70
+    static var defaultSpeed: CGFloat { GameBalance.Grunt.speed }
 
     /// Points awarded for killing
-    static let defaultKillScore = 20
+    static var defaultKillScore: Int { GameBalance.Grunt.killScore }
 
     /// Detection range
-    static let defaultVisibleRange: CGFloat = 800
+    static var defaultVisibleRange: CGFloat { GameBalance.Grunt.visionRange }
 
     /// Attack range (melee)
-    static let defaultAttackRange: CGFloat = 60
+    static var defaultAttackRange: CGFloat { GameBalance.Grunt.attackRange }
 
     /// Melee damage per hit
-    static let defaultMeleeDamage = 20
+    static var defaultMeleeDamage: Int { GameBalance.Grunt.meleeDamage }
 
     /// Time between melee attacks
-    static let defaultMeleeAttackCooldown: TimeInterval = 0.8
+    static var defaultMeleeAttackCooldown: TimeInterval { GameBalance.Grunt.meleeAttackCooldown }
 
     /// Resource drop range (low - basic enemy)
-    static let defaultResourceDropMin = 1
-    static let defaultResourceDropMax = 3
+    static var defaultResourceDropMin: Int { GameBalance.Grunt.resourceDropMin }
+    static var defaultResourceDropMax: Int { GameBalance.Grunt.resourceDropMax }
 
     // MARK: - Initialization
 
@@ -327,7 +327,7 @@ class Grunt: Enemy {
         facingDirection = .south
 
         // Grunts are easily provoked and quickly switch targets
-        threatMultiplier = 1.2
+        threatMultiplier = GameBalance.Grunt.threatMultiplier
     }
 
     #if DEBUG
@@ -372,29 +372,29 @@ class Bow: Gun {
 
 /// Boss enemy for Level One - high HP, ranged attacks, triggers victory when defeated
 class Boss: Enemy {
-    // MARK: - Constants (from legacy code)
+    // MARK: - Constants
 
     /// Maximum health points (very high for boss)
-    static let defaultMaxHP = 800
+    static var defaultMaxHP: Int { GameBalance.Boss.maxHP }
 
     /// Movement speed (moderate)
-    static let defaultSpeed: CGFloat = 60
+    static var defaultSpeed: CGFloat { GameBalance.Boss.speed }
 
     /// Points awarded for killing (high value)
-    static let defaultKillScore = 100
+    static var defaultKillScore: Int { GameBalance.Boss.killScore }
 
     /// Detection range
-    static let defaultVisibleRange: CGFloat = 600
+    static var defaultVisibleRange: CGFloat { GameBalance.Boss.visionRange }
 
     /// Attack range (bow range)
-    static let defaultAttackRange: CGFloat = 500
+    static var defaultAttackRange: CGFloat { GameBalance.Boss.attackRange }
 
     /// Distance ratio at which boss stops moving (30% of range)
-    static let stopDistanceRatio: CGFloat = 0.3
+    static var stopDistanceRatio: CGFloat { GameBalance.Boss.stopDistanceRatio }
 
     /// Resource drop range (high - boss enemy)
-    static let defaultResourceDropMin = 10
-    static let defaultResourceDropMax = 20
+    static var defaultResourceDropMin: Int { GameBalance.Boss.resourceDropMin }
+    static var defaultResourceDropMax: Int { GameBalance.Boss.resourceDropMax }
 
     // MARK: - Properties
 
@@ -431,7 +431,7 @@ class Boss: Enemy {
         facingDirection = .south
 
         // Bosses are more deliberate and harder to pull aggro from their target
-        threatMultiplier = 0.8
+        threatMultiplier = GameBalance.Boss.threatMultiplier
     }
 
     // MARK: - AI Override
@@ -528,26 +528,26 @@ class Boss: Enemy {
 
 /// Ranged enemy that keeps distance and shoots at players
 class Soldier: Enemy {
-    // MARK: - Constants (from legacy code)
+    // MARK: - Constants
 
     /// Maximum health points
-    static let defaultMaxHP = 200
+    static var defaultMaxHP: Int { GameBalance.Soldier.maxHP }
 
     /// Movement speed (slower than Grunt)
-    static let defaultSpeed: CGFloat = 40
+    static var defaultSpeed: CGFloat { GameBalance.Soldier.speed }
 
     /// Points awarded for killing
-    static let defaultKillScore = 30
+    static var defaultKillScore: Int { GameBalance.Soldier.killScore }
 
     /// Detection and attack range (same for ranged)
-    static let defaultRange: CGFloat = 300
+    static var defaultRange: CGFloat { GameBalance.Soldier.range }
 
     /// Preferred distance to maintain from target (60% of range)
-    static let preferredDistanceRatio: CGFloat = 0.6
+    static var preferredDistanceRatio: CGFloat { GameBalance.Soldier.preferredDistanceRatio }
 
     /// Resource drop range (medium - ranged enemy)
-    static let defaultResourceDropMin = 3
-    static let defaultResourceDropMax = 6
+    static var defaultResourceDropMin: Int { GameBalance.Soldier.resourceDropMin }
+    static var defaultResourceDropMax: Int { GameBalance.Soldier.resourceDropMax }
 
     // MARK: - Initialization
 

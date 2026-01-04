@@ -52,7 +52,7 @@ enum TowerType: String, CaseIterable {
 // MARK: - Tower Configuration
 
 /// Central configuration for tower building system
-/// Adjust these values for game balance
+/// Delegates to GameBalance.Towers for centralized game balance
 enum TowerConfig {
     // MARK: - Tower Costs (in resources)
 
@@ -61,7 +61,7 @@ enum TowerConfig {
         #if DEBUG
             return DevSettings.shared.towerCostGun
         #else
-            return 5
+            return GameBalance.Towers.gunTowerCost
         #endif
     }
 
@@ -70,7 +70,7 @@ enum TowerConfig {
         #if DEBUG
             return DevSettings.shared.towerCostLaser
         #else
-            return 10
+            return GameBalance.Towers.laserTowerCost
         #endif
     }
 
@@ -79,28 +79,28 @@ enum TowerConfig {
         #if DEBUG
             return DevSettings.shared.towerCostHeal
         #else
-            return 15
+            return GameBalance.Towers.healTowerCost
         #endif
     }
 
     // MARK: - Build Radius
 
     /// Maximum distance from Hermes where towers can be placed
-    static let buildRadius: CGFloat = 250
+    static var buildRadius: CGFloat { GameBalance.Towers.buildRadius }
 
     /// Minimum distance from Hermes where towers can be placed (to avoid overlap)
-    static let minBuildDistance: CGFloat = 50
+    static var minBuildDistance: CGFloat { GameBalance.Towers.minBuildDistance }
 
     // MARK: - Validation
 
     /// Minimum distance between towers to prevent overlap
-    static let towerSpacing: CGFloat = 60
+    static var towerSpacing: CGFloat { GameBalance.Towers.towerSpacing }
 
     // MARK: - Recoup System
 
     /// Percentage of tower cost returned when Hermes releases towers (0.0 to 1.0)
     /// Only towers still standing are eligible - towers destroyed by enemies give nothing
-    static let recoupPercentage: Double = 0.20
+    static var recoupPercentage: Double { GameBalance.Towers.recoupPercentage }
 
     // MARK: - Helper Methods
 
@@ -115,13 +115,13 @@ enum TowerConfig {
         let dy = towerPosition.y - hermesPosition.y
         let distance = sqrt(dx * dx + dy * dy)
 
-        return distance >= minBuildDistance && distance <= buildRadius
+        return distance >= self.minBuildDistance && distance <= self.buildRadius
     }
 
     /// Calculate recoup amount for a tower cost
     /// - Parameter cost: Original build cost of the tower
     /// - Returns: Amount of resources to return (rounded down)
     static func calculateRecoup(for cost: Int) -> Int {
-        Int(Double(cost) * recoupPercentage)
+        Int(Double(cost) * self.recoupPercentage)
     }
 }

@@ -2,19 +2,19 @@ import SpriteKit
 
 /// The main player character class
 class Nathaniel: Character {
-    // MARK: - Constants (from legacy code)
+    // MARK: - Constants
 
     /// Starting/maximum health points
-    static let defaultMaxHP = 8_000
+    static var defaultMaxHP: Int { GameBalance.Nathaniel.maxHP }
 
     /// Movement speed in points per second
-    static let defaultSpeed: CGFloat = 70
+    static var defaultSpeed: CGFloat { GameBalance.Nathaniel.speed }
 
     /// Weapon range in points (slightly less than vision range so players see enemies before attacking)
-    static let weaponRange: CGFloat = 700
+    static var weaponRange: CGFloat { GameBalance.Nathaniel.weaponRange }
 
     /// Visible range (for targeting) in points - covers most of the visible screen from camera center
-    static let visibleRange: CGFloat = 800
+    static var visibleRange: CGFloat { GameBalance.Nathaniel.visionRange }
 
     // MARK: - Properties
 

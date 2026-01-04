@@ -132,16 +132,16 @@ class HealthBar {
     var hideWhenFull: Bool = true
 
     /// Standard height for health bars
-    static let standardHeight: CGFloat = 6
+    static var standardHeight: CGFloat { GameBalance.UI.HealthBar.standardHeight }
 
     /// Compact height for enemy health bars
-    static let compactHeight: CGFloat = 4
+    static var compactHeight: CGFloat { GameBalance.UI.HealthBar.compactHeight }
 
     /// Standard corner radius
-    static let standardCornerRadius: CGFloat = 0
+    static var standardCornerRadius: CGFloat { GameBalance.UI.HealthBar.standardCornerRadius }
 
     /// Compact corner radius
-    static let compactCornerRadius: CGFloat = 2
+    static var compactCornerRadius: CGFloat { GameBalance.UI.HealthBar.compactCornerRadius }
 
     init(
         width: CGFloat,

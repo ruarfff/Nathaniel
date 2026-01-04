@@ -1,54 +1,45 @@
-//
-//  Resource.swift
-//  Nathaniel Shared
-//
-//  Collectible resource dropped by enemies when they die.
-//  Resources can be auto-collected when a player is within range.
-//
-
 import SpriteKit
 
 // MARK: - Collection State
 
 /// State of a resource's collection lifecycle
 enum ResourceCollectionState {
-    case idle           // Sitting on ground, pulsing
-    case collecting     // Flying toward a collector
-    case collected      // Has been collected (will be removed)
+    case idle // Sitting on ground, pulsing
+    case collecting // Flying toward a collector
+    case collected // Has been collected (will be removed)
 }
 
 // MARK: - Resource
 
 /// A collectible resource dropped by enemies when destroyed
 class Resource: GameEntity {
-
     // MARK: - Constants
 
     /// How long resources last before expiring (seconds)
-    static let defaultExpirationTime: TimeInterval = 20.0
+    static var defaultExpirationTime: TimeInterval { GameBalance.Resources.expirationTime }
 
     /// Time before expiration when the resource starts warning (flashing)
-    static let expirationWarningTime: TimeInterval = 5.0
+    static var expirationWarningTime: TimeInterval { GameBalance.Resources.warningTime }
 
     /// Radius within which resources auto-collect to players
-    static let autoCollectRadius: CGFloat = 100.0
+    static var autoCollectRadius: CGFloat { GameBalance.Resources.autoCollectRadius }
 
     /// Speed at which resources fly toward collector
-    static let collectSpeed: CGFloat = 400.0
+    static var collectSpeed: CGFloat { GameBalance.Resources.collectSpeed }
 
     /// Pulse animation duration
-    static let pulseDuration: TimeInterval = 0.8
+    static var pulseDuration: TimeInterval { GameBalance.Resources.pulseDuration }
 
     /// Float animation height
-    static let floatHeight: CGFloat = 4.0
+    static var floatHeight: CGFloat { GameBalance.Resources.floatHeight }
 
     // MARK: - GameEntity Properties
 
     let sprite: SKSpriteNode
 
     var position: CGPoint {
-        get { sprite.position }
-        set { sprite.position = newValue }
+        get { self.sprite.position }
+        set { self.sprite.position = newValue }
     }
 
     var isActive: Bool = true
@@ -85,11 +76,11 @@ class Resource: GameEntity {
         self.sprite = ResourceSprite.createForAmount(amount)
         self.sprite.name = "resource"
         self.sprite.position = position
-        self.sprite.zPosition = 50  // Below characters but above ground
+        self.sprite.zPosition = 50 // Below characters but above ground
         self.sprite.setScale(2.0)
 
         // Start idle animations
-        startIdleAnimations()
+        self.startIdleAnimations()
     }
 
     // MARK: - Animations
@@ -103,7 +94,7 @@ class Resource: GameEntity {
         scaleDown.timingMode = .easeInEaseOut
         let pulseSequence = SKAction.sequence([scaleUp, scaleDown])
         let pulseForever = SKAction.repeatForever(pulseSequence)
-        sprite.run(pulseForever, withKey: "pulse")
+        self.sprite.run(pulseForever, withKey: "pulse")
 
         // Subtle floating animation
         let floatUp = SKAction.moveBy(x: 0, y: Resource.floatHeight, duration: Resource.pulseDuration)
@@ -112,60 +103,60 @@ class Resource: GameEntity {
         floatDown.timingMode = .easeInEaseOut
         let floatSequence = SKAction.sequence([floatUp, floatDown])
         let floatForever = SKAction.repeatForever(floatSequence)
-        sprite.run(floatForever, withKey: "float")
+        self.sprite.run(floatForever, withKey: "float")
     }
 
     /// Start warning animation when about to expire
     private func startExpirationWarning() {
-        guard !isWarningActive else { return }
-        isWarningActive = true
+        guard !self.isWarningActive else { return }
+        self.isWarningActive = true
 
         // Flash between normal and dim
         let fadeOut = SKAction.fadeAlpha(to: 0.3, duration: 0.2)
         let fadeIn = SKAction.fadeAlpha(to: 1.0, duration: 0.2)
         let flashSequence = SKAction.sequence([fadeOut, fadeIn])
         let flashForever = SKAction.repeatForever(flashSequence)
-        sprite.run(flashForever, withKey: "warning")
+        self.sprite.run(flashForever, withKey: "warning")
     }
 
     /// Stop all animations
     private func stopAnimations() {
-        sprite.removeAction(forKey: "pulse")
-        sprite.removeAction(forKey: "float")
-        sprite.removeAction(forKey: "warning")
+        self.sprite.removeAction(forKey: "pulse")
+        self.sprite.removeAction(forKey: "float")
+        self.sprite.removeAction(forKey: "warning")
     }
 
     // MARK: - GameEntity Update
 
     func update(deltaTime: TimeInterval) {
-        guard isActive else { return }
+        guard self.isActive else { return }
 
-        switch collectionState {
+        switch self.collectionState {
         case .idle:
-            updateIdle(deltaTime: deltaTime)
+            self.updateIdle(deltaTime: deltaTime)
 
         case .collecting:
-            updateCollecting(deltaTime: deltaTime)
+            self.updateCollecting(deltaTime: deltaTime)
 
         case .collected:
             // Will be removed by ResourceManager
-            isActive = false
+            self.isActive = false
         }
     }
 
     /// Update when in idle state
     private func updateIdle(deltaTime: TimeInterval) {
         // Update expiration timer
-        timeToExpiration -= deltaTime
+        self.timeToExpiration -= deltaTime
 
         // Check for expiration warning
-        if timeToExpiration <= Resource.expirationWarningTime && !isWarningActive {
-            startExpirationWarning()
+        if self.timeToExpiration <= Resource.expirationWarningTime, !self.isWarningActive {
+            self.startExpirationWarning()
         }
 
         // Check for full expiration
-        if timeToExpiration <= 0 {
-            expire()
+        if self.timeToExpiration <= 0 {
+            self.expire()
         }
     }
 
@@ -173,18 +164,18 @@ class Resource: GameEntity {
     private func updateCollecting(deltaTime: TimeInterval) {
         guard let target = collectTarget else {
             // Target gone, become idle again
-            collectionState = .idle
-            startIdleAnimations()
+            self.collectionState = .idle
+            self.startIdleAnimations()
             return
         }
 
-        let dx = target.position.x - position.x
-        let dy = target.position.y - position.y
+        let dx = target.position.x - self.position.x
+        let dy = target.position.y - self.position.y
         let distance = hypot(dx, dy)
 
         // Check if we've reached the target
         if distance < 10 {
-            collectionState = .collected
+            self.collectionState = .collected
             return
         }
 
@@ -193,9 +184,9 @@ class Resource: GameEntity {
         let normalizedDy = dy / distance
         let moveDistance = Resource.collectSpeed * CGFloat(deltaTime)
 
-        position = CGPoint(
-            x: position.x + normalizedDx * moveDistance,
-            y: position.y + normalizedDy * moveDistance
+        self.position = CGPoint(
+            x: self.position.x + normalizedDx * moveDistance,
+            y: self.position.y + normalizedDy * moveDistance
         )
     }
 
@@ -203,10 +194,10 @@ class Resource: GameEntity {
 
     /// Check if a character is within auto-collect range
     func isInCollectRange(of character: Character) -> Bool {
-        guard collectionState == .idle else { return false }
+        guard self.collectionState == .idle else { return false }
 
-        let dx = character.position.x - position.x
-        let dy = character.position.y - position.y
+        let dx = character.position.x - self.position.x
+        let dy = character.position.y - self.position.y
         let distance = hypot(dx, dy)
 
         return distance <= Resource.autoCollectRadius
@@ -214,13 +205,13 @@ class Resource: GameEntity {
 
     /// Start collecting toward a target
     func startCollecting(toward target: Character) {
-        guard collectionState == .idle else { return }
+        guard self.collectionState == .idle else { return }
 
-        collectionState = .collecting
-        collectTarget = target
+        self.collectionState = .collecting
+        self.collectTarget = target
 
         // Stop idle animations and speed up
-        stopAnimations()
+        self.stopAnimations()
 
         // Play collection sound
         if let scene = sprite.scene {
@@ -230,20 +221,20 @@ class Resource: GameEntity {
 
     /// Force immediate collection (for manual pickup)
     func collect() {
-        collectionState = .collected
-        stopAnimations()
+        self.collectionState = .collected
+        self.stopAnimations()
     }
 
     // MARK: - Expiration
 
     /// Called when the resource expires without being collected
     private func expire() {
-        isActive = false
-        stopAnimations()
+        self.isActive = false
+        self.stopAnimations()
 
         // Fade out and remove
         let fadeOut = SKAction.fadeOut(withDuration: 0.3)
         let remove = SKAction.removeFromParent()
-        sprite.run(SKAction.sequence([fadeOut, remove]))
+        self.sprite.run(SKAction.sequence([fadeOut, remove]))
     }
 }

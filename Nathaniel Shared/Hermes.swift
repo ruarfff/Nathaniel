@@ -12,53 +12,53 @@ enum HermesMode {
 
 /// The robot companion character class
 class Hermes: Character {
-    // MARK: - Constants (from legacy code)
+    // MARK: - Constants
 
     /// Starting/maximum health points
-    static let defaultMaxHP = 2_000
+    static var defaultMaxHP: Int { GameBalance.Hermes.maxHP }
 
     /// Movement speed in points per second
-    static let defaultSpeed: CGFloat = 40
+    static var defaultSpeed: CGFloat { GameBalance.Hermes.speed }
 
     /// Weapon range in points (laser range, same as LaserTower)
-    static let weaponRange: CGFloat = 350
+    static var weaponRange: CGFloat { GameBalance.Hermes.weaponRange }
 
     /// Visible range (for targeting) in points - covers most of the visible screen from camera center
-    static let visibleRange: CGFloat = 800
+    static var visibleRange: CGFloat { GameBalance.Hermes.visionRange }
 
     // MARK: - Laser Weapon Constants
 
     /// Damage per second while laser is active (lower than tower for supporting role)
-    static let laserDPS: Int = 15
+    static var laserDPS: Int { GameBalance.Hermes.laserDPS }
 
     /// Duration of each laser burst
-    static let laserBurstDuration: TimeInterval = 1.0
+    static var laserBurstDuration: TimeInterval { GameBalance.Hermes.laserBurstDuration }
 
     /// Cooldown between laser bursts
-    static let laserCooldownTime: TimeInterval = 2.5
+    static var laserCooldownTime: TimeInterval { GameBalance.Hermes.laserCooldown }
 
     // MARK: - Follow Behavior Constants
 
     /// Distance at which Hermes stops following (arrival zone)
-    static let followStopDistance: CGFloat = 80
+    static var followStopDistance: CGFloat { GameBalance.Hermes.followStopDistance }
 
     /// Distance at which Hermes slows down (deceleration zone)
-    static let followSlowDistance: CGFloat = 150
+    static var followSlowDistance: CGFloat { GameBalance.Hermes.followSlowDistance }
 
     /// Distance at which Hermes starts following
-    static let followStartDistance: CGFloat = 200
+    static var followStartDistance: CGFloat { GameBalance.Hermes.followStartDistance }
 
     /// Distance at which Hermes teleports to catch up
-    static let teleportDistance: CGFloat = 600
+    static var teleportDistance: CGFloat { GameBalance.Hermes.teleportDistance }
 
     /// Base speed when following at normal distance
-    static let baseFollowSpeed: CGFloat = 45
+    static var baseFollowSpeed: CGFloat { GameBalance.Hermes.baseFollowSpeed }
 
     /// Speed when catching up from far behind
-    static let catchUpSpeed: CGFloat = 100
+    static var catchUpSpeed: CGFloat { GameBalance.Hermes.catchUpSpeed }
 
     /// Formation offset - position relative to Nathaniel (behind and to the left)
-    static let formationOffset = CGPoint(x: -50, y: -35)
+    static var formationOffset: CGPoint { GameBalance.Hermes.formationOffset }
 
     // MARK: - Sprite Sheet Configuration
 

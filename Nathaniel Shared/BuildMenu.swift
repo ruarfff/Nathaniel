@@ -46,8 +46,8 @@ class BuildMenuItemNode: SKNode {
 
     // MARK: - Constants
 
-    static let itemWidth: CGFloat = 100
-    static let itemHeight: CGFloat = 90
+    static var itemWidth: CGFloat { GameBalance.UI.BuildMenu.itemWidth }
+    static var itemHeight: CGFloat { GameBalance.UI.BuildMenu.itemHeight }
 
     // MARK: - Initialization
 
@@ -182,13 +182,13 @@ class BuildMenu: SKNode {
     // MARK: - Constants
 
     /// Menu height as percentage of viewport
-    static let menuHeightRatio: CGFloat = 0.25
+    static var menuHeightRatio: CGFloat { GameBalance.UI.BuildMenu.menuHeightRatio }
 
     /// Menu width as percentage of viewport
-    static let menuWidthRatio: CGFloat = 0.8
+    static var menuWidthRatio: CGFloat { GameBalance.UI.BuildMenu.menuWidthRatio }
 
     /// Spacing between menu items
-    static let itemSpacing: CGFloat = 20
+    static var itemSpacing: CGFloat { GameBalance.UI.BuildMenu.itemSpacing }
 
     // MARK: - Initialization
 
