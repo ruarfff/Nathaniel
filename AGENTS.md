@@ -188,8 +188,8 @@ XcodeBuildMCP is fine for: building, running, booting simulators, screenshots.
 | Tool | Purpose |
 |------|---------|
 | `game_health` | Check if game is running |
-| `game_get_state` | Scene, score, lives, positions, enemy count (for programmatic checks) |
-| `game_get_nodes` | All interactive elements with coordinates |
+| `game_state` | Scene, score, lives, positions, enemy count (for programmatic checks) |
+| `game_nodes` | All interactive elements with coordinates |
 | `game_screenshot` | Capture screen (base64 PNG) |
 | `game_screenshot_annotated` | Screenshot with color-coded bounding boxes |
 | `game_describe` | **RECOMMENDED FIRST CALL** - Human-readable scene summary |
@@ -199,6 +199,8 @@ XcodeBuildMCP is fine for: building, running, booting simulators, screenshots.
 | `game_swipe(fromX, fromY, toX, toY)` | Swipe gesture |
 | `game_action(name, params)` | Execute named action |
 | `game_action(name, wait_for_scene)` | Execute action + wait for scene transition |
+
+> **Aliases**: `game_get_state` and `game_get_nodes` are aliases for backwards compatibility.
 
 ### Workflow Pattern (Simplified)
 
@@ -212,17 +214,17 @@ XcodeBuildMCP is fine for: building, running, booting simulators, screenshots.
 **Option 2: By coordinates (legacy)**
 ```
 1. game_health()      → Verify game running
-2. game_get_state()   → Check current scene
-3. game_get_nodes()   → Find elements
+2. game_state()       → Check current scene
+3. game_nodes()       → Find elements
 4. game_tap(x, y)     → Interact
-5. game_get_state()   → Verify result
+5. game_state()       → Verify result
 ```
 
 ### Scene Coordinates
 
 - Origin (0, 0) at **bottom-left**
 - Scene size: **1366 x 1024**
-- Use `game_get_nodes()` for exact frame coordinates
+- Use `game_nodes()` for exact frame coordinates
 
 ### Available Actions by Scene
 

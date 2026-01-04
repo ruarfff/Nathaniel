@@ -34,7 +34,7 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'game_get_state',
+    name: 'game_state',
     description: 'Get structured game state as JSON. Returns: scene name, score, lives, resources, elapsedTime, gameStatus, isPaused, playerPosition, hermesPosition, enemyCount. Use for PROGRAMMATIC CHECKS like verifying score increased or player moved. For human-readable understanding, use game_describe instead.',
     inputSchema: {
       type: 'object',
@@ -43,8 +43,26 @@ const tools: Tool[] = [
     },
   },
   {
-    name: 'game_get_nodes',
+    name: 'game_get_state',
+    description: 'Alias for game_state. Get structured game state as JSON.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: 'game_nodes',
     description: 'Get interactive elements with precise frame coordinates. Returns array of {name, type, frame: {x, y, width, height}, interactive, properties}. Use BEFORE game_tap to find button coordinates, or use game_tap with node parameter directly. Coordinates use scene space with origin at bottom-left.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: 'game_get_nodes',
+    description: 'Alias for game_nodes. Get interactive elements with coordinates.',
     inputSchema: {
       type: 'object',
       properties: {},
@@ -344,6 +362,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
+      case 'game_state':
       case 'game_get_state': {
         const state = await gameClient.getState();
         return {
@@ -356,6 +375,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
+      case 'game_nodes':
       case 'game_get_nodes': {
         const nodes = await gameClient.getNodes();
         return {
