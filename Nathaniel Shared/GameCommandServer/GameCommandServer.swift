@@ -627,6 +627,9 @@
             description["enemyCount"] = state.enemyCount
             description["nodeCount"] = nodes.count
 
+            // Available actions for this scene
+            description["availableActions"] = self.getActionsForScene(state.scene)
+
             return description
         }
 
@@ -767,44 +770,7 @@
                 guard let self else { return }
 
                 let currentScene = self.delegate?.getCurrentGameState().scene ?? "Unknown"
-
-                // Get GameScene-specific actions from registry
-                var actions = GameActionRegistry.shared.getActionInfo()
-
-                // Add menu scene actions based on current scene
-                switch currentScene {
-                case "MainMenuScene":
-                    actions["menu"] = [
-                        ["name": "startGame", "description": "Start new game (goes to level select)"],
-                        ["name": "continueGame", "description": "Continue campaign (if available)"],
-                        ["name": "loadGame", "description": "Open load game selector"],
-                        ["name": "options", "description": "Open options menu"],
-                        ["name": "credits", "description": "Open credits screen"],
-                        ["name": "hasSaves", "description": "Check if saves exist"],
-                        ["name": "getSaveSlots", "description": "Get save slot info"],
-                    ]
-                case "LevelSelectScene":
-                    actions["levels"] = [
-                        ["name": "level_1", "description": "Start level 1"],
-                        ["name": "level_2", "description": "Start level 2"],
-                        ["name": "level_3", "description": "Start level 3"],
-                        ["name": "level_4", "description": "Start level 4"],
-                        ["name": "level_5", "description": "Start level 5"],
-                        ["name": "back", "description": "Go back to main menu"],
-                    ]
-                case "OptionsScene":
-                    actions["options"] = [
-                        ["name": "toggleSound", "description": "Toggle sound effects"],
-                        ["name": "toggleMusic", "description": "Toggle music"],
-                        ["name": "back", "description": "Go back to main menu"],
-                    ]
-                case "CreditsScene":
-                    actions["credits"] = [
-                        ["name": "back", "description": "Go back to main menu"],
-                    ]
-                default:
-                    break // GameScene uses the registry actions
-                }
+                let actions = self.getActionsForScene(currentScene)
 
                 let response: [String: Any] = [
                     "scene": currentScene,
@@ -821,6 +787,56 @@
                 } else {
                     self.sendErrorResponse(connection: connection, status: 500, message: "Failed to encode actions")
                 }
+            }
+        }
+
+        /// Get available actions for a given scene
+        /// - Parameter sceneName: The name of the current scene
+        /// - Returns: Dictionary of action categories to action info arrays
+        private func getActionsForScene(_ sceneName: String) -> [String: [[String: String]]] {
+            switch sceneName {
+            case "MainMenuScene":
+                [
+                    "menu": [
+                        ["name": "startGame", "description": "Start new game (goes to level select)"],
+                        ["name": "continueGame", "description": "Continue campaign (if available)"],
+                        ["name": "loadGame", "description": "Open load game selector"],
+                        ["name": "options", "description": "Open options menu"],
+                        ["name": "credits", "description": "Open credits screen"],
+                        ["name": "hasSaves", "description": "Check if saves exist"],
+                        ["name": "getSaveSlots", "description": "Get save slot info"],
+                    ],
+                ]
+            case "LevelSelectScene":
+                [
+                    "levels": [
+                        ["name": "level_1", "description": "Start level 1"],
+                        ["name": "level_2", "description": "Start level 2"],
+                        ["name": "level_3", "description": "Start level 3"],
+                        ["name": "level_4", "description": "Start level 4"],
+                        ["name": "level_5", "description": "Start level 5"],
+                        ["name": "back", "description": "Go back to main menu"],
+                    ],
+                ]
+            case "OptionsScene":
+                [
+                    "options": [
+                        ["name": "toggleSound", "description": "Toggle sound effects"],
+                        ["name": "toggleMusic", "description": "Toggle music"],
+                        ["name": "back", "description": "Go back to main menu"],
+                    ],
+                ]
+            case "CreditsScene":
+                [
+                    "credits": [
+                        ["name": "back", "description": "Go back to main menu"],
+                    ],
+                ]
+            case "GameScene":
+                // GameScene uses the full registry actions
+                GameActionRegistry.shared.getActionInfo()
+            default:
+                [:]
             }
         }
 
