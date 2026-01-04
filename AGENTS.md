@@ -188,17 +188,28 @@ XcodeBuildMCP is fine for: building, running, booting simulators, screenshots.
 | Tool | Purpose |
 |------|---------|
 | `game_health` | Check if game is running |
-| `game_get_state` | Scene, score, lives, positions, enemy count |
+| `game_get_state` | Scene, score, lives, positions, enemy count (for programmatic checks) |
 | `game_get_nodes` | All interactive elements with coordinates |
 | `game_screenshot` | Capture screen (base64 PNG) |
 | `game_screenshot_annotated` | Screenshot with color-coded bounding boxes |
-| `game_describe` | Human-readable scene summary |
+| `game_describe` | **RECOMMENDED FIRST CALL** - Human-readable scene summary |
+| `game_list_actions` | Discover available actions for current scene |
 | `game_tap(x, y)` | Tap at scene coordinates |
+| `game_tap(node: "name")` | **RECOMMENDED** - Tap by node name (auto-finds center) |
 | `game_swipe(fromX, fromY, toX, toY)` | Swipe gesture |
 | `game_action(name, params)` | Execute named action |
+| `game_action(name, wait_for_scene)` | Execute action + wait for scene transition |
 
-### Workflow Pattern
+### Workflow Pattern (Simplified)
 
+**Option 1: By node name (recommended)**
+```
+1. game_describe()                              → Understand scene
+2. game_tap(node: "startButton")                → Tap by name
+3. game_action("level_1", wait_for_scene: "GameScene")  → Navigate + wait
+```
+
+**Option 2: By coordinates (legacy)**
 ```
 1. game_health()      → Verify game running
 2. game_get_state()   → Check current scene

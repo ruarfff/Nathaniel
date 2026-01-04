@@ -55,6 +55,17 @@ export interface DescribeResponse {
   nodeCount: number;
 }
 
+export interface ActionInfo {
+  name: string;
+  description: string;
+  params?: string;
+}
+
+export interface ActionsResponse {
+  scene: string;
+  actions: Record<string, ActionInfo[]>;
+}
+
 export interface SceneChangeEvent {
   previousScene: string | null;
   currentScene: string;
@@ -145,12 +156,29 @@ export class GameClient {
   }
 
   /**
+   * List all available actions for the current scene, grouped by category
+   */
+  async listActions(): Promise<ActionsResponse> {
+    return this.fetch<ActionsResponse>('/actions', { method: 'GET' });
+  }
+
+  /**
    * Inject a tap at the given screen coordinates
    */
   async tap(x: number, y: number): Promise<CommandResponse> {
     return this.fetch<CommandResponse>('/tap', {
       method: 'POST',
       body: JSON.stringify({ x, y }),
+    });
+  }
+
+  /**
+   * Inject a tap at a node by name (finds node and taps its center)
+   */
+  async tapNode(nodeName: string): Promise<CommandResponse> {
+    return this.fetch<CommandResponse>('/tap', {
+      method: 'POST',
+      body: JSON.stringify({ node: nodeName }),
     });
   }
 

@@ -49,8 +49,9 @@
         }
 
         public struct TapRequest: Codable {
-            let x: CGFloat
-            let y: CGFloat
+            let x: CGFloat?
+            let y: CGFloat?
+            let node: String? // Tap by node name (finds center automatically)
         }
 
         public struct SwipeRequest: Codable {
@@ -116,13 +117,13 @@
 
         public init(port: UInt16 = 8_765) {
             self.port = port
-            setupSceneChangeObserver()
+            self.setupSceneChangeObserver()
         }
 
         private func setupSceneChangeObserver() {
             NotificationCenter.default.addObserver(
                 self,
-                selector: #selector(handleSceneChange(_:)),
+                selector: #selector(self.handleSceneChange(_:)),
                 name: .skViewDidPresentScene,
                 object: nil
             )
@@ -133,23 +134,23 @@
             // Get the new scene name from the delegate
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
-                let newSceneName = delegate?.getCurrentGameState().scene ?? "Unknown"
-                let previousScene = currentSceneName
-                currentSceneName = newSceneName
+                let newSceneName = self.delegate?.getCurrentGameState().scene ?? "Unknown"
+                let previousScene = self.currentSceneName
+                self.currentSceneName = newSceneName
 
                 // Only notify if scene actually changed
                 if previousScene != newSceneName {
-                    notifySceneWaiters(previousScene: previousScene, newScene: newSceneName)
+                    self.notifySceneWaiters(previousScene: previousScene, newScene: newSceneName)
                 }
             }
         }
 
         private func notifySceneWaiters(previousScene: String?, newScene: String) {
-            queue.async { [weak self] in
+            self.queue.async { [weak self] in
                 guard let self else { return }
 
                 // Find waiters that should be notified
-                let (toNotify, remaining) = sceneWaiters.reduce(
+                let (toNotify, remaining) = self.sceneWaiters.reduce(
                     into: ([PendingSceneWaiter](), [PendingSceneWaiter]())
                 ) { result, waiter in
                     // Notify if no expected scene specified, or if it matches
@@ -160,7 +161,7 @@
                     }
                 }
 
-                sceneWaiters = remaining
+                self.sceneWaiters = remaining
 
                 // Send response to each notified waiter
                 let event = SceneChangeEvent(
@@ -171,17 +172,17 @@
                 )
 
                 for waiter in toNotify {
-                    sendCodableResponse(connection: waiter.connection, value: event)
+                    self.sendCodableResponse(connection: waiter.connection, value: event)
                 }
             }
         }
 
         private func checkWaiterTimeouts() {
-            queue.async { [weak self] in
+            self.queue.async { [weak self] in
                 guard let self else { return }
                 let now = Date()
 
-                let (timedOut, remaining) = sceneWaiters.reduce(
+                let (timedOut, remaining) = self.sceneWaiters.reduce(
                     into: ([PendingSceneWaiter](), [PendingSceneWaiter]())
                 ) { result, waiter in
                     if now >= waiter.deadline {
@@ -191,18 +192,18 @@
                     }
                 }
 
-                sceneWaiters = remaining
+                self.sceneWaiters = remaining
 
                 // Send timeout response to timed out waiters
                 for waiter in timedOut {
-                    let currentScene = currentSceneName ?? "Unknown"
+                    let currentScene = self.currentSceneName ?? "Unknown"
                     let event = SceneChangeEvent(
                         previousScene: nil,
                         currentScene: currentScene,
                         timestamp: Date().timeIntervalSince1970,
                         timedOut: true
                     )
-                    sendCodableResponse(connection: waiter.connection, value: event)
+                    self.sendCodableResponse(connection: waiter.connection, value: event)
                 }
             }
         }
@@ -211,8 +212,8 @@
 
         /// Start the HTTP server
         public func start() {
-            guard !isRunning else {
-                print("[GameCommandServer] Already running on port \(port)")
+            guard !self.isRunning else {
+                print("[GameCommandServer] Already running on port \(self.port)")
                 return
             }
 
@@ -220,9 +221,9 @@
                 let parameters = NWParameters.tcp
                 parameters.allowLocalEndpointReuse = true
 
-                listener = try NWListener(using: parameters, on: NWEndpoint.Port(rawValue: port)!)
+                self.listener = try NWListener(using: parameters, on: NWEndpoint.Port(rawValue: self.port)!)
 
-                listener?.stateUpdateHandler = { [weak self] state in
+                self.listener?.stateUpdateHandler = { [weak self] state in
                     switch state {
                     case .ready:
                         print("[GameCommandServer] Listening on port \(self?.port ?? 0)")
@@ -238,11 +239,11 @@
                     }
                 }
 
-                listener?.newConnectionHandler = { [weak self] connection in
+                self.listener?.newConnectionHandler = { [weak self] connection in
                     self?.handleNewConnection(connection)
                 }
 
-                listener?.start(queue: queue)
+                self.listener?.start(queue: self.queue)
 
                 // Start timeout checker timer on main queue
                 DispatchQueue.main.async { [weak self] in
@@ -259,25 +260,25 @@
 
         /// Stop the HTTP server
         public func stop() {
-            listener?.cancel()
-            listener = nil
-            isRunning = false
+            self.listener?.cancel()
+            self.listener = nil
+            self.isRunning = false
 
             // Stop timeout timer
-            waiterTimeoutTimer?.invalidate()
-            waiterTimeoutTimer = nil
+            self.waiterTimeoutTimer?.invalidate()
+            self.waiterTimeoutTimer = nil
 
             // Close all connections
-            for connection in connections {
+            for connection in self.connections {
                 connection.cancel()
             }
-            connections.removeAll()
+            self.connections.removeAll()
 
             // Cancel all pending scene waiters
-            for waiter in sceneWaiters {
+            for waiter in self.sceneWaiters {
                 waiter.connection.cancel()
             }
-            sceneWaiters.removeAll()
+            self.sceneWaiters.removeAll()
 
             print("[GameCommandServer] Stopped")
         }
@@ -285,7 +286,7 @@
         // MARK: - Connection Handling
 
         private func handleNewConnection(_ connection: NWConnection) {
-            connections.append(connection)
+            self.connections.append(connection)
 
             connection.stateUpdateHandler = { [weak self, weak connection] state in
                 switch state {
@@ -300,7 +301,7 @@
                 }
             }
 
-            connection.start(queue: queue)
+            connection.start(queue: self.queue)
         }
 
         private func receiveRequest(from connection: NWConnection) {
@@ -323,20 +324,20 @@
 
         private func handleRequest(data: Data, connection: NWConnection) {
             guard let requestString = String(data: data, encoding: .utf8) else {
-                sendErrorResponse(connection: connection, status: 400, message: "Invalid request encoding")
+                self.sendErrorResponse(connection: connection, status: 400, message: "Invalid request encoding")
                 return
             }
 
             // Parse HTTP request
             let lines = requestString.components(separatedBy: "\r\n")
             guard let firstLine = lines.first else {
-                sendErrorResponse(connection: connection, status: 400, message: "Empty request")
+                self.sendErrorResponse(connection: connection, status: 400, message: "Empty request")
                 return
             }
 
             let parts = firstLine.components(separatedBy: " ")
             guard parts.count >= 2 else {
-                sendErrorResponse(connection: connection, status: 400, message: "Invalid request line")
+                self.sendErrorResponse(connection: connection, status: 400, message: "Invalid request line")
                 return
             }
 
@@ -351,75 +352,78 @@
             }
 
             // Route the request
-            routeRequest(method: method, path: path, body: body, connection: connection)
+            self.routeRequest(method: method, path: path, body: body, connection: connection)
         }
 
         private func routeRequest(method: String, path: String, body: Data?, connection: NWConnection) {
             switch (method, path) {
             case ("GET", "/health"):
-                handleHealth(connection: connection)
+                self.handleHealth(connection: connection)
 
             case ("GET", "/state"):
-                handleGetState(connection: connection)
+                self.handleGetState(connection: connection)
 
             case ("GET", "/nodes"):
-                handleGetNodes(connection: connection)
+                self.handleGetNodes(connection: connection)
 
             case ("GET", "/screenshot"):
-                handleScreenshot(connection: connection)
+                self.handleScreenshot(connection: connection)
 
             case ("GET", "/screenshot/annotated"):
-                handleAnnotatedScreenshot(connection: connection)
+                self.handleAnnotatedScreenshot(connection: connection)
 
             case ("GET", "/describe"):
-                handleDescribe(connection: connection)
+                self.handleDescribe(connection: connection)
 
             case ("POST", "/tap"):
-                handleTap(body: body, connection: connection)
+                self.handleTap(body: body, connection: connection)
 
             case ("POST", "/swipe"):
-                handleSwipe(body: body, connection: connection)
+                self.handleSwipe(body: body, connection: connection)
 
             case ("POST", "/action"):
-                handleAction(body: body, connection: connection)
+                self.handleAction(body: body, connection: connection)
+
+            case ("GET", "/actions"):
+                self.handleListActions(connection: connection)
 
             case ("GET", "/settings"):
-                handleGetSettings(connection: connection)
+                self.handleGetSettings(connection: connection)
 
             case ("POST", "/settings"):
-                handleSetSettings(body: body, connection: connection)
+                self.handleSetSettings(body: body, connection: connection)
 
             case ("POST", "/settings/reset"):
-                handleResetSettings(connection: connection)
+                self.handleResetSettings(connection: connection)
 
             case ("GET", _) where path.hasPrefix("/wait_for_scene"):
-                handleWaitForScene(path: path, connection: connection)
+                self.handleWaitForScene(path: path, connection: connection)
 
             // Debug overlay
             case ("POST", "/debug/overlay"):
-                handleDebugOverlay(body: body, connection: connection)
+                self.handleDebugOverlay(body: body, connection: connection)
 
             case ("GET", "/debug/overlay"):
-                handleGetDebugOverlayState(connection: connection)
+                self.handleGetDebugOverlayState(connection: connection)
 
             // Visual diff and baselines
             case ("POST", "/diff"):
-                handleVisualDiff(body: body, connection: connection)
+                self.handleVisualDiff(body: body, connection: connection)
 
             case ("POST", "/diff/baseline"):
-                handleDiffAgainstBaseline(body: body, connection: connection)
+                self.handleDiffAgainstBaseline(body: body, connection: connection)
 
             case ("GET", "/baselines"):
-                handleListBaselines(connection: connection)
+                self.handleListBaselines(connection: connection)
 
             case ("POST", "/baselines"):
-                handleSaveBaseline(body: body, connection: connection)
+                self.handleSaveBaseline(body: body, connection: connection)
 
             case ("DELETE", _) where path.hasPrefix("/baselines/"):
-                handleDeleteBaseline(path: path, connection: connection)
+                self.handleDeleteBaseline(path: path, connection: connection)
 
             default:
-                sendErrorResponse(connection: connection, status: 404, message: "Not found: \(method) \(path)")
+                self.sendErrorResponse(connection: connection, status: 404, message: "Not found: \(method) \(path)")
             }
         }
 
@@ -431,7 +435,7 @@
                 "server": "GameCommandServer",
                 "version": "1.0.0",
             ]
-            sendJSONResponse(connection: connection, json: response)
+            self.sendJSONResponse(connection: connection, json: response)
         }
 
         private func handleGetState(connection: NWConnection) {
@@ -630,24 +634,82 @@
             guard let body,
                   let request = try? JSONDecoder().decode(TapRequest.self, from: body)
             else {
-                sendErrorResponse(connection: connection, status: 400, message: "Invalid tap request body")
+                self.sendErrorResponse(connection: connection, status: 400, message: "Invalid tap request body")
                 return
             }
 
             DispatchQueue.main.async { [weak self] in
-                let point = CGPoint(x: request.x, y: request.y)
-                let success = self?.delegate?.injectTap(at: point) ?? false
+                guard let self else { return }
+
+                // Mode 2: Tap by node name
+                if let nodeName = request.node {
+                    guard let nodes = delegate?.getInteractiveNodes() else {
+                        let response = CommandResponse(
+                            success: false,
+                            message: nil,
+                            gameState: delegate?.getCurrentGameState(),
+                            error: "No delegate available"
+                        )
+                        self.sendCodableResponse(connection: connection, value: response)
+                        return
+                    }
+
+                    guard let node = nodes.first(where: { $0.name == nodeName }) else {
+                        let response = CommandResponse(
+                            success: false,
+                            message: nil,
+                            gameState: delegate?.getCurrentGameState(),
+                            error: "Node '\(nodeName)' not found. Available: \(nodes.map(\.name).joined(separator: ", "))"
+                        )
+                        self.sendCodableResponse(connection: connection, value: response)
+                        return
+                    }
+
+                    // Calculate center of node
+                    let centerX = node.frame.x + node.frame.width / 2
+                    let centerY = node.frame.y + node.frame.height / 2
+                    let point = CGPoint(x: centerX, y: centerY)
+
+                    let success = self.delegate?.injectTap(at: point) ?? false
+                    let state = self.delegate?.getCurrentGameState()
+
+                    let response = CommandResponse(
+                        success: success,
+                        message: success
+                            ? "Tapped '\(nodeName)' at (\(Int(centerX)), \(Int(centerY)))"
+                            : "Tap failed",
+                        gameState: state,
+                        error: success ? nil : "Failed to inject tap"
+                    )
+                    self.sendCodableResponse(connection: connection, value: response)
+                    return
+                }
+
+                // Mode 1: Tap by coordinates
+                guard let x = request.x, let y = request.y else {
+                    let response = CommandResponse(
+                        success: false,
+                        message: nil,
+                        gameState: delegate?.getCurrentGameState(),
+                        error: "Either 'node' name or 'x','y' coordinates are required"
+                    )
+                    self.sendCodableResponse(connection: connection, value: response)
+                    return
+                }
+
+                let point = CGPoint(x: x, y: y)
+                let success = self.delegate?.injectTap(at: point) ?? false
 
                 // Get updated state after tap
-                let state = self?.delegate?.getCurrentGameState()
+                let state = self.delegate?.getCurrentGameState()
 
                 let response = CommandResponse(
                     success: success,
-                    message: success ? "Tap injected at (\(request.x), \(request.y))" : "Tap failed",
+                    message: success ? "Tap injected at (\(x), \(y))" : "Tap failed",
                     gameState: state,
                     error: success ? nil : "Failed to inject tap"
                 )
-                self?.sendCodableResponse(connection: connection, value: response)
+                self.sendCodableResponse(connection: connection, value: response)
             }
         }
 
@@ -655,7 +717,7 @@
             guard let body,
                   let request = try? JSONDecoder().decode(SwipeRequest.self, from: body)
             else {
-                sendErrorResponse(connection: connection, status: 400, message: "Invalid swipe request body")
+                self.sendErrorResponse(connection: connection, status: 400, message: "Invalid swipe request body")
                 return
             }
 
@@ -680,7 +742,7 @@
             guard let body,
                   let request = try? JSONDecoder().decode(ActionRequest.self, from: body)
             else {
-                sendErrorResponse(connection: connection, status: 400, message: "Invalid action request body")
+                self.sendErrorResponse(connection: connection, status: 400, message: "Invalid action request body")
                 return
             }
 
@@ -700,6 +762,68 @@
             }
         }
 
+        private func handleListActions(connection: NWConnection) {
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+
+                let currentScene = self.delegate?.getCurrentGameState().scene ?? "Unknown"
+
+                // Get GameScene-specific actions from registry
+                var actions = GameActionRegistry.shared.getActionInfo()
+
+                // Add menu scene actions based on current scene
+                switch currentScene {
+                case "MainMenuScene":
+                    actions["menu"] = [
+                        ["name": "startGame", "description": "Start new game (goes to level select)"],
+                        ["name": "continueGame", "description": "Continue campaign (if available)"],
+                        ["name": "loadGame", "description": "Open load game selector"],
+                        ["name": "options", "description": "Open options menu"],
+                        ["name": "credits", "description": "Open credits screen"],
+                        ["name": "hasSaves", "description": "Check if saves exist"],
+                        ["name": "getSaveSlots", "description": "Get save slot info"],
+                    ]
+                case "LevelSelectScene":
+                    actions["levels"] = [
+                        ["name": "level_1", "description": "Start level 1"],
+                        ["name": "level_2", "description": "Start level 2"],
+                        ["name": "level_3", "description": "Start level 3"],
+                        ["name": "level_4", "description": "Start level 4"],
+                        ["name": "level_5", "description": "Start level 5"],
+                        ["name": "back", "description": "Go back to main menu"],
+                    ]
+                case "OptionsScene":
+                    actions["options"] = [
+                        ["name": "toggleSound", "description": "Toggle sound effects"],
+                        ["name": "toggleMusic", "description": "Toggle music"],
+                        ["name": "back", "description": "Go back to main menu"],
+                    ]
+                case "CreditsScene":
+                    actions["credits"] = [
+                        ["name": "back", "description": "Go back to main menu"],
+                    ]
+                default:
+                    break // GameScene uses the registry actions
+                }
+
+                let response: [String: Any] = [
+                    "scene": currentScene,
+                    "actions": actions,
+                ]
+
+                if let jsonData = try? JSONSerialization.data(withJSONObject: response, options: .prettyPrinted) {
+                    self.sendHTTPResponse(
+                        connection: connection,
+                        status: 200,
+                        contentType: "application/json",
+                        body: jsonData
+                    )
+                } else {
+                    self.sendErrorResponse(connection: connection, status: 500, message: "Failed to encode actions")
+                }
+            }
+        }
+
         // MARK: - Settings Handlers
 
         private func handleGetSettings(connection: NWConnection) {
@@ -711,13 +835,13 @@
 
         private func handleSetSettings(body: Data?, connection: NWConnection) {
             guard let body else {
-                sendErrorResponse(connection: connection, status: 400, message: "Missing request body")
+                self.sendErrorResponse(connection: connection, status: 400, message: "Missing request body")
                 return
             }
 
             // Parse JSON as dictionary for partial updates
             guard let updates = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else {
-                sendErrorResponse(connection: connection, status: 400, message: "Invalid JSON in request body")
+                self.sendErrorResponse(connection: connection, status: 400, message: "Invalid JSON in request body")
                 return
             }
 
@@ -750,7 +874,7 @@
 
         private func handleWaitForScene(path: String, connection: NWConnection) {
             // Parse query parameters from path (e.g., /wait_for_scene?timeout=10&scene=GameScene)
-            let params = parseQueryParameters(from: path)
+            let params = self.parseQueryParameters(from: path)
 
             let timeout = Double(params["timeout"] ?? "") ?? 10.0
             let expectedScene = params["scene"]
@@ -776,7 +900,7 @@
                 }
             } else {
                 // No expected scene - wait for any scene change
-                addSceneWaiter(connection: connection, expectedScene: nil, timeout: timeout)
+                self.addSceneWaiter(connection: connection, expectedScene: nil, timeout: timeout)
             }
         }
 
@@ -788,7 +912,7 @@
                 deadline: deadline
             )
 
-            queue.async { [weak self] in
+            self.queue.async { [weak self] in
                 self?.sceneWaiters.append(waiter)
             }
         }
@@ -862,18 +986,28 @@
         private func sendJSONResponse(connection: NWConnection, json: [String: Any], status: Int = 200) {
             do {
                 let data = try JSONSerialization.data(withJSONObject: json, options: [])
-                sendHTTPResponse(connection: connection, status: status, contentType: "application/json", body: data)
+                self.sendHTTPResponse(
+                    connection: connection,
+                    status: status,
+                    contentType: "application/json",
+                    body: data
+                )
             } catch {
-                sendErrorResponse(connection: connection, status: 500, message: "JSON serialization failed")
+                self.sendErrorResponse(connection: connection, status: 500, message: "JSON serialization failed")
             }
         }
 
         private func sendCodableResponse(connection: NWConnection, value: some Encodable, status: Int = 200) {
             do {
                 let data = try JSONEncoder().encode(value)
-                sendHTTPResponse(connection: connection, status: status, contentType: "application/json", body: data)
+                self.sendHTTPResponse(
+                    connection: connection,
+                    status: status,
+                    contentType: "application/json",
+                    body: data
+                )
             } catch {
-                sendErrorResponse(connection: connection, status: 500, message: "Encoding failed: \(error)")
+                self.sendErrorResponse(connection: connection, status: 500, message: "Encoding failed: \(error)")
             }
         }
 
@@ -882,11 +1016,11 @@
                 "success": false,
                 "error": message,
             ]
-            sendJSONResponse(connection: connection, json: json, status: status)
+            self.sendJSONResponse(connection: connection, json: json, status: status)
         }
 
         private func sendHTTPResponse(connection: NWConnection, status: Int, contentType: String, body: Data) {
-            let statusText = httpStatusText(for: status)
+            let statusText = self.httpStatusText(for: status)
             let headers = """
             HTTP/1.1 \(status) \(statusText)\r
             Content-Type: \(contentType)\r
@@ -926,7 +1060,7 @@
                   let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
                   let action = json["action"] as? String
             else {
-                sendErrorResponse(connection: connection, status: 400, message: "Missing 'action' field")
+                self.sendErrorResponse(connection: connection, status: 400, message: "Missing 'action' field")
                 return
             }
 
@@ -980,7 +1114,7 @@
                   let image1Data = Data(base64Encoded: image1Base64),
                   let image2Data = Data(base64Encoded: image2Base64)
             else {
-                sendErrorResponse(
+                self.sendErrorResponse(
                     connection: connection,
                     status: 400,
                     message: "Missing or invalid 'image1' and 'image2' fields"
@@ -997,7 +1131,7 @@
                 threshold: threshold,
                 shouldGenerateDiffImage: generateDiff
             )
-            sendCodableResponse(connection: connection, value: result)
+            self.sendCodableResponse(connection: connection, value: result)
         }
 
         private func handleDiffAgainstBaseline(body: Data?, connection: NWConnection) {
@@ -1005,7 +1139,7 @@
                   let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
                   let baselineName = json["baseline"] as? String
             else {
-                sendErrorResponse(connection: connection, status: 400, message: "Missing 'baseline' field")
+                self.sendErrorResponse(connection: connection, status: 400, message: "Missing 'baseline' field")
                 return
             }
 
@@ -1052,7 +1186,7 @@
                 "baselines": baselines,
                 "count": baselines.count,
             ]
-            sendJSONResponse(connection: connection, json: response)
+            self.sendJSONResponse(connection: connection, json: response)
         }
 
         private func handleSaveBaseline(body: Data?, connection: NWConnection) {
@@ -1060,7 +1194,7 @@
                   let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
                   let name = json["name"] as? String
             else {
-                sendErrorResponse(connection: connection, status: 400, message: "Missing 'name' field")
+                self.sendErrorResponse(connection: connection, status: 400, message: "Missing 'name' field")
                 return
             }
 
@@ -1091,7 +1225,7 @@
             // Extract baseline name from path: /baselines/{name}
             let components = path.components(separatedBy: "/")
             guard components.count >= 3 else {
-                sendErrorResponse(connection: connection, status: 400, message: "Invalid path")
+                self.sendErrorResponse(connection: connection, status: 400, message: "Invalid path")
                 return
             }
 
@@ -1102,7 +1236,7 @@
                 "name": name,
                 "message": success ? "Baseline deleted" : "Baseline not found or could not be deleted",
             ]
-            sendJSONResponse(connection: connection, json: response)
+            self.sendJSONResponse(connection: connection, json: response)
         }
     }
 

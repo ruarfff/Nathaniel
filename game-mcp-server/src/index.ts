@@ -35,7 +35,7 @@ const tools: Tool[] = [
   },
   {
     name: 'game_get_state',
-    description: 'Get the current game state including scene name, score, lives, resources, player positions, and enemy count. Use this to understand what is happening in the game.',
+    description: 'Get structured game state as JSON. Returns: scene name, score, lives, resources, elapsedTime, gameStatus, isPaused, playerPosition, hermesPosition, enemyCount. Use for PROGRAMMATIC CHECKS like verifying score increased or player moved. For human-readable understanding, use game_describe instead.',
     inputSchema: {
       type: 'object',
       properties: {},
@@ -44,7 +44,7 @@ const tools: Tool[] = [
   },
   {
     name: 'game_get_nodes',
-    description: 'Get all interactive nodes in the current scene with their names, types, positions (frame coordinates), and properties. Use this to find buttons, characters, enemies, and other interactive elements before tapping them.',
+    description: 'Get interactive elements with precise frame coordinates. Returns array of {name, type, frame: {x, y, width, height}, interactive, properties}. Use BEFORE game_tap to find button coordinates, or use game_tap with node parameter directly. Coordinates use scene space with origin at bottom-left.',
     inputSchema: {
       type: 'object',
       properties: {},
@@ -71,7 +71,16 @@ const tools: Tool[] = [
   },
   {
     name: 'game_describe',
-    description: 'Get a semantic description of the current scene. Returns a human-readable summary including player status, threats, UI elements, and suggestions. More concise than game_get_state for understanding the overall situation.',
+    description: 'Get human-readable scene summary. RECOMMENDED AS FIRST CALL to understand what is on screen. Returns: summary, playerStatus, threats, ui, suggestions for what to do next. Best for general understanding of game state. For programmatic checks, use game_get_state instead.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: 'game_list_actions',
+    description: 'List all available actions for the current scene, grouped by category. Returns action names, descriptions, and required parameters. Use this to discover what actions you can execute with game_action. Actions vary by scene (MainMenuScene, LevelSelectScene, GameScene, etc).',
     inputSchema: {
       type: 'object',
       properties: {},
@@ -80,20 +89,24 @@ const tools: Tool[] = [
   },
   {
     name: 'game_tap',
-    description: 'Tap at specific screen coordinates in the game. Use game_get_nodes first to find the correct coordinates for buttons and interactive elements.',
+    description: 'Tap in the game. Two modes: (1) By coordinates: game_tap(x, y) - tap at specific scene coordinates. (2) By node name: game_tap(node: "startButton") - finds the node and taps its center automatically. Mode 2 is recommended as it requires fewer steps.',
     inputSchema: {
       type: 'object',
       properties: {
         x: {
           type: 'number',
-          description: 'X coordinate to tap (in scene coordinates)',
+          description: 'X coordinate to tap (in scene coordinates). Required if node not specified.',
         },
         y: {
           type: 'number',
-          description: 'Y coordinate to tap (in scene coordinates)',
+          description: 'Y coordinate to tap (in scene coordinates). Required if node not specified.',
+        },
+        node: {
+          type: 'string',
+          description: 'Name of the node to tap (e.g., "startButton", "level_1"). The node center will be tapped automatically.',
         },
       },
-      required: ['x', 'y'],
+      required: [],
     },
   },
   {
@@ -128,7 +141,29 @@ const tools: Tool[] = [
   },
   {
     name: 'game_action',
-    description: 'Execute a named game action. Available actions depend on the current scene. Common actions: selectNathaniel, selectHermes, moveNathaniel (params: x, y), targetEnemy (params: index), startGame, options, credits, back.',
+    description: `Execute a named game action. Available actions depend on the current scene.
+
+**MainMenuScene:** startGame, continueGame, loadGame, options, credits, hasSaves, getSaveSlots
+
+**LevelSelectScene:** level_1, level_2, level_3, level_4, level_5, back
+
+**OptionsScene:** back, toggleSound, toggleMusic
+
+**CreditsScene:** back
+
+**GameScene - Character:** selectNathaniel, selectHermes, toggleCharacter, moveNathaniel (x, y), targetEnemy (index)
+
+**GameScene - Hermes:** setHermesMode (mode: following|independent), toggleHermesFollow, getHermesMode
+
+**GameScene - Pause:** pause, resume, isPaused, showPauseMenu, hidePauseMenu, pauseMenuIsVisible, pauseMenuTapResume, pauseMenuTapSettings, pauseMenuTapSaveGame, pauseMenuTapExitToMenu, pauseMenuConfirmExit, pauseMenuCancelExit, exitToMenu (skipConfirm: true)
+
+**GameScene - Settings:** openSettings, closeSettings, settingsMenuIsVisible, toggleSoundEffects, toggleMusic, getSoundEffectsEnabled, getMusicEnabled, getCurrentSettings, setSoundEffects (enabled), setMusic (enabled), settingsMenuTapBack
+
+**GameScene - Save:** saveGame (slot: 1-3), getSaveSlots, hasSaves, showSaveSlotSelector, hideSaveSlotSelector, saveSlotSelectorIsVisible, deleteSaveSlot (slot), deleteAllSaves
+
+**GameScene - Debug:** spawnEnemy (type: grunt|soldier|boss, x, y), killAllEnemies, healPlayer, addResources (amount), getCombatState, getNathanielTarget, getHermesTarget, getHermesCombatState, getTowerTargets, waitForCombat
+
+**GameScene - Building:** toggleBuildMenu, buildMenuIsVisible, buildTower (type: gun|laser|heal, x, y), sellTower (index), getTowerCount`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -140,6 +175,14 @@ const tools: Tool[] = [
           type: 'object',
           additionalProperties: { type: 'string' },
           description: 'Optional parameters for the action',
+        },
+        wait_for_scene: {
+          type: 'string',
+          description: 'Optional: Wait for this scene after executing action (e.g., "LevelSelectScene", "GameScene"). Combines action + wait into atomic operation.',
+        },
+        timeout: {
+          type: 'number',
+          description: 'Timeout in seconds when using wait_for_scene (default: 10)',
         },
       },
       required: ['name'],
@@ -391,8 +434,47 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
+      case 'game_list_actions': {
+        const actions = await gameClient.listActions();
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(actions, null, 2),
+            },
+          ],
+        };
+      }
+
       case 'game_tap': {
-        const tapArgs = args as { x: number; y: number };
+        const tapArgs = args as { x?: number; y?: number; node?: string };
+
+        // Mode 2: Tap by node name
+        if (tapArgs.node) {
+          const result = await gameClient.tapNode(tapArgs.node);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+          };
+        }
+
+        // Mode 1: Tap by coordinates
+        if (tapArgs.x === undefined || tapArgs.y === undefined) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'Error: Either node name or x,y coordinates are required',
+              },
+            ],
+            isError: true,
+          };
+        }
+
         const result = await gameClient.tap(tapArgs.x, tapArgs.y);
         return {
           content: [
@@ -430,8 +512,39 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'game_action': {
-        const actionArgs = args as { name: string; params?: Record<string, string> };
+        const actionArgs = args as {
+          name: string;
+          params?: Record<string, string>;
+          wait_for_scene?: string;
+          timeout?: number;
+        };
+
+        // Execute the action
         const result = await gameClient.action(actionArgs.name, actionArgs.params);
+
+        // If wait_for_scene specified, wait for scene transition
+        if (actionArgs.wait_for_scene && result.success) {
+          const timeout = actionArgs.timeout ?? 10;
+          const sceneResult = await gameClient.waitForScene(timeout, actionArgs.wait_for_scene);
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(
+                  {
+                    action: result,
+                    sceneTransition: sceneResult,
+                    success: !sceneResult.timedOut,
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        }
+
         return {
           content: [
             {
