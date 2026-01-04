@@ -158,18 +158,136 @@ class PlacementValidator {
     }
 }
 
+// MARK: - Structure Base Class
+
+/// Base class for stationary structures with health.
+/// Unlike Character, structures cannot move, have no animation, and no pathfinding.
+/// Implements GameEntity and Damageable protocols.
+class Structure: GameEntity, Damageable {
+    // MARK: - GameEntity Properties
+
+    let sprite: SKSpriteNode
+
+    var position: CGPoint {
+        get { self.sprite.position }
+        set { self.sprite.position = newValue }
+    }
+
+    var isActive: Bool = true
+
+    // MARK: - Damageable Properties
+
+    let name: String
+
+    var currentHP: Int {
+        didSet {
+            if self.currentHP <= 0 {
+                self.currentHP = 0
+                self.onDeath()
+            }
+        }
+    }
+
+    let maxHP: Int
+
+    var isAlive: Bool { self.currentHP > 0 }
+
+    /// Health bar display
+    var healthBar: HealthBar?
+
+    // MARK: - Structure Properties
+
+    /// Collision radius for overlap detection
+    var collisionRadius: CGFloat {
+        self.sprite.size.width * 0.4
+    }
+
+    // MARK: - Initialization
+
+    init(name: String, maxHP: Int) {
+        self.name = name
+        self.maxHP = maxHP
+        self.currentHP = maxHP
+
+        self.sprite = SKSpriteNode()
+        self.sprite.name = name
+    }
+
+    // MARK: - GameEntity Methods
+
+    func update(deltaTime: TimeInterval) {
+        // Override in subclasses
+    }
+
+    // MARK: - Damageable Methods
+
+    func takeDamage(_ amount: Int) {
+        guard self.isAlive else { return }
+        self.currentHP -= amount
+        self.updateHealthBar()
+        self.showDamageFlash()
+    }
+
+    func updateHealthBar() {
+        self.healthBar?.update(currentHP: self.currentHP, maxHP: self.maxHP)
+    }
+
+    /// Flash the sprite red briefly to indicate damage
+    func showDamageFlash() {
+        self.sprite.colorBlendFactor = 0.0
+        let flashRed = SKAction.colorize(with: .red, colorBlendFactor: 0.7, duration: 0.05)
+        let flashBack = SKAction.colorize(withColorBlendFactor: 0.0, duration: 0.15)
+        self.sprite.run(SKAction.sequence([flashRed, flashBack]))
+    }
+
+    // MARK: - Health Bar Setup
+
+    /// Set up a health bar for this structure
+    func setupHealthBar(width: CGFloat? = nil, yOffset: CGFloat = 4) {
+        let barWidth = width ?? self.sprite.size.width
+        self.healthBar = HealthBar(width: barWidth, yOffset: yOffset)
+
+        if let healthBar {
+            healthBar.positionAbove(spriteHeight: self.sprite.size.height)
+            self.sprite.addChild(healthBar.node)
+            healthBar.update(currentHP: self.currentHP, maxHP: self.maxHP)
+        }
+    }
+
+    // MARK: - Death
+
+    /// Called when the structure is destroyed
+    func onDeath() {
+        self.isActive = false
+
+        // Play explosion sound
+        if let scene = sprite.scene {
+            AudioManager.shared.playSoundEffect(.explosion, on: scene)
+        }
+
+        // Fade out and remove
+        let fadeOut = SKAction.fadeOut(withDuration: 0.5)
+        let remove = SKAction.removeFromParent()
+        self.sprite.run(SKAction.sequence([fadeOut, remove]))
+    }
+
+    // MARK: - Collision
+
+    /// Check if a point is within collision radius
+    func contains(point: CGPoint) -> Bool {
+        let dx = self.position.x - point.x
+        let dy = self.position.y - point.y
+        let distance = sqrt(dx * dx + dy * dy)
+        return distance < self.collisionRadius
+    }
+}
+
 // MARK: - Defensive Structure Base Class
 
 /// Base class for all defensive structures (towers)
 /// Structures are stationary, cannot move, and perform automated actions
-class DefensiveStructure: Character {
+class DefensiveStructure: Structure {
     // MARK: - Properties
-
-    /// Structures cannot move
-    override var destination: CGPoint? {
-        get { nil }
-        set { /* Structures don't move */ }
-    }
 
     /// Original resource cost paid to build this structure (for recoup calculation)
     var buildCost: Int = 0
@@ -190,10 +308,7 @@ class DefensiveStructure: Character {
 
     init(name: String, maxHP: Int, attackRange: CGFloat) {
         self.attackRange = attackRange
-        super.init(name: name, maxHP: maxHP, speed: 0, spriteSheetCols: 1, spriteSheetRows: 1)
-
-        // Structures are always "idle" since they don't move
-        animationState = .idle
+        super.init(name: name, maxHP: maxHP)
     }
 
     // MARK: - GameEntity Methods
@@ -225,7 +340,6 @@ class DefensiveStructure: Character {
     // MARK: - Death
 
     override func onDeath() {
-        animationState = .dead
         isActive = false
 
         // Play explosion sound
@@ -245,7 +359,6 @@ class DefensiveStructure: Character {
     /// Destroy with enhanced visual effect (used by staggered destruction)
     /// This handles only the sprite animation, not the explosion effect
     func destroyWithEffect() {
-        animationState = .dead
         isActive = false
 
         // Notify callback
@@ -1021,7 +1134,7 @@ class StructureManager {
 
         // Build allies list: tower itself (highest priority) + player characters
         // The tower is first so ThreatAssessment gives enemies attacking it the protectedAllyBonus
-        var allies: [Character] = [tower]
+        var allies: [Damageable] = [tower]
         allies.append(contentsOf: self.playerCharacters)
 
         // Use supportive behavior so:

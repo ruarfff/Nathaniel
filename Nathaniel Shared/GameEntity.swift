@@ -67,7 +67,38 @@ protocol GameEntity: AnyObject {
     func update(deltaTime: TimeInterval)
 }
 
-// MARK: - Character Base Class
+// MARK: - Damageable Protocol
+
+/// Protocol for entities that have health and can be damaged/killed.
+/// Used by threat assessment and targeting systems.
+protocol Damageable: AnyObject {
+    /// Display name
+    var name: String { get }
+
+    /// The sprite node (for visual effects like damage flash)
+    var sprite: SKSpriteNode { get }
+
+    /// World position
+    var position: CGPoint { get }
+
+    /// Current health points
+    var currentHP: Int { get set }
+
+    /// Maximum health points
+    var maxHP: Int { get }
+
+    /// Whether this entity is alive (currentHP > 0)
+    var isAlive: Bool { get }
+
+    /// Whether this entity is still active
+    var isActive: Bool { get }
+
+    /// Take damage from a source
+    func takeDamage(_ amount: Int)
+
+    /// Update health bar display
+    func updateHealthBar()
+}
 
 // MARK: - Health Bar
 
@@ -202,7 +233,7 @@ class HealthBar {
 }
 
 /// Base class for all game characters (players, enemies)
-class Character: GameEntity {
+class Character: GameEntity, Damageable {
     // MARK: - GameEntity Properties
 
     let sprite: SKSpriteNode

@@ -1,18 +1,11 @@
-//
-//  Weapon.swift
-//  Nathaniel Shared
-//
-//  Weapon protocol and implementations for combat.
-//
-
 import SpriteKit
 
 // MARK: - Weapon Protocol
 
 /// Protocol for all weapons (guns, lasers, melee, etc.)
 protocol Weapon: AnyObject {
-    /// The character that owns this weapon
-    var owner: Character? { get set }
+    /// The entity that owns this weapon (Character or Structure)
+    var owner: Damageable? { get set }
 
     /// Cooldown time between attacks in seconds
     var cooldownTime: TimeInterval { get }
@@ -43,7 +36,7 @@ protocol Weapon: AnyObject {
 extension Weapon {
     /// Check if the weapon is ready to fire (cooldown has elapsed)
     var isReady: Bool {
-        return cooldownElapsed >= cooldownTime
+        cooldownElapsed >= cooldownTime
     }
 
     /// Reset the cooldown timer
@@ -56,20 +49,19 @@ extension Weapon {
 
 /// Type of projectile for applying dev settings
 enum ProjectileType {
-    case bullet  // Player bullets, gun tower bullets, blaster bullets
-    case arrow   // Boss arrows
+    case bullet // Player bullets, gun tower bullets, blaster bullets
+    case arrow // Boss arrows
 }
 
 /// A projectile fired by a ranged weapon
 class Projectile: GameEntity {
-
     // MARK: - GameEntity Properties
 
     let sprite: SKSpriteNode
 
     var position: CGPoint {
-        get { sprite.position }
-        set { sprite.position = newValue }
+        get { self.sprite.position }
+        set { self.sprite.position = newValue }
     }
 
     var isActive: Bool = false
@@ -88,14 +80,14 @@ class Projectile: GameEntity {
     /// Effective speed (reads from DevSettings in DEBUG)
     var speed: CGFloat {
         #if DEBUG
-        switch projectileType {
-        case .bullet:
-            return DevSettings.shared.bulletSpeed
-        case .arrow:
-            return DevSettings.shared.arrowSpeed
-        }
+            switch self.projectileType {
+            case .bullet:
+                return DevSettings.shared.bulletSpeed
+            case .arrow:
+                return DevSettings.shared.arrowSpeed
+            }
         #else
-        return baseSpeed
+            return self.baseSpeed
         #endif
     }
 
@@ -116,19 +108,25 @@ class Projectile: GameEntity {
 
     /// Collision radius for hit detection
     var collisionRadius: CGFloat {
-        return sprite.size.width * 0.5
+        self.sprite.size.width * 0.5
     }
 
     /// Whether the projectile is still visible/active
     var isVisible: Bool {
-        guard isActive && !hasCollision else { return false }
-        let travelDistance = hypot(position.x - startPosition.x, position.y - startPosition.y)
-        return travelDistance < maxDistance
+        guard self.isActive, !self.hasCollision else { return false }
+        let travelDistance = hypot(position.x - self.startPosition.x, self.position.y - self.startPosition.y)
+        return travelDistance < self.maxDistance
     }
 
     // MARK: - Initialization
 
-    init(textureName: String, damage: Int, speed: CGFloat, maxDistance: CGFloat, projectileType: ProjectileType = .bullet) {
+    init(
+        textureName: String,
+        damage: Int,
+        speed: CGFloat,
+        maxDistance: CGFloat,
+        projectileType: ProjectileType = .bullet
+    ) {
         self.damage = damage
         self.baseSpeed = speed
         self.maxDistance = maxDistance
@@ -139,18 +137,18 @@ class Projectile: GameEntity {
         texture.filteringMode = .nearest
         self.sprite = SKSpriteNode(texture: texture)
         self.sprite.name = "projectile"
-        self.sprite.zPosition = 50  // Below characters but above ground
+        self.sprite.zPosition = 50 // Below characters but above ground
     }
 
     // MARK: - Fire
 
     /// Fire the projectile from a position toward a target
     func fire(from start: CGPoint, toward target: CGPoint) {
-        hasCollision = false
-        isActive = true
-        startPosition = start
-        destination = target
-        position = start
+        self.hasCollision = false
+        self.isActive = true
+        self.startPosition = start
+        self.destination = target
+        self.position = start
 
         // Calculate normalized direction
         let dx = target.x - start.x
@@ -158,48 +156,48 @@ class Projectile: GameEntity {
         let length = hypot(dx, dy)
 
         if length > 0 {
-            direction = CGVector(dx: dx / length, dy: dy / length)
+            self.direction = CGVector(dx: dx / length, dy: dy / length)
         } else {
-            direction = CGVector(dx: 0, dy: -1)  // Default: fire down
+            self.direction = CGVector(dx: 0, dy: -1) // Default: fire down
         }
 
         // Rotate sprite to face direction
-        sprite.zRotation = atan2(direction.dy, direction.dx)
+        self.sprite.zRotation = atan2(self.direction.dy, self.direction.dx)
     }
 
     // MARK: - GameEntity Methods
 
     func update(deltaTime: TimeInterval) {
-        guard isActive && !hasCollision else { return }
+        guard self.isActive, !self.hasCollision else { return }
 
         // Move in direction
-        let moveDistance = speed * CGFloat(deltaTime)
-        position = CGPoint(
-            x: position.x + direction.dx * moveDistance,
-            y: position.y + direction.dy * moveDistance
+        let moveDistance = self.speed * CGFloat(deltaTime)
+        self.position = CGPoint(
+            x: self.position.x + self.direction.dx * moveDistance,
+            y: self.position.y + self.direction.dy * moveDistance
         )
 
         // Check if we've traveled max distance
-        if !isVisible {
-            deactivate()
+        if !self.isVisible {
+            self.deactivate()
         }
     }
 
     /// Deactivate the projectile (hit something or traveled too far)
     func deactivate() {
-        isActive = false
-        sprite.removeFromParent()
+        self.isActive = false
+        self.sprite.removeFromParent()
     }
 
     /// Check collision with a character
     func checkCollision(with character: Character) -> Bool {
-        guard isActive && !hasCollision && character.isAlive else { return false }
+        guard self.isActive, !self.hasCollision, character.isAlive else { return false }
 
-        let dx = position.x - character.position.x
-        let dy = position.y - character.position.y
+        let dx = self.position.x - character.position.x
+        let dy = self.position.y - character.position.y
         let distance = hypot(dx, dy)
 
-        return distance < collisionRadius + character.collisionRadius
+        return distance < self.collisionRadius + character.collisionRadius
     }
 }
 
@@ -207,7 +205,6 @@ class Projectile: GameEntity {
 
 /// Manages a pool of projectiles for efficient reuse
 class ProjectilePool {
-
     private var projectiles: [Projectile] = []
     private let maxSize: Int
     private let factory: () -> Projectile
@@ -225,36 +222,36 @@ class ProjectilePool {
         }
 
         // Create new if under limit
-        if projectiles.count < maxSize {
-            let newProjectile = factory()
-            projectiles.append(newProjectile)
+        if self.projectiles.count < self.maxSize {
+            let newProjectile = self.factory()
+            self.projectiles.append(newProjectile)
             return newProjectile
         }
 
         // Reuse oldest if at limit (force deactivate)
-        let oldest = projectiles[0]
+        let oldest = self.projectiles[0]
         oldest.deactivate()
         return oldest
     }
 
     /// Update all active projectiles
     func update(deltaTime: TimeInterval) {
-        for projectile in projectiles where projectile.isActive {
+        for projectile in self.projectiles where projectile.isActive {
             projectile.update(deltaTime: deltaTime)
         }
     }
 
     /// Get all active projectiles (for collision checking)
     var activeProjectiles: [Projectile] {
-        return projectiles.filter { $0.isActive }
+        self.projectiles.filter(\.isActive)
     }
 
     /// Remove all projectiles
     func clear() {
-        for projectile in projectiles {
+        for projectile in self.projectiles {
             projectile.deactivate()
         }
-        projectiles.removeAll()
+        self.projectiles.removeAll()
     }
 }
 
@@ -262,10 +259,9 @@ class ProjectilePool {
 
 /// Standard gun weapon that fires bullets
 class Gun: Weapon {
-
     // MARK: - Weapon Properties
 
-    weak var owner: Character?
+    weak var owner: Damageable?
 
     let cooldownTime: TimeInterval
     var cooldownElapsed: TimeInterval = 0
@@ -303,8 +299,14 @@ class Gun: Weapon {
     }
 
     /// Create a gun with custom parameters
-    init(cooldownTime: TimeInterval, damage: Int, range: CGFloat,
-         bulletSpeed: CGFloat, bulletTexture: String, projectileType: ProjectileType = .bullet) {
+    init(
+        cooldownTime: TimeInterval,
+        damage: Int,
+        range: CGFloat,
+        bulletSpeed: CGFloat,
+        bulletTexture: String,
+        projectileType: ProjectileType = .bullet
+    ) {
         self.cooldownTime = cooldownTime
         self.damage = damage
         self.range = range
@@ -325,17 +327,17 @@ class Gun: Weapon {
 
     func update(deltaTime: TimeInterval) {
         // Update cooldown
-        cooldownElapsed += deltaTime
+        self.cooldownElapsed += deltaTime
 
         // Update all projectiles
-        projectilePool.update(deltaTime: deltaTime)
+        self.projectilePool.update(deltaTime: deltaTime)
 
         // Check collisions for active projectiles
-        for projectile in projectilePool.activeProjectiles {
+        for projectile in self.projectilePool.activeProjectiles {
             if let hitCharacter = onCheckCollision?(projectile) {
                 // If hitting an enemy, use threat-aware damage
                 if let enemy = hitCharacter as? Enemy {
-                    enemy.takeDamage(projectile.damage, from: owner)
+                    enemy.takeDamage(projectile.damage, from: self.owner)
                 } else {
                     hitCharacter.takeDamage(projectile.damage)
                 }
@@ -345,16 +347,16 @@ class Gun: Weapon {
         }
 
         // Reset isBeingUsed after a short time
-        if isBeingUsed && cooldownElapsed > 0.1 {
-            isBeingUsed = false
+        if self.isBeingUsed, self.cooldownElapsed > 0.1 {
+            self.isBeingUsed = false
         }
     }
 
     func use(target: CGPoint) -> Bool {
-        guard let owner = owner else { return false }
+        guard let owner else { return false }
 
         // Check cooldown
-        guard cooldownElapsed >= cooldownTime else {
+        guard self.cooldownElapsed >= self.cooldownTime else {
             return false
         }
 
@@ -363,20 +365,20 @@ class Gun: Weapon {
         let dy = target.y - owner.position.y
         let distance = hypot(dx, dy)
 
-        if distance > range {
+        if distance > self.range {
             return false
         }
 
         // Reset cooldown and fire
-        cooldownElapsed = 0
-        isBeingUsed = true
+        self.cooldownElapsed = 0
+        self.isBeingUsed = true
 
         // Get a projectile and fire it
-        let bullet = projectilePool.acquire()
+        let bullet = self.projectilePool.acquire()
         bullet.fire(from: owner.position, toward: target)
 
         // Notify scene to add the bullet sprite
-        onFire?(bullet)
+        self.onFire?(bullet)
 
         // Play gunshot sound
         if let sprite = owner.sprite.scene {
@@ -388,11 +390,11 @@ class Gun: Weapon {
 
     /// Get all active bullets (for external collision handling if needed)
     var activeBullets: [Projectile] {
-        return projectilePool.activeProjectiles
+        self.projectilePool.activeProjectiles
     }
 
     /// Whether any projectiles are still in flight
     var hasActiveProjectiles: Bool {
-        return !projectilePool.activeProjectiles.isEmpty
+        !self.projectilePool.activeProjectiles.isEmpty
     }
 }

@@ -38,7 +38,7 @@ enum ThreatConfig {
 struct ThreatTable {
     /// Threat entry for a single target
     private struct ThreatEntry {
-        weak var target: Character?
+        weak var target: Damageable?
         var threat: Float
     }
 
@@ -49,9 +49,9 @@ struct ThreatTable {
 
     /// Add threat for a target
     /// - Parameters:
-    ///   - target: The character generating threat
+    ///   - target: The entity generating threat (Character or Structure)
     ///   - amount: Amount of threat to add
-    mutating func addThreat(for target: Character, amount: Float) {
+    mutating func addThreat(for target: Damageable, amount: Float) {
         let id = ObjectIdentifier(target)
         if var entry = entries[id] {
             entry.threat += amount
@@ -62,9 +62,9 @@ struct ThreatTable {
     }
 
     /// Get current threat value for a target
-    /// - Parameter target: The character to check
+    /// - Parameter target: The entity to check
     /// - Returns: Current threat value (0 if not tracked)
-    func getThreat(for target: Character) -> Float {
+    func getThreat(for target: Damageable) -> Float {
         let id = ObjectIdentifier(target)
         return self.entries[id]?.threat ?? 0
     }
@@ -109,10 +109,10 @@ struct ThreatTable {
     // MARK: - Target Selection
 
     /// Get the target with highest threat
-    /// - Returns: The character with highest threat, or nil if no valid targets
-    func getHighestThreatTarget() -> Character? {
+    /// - Returns: The entity with highest threat, or nil if no valid targets
+    func getHighestThreatTarget() -> Damageable? {
         var highestThreat: Float = 0
-        var highestTarget: Character?
+        var highestTarget: Damageable?
 
         for entry in self.entries.values {
             guard let target = entry.target, target.isAlive else { continue }
@@ -128,8 +128,8 @@ struct ThreatTable {
 
     /// Get all valid targets sorted by threat (highest first)
     /// - Returns: Array of (target, threat) pairs sorted by threat
-    func getSortedTargets() -> [(target: Character, threat: Float)] {
-        var result: [(Character, Float)] = []
+    func getSortedTargets() -> [(target: Damageable, threat: Float)] {
+        var result: [(Damageable, Float)] = []
 
         for entry in self.entries.values {
             guard let target = entry.target, target.isAlive else { continue }

@@ -43,9 +43,9 @@ protocol CombatCapable: AnyObject {
     /// Find the best target based on current behavior and threat assessment
     /// - Parameters:
     ///   - enemies: Available enemies to target
-    ///   - allies: Allied characters (for supportive targeting)
+    ///   - allies: Allied entities (for supportive targeting)
     /// - Returns: The best enemy to target, or nil if none suitable
-    func findBestTarget(enemies: [Enemy], allies: [Character]) -> Enemy?
+    func findBestTarget(enemies: [Enemy], allies: [Damageable]) -> Enemy?
 
     /// Update combat state (called each frame)
     /// - Parameter deltaTime: Time since last update
@@ -56,7 +56,7 @@ protocol CombatCapable: AnyObject {
 
 extension CombatCapable {
     /// Default target selection based on targeting behavior
-    func findBestTarget(enemies: [Enemy], allies: [Character]) -> Enemy? {
+    func findBestTarget(enemies: [Enemy], allies: [Damageable]) -> Enemy? {
         // Manual override always wins
         if let manual = manualTargetOverride, manual.isAlive {
             return manual as? Enemy
@@ -135,14 +135,14 @@ enum ThreatAssessment {
     /// - Parameters:
     ///   - from: Position to measure distances from
     ///   - enemies: Enemies to assess
-    ///   - allies: Allied characters (for checking who enemies are attacking)
+    ///   - allies: Allied entities (for checking who enemies are attacking)
     ///   - behavior: Targeting behavior mode
     ///   - maxRange: Maximum range to consider
     /// - Returns: Array of (enemy, score) pairs sorted by score descending
     static func assessThreats(
         from position: CGPoint,
         enemies: [Enemy],
-        allies: [Character],
+        allies: [Damageable],
         behavior: TargetingBehavior,
         maxRange: CGFloat
     ) -> [(enemy: Enemy, score: Float)] {
@@ -176,7 +176,7 @@ enum ThreatAssessment {
     static func findBestTarget(
         from position: CGPoint,
         enemies: [Enemy],
-        allies: [Character],
+        allies: [Damageable],
         behavior: TargetingBehavior,
         maxRange: CGFloat
     ) -> Enemy? {
@@ -195,7 +195,7 @@ enum ThreatAssessment {
         for enemy: Enemy,
         distance: CGFloat,
         maxRange: CGFloat,
-        allies: [Character],
+        allies: [Damageable],
         behavior: TargetingBehavior
     ) -> Float {
         var score: Float = 0
@@ -233,14 +233,14 @@ enum ThreatAssessment {
         return score
     }
 
-    /// Check if an enemy is attacking a specific character
-    static func isEnemyAttacking(_ enemy: Enemy, target: Character) -> Bool {
+    /// Check if an enemy is attacking a specific entity
+    static func isEnemyAttacking(_ enemy: Enemy, target: Damageable) -> Bool {
         guard let enemyTarget = enemy.target else { return false }
         return enemyTarget === target
     }
 
-    /// Get all enemies currently attacking a character
-    static func enemiesAttacking(_ target: Character, from enemies: [Enemy]) -> [Enemy] {
+    /// Get all enemies currently attacking an entity
+    static func enemiesAttacking(_ target: Damageable, from enemies: [Enemy]) -> [Enemy] {
         enemies.filter { enemy in
             enemy.isAlive && self.isEnemyAttacking(enemy, target: target)
         }
@@ -298,8 +298,8 @@ class TargetingComponent {
     /// Provider for enemies in range. Must be set for auto-targeting to work.
     var findEnemies: (() -> [Enemy])?
 
-    /// Provider for allied characters. Used for threat assessment scoring.
-    var getAllies: (() -> [Character])?
+    /// Provider for allied entities. Used for threat assessment scoring.
+    var getAllies: (() -> [Damageable])?
 
     // MARK: - Initialization
 

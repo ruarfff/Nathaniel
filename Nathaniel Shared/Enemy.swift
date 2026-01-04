@@ -31,8 +31,8 @@ class Enemy: Character {
         return Int.random(in: self.resourceDropMin ... self.resourceDropMax)
     }
 
-    /// Current target (usually a player character)
-    weak var target: Character?
+    /// Current target (player character or structure)
+    weak var target: Damageable?
 
     /// Whether this enemy has a ranged weapon
     var hasRangedWeapon: Bool = false
@@ -109,7 +109,7 @@ class Enemy: Character {
     /// - Parameters:
     ///   - target: The character generating threat
     ///   - amount: Amount of threat to add (will be scaled by threatMultiplier)
-    func addThreat(from target: Character, amount: Float) {
+    func addThreat(from target: Damageable, amount: Float) {
         let scaledAmount = amount * self.threatMultiplier
         self.threatTable.addThreat(for: target, amount: scaledAmount)
     }
@@ -132,7 +132,7 @@ class Enemy: Character {
     }
 
     /// Get the target with highest threat, or nil if no threats
-    func getHighestThreatTarget() -> Character? {
+    func getHighestThreatTarget() -> Damageable? {
         self.threatTable.getHighestThreatTarget()
     }
 
@@ -236,14 +236,14 @@ class Enemy: Character {
     /// - Parameters:
     ///   - amount: Amount of damage to take
     ///   - attacker: The character dealing the damage (for threat tracking)
-    func takeDamage(_ amount: Int, from attacker: Character?) {
+    func takeDamage(_ amount: Int, from attacker: Damageable?) {
         // First, take the damage
         self.takeDamage(amount)
 
         // Generate threat if we have an attacker
         if let attacker {
             // Apply tower multiplier if attacker is a structure (towers generate less threat)
-            let multiplier = (attacker is DefensiveStructure)
+            let multiplier = (attacker is Structure)
                 ? ThreatConfig.towerDamageThreatMultiplier
                 : ThreatConfig.damageThreatMultiplier
             let threatAmount = Float(amount) * multiplier
