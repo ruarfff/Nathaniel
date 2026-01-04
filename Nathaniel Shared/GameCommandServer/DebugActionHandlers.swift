@@ -56,8 +56,8 @@
                 } else {
                     state["nathanielTarget"] = "none"
                 }
-                state["nathanielManualOverride"] = nathaniel.manualTargetOverride != nil ? "true" : "false"
-                state["nathanielTargetingBehavior"] = "\(nathaniel.targetingBehavior)"
+                state["nathanielManualOverride"] = nathaniel.targeting.manualTargetOverride != nil ? "true" : "false"
+                state["nathanielTargetingBehavior"] = "\(nathaniel.targeting.behavior)"
             }
 
             // Hermes targeting
@@ -68,8 +68,8 @@
                 } else {
                     state["hermesTarget"] = "none"
                 }
-                state["hermesManualOverride"] = hermes.manualTargetOverride != nil ? "true" : "false"
-                state["hermesTargetingBehavior"] = "\(hermes.targetingBehavior)"
+                state["hermesManualOverride"] = hermes.targeting.manualTargetOverride != nil ? "true" : "false"
+                state["hermesTargetingBehavior"] = "\(hermes.targeting.behavior)"
                 state["hermesIsFiring"] = hermes.isFiring ? "true" : "false"
                 let modeString = switch hermes.mode {
                 case .following: "following"
@@ -106,7 +106,7 @@
             }
             if let target = nathaniel.currentTarget as? Enemy {
                 let index = context.enemyManager?.enemies.firstIndex(where: { $0 === target }) ?? -1
-                let manual = nathaniel.manualTargetOverride != nil ? " (manual)" : " (auto)"
+                let manual = nathaniel.targeting.manualTargetOverride != nil ? " (manual)" : " (auto)"
                 return .success("enemy_\(index)\(manual) at (\(Int(target.position.x)), \(Int(target.position.y)))")
             }
             return .success("none")
@@ -120,7 +120,7 @@
             }
             if let target = hermes.currentTarget as? Enemy {
                 let index = context.enemyManager?.enemies.firstIndex(where: { $0 === target }) ?? -1
-                let manual = hermes.manualTargetOverride != nil ? " (manual)" : " (auto)"
+                let manual = hermes.targeting.manualTargetOverride != nil ? " (manual)" : " (auto)"
                 return .success("enemy_\(index)\(manual) at (\(Int(target.position.x)), \(Int(target.position.y)))")
             }
             return .success("none")
@@ -140,14 +140,14 @@
             }
             state.append("mode=\(modeString)")
             state.append("isFiring=\(hermes.isFiring)")
-            state.append("behavior=\(hermes.targetingBehavior)")
+            state.append("behavior=\(hermes.targeting.behavior)")
             if let target = hermes.currentTarget as? Enemy {
                 let index = context.enemyManager?.enemies.firstIndex(where: { $0 === target }) ?? -1
                 state.append("target=enemy_\(index)")
             } else {
                 state.append("target=none")
             }
-            state.append("manualOverride=\(hermes.manualTargetOverride != nil)")
+            state.append("manualOverride=\(hermes.targeting.manualTargetOverride != nil)")
             return .success(state.joined(separator: "; "))
         }
 

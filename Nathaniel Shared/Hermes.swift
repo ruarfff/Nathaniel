@@ -147,21 +147,13 @@ class Hermes: Character {
     /// Whether laser sound has been played this burst
     private var hasPlayedLaserSound: Bool = false
 
-    /// Current target for combat (may be auto-acquired or manual)
-    weak var currentTarget: Character? {
-        didSet {
-            // Update target indicator when target changes
-            if oldValue !== self.currentTarget {
-                self.updateTargetIndicator()
-            }
-        }
+    /// Unified targeting component
+    let targeting: TargetingComponent
+
+    /// Current target for combat (delegates to targeting component)
+    var currentTarget: Character? {
+        self.targeting.currentTarget
     }
-
-    /// Manual target override set by player (takes priority over auto-targeting)
-    weak var manualTargetOverride: Character?
-
-    /// Current targeting behavior mode
-    var targetingBehavior: TargetingBehavior = .supportive
 
     // MARK: - Combat Visual Properties
 
@@ -177,6 +169,13 @@ class Hermes: Character {
         // Initialize laser before super.init (required for let property)
         self.laser = LaserBeam(color: .cyan, thickness: 3)
 
+        // Initialize targeting component with default supportive behavior
+        self.targeting = TargetingComponent(
+            behavior: .supportive,
+            attackRange: Hermes.weaponRange,
+            visionRange: Hermes.visibleRange
+        )
+
         super.init(
             name: "Hermes",
             maxHP: Hermes.defaultMaxHP,
@@ -190,6 +189,11 @@ class Hermes: Character {
 
         // Start cooldown ready to fire
         self.cooldownElapsed = Hermes.laserCooldownTime
+
+        // Wire up targeting callbacks
+        self.targeting.onTargetChanged = { [weak self] _ in
+            self?.updateTargetIndicator()
+        }
 
         print("Hermes: Initializing...")
 
@@ -374,8 +378,16 @@ class Hermes: Character {
             self.cooldownElapsed += deltaTime
         }
 
-        // Update targeting based on mode
-        self.updateTargeting()
+        // Set targeting behavior based on mode
+        self.targeting.behavior = switch self.mode {
+        case .following:
+            .supportive // Prioritize enemies attacking Nathaniel
+        case .independent, .locked:
+            .aggressive // Attack anything in range
+        }
+
+        // Update targeting via component
+        self.targeting.update(position: position, isActive: isActive && isAlive)
 
         // Attack current target if we have one
         if let target = currentTarget, target.isAlive {
@@ -386,64 +398,6 @@ class Hermes: Character {
                 self.isFiring = false
                 self.laser.deactivate()
             }
-        }
-    }
-
-    /// Update targeting based on current mode
-    private func updateTargeting() {
-        // Manual override always takes priority
-        if let manual = manualTargetOverride, manual.isAlive {
-            self.currentTarget = manual
-            return
-        }
-
-        // Clear manual override if target is dead
-        if self.manualTargetOverride != nil, self.manualTargetOverride?.isAlive != true {
-            self.manualTargetOverride = nil
-        }
-
-        // Check if current target is still valid
-        if let current = currentTarget {
-            if !current.isAlive {
-                // Target died - clear it
-                self.currentTarget = nil
-            } else {
-                // Check if target is still in vision range (sticky targeting)
-                let dx = current.position.x - position.x
-                let dy = current.position.y - position.y
-                let distance = hypot(dx, dy)
-
-                if distance > Hermes.visibleRange {
-                    // Target left vision range - clear it
-                    self.currentTarget = nil
-                } else {
-                    // Keep current target (sticky targeting)
-                    return
-                }
-            }
-        }
-
-        // No valid target - find a new one based on mode
-        guard let enemies = findEnemiesInRange?() else { return }
-        let allies = self.getAllies?() ?? []
-
-        // Set targeting behavior based on mode
-        let behavior: TargetingBehavior = switch self.mode {
-        case .following:
-            .supportive // Prioritize enemies attacking Nathaniel
-        case .independent, .locked:
-            .aggressive // Attack anything in range
-        }
-
-        // Find best target
-        if let bestTarget = ThreatAssessment.findBestTarget(
-            from: position,
-            enemies: enemies,
-            allies: allies,
-            behavior: behavior,
-            maxRange: Hermes.visibleRange
-        ) {
-            self.currentTarget = bestTarget
         }
     }
 
@@ -511,13 +465,12 @@ class Hermes: Character {
 
     /// Set a manual target (called when player taps an enemy while Hermes is selected)
     func setManualTarget(_ target: Enemy?) {
-        self.manualTargetOverride = target
-        self.currentTarget = target
+        self.targeting.setManualTarget(target)
     }
 
     /// Clear manual target (called when player taps ground or deselects Hermes)
     func clearManualTarget() {
-        self.manualTargetOverride = nil
+        self.targeting.clearManualTarget()
     }
 
     /// Get current attack range (for CombatCapable)
@@ -622,8 +575,7 @@ class Hermes: Character {
         // Deactivate laser and clear combat state
         self.laser.deactivate()
         self.isFiring = false
-        self.currentTarget = nil
-        self.manualTargetOverride = nil
+        self.targeting.clearAll()
 
         super.onDeath()
         self.onDeathCallback?()
@@ -639,8 +591,7 @@ class Hermes: Character {
         self.facingDirection = .south
 
         // Reset combat state
-        self.currentTarget = nil
-        self.manualTargetOverride = nil
+        self.targeting.clearAll()
         self.isFiring = false
         self.laser.deactivate()
         self.cooldownElapsed = Hermes.laserCooldownTime // Ready to fire

@@ -754,6 +754,29 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
             if let hermes = self?.hermes { allies.append(hermes) }
             return allies
         }
+
+        // Wire up targeting component callbacks (if present)
+        if let nathaniel = character as? Nathaniel {
+            nathaniel.targeting.findEnemies = { [weak self] in
+                self?.enemyManager.aliveEnemies ?? []
+            }
+            nathaniel.targeting.getAllies = { [weak self] in
+                var allies: [Character] = []
+                if let n = self?.nathaniel { allies.append(n) }
+                if let h = self?.hermes { allies.append(h) }
+                return allies
+            }
+        } else if let hermes = character as? Hermes {
+            hermes.targeting.findEnemies = { [weak self] in
+                self?.enemyManager.aliveEnemies ?? []
+            }
+            hermes.targeting.getAllies = { [weak self] in
+                var allies: [Character] = []
+                if let n = self?.nathaniel { allies.append(n) }
+                if let h = self?.hermes { allies.append(h) }
+                return allies
+            }
+        }
     }
 
     /// Spawn all player characters at their designated spawn points

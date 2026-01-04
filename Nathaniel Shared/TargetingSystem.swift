@@ -1,4 +1,5 @@
 import Foundation
+import SpriteKit
 
 // MARK: - Targeting Behavior
 
@@ -243,5 +244,207 @@ enum ThreatAssessment {
         enemies.filter { enemy in
             enemy.isAlive && self.isEnemyAttacking(enemy, target: target)
         }
+    }
+}
+
+// MARK: - Targeting Component
+
+/// Unified targeting component that can be used by any combat entity.
+/// Encapsulates all targeting logic including manual override, sticky targeting,
+/// and auto-acquisition via ThreatAssessment.
+///
+/// Usage:
+/// ```swift
+/// class MyCharacter: Character {
+///     let targeting = TargetingComponent(behavior: .aggressive)
+///
+///     override func update(deltaTime: TimeInterval) {
+///         super.update(deltaTime: deltaTime)
+///         targeting.update(position: position, isActive: isActive && isAlive)
+///     }
+/// }
+/// ```
+class TargetingComponent {
+    // MARK: - Configuration
+
+    /// Targeting behavior mode
+    var behavior: TargetingBehavior
+
+    /// Range at which this entity can attack
+    var attackRange: CGFloat
+
+    /// Range at which this entity can detect enemies
+    var visionRange: CGFloat
+
+    // MARK: - State
+
+    /// Current target (may be auto-acquired or from manual override)
+    private(set) weak var currentTarget: Character? {
+        didSet {
+            if oldValue !== self.currentTarget {
+                self.onTargetChanged?(self.currentTarget)
+            }
+        }
+    }
+
+    /// Manual target override set by player (takes priority over auto-targeting)
+    private(set) weak var manualTargetOverride: Character?
+
+    // MARK: - Callbacks
+
+    /// Called when the current target changes (for updating visual indicators)
+    var onTargetChanged: ((Character?) -> Void)?
+
+    /// Provider for enemies in range. Must be set for auto-targeting to work.
+    var findEnemies: (() -> [Enemy])?
+
+    /// Provider for allied characters. Used for threat assessment scoring.
+    var getAllies: (() -> [Character])?
+
+    // MARK: - Initialization
+
+    /// Create a new targeting component
+    /// - Parameters:
+    ///   - behavior: Initial targeting behavior mode
+    ///   - attackRange: Range at which entity can attack
+    ///   - visionRange: Range at which entity can detect enemies
+    init(behavior: TargetingBehavior, attackRange: CGFloat, visionRange: CGFloat) {
+        self.behavior = behavior
+        self.attackRange = attackRange
+        self.visionRange = visionRange
+    }
+
+    // MARK: - Manual Targeting
+
+    /// Set a manual target (called when player taps an enemy)
+    /// - Parameter target: The enemy to target, or nil to clear
+    func setManualTarget(_ target: Enemy?) {
+        self.manualTargetOverride = target
+        self.currentTarget = target
+    }
+
+    /// Clear manual target (called when player taps ground or deselects)
+    func clearManualTarget() {
+        self.manualTargetOverride = nil
+    }
+
+    // MARK: - Target Validation
+
+    /// Check if current target is still valid (alive and in range)
+    /// - Parameter position: Current position of the targeting entity
+    /// - Returns: true if target is valid
+    func isTargetValid(from position: CGPoint) -> Bool {
+        guard let target = currentTarget else { return false }
+        guard target.isAlive else { return false }
+
+        let dx = target.position.x - position.x
+        let dy = target.position.y - position.y
+        let distance = hypot(dx, dy)
+
+        return distance <= self.visionRange
+    }
+
+    /// Check if current target is in attack range
+    /// - Parameter position: Current position of the targeting entity
+    /// - Returns: true if target is within attack range
+    func isTargetInAttackRange(from position: CGPoint) -> Bool {
+        guard let target = currentTarget else { return false }
+
+        let dx = target.position.x - position.x
+        let dy = target.position.y - position.y
+        let distance = hypot(dx, dy)
+
+        return distance <= self.attackRange
+    }
+
+    // MARK: - Targeting Update
+
+    /// Update targeting logic. Call this each frame.
+    /// Handles manual override, sticky targeting, and auto-acquisition.
+    /// - Parameters:
+    ///   - position: Current position of the targeting entity
+    ///   - isActive: Whether the entity is active and can target (e.g., isActive && isAlive)
+    func update(position: CGPoint, isActive: Bool) {
+        guard isActive else {
+            self.currentTarget = nil
+            return
+        }
+
+        // Manual override always takes priority
+        if let manual = manualTargetOverride, manual.isAlive {
+            self.currentTarget = manual
+            return
+        }
+
+        // Clear manual override if target is dead
+        if self.manualTargetOverride != nil, self.manualTargetOverride?.isAlive != true {
+            self.manualTargetOverride = nil
+        }
+
+        // Check if current target is still valid (sticky targeting)
+        if let current = currentTarget {
+            if !current.isAlive {
+                // Target died - clear it
+                self.currentTarget = nil
+            } else {
+                // Check if target is still in vision range
+                let dx = current.position.x - position.x
+                let dy = current.position.y - position.y
+                let distance = hypot(dx, dy)
+
+                if distance > self.visionRange {
+                    // Target left vision range - clear it
+                    self.currentTarget = nil
+                } else {
+                    // Keep current target (sticky targeting)
+                    return
+                }
+            }
+        }
+
+        // No valid target - find a new one using threat assessment
+        self.currentTarget = self.findBestTarget(from: position)
+    }
+
+    /// Find the best target using ThreatAssessment
+    /// - Parameter position: Position to search from
+    /// - Returns: Best enemy target, or nil if none found
+    func findBestTarget(from position: CGPoint) -> Enemy? {
+        guard let enemies = findEnemies?() else { return nil }
+        let allies = self.getAllies?() ?? []
+
+        // Determine search range based on behavior
+        let searchRange: CGFloat = switch self.behavior {
+        case .aggressive, .supportive:
+            self.visionRange
+        case .defensive:
+            self.attackRange
+        case .passive:
+            0 // Don't auto-acquire in passive mode
+        }
+
+        guard searchRange > 0 else { return nil }
+
+        return ThreatAssessment.findBestTarget(
+            from: position,
+            enemies: enemies,
+            allies: allies,
+            behavior: self.behavior,
+            maxRange: searchRange
+        )
+    }
+
+    // MARK: - Utility
+
+    /// Clear all targeting state
+    func clearAll() {
+        self.manualTargetOverride = nil
+        self.currentTarget = nil
+    }
+
+    /// Force set a target (bypasses normal targeting logic)
+    /// Use sparingly - prefer setManualTarget for player actions
+    func forceTarget(_ target: Character?) {
+        self.currentTarget = target
     }
 }

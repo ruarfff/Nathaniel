@@ -29,20 +29,13 @@ class Nathaniel: Character {
 
     // MARK: - Combat Properties
 
-    /// Current target for combat (may be auto-acquired or manual)
-    weak var currentTarget: Character? {
-        didSet {
-            if oldValue !== self.currentTarget {
-                self.updateTargetIndicator()
-            }
-        }
+    /// Unified targeting component
+    let targeting: TargetingComponent
+
+    /// Current target for combat (delegates to targeting component)
+    var currentTarget: Character? {
+        self.targeting.currentTarget
     }
-
-    /// Manual target override set by player (takes priority over auto-targeting)
-    weak var manualTargetOverride: Character?
-
-    /// Current targeting behavior mode
-    var targetingBehavior: TargetingBehavior = .aggressive
 
     /// Visual indicator showing Nathaniel's current target (red ring)
     private var targetIndicator: TargetIndicator?
@@ -50,7 +43,13 @@ class Nathaniel: Character {
     /// Legacy alias for backward compatibility
     var target: Character? {
         get { self.currentTarget }
-        set { self.currentTarget = newValue }
+        set {
+            if let enemy = newValue as? Enemy {
+                self.targeting.setManualTarget(enemy)
+            } else {
+                self.targeting.clearAll()
+            }
+        }
     }
 
     // MARK: - Initialization
@@ -58,6 +57,13 @@ class Nathaniel: Character {
     init() {
         // Initialize weapon first (before super.init)
         self.weapon = Gun()
+
+        // Initialize targeting component
+        self.targeting = TargetingComponent(
+            behavior: .aggressive,
+            attackRange: Nathaniel.weaponRange,
+            visionRange: Nathaniel.visibleRange
+        )
 
         super.init(
             name: "Nathaniel",
@@ -72,6 +78,11 @@ class Nathaniel: Character {
 
         // Set vision range to match static constant
         visionRange = Nathaniel.visibleRange
+
+        // Wire up targeting callbacks
+        self.targeting.onTargetChanged = { [weak self] _ in
+            self?.updateTargetIndicator()
+        }
 
         print("Nathaniel: Initializing...")
 
@@ -98,91 +109,30 @@ class Nathaniel: Character {
         // Update weapon (handles cooldown and projectiles)
         self.weapon.update(deltaTime: deltaTime)
 
-        // Update targeting (auto-acquire if no manual target)
-        self.updateTargeting()
+        // Update targeting via component
+        self.targeting.update(position: position, isActive: isActive && isAlive)
 
         // Update target indicator position to follow target
         self.targetIndicator?.updatePosition()
 
-        // Auto-attack target if we have one and weapon is ready
-        if let target = currentTarget, target.isAlive {
-            let dx = target.position.x - position.x
-            let dy = target.position.y - position.y
-            let distance = hypot(dx, dy)
-
-            // Attack if in range
-            if distance <= Nathaniel.weaponRange {
-                _ = self.weapon.use(target: target.position)
-            }
+        // Auto-attack target if we have one and in range
+        if self.targeting.isTargetInAttackRange(from: position),
+           let target = currentTarget, target.isAlive
+        {
+            _ = self.weapon.use(target: target.position)
         }
     }
 
     // MARK: - Targeting
 
-    /// Update targeting based on manual override or auto-acquisition
-    private func updateTargeting() {
-        guard isActive, isAlive else {
-            self.currentTarget = nil
-            return
-        }
-
-        // Manual override always takes priority
-        if let manual = manualTargetOverride, manual.isAlive {
-            self.currentTarget = manual
-            return
-        }
-
-        // Clear manual override if target is dead
-        if self.manualTargetOverride != nil, self.manualTargetOverride?.isAlive != true {
-            self.manualTargetOverride = nil
-        }
-
-        // Check if current target is still valid (sticky targeting)
-        if let current = currentTarget {
-            if !current.isAlive {
-                // Target died - clear it
-                self.currentTarget = nil
-            } else {
-                // Check if target is still in vision range
-                let dx = current.position.x - position.x
-                let dy = current.position.y - position.y
-                let distance = hypot(dx, dy)
-
-                if distance > Nathaniel.visibleRange {
-                    // Target left vision range - clear it
-                    self.currentTarget = nil
-                } else {
-                    // Keep current target (sticky targeting)
-                    return
-                }
-            }
-        }
-
-        // No valid target - find a new one using threat assessment
-        guard let enemies = findEnemiesInRange?() else { return }
-        let allies = self.getAllies?() ?? []
-
-        // Find best target using aggressive behavior (Nathaniel is main combat character)
-        if let bestTarget = ThreatAssessment.findBestTarget(
-            from: position,
-            enemies: enemies,
-            allies: allies,
-            behavior: self.targetingBehavior,
-            maxRange: Nathaniel.visibleRange
-        ) {
-            self.currentTarget = bestTarget
-        }
-    }
-
     /// Set a manual target (called when player taps an enemy)
     func setManualTarget(_ target: Enemy?) {
-        self.manualTargetOverride = target
-        self.currentTarget = target
+        self.targeting.setManualTarget(target)
     }
 
     /// Clear manual target (called when player taps ground or deselects)
     func clearManualTarget() {
-        self.manualTargetOverride = nil
+        self.targeting.clearManualTarget()
     }
 
     /// Get current attack range
@@ -230,8 +180,7 @@ class Nathaniel: Character {
 
     override func onDeath() {
         // Clear combat state
-        self.currentTarget = nil
-        self.manualTargetOverride = nil
+        self.targeting.clearAll()
 
         // Don't call super - we want custom death handling for player
         animationState = .dead
@@ -257,8 +206,7 @@ class Nathaniel: Character {
         self.isActive = true
 
         // Reset combat state
-        self.currentTarget = nil
-        self.manualTargetOverride = nil
+        self.targeting.clearAll()
 
         // Reset sprite visuals
         sprite.alpha = 1.0
