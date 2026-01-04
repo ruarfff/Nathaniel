@@ -199,19 +199,27 @@ XcodeBuildMCP is fine for: building, running, booting simulators, screenshots.
 | `game_swipe(fromX, fromY, toX, toY)` | Swipe gesture |
 | `game_action(name, params)` | Execute named action |
 | `game_action(name, wait_for_scene)` | Execute action + wait for scene transition |
+| `game_start_level(level)` | **CONVENIENCE** - Navigate to level from anywhere (handles all steps) |
+| `game_goto_menu()` | **CONVENIENCE** - Return to main menu from anywhere |
 
 > **Aliases**: `game_get_state` and `game_get_nodes` are aliases for backwards compatibility.
 
 ### Workflow Pattern (Simplified)
 
-**Option 1: By node name (recommended)**
+**Option 1: High-level navigation (recommended for common workflows)**
+```
+1. game_start_level(1)    → Navigate to level 1 from anywhere
+2. game_goto_menu()       → Return to main menu when done
+```
+
+**Option 2: By node name (for custom navigation)**
 ```
 1. game_describe()                              → Understand scene
 2. game_tap(node: "startButton")                → Tap by name
 3. game_action("level_1", wait_for_scene: "GameScene")  → Navigate + wait
 ```
 
-**Option 2: By coordinates (legacy)**
+**Option 3: By coordinates (legacy)**
 ```
 1. game_health()      → Verify game running
 2. game_state()       → Check current scene

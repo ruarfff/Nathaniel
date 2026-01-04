@@ -99,6 +99,19 @@ export interface BaselineResponse {
   message: string;
 }
 
+export interface NavigationStep {
+  action: string;
+  scene?: string;
+  success: boolean;
+}
+
+export interface NavigationResult {
+  success: boolean;
+  steps: NavigationStep[];
+  totalTime: number;
+  error?: string;
+}
+
 export class GameClient {
   private baseUrl: string;
   private timeout: number;
@@ -314,6 +327,152 @@ export class GameClient {
       { method: 'GET' },
       requestTimeout
     );
+  }
+
+  // High-level navigation convenience methods
+
+  /**
+   * Navigate to a specific level from any scene.
+   * Handles multi-step navigation automatically.
+   */
+  async startLevel(level: number): Promise<NavigationResult> {
+    const steps: NavigationStep[] = [];
+    const startTime = Date.now();
+
+    try {
+      // Get current state
+      const state = await this.getState();
+      const currentScene = state.scene;
+      steps.push({ action: 'getState', scene: currentScene, success: true });
+
+      // Route based on current scene
+      if (currentScene === 'GameScene') {
+        // Exit to menu first
+        const exitResult = await this.action('exitToMenu', { skipConfirm: 'true' });
+        steps.push({ action: 'exitToMenu', success: exitResult.success });
+        if (!exitResult.success) {
+          return this.navigationResult(false, steps, startTime, 'Failed to exit game');
+        }
+        const waitMenu = await this.waitForScene(10, 'MainMenuScene');
+        steps.push({ action: 'waitForScene', scene: 'MainMenuScene', success: !waitMenu.timedOut });
+        if (waitMenu.timedOut) {
+          return this.navigationResult(false, steps, startTime, 'Timeout waiting for MainMenuScene');
+        }
+      } else if (currentScene === 'OptionsScene' || currentScene === 'CreditsScene') {
+        // Go back to main menu
+        const backResult = await this.action('back');
+        steps.push({ action: 'back', success: backResult.success });
+        const waitMenu = await this.waitForScene(10, 'MainMenuScene');
+        steps.push({ action: 'waitForScene', scene: 'MainMenuScene', success: !waitMenu.timedOut });
+        if (waitMenu.timedOut) {
+          return this.navigationResult(false, steps, startTime, 'Timeout waiting for MainMenuScene');
+        }
+      }
+
+      // Now we should be at MainMenuScene or LevelSelectScene
+      const currentState = await this.getState();
+      if (currentState.scene === 'MainMenuScene') {
+        // Go to level select
+        const startResult = await this.action('startGame');
+        steps.push({ action: 'startGame', success: startResult.success });
+        if (!startResult.success) {
+          return this.navigationResult(false, steps, startTime, 'Failed to start game');
+        }
+        const waitLevelSelect = await this.waitForScene(10, 'LevelSelectScene');
+        steps.push({ action: 'waitForScene', scene: 'LevelSelectScene', success: !waitLevelSelect.timedOut });
+        if (waitLevelSelect.timedOut) {
+          return this.navigationResult(false, steps, startTime, 'Timeout waiting for LevelSelectScene');
+        }
+      }
+
+      // Now at LevelSelectScene - select the level
+      const levelAction = `level_${level}`;
+      const levelResult = await this.action(levelAction);
+      steps.push({ action: levelAction, success: levelResult.success });
+      if (!levelResult.success) {
+        return this.navigationResult(false, steps, startTime, `Failed to select ${levelAction}`);
+      }
+
+      // Wait for GameScene
+      const waitGame = await this.waitForScene(10, 'GameScene');
+      steps.push({ action: 'waitForScene', scene: 'GameScene', success: !waitGame.timedOut });
+      if (waitGame.timedOut) {
+        return this.navigationResult(false, steps, startTime, 'Timeout waiting for GameScene');
+      }
+
+      return this.navigationResult(true, steps, startTime);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return this.navigationResult(false, steps, startTime, message);
+    }
+  }
+
+  /**
+   * Navigate to the main menu from any scene.
+   * Handles exit confirmation and back navigation automatically.
+   */
+  async gotoMenu(): Promise<NavigationResult> {
+    const steps: NavigationStep[] = [];
+    const startTime = Date.now();
+
+    try {
+      // Get current state
+      const state = await this.getState();
+      const currentScene = state.scene;
+      steps.push({ action: 'getState', scene: currentScene, success: true });
+
+      if (currentScene === 'MainMenuScene') {
+        // Already at menu
+        return this.navigationResult(true, steps, startTime);
+      }
+
+      if (currentScene === 'GameScene') {
+        // Exit game with skip confirmation
+        const exitResult = await this.action('exitToMenu', { skipConfirm: 'true' });
+        steps.push({ action: 'exitToMenu', success: exitResult.success });
+        if (!exitResult.success) {
+          return this.navigationResult(false, steps, startTime, 'Failed to exit game');
+        }
+      } else if (currentScene === 'LevelSelectScene' || currentScene === 'OptionsScene' || currentScene === 'CreditsScene') {
+        // Use back action
+        const backResult = await this.action('back');
+        steps.push({ action: 'back', success: backResult.success });
+        if (!backResult.success) {
+          return this.navigationResult(false, steps, startTime, 'Failed to go back');
+        }
+      } else {
+        return this.navigationResult(false, steps, startTime, `Unknown scene: ${currentScene}`);
+      }
+
+      // Wait for MainMenuScene
+      const waitMenu = await this.waitForScene(10, 'MainMenuScene');
+      steps.push({ action: 'waitForScene', scene: 'MainMenuScene', success: !waitMenu.timedOut });
+      if (waitMenu.timedOut) {
+        return this.navigationResult(false, steps, startTime, 'Timeout waiting for MainMenuScene');
+      }
+
+      return this.navigationResult(true, steps, startTime);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return this.navigationResult(false, steps, startTime, message);
+    }
+  }
+
+  /**
+   * Helper to build navigation result
+   */
+  private navigationResult(
+    success: boolean,
+    steps: NavigationStep[],
+    startTime: number,
+    error?: string
+  ): NavigationResult {
+    return {
+      success,
+      steps,
+      totalTime: Date.now() - startTime,
+      ...(error && { error }),
+    };
   }
 
   /**

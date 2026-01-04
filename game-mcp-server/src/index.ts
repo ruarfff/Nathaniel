@@ -324,6 +324,43 @@ const tools: Tool[] = [
       required: ['name'],
     },
   },
+  {
+    name: 'game_start_level',
+    description: `Navigate to a specific level from any scene. This convenience tool handles all the multi-step navigation automatically:
+- From MainMenuScene: startGame → LevelSelectScene → level_N → GameScene
+- From LevelSelectScene: level_N → GameScene
+- From GameScene: exitToMenu → MainMenuScene → startGame → LevelSelectScene → level_N → GameScene
+- From OptionsScene/CreditsScene: back → MainMenuScene → startGame → LevelSelectScene → level_N → GameScene
+
+Returns the navigation steps taken and total time. Much simpler than manual multi-step navigation.`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        level: {
+          type: 'number',
+          description: 'Level number to start (1-5)',
+          minimum: 1,
+          maximum: 5,
+        },
+      },
+      required: ['level'],
+    },
+  },
+  {
+    name: 'game_goto_menu',
+    description: `Navigate to the main menu from any scene. This convenience tool handles exit confirmation and back navigation automatically:
+- From MainMenuScene: Already there, returns immediately
+- From LevelSelectScene: back → MainMenuScene
+- From GameScene: exitToMenu (with skipConfirm) → MainMenuScene
+- From OptionsScene/CreditsScene: back → MainMenuScene
+
+Returns the navigation steps taken and total time.`,
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
 ];
 
 // Create MCP server
@@ -685,6 +722,31 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'game_delete_baseline': {
         const deleteArgs = args as { name: string };
         const result = await gameClient.deleteBaseline(deleteArgs.name);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'game_start_level': {
+        const levelArgs = args as { level: number };
+        const result = await gameClient.startLevel(levelArgs.level);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'game_goto_menu': {
+        const result = await gameClient.gotoMenu();
         return {
           content: [
             {
