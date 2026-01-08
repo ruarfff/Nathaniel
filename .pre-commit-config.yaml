@@ -2,6 +2,16 @@
 # https://pre-commit.com
 
 repos:
+  # Beads issue tracking - ensure issues are synced
+  - repo: local
+    hooks:
+      - id: beads
+        name: Beads Sync
+        entry: bd hooks run pre-commit
+        language: system
+        always_run: true
+        pass_filenames: false
+
   # SwiftFormat - runs first to auto-fix formatting
   - repo: local
     hooks:
