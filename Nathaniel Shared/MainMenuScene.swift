@@ -30,6 +30,8 @@ class MainMenuScene: SKScene {
     override func didMove(to view: SKView) {
         setupBackground()
         setupTitle()
+        setupCornerSprites()
+        setupBottomDecoration()
         setupMenuButtons()
         setupSaveSlotSelector()
 
@@ -45,64 +47,218 @@ class MainMenuScene: SKScene {
     // MARK: - Setup Methods
 
     private func setupBackground() {
-        // Dark green gradient-like background to match game aesthetic
-        backgroundColor = SKColor(red: 0.15, green: 0.25, blue: 0.15, alpha: 1.0)
-
-        // Add some decorative elements
-        let pattern = createGrassPattern()
-        pattern.position = CGPoint(x: size.width / 2, y: size.height / 4)
-        addChild(pattern)
+        // Pure black background for arcade aesthetic
+        backgroundColor = SKColor.black
     }
 
-    private func createGrassPattern() -> SKNode {
-        let container = SKNode()
+    private func setupCornerSprites() {
+        let margin: CGFloat = 80
+        let spriteScale: CGFloat = 2.0 // Scale up pixel art for visibility
 
-        // Create a simple decorative pattern at the bottom
-        let grassColor = SKColor(red: 0.2, green: 0.4, blue: 0.2, alpha: 0.5)
-
-        for i in 0 ..< 20 {
-            let grass = SKShapeNode(rectOf: CGSize(width: 60, height: 8))
-            grass.fillColor = grassColor
-            grass.strokeColor = .clear
-            grass.position = CGPoint(
-                x: CGFloat(i - 10) * 70,
-                y: CGFloat.random(in: -20 ... 20)
-            )
-            container.addChild(grass)
+        // Top-left: Boss/Mech sprite (first frame from boss1spritesheet)
+        // Boss sheet is 600x642, appears to be ~5 columns x 5 rows
+        if let topLeftSprite = extractSpriteFrame(
+            from: "boss1spritesheet",
+            frameSize: CGSize(width: 120, height: 128),
+            row: 0,
+            column: 0
+        ) {
+            let sprite = SKSpriteNode(texture: topLeftSprite)
+            sprite.setScale(spriteScale * 0.6)
+            sprite.position = CGPoint(x: margin, y: size.height - margin)
+            sprite.zPosition = 5
+            addChild(sprite)
+            addFloatingAnimation(to: sprite)
         }
 
-        return container
+        // Top-right: Nathaniel sprite (first frame)
+        // Nathaniel sheet is 201x70, appears to be 3 frames at ~67x70
+        if let topRightSprite = extractSpriteFrame(
+            from: "nathanielspritesheet",
+            frameSize: CGSize(width: 67, height: 70),
+            row: 0,
+            column: 0
+        ) {
+            let sprite = SKSpriteNode(texture: topRightSprite)
+            sprite.setScale(spriteScale)
+            sprite.position = CGPoint(x: size.width - margin, y: size.height - margin)
+            sprite.zPosition = 5
+            addChild(sprite)
+            addFloatingAnimation(to: sprite)
+        }
+
+        // Bottom-left: Grunt enemy sprite (first frame)
+        // Grunt sheet is 280x80, appears to be 4 frames at ~70x80
+        if let bottomLeftSprite = extractSpriteFrame(
+            from: "gruntspritesheet",
+            frameSize: CGSize(width: 70, height: 80),
+            row: 0,
+            column: 0
+        ) {
+            let sprite = SKSpriteNode(texture: bottomLeftSprite)
+            sprite.setScale(spriteScale)
+            sprite.position = CGPoint(x: margin, y: margin + 40)
+            sprite.zPosition = 5
+            addChild(sprite)
+            addFloatingAnimation(to: sprite)
+        }
+
+        // Bottom-right: Hermes sprite (first frame from idle sheet)
+        // Hermes sheet is 260x35, appears to be ~5 frames at 52x35
+        if let bottomRightSprite = extractSpriteFrame(
+            from: "hermesidlespritesheet",
+            frameSize: CGSize(width: 52, height: 35),
+            row: 0,
+            column: 0
+        ) {
+            let sprite = SKSpriteNode(texture: bottomRightSprite)
+            sprite.setScale(spriteScale * 2.0) // Hermes is small, scale up more
+            sprite.position = CGPoint(x: size.width - margin, y: margin + 40)
+            sprite.zPosition = 5
+            addChild(sprite)
+            addFloatingAnimation(to: sprite)
+        }
+    }
+
+    private func extractSpriteFrame(
+        from sheetName: String,
+        frameSize: CGSize,
+        row: Int,
+        column: Int
+    ) -> SKTexture? {
+        let texture = SKTexture(imageNamed: sheetName)
+
+        // Check if texture loaded (size will be zero if not found)
+        let sheetWidth = texture.size().width
+        let sheetHeight = texture.size().height
+
+        guard sheetWidth > 0, sheetHeight > 0 else {
+            return nil
+        }
+
+        // Calculate normalized coordinates (0-1 range, origin at bottom-left in SpriteKit)
+        let x = CGFloat(column) * frameSize.width / sheetWidth
+        let y = 1.0 - (CGFloat(row + 1) * frameSize.height / sheetHeight)
+        let width = frameSize.width / sheetWidth
+        let height = frameSize.height / sheetHeight
+
+        let rect = CGRect(x: x, y: y, width: width, height: height)
+        return SKTexture(rect: rect, in: texture)
+    }
+
+    private func addFloatingAnimation(to sprite: SKSpriteNode) {
+        let moveUp = SKAction.moveBy(x: 0, y: 8, duration: 1.5)
+        moveUp.timingMode = .easeInEaseOut
+        let moveDown = moveUp.reversed()
+        let float = SKAction.sequence([moveUp, moveDown])
+        sprite.run(SKAction.repeatForever(float))
+    }
+
+    private func setupBottomDecoration() {
+        // Create crossed arrows/lines decoration at bottom center
+        let decorationContainer = SKNode()
+        decorationContainer.position = CGPoint(x: size.width / 2, y: size.height * 0.06)
+        decorationContainer.zPosition = 5
+
+        let lineColor = SKColor(red: 0.6, green: 0.3, blue: 0.3, alpha: 0.8)
+
+        // Left diagonal line
+        let leftLine = SKShapeNode()
+        let leftPath = CGMutablePath()
+        leftPath.move(to: CGPoint(x: -60, y: 0))
+        leftPath.addLine(to: CGPoint(x: -20, y: 15))
+        leftLine.path = leftPath
+        leftLine.strokeColor = lineColor
+        leftLine.lineWidth = 3
+        decorationContainer.addChild(leftLine)
+
+        // Right diagonal line (mirrored)
+        let rightLine = SKShapeNode()
+        let rightPath = CGMutablePath()
+        rightPath.move(to: CGPoint(x: 60, y: 0))
+        rightPath.addLine(to: CGPoint(x: 20, y: 15))
+        rightLine.path = rightPath
+        rightLine.strokeColor = lineColor
+        rightLine.lineWidth = 3
+        decorationContainer.addChild(rightLine)
+
+        // Center crossing lines (V shape pointing down)
+        let centerV = SKShapeNode()
+        let centerPath = CGMutablePath()
+        centerPath.move(to: CGPoint(x: -25, y: 10))
+        centerPath.addLine(to: CGPoint(x: 0, y: -5))
+        centerPath.addLine(to: CGPoint(x: 25, y: 10))
+        centerV.path = centerPath
+        centerV.strokeColor = lineColor
+        centerV.lineWidth = 3
+        decorationContainer.addChild(centerV)
+
+        // Small decorative dots
+        for xOffset in [-40, -15, 15, 40] as [CGFloat] {
+            let dot = SKShapeNode(circleOfRadius: 2)
+            dot.fillColor = lineColor
+            dot.strokeColor = .clear
+            dot.position = CGPoint(x: xOffset, y: -8)
+            decorationContainer.addChild(dot)
+        }
+
+        addChild(decorationContainer)
     }
 
     private func setupTitle() {
-        // Main title
+        // Blue sci-fi color for arcade aesthetic
+        let titleBlue = SKColor(red: 0.4, green: 0.7, blue: 1.0, alpha: 1.0)
+
+        // Shadow label (behind main title for depth)
+        let shadowLabel = SKLabelNode(fontNamed: "Copperplate-Bold")
+        shadowLabel.text = "NATHANIEL"
+        shadowLabel.fontSize = 80
+        shadowLabel.fontColor = SKColor(red: 0.1, green: 0.2, blue: 0.4, alpha: 0.8)
+        shadowLabel.position = CGPoint(x: size.width / 2 + 4, y: size.height * 0.85 - 4)
+        shadowLabel.horizontalAlignmentMode = .center
+        shadowLabel.zPosition = -1
+        addChild(shadowLabel)
+
+        // Main title with glow effect
+        let glowContainer = SKEffectNode()
+        glowContainer.shouldRasterize = true
+        glowContainer.position = CGPoint(x: size.width / 2, y: size.height * 0.85)
+        glowContainer.zPosition = 1
+
+        // Add blur filter for glow
+        let blur = CIFilter(name: "CIGaussianBlur")
+        blur?.setValue(3.0, forKey: kCIInputRadiusKey)
+        glowContainer.filter = blur
+
+        // Glow label (slightly larger, more transparent)
+        let glowLabel = SKLabelNode(fontNamed: "Copperplate-Bold")
+        glowLabel.text = "NATHANIEL"
+        glowLabel.fontSize = 80
+        glowLabel.fontColor = titleBlue.withAlphaComponent(0.6)
+        glowLabel.horizontalAlignmentMode = .center
+        glowContainer.addChild(glowLabel)
+        addChild(glowContainer)
+
+        // Main title (crisp, on top)
         titleLabel = SKLabelNode(fontNamed: "Copperplate-Bold")
         titleLabel.text = "NATHANIEL"
-        titleLabel.fontSize = 72
-        titleLabel.fontColor = SKColor(red: 0.9, green: 0.8, blue: 0.5, alpha: 1.0) // Gold-ish
-        titleLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.7)
+        titleLabel.fontSize = 80
+        titleLabel.fontColor = titleBlue
+        titleLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.85)
         titleLabel.horizontalAlignmentMode = .center
+        titleLabel.zPosition = 2
         addChild(titleLabel)
 
-        // Subtitle
-        let subtitleLabel = SKLabelNode(fontNamed: "Copperplate")
-        subtitleLabel.text = "Defender of Earth"
-        subtitleLabel.fontSize = 28
-        subtitleLabel.fontColor = SKColor(red: 0.7, green: 0.6, blue: 0.4, alpha: 1.0)
-        subtitleLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.7 - 50)
-        subtitleLabel.horizontalAlignmentMode = .center
-        addChild(subtitleLabel)
-
-        // Animate title
-        let scaleUp = SKAction.scale(to: 1.05, duration: 1.5)
-        let scaleDown = SKAction.scale(to: 1.0, duration: 1.5)
+        // Subtle pulse animation on main title
+        let scaleUp = SKAction.scale(to: 1.02, duration: 2.0)
+        let scaleDown = SKAction.scale(to: 1.0, duration: 2.0)
         let pulse = SKAction.sequence([scaleUp, scaleDown])
         titleLabel.run(SKAction.repeatForever(pulse))
     }
 
     private func setupMenuButtons() {
-        let buttonSpacing: CGFloat = 70
-        var currentY = size.height * 0.45
+        let buttonSpacing: CGFloat = 60
+        var currentY = size.height * 0.58
 
         // Continue button (only if there's saved campaign progress)
         if GameSettings.shared.hasSavedProgress {
