@@ -94,9 +94,7 @@
                 // Calculate distance to Nathaniel if in follow mode
                 var distanceToTarget: CGFloat = 0
                 if let nathaniel = findNathanielPublic() {
-                    let dx = nathaniel.position.x - hermes.position.x
-                    let dy = nathaniel.position.y - hermes.position.y
-                    distanceToTarget = sqrt(dx * dx + dy * dy)
+                    distanceToTarget = hermes.position.distance(to: nathaniel.position)
                 }
 
                 // Map mode enum to string

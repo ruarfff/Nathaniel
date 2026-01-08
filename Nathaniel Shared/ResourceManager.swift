@@ -51,34 +51,34 @@ class ResourceManager {
     /// Reset all state (for new game/level)
     func reset() {
         // Remove all resource sprites
-        for resource in resources {
+        for resource in self.resources {
             resource.sprite.removeFromParent()
         }
-        resources.removeAll()
+        self.resources.removeAll()
 
         // Reset totals
-        totalCollected = 0
-        totalSpawned = 0
-        totalExpired = 0
+        self.totalCollected = 0
+        self.totalSpawned = 0
+        self.totalExpired = 0
 
         // Notify delegate
-        delegate?.resourceManager(self, didUpdateTotal: totalCollected)
+        self.delegate?.resourceManager(self, didUpdateTotal: self.totalCollected)
     }
 
     /// Reset only the battlefield resources (keep wallet for level transitions)
     func resetBattlefield() {
-        for resource in resources {
+        for resource in self.resources {
             resource.sprite.removeFromParent()
         }
-        resources.removeAll()
-        totalSpawned = 0
-        totalExpired = 0
+        self.resources.removeAll()
+        self.totalSpawned = 0
+        self.totalExpired = 0
     }
 
     /// Restore resource total from saved game
     func restore(total: Int) {
-        totalCollected = total
-        delegate?.resourceManager(self, didUpdateTotal: totalCollected)
+        self.totalCollected = total
+        self.delegate?.resourceManager(self, didUpdateTotal: self.totalCollected)
     }
 
     // MARK: - Spawning
@@ -93,14 +93,14 @@ class ResourceManager {
         let resource = Resource(amount: amount, position: position)
 
         // Add to scene
-        scene?.addChild(resource.sprite)
+        self.scene?.addChild(resource.sprite)
 
         // Track
-        resources.append(resource)
-        totalSpawned += 1
+        self.resources.append(resource)
+        self.totalSpawned += 1
 
         // Add spawn effect
-        addSpawnEffect(at: position)
+        self.addSpawnEffect(at: position)
 
         return resource
     }
@@ -119,7 +119,7 @@ class ResourceManager {
             y: enemy.position.y + offsetY
         )
 
-        spawnResource(amount: amount, at: position)
+        self.spawnResource(amount: amount, at: position)
     }
 
     /// Add a visual spawn effect
@@ -149,10 +149,10 @@ class ResourceManager {
     func update(deltaTime: TimeInterval) {
         var indicesToRemove: [Int] = []
 
-        for (index, resource) in resources.enumerated() {
+        for (index, resource) in self.resources.enumerated() {
             // Check for auto-collection before updating
             if resource.collectionState == .idle {
-                checkAutoCollection(for: resource)
+                self.checkAutoCollection(for: resource)
             }
 
             // Update the resource
@@ -162,10 +162,10 @@ class ResourceManager {
             if !resource.isActive {
                 if resource.collectionState == .collected {
                     // Successfully collected
-                    collectResource(resource)
+                    self.collectResource(resource)
                 } else {
                     // Expired
-                    totalExpired += 1
+                    self.totalExpired += 1
                 }
                 indicesToRemove.append(index)
             }
@@ -173,9 +173,9 @@ class ResourceManager {
 
         // Remove inactive resources (in reverse order)
         for index in indicesToRemove.reversed() {
-            let resource = resources[index]
+            let resource = self.resources[index]
             resource.sprite.removeFromParent()
-            resources.remove(at: index)
+            self.resources.remove(at: index)
         }
     }
 
@@ -183,7 +183,7 @@ class ResourceManager {
 
     /// Check if any collector is in range and start auto-collection
     private func checkAutoCollection(for resource: Resource) {
-        for collector in collectors where collector.isAlive {
+        for collector in self.collectors where collector.isAlive {
             if resource.isInCollectRange(of: collector) {
                 resource.startCollecting(toward: collector)
                 break
@@ -193,52 +193,50 @@ class ResourceManager {
 
     /// Add resource value to player's total
     private func collectResource(_ resource: Resource) {
-        totalCollected += resource.amount
+        self.totalCollected += resource.amount
 
         // Notify delegate
-        delegate?.resourceManager(self, didCollectResource: resource.amount)
-        delegate?.resourceManager(self, didUpdateTotal: totalCollected)
+        self.delegate?.resourceManager(self, didCollectResource: resource.amount)
+        self.delegate?.resourceManager(self, didUpdateTotal: self.totalCollected)
     }
 
     /// Spend resources (for building)
     /// - Parameter amount: Amount to spend
     /// - Returns: True if successful, false if insufficient
     func spendResources(_ amount: Int) -> Bool {
-        guard totalCollected >= amount else {
+        guard self.totalCollected >= amount else {
             return false
         }
 
-        totalCollected -= amount
-        delegate?.resourceManager(self, didUpdateTotal: totalCollected)
+        self.totalCollected -= amount
+        self.delegate?.resourceManager(self, didUpdateTotal: self.totalCollected)
         return true
     }
 
     /// Check if player has enough resources
     func canAfford(_ amount: Int) -> Bool {
-        totalCollected >= amount
+        self.totalCollected >= amount
     }
 
     /// Add resources to player's total (e.g., tower recoup, bonuses)
     /// - Parameter amount: Amount to add (must be positive)
     func addResources(_ amount: Int) {
         guard amount > 0 else { return }
-        totalCollected += amount
-        delegate?.resourceManager(self, didUpdateTotal: totalCollected)
+        self.totalCollected += amount
+        self.delegate?.resourceManager(self, didUpdateTotal: self.totalCollected)
     }
 
     // MARK: - Queries
 
     /// Get count of active resources on battlefield
     var activeCount: Int {
-        resources.count
+        self.resources.count
     }
 
     /// Get resources near a point
     func resources(near point: CGPoint, radius: CGFloat) -> [Resource] {
-        resources.filter { resource in
-            let dx = resource.position.x - point.x
-            let dy = resource.position.y - point.y
-            return hypot(dx, dy) <= radius
+        self.resources.filter { resource in
+            point.distance(to: resource.position) <= radius
         }
     }
 }

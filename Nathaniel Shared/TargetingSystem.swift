@@ -94,11 +94,7 @@ extension CombatCapable {
         guard target.isAlive else { return false }
 
         // Check if target is within vision range (not weapon range - allow chasing)
-        let dx = target.position.x - position.x
-        let dy = target.position.y - position.y
-        let distance = hypot(dx, dy)
-
-        return distance <= visionRange
+        return position.distance(to: target.position) <= visionRange
     }
 }
 
@@ -150,10 +146,7 @@ enum ThreatAssessment {
 
         for enemy in enemies where enemy.isAlive {
             // Check distance
-            let dx = enemy.position.x - position.x
-            let dy = enemy.position.y - position.y
-            let distance = hypot(dx, dy)
-
+            let distance = position.distance(to: enemy.position)
             guard distance <= maxRange else { continue }
 
             // Calculate threat score
@@ -336,12 +329,7 @@ class TargetingComponent {
     func isTargetValid(from position: CGPoint) -> Bool {
         guard let target = currentTarget else { return false }
         guard target.isAlive else { return false }
-
-        let dx = target.position.x - position.x
-        let dy = target.position.y - position.y
-        let distance = hypot(dx, dy)
-
-        return distance <= self.visionRange
+        return position.distance(to: target.position) <= self.visionRange
     }
 
     /// Check if current target is in attack range
@@ -349,12 +337,7 @@ class TargetingComponent {
     /// - Returns: true if target is within attack range
     func isTargetInAttackRange(from position: CGPoint) -> Bool {
         guard let target = currentTarget else { return false }
-
-        let dx = target.position.x - position.x
-        let dy = target.position.y - position.y
-        let distance = hypot(dx, dy)
-
-        return distance <= self.attackRange
+        return position.distance(to: target.position) <= self.attackRange
     }
 
     // MARK: - Targeting Update
@@ -388,11 +371,7 @@ class TargetingComponent {
                 self.currentTarget = nil
             } else {
                 // Check if target is still in vision range
-                let dx = current.position.x - position.x
-                let dy = current.position.y - position.y
-                let distance = hypot(dx, dy)
-
-                if distance > self.visionRange {
+                if position.distance(to: current.position) > self.visionRange {
                     // Target left vision range - clear it
                     self.currentTarget = nil
                 } else {

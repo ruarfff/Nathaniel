@@ -94,12 +94,7 @@ class PlacementValidator {
     /// Check if position is within build radius of Hermes
     private func isWithinBuildRadius(_ position: CGPoint) -> Bool {
         guard let hermes else { return false }
-
-        let dx = position.x - hermes.position.x
-        let dy = position.y - hermes.position.y
-        let distance = hypot(dx, dy)
-
-        return distance <= BuildConfig.buildRadius
+        return position.distance(to: hermes.position) <= BuildConfig.buildRadius
     }
 
     /// Check if terrain at position is walkable (no collision)
@@ -113,12 +108,8 @@ class PlacementValidator {
         guard let manager = structureManager else { return false }
 
         for structure in manager.activeStructures {
-            let dx = position.x - structure.position.x
-            let dy = position.y - structure.position.y
-            let distance = hypot(dx, dy)
-
             // Use tower collision radius for overlap check
-            if distance < BuildConfig.towerCollisionRadius * 2 {
+            if position.distance(to: structure.position) < BuildConfig.towerCollisionRadius * 2 {
                 return true
             }
         }
@@ -128,12 +119,10 @@ class PlacementValidator {
     /// Check if position overlaps any player character
     private func overlapsPlayerCharacter(_ position: CGPoint) -> Bool {
         for character in self.playerCharacters where character.isAlive {
-            let dx = position.x - character.position.x
-            let dy = position.y - character.position.y
-            let distance = hypot(dx, dy)
-
             // Use character's collision radius plus tower radius
-            if distance < character.collisionRadius + BuildConfig.towerCollisionRadius {
+            if position.distance(to: character.position) < character.collisionRadius + BuildConfig
+                .towerCollisionRadius
+            {
                 return true
             }
         }
@@ -145,12 +134,8 @@ class PlacementValidator {
         guard let manager = enemyManager else { return false }
 
         for enemy in manager.aliveEnemies {
-            let dx = position.x - enemy.position.x
-            let dy = position.y - enemy.position.y
-            let distance = hypot(dx, dy)
-
             // Use enemy's collision radius plus tower radius
-            if distance < enemy.collisionRadius + BuildConfig.towerCollisionRadius {
+            if position.distance(to: enemy.position) < enemy.collisionRadius + BuildConfig.towerCollisionRadius {
                 return true
             }
         }
@@ -275,10 +260,7 @@ class Structure: GameEntity, Damageable {
 
     /// Check if a point is within collision radius
     func contains(point: CGPoint) -> Bool {
-        let dx = self.position.x - point.x
-        let dy = self.position.y - point.y
-        let distance = sqrt(dx * dx + dy * dy)
-        return distance < self.collisionRadius
+        self.position.distance(to: point) < self.collisionRadius
     }
 }
 
@@ -550,12 +532,8 @@ class HealTower: DefensiveStructure {
         for target in self.healTargets {
             guard target.isAlive else { continue }
 
-            // Check distance
-            let dx = target.position.x - position.x
-            let dy = target.position.y - position.y
-            let distance = sqrt(dx * dx + dy * dy)
-
             // Heal if in range and not at full health
+            let distance = position.distance(to: target.position)
             if distance < attackRange, target.currentHP < target.maxHP - self.healAmount {
                 target.currentHP = min(target.maxHP, target.currentHP + self.healAmount)
                 target.updateHealthBar()
@@ -1108,10 +1086,7 @@ class StructureManager {
         var nearestDistance: CGFloat = range
 
         for enemy in enemyManager.enemies where enemy.isAlive {
-            let dx = enemy.position.x - position.x
-            let dy = enemy.position.y - position.y
-            let distance = sqrt(dx * dx + dy * dy)
-
+            let distance = position.distance(to: enemy.position)
             if distance < nearestDistance {
                 nearestDistance = distance
                 nearestEnemy = enemy
@@ -1167,12 +1142,8 @@ class StructureManager {
     /// - Returns: true if position overlaps any structure
     func collidesWithStructure(at position: CGPoint, entityRadius: CGFloat = 0) -> Bool {
         for structure in self.structures where structure.isActive {
-            let dx = position.x - structure.position.x
-            let dy = position.y - structure.position.y
-            let distance = hypot(dx, dy)
-
             // Use tower collision radius plus entity radius
-            if distance < BuildConfig.towerCollisionRadius + entityRadius {
+            if position.distance(to: structure.position) < BuildConfig.towerCollisionRadius + entityRadius {
                 return true
             }
         }

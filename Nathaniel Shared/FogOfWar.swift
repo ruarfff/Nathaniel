@@ -1,22 +1,14 @@
-//
-//  FogOfWar.swift
-//  Nathaniel Shared
-//
-//  Manages fog of war visibility system for the game map.
-//
-
 import SpriteKit
 
 /// Represents the visibility state of a tile
 enum FogState: Int {
-    case unexplored = 0  // Never seen - fully obscured
-    case explored = 1    // Previously seen - dimmed
-    case visible = 2     // Currently visible - clear
+    case unexplored = 0 // Never seen - fully obscured
+    case explored = 1 // Previously seen - dimmed
+    case visible = 2 // Currently visible - clear
 }
 
 /// Manages fog of war rendering and visibility calculations
 class FogOfWar {
-
     // MARK: - Properties
 
     /// Map dimensions in tiles
@@ -55,7 +47,7 @@ class FogOfWar {
 
     /// Throttle fog updates for performance
     private var lastUpdateTime: TimeInterval = 0
-    private let updateInterval: TimeInterval = 0.1  // 10 FPS for fog updates
+    private let updateInterval: TimeInterval = 0.1 // 10 FPS for fog updates
 
     // MARK: - Initialization
 
@@ -80,26 +72,26 @@ class FogOfWar {
         self.fogTiles = []
 
         // Create fog tile sprites
-        createFogTiles()
+        self.createFogTiles()
     }
 
     /// Create fog tile sprites covering the entire map
     private func createFogTiles() {
-        for y in 0..<mapHeight {
+        for y in 0 ..< self.mapHeight {
             var rowTiles: [SKSpriteNode] = []
-            for x in 0..<mapWidth {
+            for x in 0 ..< self.mapWidth {
                 let tile = SKSpriteNode(color: .black, size: CGSize(width: tileSize, height: tileSize))
                 // Position tile center (SpriteKit origin is bottom-left)
                 tile.position = CGPoint(
-                    x: CGFloat(x) * tileSize + tileSize / 2,
-                    y: CGFloat(y) * tileSize + tileSize / 2
+                    x: CGFloat(x) * self.tileSize + self.tileSize / 2,
+                    y: CGFloat(y) * self.tileSize + self.tileSize / 2
                 )
-                tile.alpha = unexploredAlpha
-                tile.zPosition = 50  // Above map tiles, below characters
-                fogNode.addChild(tile)
+                tile.alpha = self.unexploredAlpha
+                tile.zPosition = 50 // Above map tiles, below characters
+                self.fogNode.addChild(tile)
                 rowTiles.append(tile)
             }
-            fogTiles.append(rowTiles)
+            self.fogTiles.append(rowTiles)
         }
     }
 
@@ -107,22 +99,22 @@ class FogOfWar {
 
     /// Convert world position to tile coordinates
     private func worldToTile(_ position: CGPoint) -> (x: Int, y: Int) {
-        let x = Int(position.x / tileSize)
-        let y = Int(position.y / tileSize)
-        return (x: max(0, min(mapWidth - 1, x)), y: max(0, min(mapHeight - 1, y)))
+        let x = Int(position.x / self.tileSize)
+        let y = Int(position.y / self.tileSize)
+        return (x: max(0, min(self.mapWidth - 1, x)), y: max(0, min(self.mapHeight - 1, y)))
     }
 
     /// Convert tile coordinates to world position (center of tile)
     private func tileToWorld(x: Int, y: Int) -> CGPoint {
-        return CGPoint(
-            x: CGFloat(x) * tileSize + tileSize / 2,
-            y: CGFloat(y) * tileSize + tileSize / 2
+        CGPoint(
+            x: CGFloat(x) * self.tileSize + self.tileSize / 2,
+            y: CGFloat(y) * self.tileSize + self.tileSize / 2
         )
     }
 
     /// Check if tile coordinates are valid
     private func isValidTile(x: Int, y: Int) -> Bool {
-        return x >= 0 && x < mapWidth && y >= 0 && y < mapHeight
+        x >= 0 && x < self.mapWidth && y >= 0 && y < self.mapHeight
     }
 
     // MARK: - Visibility Update
@@ -131,22 +123,22 @@ class FogOfWar {
     /// - Parameter positions: Array of (position, visionRange) tuples for each character
     func update(visibleFrom positions: [(CGPoint, CGFloat)]) {
         // Reset all currently visible tiles to explored
-        for y in 0..<mapHeight {
-            for x in 0..<mapWidth {
-                if fogState[y][x] == .visible {
-                    fogState[y][x] = .explored
-                    dirtyTiles.insert(TileCoord(x: x, y: y))
+        for y in 0 ..< self.mapHeight {
+            for x in 0 ..< self.mapWidth {
+                if self.fogState[y][x] == .visible {
+                    self.fogState[y][x] = .explored
+                    self.dirtyTiles.insert(TileCoord(x: x, y: y))
                 }
             }
         }
 
         // Mark tiles in vision range as visible
         for (position, visionRange) in positions {
-            updateVisibilityFrom(position: position, visionRange: visionRange)
+            self.updateVisibilityFrom(position: position, visionRange: visionRange)
         }
 
         // Commit visual updates
-        commitVisualUpdates()
+        self.commitVisualUpdates()
     }
 
     /// Update fog of war with throttling (for use in game loop)
@@ -156,35 +148,33 @@ class FogOfWar {
     /// - Returns: Whether an update was performed
     @discardableResult
     func updateThrottled(visibleFrom positions: [(CGPoint, CGFloat)], currentTime: TimeInterval) -> Bool {
-        guard currentTime - lastUpdateTime >= updateInterval else {
+        guard currentTime - self.lastUpdateTime >= self.updateInterval else {
             return false
         }
-        lastUpdateTime = currentTime
-        update(visibleFrom: positions)
+        self.lastUpdateTime = currentTime
+        self.update(visibleFrom: positions)
         return true
     }
 
     /// Calculate and update visibility from a single position
     private func updateVisibilityFrom(position: CGPoint, visionRange: CGFloat) {
-        let centerTile = worldToTile(position)
-        let tileRange = Int(ceil(visionRange / tileSize)) + 1
+        let centerTile = self.worldToTile(position)
+        let tileRange = Int(ceil(visionRange / self.tileSize)) + 1
 
         // Check tiles within the vision range bounding box
-        for dy in -tileRange...tileRange {
-            for dx in -tileRange...tileRange {
+        for dy in -tileRange ... tileRange {
+            for dx in -tileRange ... tileRange {
                 let tx = centerTile.x + dx
                 let ty = centerTile.y + dy
 
-                guard isValidTile(x: tx, y: ty) else { continue }
+                guard self.isValidTile(x: tx, y: ty) else { continue }
 
                 // Calculate distance from position to tile center
-                let tileCenter = tileToWorld(x: tx, y: ty)
-                let distance = hypot(tileCenter.x - position.x, tileCenter.y - position.y)
-
-                if distance <= visionRange {
-                    if fogState[ty][tx] != .visible {
-                        fogState[ty][tx] = .visible
-                        dirtyTiles.insert(TileCoord(x: tx, y: ty))
+                let tileCenter = self.tileToWorld(x: tx, y: ty)
+                if position.distance(to: tileCenter) <= visionRange {
+                    if self.fogState[ty][tx] != .visible {
+                        self.fogState[ty][tx] = .visible
+                        self.dirtyTiles.insert(TileCoord(x: tx, y: ty))
                     }
                 }
             }
@@ -193,26 +183,24 @@ class FogOfWar {
 
     /// Apply visual updates to dirty tiles
     private func commitVisualUpdates() {
-        for coord in dirtyTiles {
-            updateTileVisual(x: coord.x, y: coord.y)
+        for coord in self.dirtyTiles {
+            self.updateTileVisual(x: coord.x, y: coord.y)
         }
-        dirtyTiles.removeAll()
+        self.dirtyTiles.removeAll()
     }
 
     /// Update a single tile's visual appearance based on its fog state
     private func updateTileVisual(x: Int, y: Int) {
-        guard isValidTile(x: x, y: y) else { return }
+        guard self.isValidTile(x: x, y: y) else { return }
 
-        let tile = fogTiles[y][x]
-        let targetAlpha: CGFloat
-
-        switch fogState[y][x] {
+        let tile = self.fogTiles[y][x]
+        let targetAlpha: CGFloat = switch self.fogState[y][x] {
         case .unexplored:
-            targetAlpha = unexploredAlpha
+            self.unexploredAlpha
         case .explored:
-            targetAlpha = exploredAlpha
+            self.exploredAlpha
         case .visible:
-            targetAlpha = visibleAlpha
+            self.visibleAlpha
         }
 
         // Smooth transition with animation
@@ -226,50 +214,50 @@ class FogOfWar {
     /// - Parameter position: World position to check
     /// - Returns: True if the tile at this position is visible
     func isVisible(at position: CGPoint) -> Bool {
-        let tile = worldToTile(position)
-        guard isValidTile(x: tile.x, y: tile.y) else { return false }
-        return fogState[tile.y][tile.x] == .visible
+        let tile = self.worldToTile(position)
+        guard self.isValidTile(x: tile.x, y: tile.y) else { return false }
+        return self.fogState[tile.y][tile.x] == .visible
     }
 
     /// Check if a position has been explored (seen at least once)
     /// - Parameter position: World position to check
     /// - Returns: True if the tile has been explored or is visible
     func isExplored(at position: CGPoint) -> Bool {
-        let tile = worldToTile(position)
-        guard isValidTile(x: tile.x, y: tile.y) else { return false }
-        return fogState[tile.y][tile.x] != .unexplored
+        let tile = self.worldToTile(position)
+        guard self.isValidTile(x: tile.x, y: tile.y) else { return false }
+        return self.fogState[tile.y][tile.x] != .unexplored
     }
 
     /// Get the fog state at a position
     /// - Parameter position: World position to check
     /// - Returns: The fog state of the tile
     func getFogState(at position: CGPoint) -> FogState {
-        let tile = worldToTile(position)
-        guard isValidTile(x: tile.x, y: tile.y) else { return .unexplored }
-        return fogState[tile.y][tile.x]
+        let tile = self.worldToTile(position)
+        guard self.isValidTile(x: tile.x, y: tile.y) else { return .unexplored }
+        return self.fogState[tile.y][tile.x]
     }
 
     // MARK: - Reset
 
     /// Reset all fog to unexplored state
     func reset() {
-        for y in 0..<mapHeight {
-            for x in 0..<mapWidth {
-                fogState[y][x] = .unexplored
-                fogTiles[y][x].alpha = unexploredAlpha
+        for y in 0 ..< self.mapHeight {
+            for x in 0 ..< self.mapWidth {
+                self.fogState[y][x] = .unexplored
+                self.fogTiles[y][x].alpha = self.unexploredAlpha
             }
         }
-        dirtyTiles.removeAll()
+        self.dirtyTiles.removeAll()
     }
 
     /// Reveal the entire map (for debugging or end-game)
     func revealAll() {
-        for y in 0..<mapHeight {
-            for x in 0..<mapWidth {
-                fogState[y][x] = .visible
-                fogTiles[y][x].alpha = visibleAlpha
+        for y in 0 ..< self.mapHeight {
+            for x in 0 ..< self.mapWidth {
+                self.fogState[y][x] = .visible
+                self.fogTiles[y][x].alpha = self.visibleAlpha
             }
         }
-        dirtyTiles.removeAll()
+        self.dirtyTiles.removeAll()
     }
 }

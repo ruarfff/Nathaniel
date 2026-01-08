@@ -171,7 +171,7 @@ class Resource: GameEntity {
 
         let dx = target.position.x - self.position.x
         let dy = target.position.y - self.position.y
-        let distance = hypot(dx, dy)
+        let distance = self.position.distance(to: target.position)
 
         // Check if we've reached the target
         if distance < 10 {
@@ -195,12 +195,7 @@ class Resource: GameEntity {
     /// Check if a character is within auto-collect range
     func isInCollectRange(of character: Character) -> Bool {
         guard self.collectionState == .idle else { return false }
-
-        let dx = character.position.x - self.position.x
-        let dy = character.position.y - self.position.y
-        let distance = hypot(dx, dy)
-
-        return distance <= Resource.autoCollectRadius
+        return self.position.distance(to: character.position) <= Resource.autoCollectRadius
     }
 
     /// Start collecting toward a target

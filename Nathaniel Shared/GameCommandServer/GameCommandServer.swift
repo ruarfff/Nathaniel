@@ -268,6 +268,9 @@
             self.waiterTimeoutTimer?.invalidate()
             self.waiterTimeoutTimer = nil
 
+            // Remove NotificationCenter observer
+            NotificationCenter.default.removeObserver(self)
+
             // Close all connections
             for connection in self.connections {
                 connection.cancel()
@@ -281,6 +284,11 @@
             self.sceneWaiters.removeAll()
 
             print("[GameCommandServer] Stopped")
+        }
+
+        deinit {
+            // Ensure observer is removed even if stop() wasn't called
+            NotificationCenter.default.removeObserver(self)
         }
 
         // MARK: - Connection Handling
@@ -571,12 +579,13 @@
                 var threatSummary = "\(enemies.count) enemies"
                 // Calculate nearest enemy distance if player position available
                 if let playerPos = state.playerPosition {
+                    let playerPoint = CGPoint(x: playerPos.x, y: playerPos.y)
                     let distances = enemies.compactMap { enemy -> CGFloat? in
-                        let centerX = enemy.frame.x + enemy.frame.width / 2
-                        let centerY = enemy.frame.y + enemy.frame.height / 2
-                        let dx = centerX - playerPos.x
-                        let dy = centerY - playerPos.y
-                        return sqrt(dx * dx + dy * dy)
+                        let center = CGPoint(
+                            x: enemy.frame.x + enemy.frame.width / 2,
+                            y: enemy.frame.y + enemy.frame.height / 2
+                        )
+                        return playerPoint.distance(to: center)
                     }
                     if let nearest = distances.min() {
                         threatSummary += ", nearest at \(Int(nearest)) units"

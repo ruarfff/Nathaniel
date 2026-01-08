@@ -406,7 +406,7 @@ class Hermes: Character {
         // Check distance - must be in weapon range to fire
         let dx = target.position.x - position.x
         let dy = target.position.y - position.y
-        let distance = hypot(dx, dy)
+        let distance = position.distance(to: target.position)
 
         guard distance <= Hermes.weaponRange else {
             // Target out of weapon range - stop firing (but keep targeting)
@@ -483,10 +483,7 @@ class Hermes: Character {
         // Calculate target position with formation offset
         // Offset is relative to target's facing direction
         let targetPos = self.calculateFormationPosition(for: target)
-
-        let dx = targetPos.x - position.x
-        let dy = targetPos.y - position.y
-        let distance = sqrt(dx * dx + dy * dy)
+        let distance = position.distance(to: targetPos)
 
         // Teleport if too far behind
         if distance > Hermes.teleportDistance {

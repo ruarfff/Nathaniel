@@ -183,7 +183,7 @@ class Enemy: Character {
 
         let dx = target.position.x - position.x
         let dy = target.position.y - position.y
-        let distanceToTarget = hypot(dx, dy)
+        let distanceToTarget = position.distance(to: target.position)
 
         // Check if target is in visible range
         if distanceToTarget > self.visibleRange {
@@ -446,7 +446,7 @@ class Boss: Enemy {
 
         let dx = target.position.x - position.x
         let dy = target.position.y - position.y
-        let distanceToTarget = hypot(dx, dy)
+        let distanceToTarget = position.distance(to: target.position)
 
         // Check if target is in visible range
         if distanceToTarget > visibleRange {
@@ -597,7 +597,7 @@ class Soldier: Enemy {
 
         let dx = target.position.x - position.x
         let dy = target.position.y - position.y
-        let distanceToTarget = hypot(dx, dy)
+        let distanceToTarget = position.distance(to: target.position)
 
         // Check if target is in visible range
         if distanceToTarget > visibleRange {

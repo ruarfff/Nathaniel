@@ -284,9 +284,7 @@ class EnemyManager {
 
         // Generate threat for each player in visible range
         for player in self.playerCharacters where player.isAlive {
-            let dx = player.position.x - enemy.position.x
-            let dy = player.position.y - enemy.position.y
-            let distance = hypot(dx, dy)
+            let distance = enemy.position.distance(to: player.position)
 
             // Check if player is in visible range
             if distance <= enemy.visibleRange {
@@ -302,9 +300,7 @@ class EnemyManager {
         // Towers don't get initial aggro - only proximity and damage threat
         guard let structures = structureManager?.structures else { return }
         for structure in structures where structure.isAlive && structure.isActive {
-            let dx = structure.position.x - enemy.position.x
-            let dy = structure.position.y - enemy.position.y
-            let distance = hypot(dx, dy)
+            let distance = enemy.position.distance(to: structure.position)
 
             if distance <= enemy.visibleRange {
                 let amount = ThreatConfig.towerProximityThreatPerSecond * Float(deltaTime)
@@ -335,9 +331,7 @@ class EnemyManager {
         var nearestDistance: CGFloat = .infinity
 
         for player in self.playerCharacters where player.isAlive {
-            let dx = player.position.x - position.x
-            let dy = player.position.y - position.y
-            let distance = hypot(dx, dy)
+            let distance = position.distance(to: player.position)
 
             // Check range if specified
             if let range, distance > range {

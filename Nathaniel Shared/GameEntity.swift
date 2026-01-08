@@ -449,9 +449,7 @@ class Character: GameEntity, Damageable {
         self.moveTowardPoint(dest, deltaTime: deltaTime)
 
         // Check if we've arrived at final destination
-        let direction = CGVector(dx: dest.x - self.position.x, dy: dest.y - self.position.y)
-        let distance = sqrt(direction.dx * direction.dx + direction.dy * direction.dy)
-        if distance <= 5 {
+        if self.position.distance(to: dest) <= 5 {
             self.destination = nil
             self.finalDestination = nil
             self.animationState = .idle
@@ -477,11 +475,7 @@ class Character: GameEntity, Damageable {
         self.destination = waypoint
 
         // Stuck detection: if character hasn't moved significantly, increment counter
-        let movedDistance = hypot(
-            position.x - self.lastPositionForStuckCheck.x,
-            self.position.y - self.lastPositionForStuckCheck.y
-        )
-        if movedDistance < 0.5 {
+        if self.lastPositionForStuckCheck.distance(to: self.position) < 0.5 {
             self.stuckFrameCount += 1
             if self.stuckFrameCount > self.stuckFrameThreshold {
                 // Character is stuck - clear path and try to recalculate
@@ -500,7 +494,7 @@ class Character: GameEntity, Damageable {
     /// Move toward a specific point (shared by direct and pathfinding movement)
     private func moveTowardPoint(_ target: CGPoint, deltaTime: TimeInterval) {
         let direction = CGVector(dx: target.x - self.position.x, dy: target.y - self.position.y)
-        let distance = sqrt(direction.dx * direction.dx + direction.dy * direction.dy)
+        let distance = self.position.distance(to: target)
 
         guard distance > 0 else { return }
 
@@ -626,18 +620,12 @@ class Character: GameEntity, Damageable {
 
     /// Check circle collision with another character
     func isColliding(with other: Character) -> Bool {
-        let dx = self.position.x - other.position.x
-        let dy = self.position.y - other.position.y
-        let distance = sqrt(dx * dx + dy * dy)
-        return distance < self.collisionRadius + other.collisionRadius
+        self.position.distance(to: other.position) < self.collisionRadius + other.collisionRadius
     }
 
     /// Check if a point is within collision radius
     func contains(point: CGPoint) -> Bool {
-        let dx = self.position.x - point.x
-        let dy = self.position.y - point.y
-        let distance = sqrt(dx * dx + dy * dy)
-        return distance < self.collisionRadius
+        self.position.distance(to: point) < self.collisionRadius
     }
 
     // MARK: - Movement Commands

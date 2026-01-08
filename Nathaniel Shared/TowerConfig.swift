@@ -111,10 +111,7 @@ enum TowerConfig {
 
     /// Check if a position is within valid build range of Hermes
     static func isWithinBuildRange(towerPosition: CGPoint, hermesPosition: CGPoint) -> Bool {
-        let dx = towerPosition.x - hermesPosition.x
-        let dy = towerPosition.y - hermesPosition.y
-        let distance = sqrt(dx * dx + dy * dy)
-
+        let distance = towerPosition.distance(to: hermesPosition)
         return distance >= self.minBuildDistance && distance <= self.buildRadius
     }
 

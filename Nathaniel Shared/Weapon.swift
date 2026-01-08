@@ -114,8 +114,7 @@ class Projectile: GameEntity {
     /// Whether the projectile is still visible/active
     var isVisible: Bool {
         guard self.isActive, !self.hasCollision else { return false }
-        let travelDistance = hypot(position.x - self.startPosition.x, self.position.y - self.startPosition.y)
-        return travelDistance < self.maxDistance
+        return self.startPosition.distance(to: self.position) < self.maxDistance
     }
 
     // MARK: - Initialization
@@ -153,7 +152,7 @@ class Projectile: GameEntity {
         // Calculate normalized direction
         let dx = target.x - start.x
         let dy = target.y - start.y
-        let length = hypot(dx, dy)
+        let length = start.distance(to: target)
 
         if length > 0 {
             self.direction = CGVector(dx: dx / length, dy: dy / length)
@@ -192,12 +191,7 @@ class Projectile: GameEntity {
     /// Check collision with a character
     func checkCollision(with character: Character) -> Bool {
         guard self.isActive, !self.hasCollision, character.isAlive else { return false }
-
-        let dx = self.position.x - character.position.x
-        let dy = self.position.y - character.position.y
-        let distance = hypot(dx, dy)
-
-        return distance < self.collisionRadius + character.collisionRadius
+        return self.position.distance(to: character.position) < self.collisionRadius + character.collisionRadius
     }
 }
 
@@ -361,11 +355,7 @@ class Gun: Weapon {
         }
 
         // Check range
-        let dx = target.x - owner.position.x
-        let dy = target.y - owner.position.y
-        let distance = hypot(dx, dy)
-
-        if distance > self.range {
+        if owner.position.distance(to: target) > self.range {
             return false
         }
 

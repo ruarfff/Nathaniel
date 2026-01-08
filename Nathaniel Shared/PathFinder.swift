@@ -401,12 +401,8 @@ class PathFollower {
     func update(currentPosition: CGPoint, arrivalDistance: CGFloat = 16) -> CGPoint? {
         guard let target = currentTarget else { return nil }
 
-        let dx = target.x - currentPosition.x
-        let dy = target.y - currentPosition.y
-        let distance = hypot(dx, dy)
-
         // Check if we've reached the current waypoint
-        if distance <= arrivalDistance {
+        if currentPosition.distance(to: target) <= arrivalDistance {
             self.currentIndex += 1
             return self.currentTarget
         }
