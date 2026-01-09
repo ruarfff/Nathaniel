@@ -6,9 +6,20 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		96B123C12EDB62E100C1F1CA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 96B123822EDB62E000C1F1CA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 96B1239F2EDB62E100C1F1CA;
+			remoteInfo = "Nathaniel macOS";
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		96B1238F2EDB62E100C1F1CA /* Nathaniel.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nathaniel.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		96B123A02EDB62E100C1F1CA /* Nathaniel.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nathaniel.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		96B123C02EDB62E100C1F1CA /* NathanielTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NathanielTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -25,6 +36,11 @@
 		96B123A12EDB62E100C1F1CA /* Nathaniel macOS */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Nathaniel macOS";
+			sourceTree = "<group>";
+		};
+		96B123C22EDB62E100C1F1CA /* NathanielTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = NathanielTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -44,6 +60,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		96B123C32EDB62E100C1F1CA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -53,6 +76,7 @@
 				96B123862EDB62E100C1F1CA /* Nathaniel Shared */,
 				96B123912EDB62E100C1F1CA /* Nathaniel iOS */,
 				96B123A12EDB62E100C1F1CA /* Nathaniel macOS */,
+				96B123C22EDB62E100C1F1CA /* NathanielTests */,
 				96B123902EDB62E100C1F1CA /* Products */,
 			);
 			sourceTree = "<group>";
@@ -62,6 +86,7 @@
 			children = (
 				96B1238F2EDB62E100C1F1CA /* Nathaniel.app */,
 				96B123A02EDB62E100C1F1CA /* Nathaniel.app */,
+				96B123C02EDB62E100C1F1CA /* NathanielTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -115,6 +140,30 @@
 			productReference = 96B123A02EDB62E100C1F1CA /* Nathaniel.app */;
 			productType = "com.apple.product-type.application";
 		};
+		96B123BF2EDB62E100C1F1CA /* NathanielTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 96B123CB2EDB62E100C1F1CA /* Build configuration list for PBXNativeTarget "NathanielTests" */;
+			buildPhases = (
+				96B123C42EDB62E100C1F1CA /* Sources */,
+				96B123C32EDB62E100C1F1CA /* Frameworks */,
+				96B123C52EDB62E100C1F1CA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				96B123C62EDB62E100C1F1CA /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				96B123862EDB62E100C1F1CA /* Nathaniel Shared */,
+				96B123C22EDB62E100C1F1CA /* NathanielTests */,
+			);
+			name = NathanielTests;
+			packageProductDependencies = (
+			);
+			productName = NathanielTests;
+			productReference = 96B123C02EDB62E100C1F1CA /* NathanielTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -130,6 +179,10 @@
 					};
 					96B1239F2EDB62E100C1F1CA = {
 						CreatedOnToolsVersion = 26.1.1;
+					};
+					96B123BF2EDB62E100C1F1CA = {
+						CreatedOnToolsVersion = 26.1.1;
+						TestTargetID = 96B1239F2EDB62E100C1F1CA;
 					};
 				};
 			};
@@ -149,6 +202,7 @@
 			targets = (
 				96B1238E2EDB62E100C1F1CA /* Nathaniel iOS */,
 				96B1239F2EDB62E100C1F1CA /* Nathaniel macOS */,
+				96B123BF2EDB62E100C1F1CA /* NathanielTests */,
 			);
 		};
 /* End PBXProject section */
@@ -162,6 +216,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		96B1239E2EDB62E100C1F1CA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		96B123C52EDB62E100C1F1CA /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -185,7 +246,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		96B123C42EDB62E100C1F1CA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		96B123C62EDB62E100C1F1CA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 96B1239F2EDB62E100C1F1CA /* Nathaniel macOS */;
+			targetProxy = 96B123C12EDB62E100C1F1CA /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		96B123B32EDB62E100C1F1CA /* Debug */ = {
@@ -449,6 +525,48 @@
 			};
 			name = Release;
 		};
+		96B123C72EDB62E100C1F1CA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9WH24NM4PU;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ruarfff.NathanielTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Nathaniel.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Nathaniel";
+			};
+			name = Debug;
+		};
+		96B123C82EDB62E100C1F1CA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9WH24NM4PU;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ruarfff.NathanielTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Nathaniel.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Nathaniel";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -475,6 +593,15 @@
 			buildConfigurations = (
 				96B123B72EDB62E100C1F1CA /* Debug */,
 				96B123B82EDB62E100C1F1CA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		96B123CB2EDB62E100C1F1CA /* Build configuration list for PBXNativeTarget "NathanielTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				96B123C72EDB62E100C1F1CA /* Debug */,
+				96B123C82EDB62E100C1F1CA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
