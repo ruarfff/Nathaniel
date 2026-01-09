@@ -86,6 +86,22 @@ get_scene() {
     get_state | python3 -c "import sys,json; print(json.load(sys.stdin).get('scene', 'unknown'))" 2>/dev/null
 }
 
+# Wait for a specific scene using long-polling (no sleep needed)
+# Usage: wait_for_scene "GameScene" [timeout_seconds]
+wait_for_scene() {
+    local expected_scene="$1"
+    local timeout="${2:-10}"
+
+    local result
+    result=$(curl -sf "$GAME_SERVER_URL/wait_for_scene?scene=$expected_scene&timeout=$timeout" 2>/dev/null)
+
+    if echo "$result" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if not d.get('timedOut', True) else 1)" 2>/dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 execute_action() {
     local action="$1"
     local params="${2:-}"
@@ -99,6 +115,17 @@ execute_action() {
             -H "Content-Type: application/json" \
             -d "{\"name\":\"$action\"}" 2>/dev/null
     fi
+}
+
+# Execute action and wait for scene transition
+# Usage: execute_action_wait "startGame" "LevelSelectScene" [params]
+execute_action_wait() {
+    local action="$1"
+    local expected_scene="$2"
+    local params="${3:-}"
+
+    execute_action "$action" "$params" > /dev/null
+    wait_for_scene "$expected_scene"
 }
 
 take_screenshot() {
@@ -209,13 +236,11 @@ main() {
 
     # Test 2: Navigate to level select
     log_info "Test 2: Navigate to LevelSelectScene"
-    execute_action "startGame" > /dev/null
-    sleep 0.5
-    scene=$(get_scene)
-    if [ "$scene" = "LevelSelectScene" ]; then
+    if execute_action_wait "startGame" "LevelSelectScene"; then
         log_success "Navigated to LevelSelectScene"
         tests_passed=$((tests_passed + 1))
     else
+        scene=$(get_scene)
         log_error "Expected LevelSelectScene, got: $scene"
         tests_failed=$((tests_failed + 1))
     fi
@@ -223,13 +248,11 @@ main() {
 
     # Test 3: Start level 1
     log_info "Test 3: Start Level 1"
-    execute_action "level_1" > /dev/null
-    sleep 2
-    scene=$(get_scene)
-    if [ "$scene" = "GameScene" ]; then
+    if execute_action_wait "level_1" "GameScene"; then
         log_success "Started Level 1 (GameScene)"
         tests_passed=$((tests_passed + 1))
     else
+        scene=$(get_scene)
         log_error "Expected GameScene, got: $scene"
         tests_failed=$((tests_failed + 1))
     fi
@@ -258,7 +281,6 @@ main() {
         log_error "Failed to select Hermes"
         tests_failed=$((tests_failed + 1))
     fi
-    sleep 0.5
     take_screenshot "04_hermes_selected"
 
     # Test 6: Toggle character
@@ -271,7 +293,6 @@ main() {
         log_error "Failed to toggle character"
         tests_failed=$((tests_failed + 1))
     fi
-    sleep 0.5
     take_screenshot "05_after_toggle"
 
     # Test 7: Move character
@@ -284,7 +305,6 @@ main() {
         log_error "Failed to move Nathaniel"
         tests_failed=$((tests_failed + 1))
     fi
-    sleep 1
     take_screenshot "06_nathaniel_moved"
 
     # Test 8: Navigate back to main menu
