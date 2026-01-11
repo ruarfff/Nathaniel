@@ -12,10 +12,10 @@ class HealTower: DefensiveStructure {
     // MARK: - Properties
 
     /// Heal amount per tick
-    let healAmount: Int = 5
+    let healAmount: Int = GameBalance.Towers.HealTower.healAmount
 
     /// Delay between heal ticks
-    let healDelay: TimeInterval = 1.0
+    let healDelay: TimeInterval = GameBalance.Towers.HealTower.healDelay
 
     /// Time since last heal
     private var healTimer: TimeInterval = 0
@@ -29,13 +29,17 @@ class HealTower: DefensiveStructure {
     // MARK: - Initialization
 
     init() {
-        super.init(name: "HealTower", maxHP: 600, attackRange: 400)
+        super.init(
+            name: "HealTower",
+            maxHP: GameBalance.Towers.HealTower.maxHP,
+            attackRange: GameBalance.Towers.HealTower.attackRange
+        )
 
         // Track build cost for recoup calculation
         buildCost = HealTower.cost
 
         // Load tower texture
-        loadTexture(named: "healtower", size: CGSize(width: 48, height: 64))
+        loadTexture(named: "healtower", size: GameBalance.Towers.Visual.textureSize)
 
         // Create heal range indicator (hidden by default)
         self.setupHealEffect()
@@ -43,8 +47,8 @@ class HealTower: DefensiveStructure {
 
     private func setupHealEffect() {
         let circle = SKShapeNode(circleOfRadius: attackRange)
-        circle.strokeColor = SKColor(red: 0.2, green: 0.8, blue: 0.2, alpha: 0.3)
-        circle.fillColor = SKColor(red: 0.2, green: 0.8, blue: 0.2, alpha: 0.1)
+        circle.strokeColor = GameBalance.Towers.Visual.healEffectStrokeColor
+        circle.fillColor = GameBalance.Towers.Visual.healEffectFillColor
         circle.lineWidth = 2
         circle.zPosition = -1
         circle.isHidden = true

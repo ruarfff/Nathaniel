@@ -28,13 +28,13 @@ class FogOfWar {
     private var fogTiles: [[SKSpriteNode]]
 
     /// Alpha value for unexplored tiles
-    private let unexploredAlpha: CGFloat = 0.95
+    private let unexploredAlpha: CGFloat = GameBalance.FogOfWar.unexploredAlpha
 
     /// Alpha value for explored (previously seen) tiles
-    private let exploredAlpha: CGFloat = 0.6
+    private let exploredAlpha: CGFloat = GameBalance.FogOfWar.exploredAlpha
 
     /// Alpha value for visible tiles (fully transparent)
-    private let visibleAlpha: CGFloat = 0.0
+    private let visibleAlpha: CGFloat = GameBalance.FogOfWar.visibleAlpha
 
     /// Dirty tiles that need visual update
     private var dirtyTiles: Set<TileCoord> = []
@@ -47,7 +47,7 @@ class FogOfWar {
 
     /// Throttle fog updates for performance
     private var lastUpdateTime: TimeInterval = 0
-    private let updateInterval: TimeInterval = 0.1 // 10 FPS for fog updates
+    private let updateInterval: TimeInterval = GameBalance.FogOfWar.updateInterval
 
     // MARK: - Initialization
 
@@ -205,7 +205,7 @@ class FogOfWar {
 
         // Smooth transition with animation
         tile.removeAllActions()
-        tile.run(SKAction.fadeAlpha(to: targetAlpha, duration: 0.15))
+        tile.run(SKAction.fadeAlpha(to: targetAlpha, duration: GameBalance.FogOfWar.fadeTransitionDuration))
     }
 
     // MARK: - Visibility Queries
