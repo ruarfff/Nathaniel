@@ -68,13 +68,13 @@ class LaserTower: DefensiveStructure {
     // MARK: - Properties
 
     /// Damage per second while beam is active
-    let damagePerSecond: Int = 20
+    let damagePerSecond: Int = GameBalance.Towers.LaserTower.damagePerSecond
 
     /// Cooldown between beam bursts
-    let cooldownTime: TimeInterval = 3.5
+    let cooldownTime: TimeInterval = GameBalance.Towers.LaserTower.cooldown
 
     /// Duration of each beam burst
-    let burstDuration: TimeInterval = 1.5
+    let burstDuration: TimeInterval = GameBalance.Towers.LaserTower.burstDuration
 
     /// Time elapsed in current cooldown
     private var cooldownElapsed: TimeInterval = 0
@@ -94,15 +94,19 @@ class LaserTower: DefensiveStructure {
     // MARK: - Initialization
 
     init() {
-        self.beam = LaserBeam(color: .red, thickness: 3)
+        self.beam = LaserBeam(color: .red, thickness: GameBalance.Towers.Visual.laserBeamThickness)
 
-        super.init(name: "LaserTower", maxHP: 600, attackRange: 350)
+        super.init(
+            name: "LaserTower",
+            maxHP: GameBalance.Towers.LaserTower.maxHP,
+            attackRange: GameBalance.Towers.LaserTower.attackRange
+        )
 
         // Track build cost for recoup calculation
         buildCost = LaserTower.cost
 
         // Load tower texture
-        loadTexture(named: "lasertower", size: CGSize(width: 48, height: 64))
+        loadTexture(named: "lasertower", size: GameBalance.Towers.Visual.textureSize)
     }
 
     /// Called when adding to scene - adds beam node to scene

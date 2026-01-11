@@ -132,6 +132,14 @@ enum GameBalance {
             static let healAmount = 5
             static let healDelay: TimeInterval = 1.0
         }
+
+        // Shared tower visual constants
+        enum Visual {
+            static let textureSize = CGSize(width: 48, height: 64)
+            static let laserBeamThickness: CGFloat = 3
+            static let healEffectStrokeColor = SKColor(red: 0.2, green: 0.8, blue: 0.2, alpha: 0.3)
+            static let healEffectFillColor = SKColor(red: 0.2, green: 0.8, blue: 0.2, alpha: 0.1)
+        }
     }
 
     // MARK: - Resources
@@ -203,5 +211,25 @@ enum GameBalance {
 
         /// Minimum distance to consider "arrived" at destination
         static let arrivalThreshold: CGFloat = 5.0
+    }
+
+    // MARK: - Fog of War
+
+    /// Fog of war visibility constants
+    enum FogOfWar {
+        /// Alpha value for unexplored (never seen) tiles
+        static let unexploredAlpha: CGFloat = 0.95
+
+        /// Alpha value for explored (previously seen) tiles
+        static let exploredAlpha: CGFloat = 0.6
+
+        /// Alpha value for visible (currently seen) tiles
+        static let visibleAlpha: CGFloat = 0.0
+
+        /// Update interval for fog calculations (seconds)
+        static let updateInterval: TimeInterval = 0.1
+
+        /// Duration for fog fade transitions
+        static let fadeTransitionDuration: TimeInterval = 0.15
     }
 }

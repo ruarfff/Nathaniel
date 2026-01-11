@@ -23,22 +23,26 @@ class GunTower: DefensiveStructure {
     // MARK: - Initialization
 
     init() {
-        // Create gun with tower-specific settings
+        // Create gun with tower-specific settings from GameBalance
         self.gun = Gun(
-            cooldownTime: 1.2,
-            damage: 20,
-            range: 500,
-            bulletSpeed: 400,
+            cooldownTime: GameBalance.Towers.GunTower.gunCooldown,
+            damage: GameBalance.Towers.GunTower.gunDamage,
+            range: GameBalance.Towers.GunTower.attackRange,
+            bulletSpeed: GameBalance.Towers.GunTower.bulletSpeed,
             bulletTexture: "bullet"
         )
 
-        super.init(name: "GunTower", maxHP: 600, attackRange: 500)
+        super.init(
+            name: "GunTower",
+            maxHP: GameBalance.Towers.GunTower.maxHP,
+            attackRange: GameBalance.Towers.GunTower.attackRange
+        )
 
         // Track build cost for recoup calculation
         buildCost = GunTower.cost
 
         // Load tower texture
-        loadTexture(named: "guntower", size: CGSize(width: 48, height: 64))
+        loadTexture(named: "guntower", size: GameBalance.Towers.Visual.textureSize)
 
         // Set up weapon callbacks
         self.gun.onFire = { [weak self] projectile in
