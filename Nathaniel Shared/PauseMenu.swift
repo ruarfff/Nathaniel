@@ -10,7 +10,7 @@ import SpriteKit
 // MARK: - Pause Menu
 
 /// Overlay menu displayed when the game is paused
-class PauseMenu: SKNode {
+class PauseMenu: OverlayMenu {
 
     // MARK: - Types
 
@@ -23,18 +23,6 @@ class PauseMenu: SKNode {
     }
 
     // MARK: - Properties
-
-    /// Size of the viewport
-    private let viewportSize: CGSize
-
-    /// Dark overlay background
-    private var overlayBackground: SKShapeNode?
-
-    /// Menu panel container
-    private var menuPanel: SKNode?
-
-    /// Whether the menu is currently visible
-    private(set) var isVisible: Bool = false
 
     /// Whether exit confirmation is showing
     private(set) var isShowingConfirmation: Bool = false
@@ -63,189 +51,69 @@ class PauseMenu: SKNode {
     private let buttonWidth: CGFloat = 220
     private let buttonHeight: CGFloat = 50
     private let buttonSpacing: CGFloat = 15
-    private let animationDuration: TimeInterval = 0.25
-
-    // MARK: - Initialization
-
-    init(size: CGSize) {
-        self.viewportSize = size
-        super.init()
-
-        setupOverlay()
-        setupMenuPanel()
-
-        // Start hidden
-        isHidden = true
-        alpha = 0
-    }
-
-    required init?(coder aDecoder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
 
     // MARK: - Setup
 
-    private func setupOverlay() {
-        // Full-screen dark overlay
-        let overlay = SKShapeNode(rectOf: CGSize(width: viewportSize.width * 2, height: viewportSize.height * 2))
-        overlay.fillColor = SKColor.black.withAlphaComponent(0.7)
-        overlay.strokeColor = .clear
-        overlay.zPosition = 0
-        overlay.name = "pauseOverlay"
-        addChild(overlay)
-        overlayBackground = overlay
-    }
-
-    private func setupMenuPanel() {
-        let panel = SKNode()
-        panel.zPosition = 1
-
-        // Panel background
-        let panelBg = SKShapeNode(rectOf: CGSize(width: panelWidth, height: panelHeight), cornerRadius: 16)
-        panelBg.fillColor = SKColor(red: 0.15, green: 0.15, blue: 0.2, alpha: 0.95)
-        panelBg.strokeColor = SKColor.white.withAlphaComponent(0.3)
-        panelBg.lineWidth = 2
-        panel.addChild(panelBg)
+    override func setupMenuPanel() {
+        let panel = createPanelContainer(width: panelWidth, height: panelHeight)
 
         // Title
-        let titleLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        titleLabel.text = "PAUSED"
-        titleLabel.fontSize = 32
-        titleLabel.fontColor = .white
-        titleLabel.verticalAlignmentMode = .center
-        titleLabel.horizontalAlignmentMode = .center
-        titleLabel.position = CGPoint(x: 0, y: panelHeight / 2 - 50)
-        panel.addChild(titleLabel)
+        createTitle("PAUSED", in: panel, panelHeight: panelHeight)
 
         // Buttons (from top to bottom)
         let buttonStartY: CGFloat = panelHeight / 2 - 110
 
-        createButton(
+        createButtonWithIcon(
             in: panel,
             name: MenuButton.resume.rawValue,
             title: "Resume",
-            icon: "play.fill",
             emoji: "▶️",
+            width: buttonWidth,
+            height: buttonHeight,
             yPosition: buttonStartY,
             color: SKColor(red: 0.2, green: 0.6, blue: 0.3, alpha: 1.0)
         )
 
-        createButton(
+        createButtonWithIcon(
             in: panel,
             name: MenuButton.settings.rawValue,
             title: "Settings",
-            icon: "gear",
             emoji: "⚙️",
+            width: buttonWidth,
+            height: buttonHeight,
             yPosition: buttonStartY - (buttonHeight + buttonSpacing),
             color: SKColor(red: 0.3, green: 0.4, blue: 0.6, alpha: 1.0)
         )
 
-        createButton(
+        createButtonWithIcon(
             in: panel,
             name: MenuButton.saveGame.rawValue,
             title: "Save Game",
-            icon: "square.and.arrow.down",
             emoji: "💾",
+            width: buttonWidth,
+            height: buttonHeight,
             yPosition: buttonStartY - 2 * (buttonHeight + buttonSpacing),
             color: SKColor(red: 0.4, green: 0.5, blue: 0.3, alpha: 1.0)
         )
 
-        createButton(
+        createButtonWithIcon(
             in: panel,
             name: MenuButton.exitToMenu.rawValue,
             title: "Exit to Menu",
-            icon: "door.left.hand.open",
             emoji: "🚪",
+            width: buttonWidth,
+            height: buttonHeight,
             yPosition: buttonStartY - 3 * (buttonHeight + buttonSpacing),
             color: SKColor(red: 0.6, green: 0.3, blue: 0.3, alpha: 1.0)
         )
-
-        addChild(panel)
-        menuPanel = panel
-    }
-
-    private func createButton(in parent: SKNode, name: String, title: String, icon: String, emoji: String, yPosition: CGFloat, color: SKColor) {
-        let button = SKNode()
-        button.name = name
-        button.position = CGPoint(x: 0, y: yPosition)
-
-        // Button background
-        let buttonBg = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 10)
-        buttonBg.fillColor = color
-        buttonBg.strokeColor = SKColor.white.withAlphaComponent(0.5)
-        buttonBg.lineWidth = 1
-        buttonBg.name = name
-        button.addChild(buttonBg)
-
-        // Icon (emoji)
-        let iconLabel = SKLabelNode(fontNamed: "Helvetica")
-        iconLabel.text = emoji
-        iconLabel.fontSize = 22
-        iconLabel.verticalAlignmentMode = .center
-        iconLabel.horizontalAlignmentMode = .center
-        iconLabel.position = CGPoint(x: -buttonWidth / 2 + 30, y: 0)
-        iconLabel.name = name
-        button.addChild(iconLabel)
-
-        // Title
-        let titleLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        titleLabel.text = title
-        titleLabel.fontSize = 18
-        titleLabel.fontColor = .white
-        titleLabel.verticalAlignmentMode = .center
-        titleLabel.horizontalAlignmentMode = .left
-        titleLabel.position = CGPoint(x: -buttonWidth / 2 + 55, y: 0)
-        titleLabel.name = name
-        button.addChild(titleLabel)
-
-        parent.addChild(button)
     }
 
     // MARK: - Show/Hide
 
-    /// Show the pause menu with animation
-    func show() {
-        guard !isVisible else { return }
-
-        isVisible = true
-        isHidden = false
-
-        // Reset scale and alpha
-        menuPanel?.setScale(0.8)
-        alpha = 0
-
-        // Animate in
-        let fadeIn = SKAction.fadeIn(withDuration: animationDuration)
-        let scaleUp = SKAction.scale(to: 1.0, duration: animationDuration)
-        scaleUp.timingMode = .easeOut
-
-        run(fadeIn)
-        menuPanel?.run(scaleUp)
-    }
-
-    /// Hide the pause menu with animation
-    func hide(completion: (() -> Void)? = nil) {
-        guard isVisible else {
-            completion?()
-            return
-        }
-
-        // Animate out
-        let fadeOut = SKAction.fadeOut(withDuration: animationDuration)
-        let scaleDown = SKAction.scale(to: 0.8, duration: animationDuration)
-        scaleDown.timingMode = .easeIn
-
-        let hideAction = SKAction.run { [weak self] in
-            self?.isHidden = true
-            self?.isVisible = false
-            completion?()
-        }
-
-        run(SKAction.sequence([fadeOut, hideAction]))
-        menuPanel?.run(scaleDown)
-
+    override func hide(completion: (() -> Void)? = nil) {
         // Also hide confirmation if showing
         hideConfirmation()
+        super.hide(completion: completion)
     }
 
     // MARK: - Confirmation Dialog
@@ -369,8 +237,7 @@ class PauseMenu: SKNode {
 
     // MARK: - Touch Handling
 
-    /// Handle touch on pause menu - returns true if touch was handled
-    func handleTouch(at point: CGPoint) -> Bool {
+    override func handleTouch(at point: CGPoint) -> Bool {
         guard isVisible else { return false }
 
         // Convert point to local coordinates
@@ -381,14 +248,14 @@ class PauseMenu: SKNode {
             let dialogPoint = dialog.convert(localPoint, from: self)
 
             if let cancelButton = dialog.childNode(withName: "cancelExit"),
-               nodeContainsPoint(cancelButton, point: dialogPoint) {
+               nodeContainsPoint(cancelButton, point: dialogPoint, fallbackSize: CGSize(width: 100, height: 40)) {
                 animateButtonPress(cancelButton)
                 hideConfirmation()
                 return true
             }
 
             if let confirmButton = dialog.childNode(withName: "confirmExit"),
-               nodeContainsPoint(confirmButton, point: dialogPoint) {
+               nodeContainsPoint(confirmButton, point: dialogPoint, fallbackSize: CGSize(width: 100, height: 40)) {
                 animateButtonPress(confirmButton)
                 hide {
                     self.onExitToMenu?()
@@ -404,10 +271,11 @@ class PauseMenu: SKNode {
         // Check menu buttons
         guard let panel = menuPanel else { return false }
         let panelPoint = panel.convert(localPoint, from: self)
+        let buttonSize = CGSize(width: buttonWidth, height: buttonHeight)
 
         // Resume button
         if let button = panel.childNode(withName: MenuButton.resume.rawValue),
-           nodeContainsPoint(button, point: panelPoint) {
+           nodeContainsPoint(button, point: panelPoint, fallbackSize: buttonSize) {
             animateButtonPress(button)
             hide {
                 self.onResume?()
@@ -417,7 +285,7 @@ class PauseMenu: SKNode {
 
         // Settings button
         if let button = panel.childNode(withName: MenuButton.settings.rawValue),
-           nodeContainsPoint(button, point: panelPoint) {
+           nodeContainsPoint(button, point: panelPoint, fallbackSize: buttonSize) {
             animateButtonPress(button)
             onSettings?()
             return true
@@ -425,7 +293,7 @@ class PauseMenu: SKNode {
 
         // Save Game button
         if let button = panel.childNode(withName: MenuButton.saveGame.rawValue),
-           nodeContainsPoint(button, point: panelPoint) {
+           nodeContainsPoint(button, point: panelPoint, fallbackSize: buttonSize) {
             animateButtonPress(button)
             onSaveGame?()
             return true
@@ -433,7 +301,7 @@ class PauseMenu: SKNode {
 
         // Exit to Menu button
         if let button = panel.childNode(withName: MenuButton.exitToMenu.rawValue),
-           nodeContainsPoint(button, point: panelPoint) {
+           nodeContainsPoint(button, point: panelPoint, fallbackSize: buttonSize) {
             animateButtonPress(button)
             showExitConfirmation()
             return true
@@ -441,22 +309,5 @@ class PauseMenu: SKNode {
 
         // Touch on overlay (outside panel) does nothing (keeps menu open)
         return true
-    }
-
-    private func nodeContainsPoint(_ node: SKNode, point: CGPoint) -> Bool {
-        // Check if point is within the node's bounding box
-        let nodePoint = node.convert(point, from: node.parent!)
-        if let shape = node.children.first as? SKShapeNode {
-            return shape.contains(nodePoint)
-        }
-        // Fallback to frame check
-        let frame = CGRect(x: -buttonWidth/2, y: -buttonHeight/2, width: buttonWidth, height: buttonHeight)
-        return frame.contains(nodePoint)
-    }
-
-    private func animateButtonPress(_ button: SKNode) {
-        let scaleDown = SKAction.scale(to: 0.95, duration: 0.05)
-        let scaleUp = SKAction.scale(to: 1.0, duration: 0.1)
-        button.run(SKAction.sequence([scaleDown, scaleUp]))
     }
 }

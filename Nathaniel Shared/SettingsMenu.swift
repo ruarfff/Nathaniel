@@ -3,7 +3,7 @@ import SpriteKit
 // MARK: - Settings Menu
 
 /// Overlay menu displayed for game settings
-class SettingsMenu: SKNode {
+class SettingsMenu: OverlayMenu {
     // MARK: - Types
 
     /// Setting item identifiers
@@ -15,18 +15,6 @@ class SettingsMenu: SKNode {
     }
 
     // MARK: - Properties
-
-    /// Size of the viewport
-    private let viewportSize: CGSize
-
-    /// Dark overlay background
-    private var overlayBackground: SKShapeNode?
-
-    /// Menu panel container
-    private var menuPanel: SKNode?
-
-    /// Whether the menu is currently visible
-    private(set) var isVisible: Bool = false
 
     /// Sound effects toggle state
     private var soundEffectsEnabled: Bool = true
@@ -44,18 +32,17 @@ class SettingsMenu: SKNode {
 
     // MARK: - Constants
 
-    private let panelWidth: CGFloat = 320
     #if DEBUG
         private let panelHeight: CGFloat = 340 // Taller to fit Dev Settings button
     #else
         private let panelHeight: CGFloat = 280
     #endif
+    private let panelWidth: CGFloat = 320
     private let rowWidth: CGFloat = 280
     private let rowHeight: CGFloat = 50
     private let rowSpacing: CGFloat = 15
     private let buttonWidth: CGFloat = 180
     private let buttonHeight: CGFloat = 45
-    private let animationDuration: TimeInterval = 0.25
 
     // MARK: - UI References
 
@@ -69,60 +56,21 @@ class SettingsMenu: SKNode {
 
     // MARK: - Initialization
 
-    init(size: CGSize) {
-        viewportSize = size
-        super.init()
+    override init(size: CGSize) {
+        super.init(size: size)
 
         // Load current settings
         soundEffectsEnabled = GameSettings.shared.soundEffectsEnabled
         musicEnabled = GameSettings.shared.musicEnabled
-
-        setupOverlay()
-        setupMenuPanel()
-
-        // Start hidden
-        isHidden = true
-        alpha = 0
-    }
-
-    @available(*, unavailable)
-    required init?(coder aDecoder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
     }
 
     // MARK: - Setup
 
-    private func setupOverlay() {
-        // Full-screen dark overlay
-        let overlay = SKShapeNode(rectOf: CGSize(width: viewportSize.width * 2, height: viewportSize.height * 2))
-        overlay.fillColor = SKColor.black.withAlphaComponent(0.7)
-        overlay.strokeColor = .clear
-        overlay.zPosition = 0
-        overlay.name = "settingsOverlay"
-        addChild(overlay)
-        overlayBackground = overlay
-    }
-
-    private func setupMenuPanel() {
-        let panel = SKNode()
-        panel.zPosition = 1
-
-        // Panel background
-        let panelBg = SKShapeNode(rectOf: CGSize(width: panelWidth, height: panelHeight), cornerRadius: 16)
-        panelBg.fillColor = SKColor(red: 0.15, green: 0.15, blue: 0.2, alpha: 0.95)
-        panelBg.strokeColor = SKColor.white.withAlphaComponent(0.3)
-        panelBg.lineWidth = 2
-        panel.addChild(panelBg)
+    override func setupMenuPanel() {
+        let panel = createPanelContainer(width: panelWidth, height: panelHeight)
 
         // Title
-        let titleLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        titleLabel.text = "SETTINGS"
-        titleLabel.fontSize = 28
-        titleLabel.fontColor = .white
-        titleLabel.verticalAlignmentMode = .center
-        titleLabel.horizontalAlignmentMode = .center
-        titleLabel.position = CGPoint(x: 0, y: panelHeight / 2 - 45)
-        panel.addChild(titleLabel)
+        createTitle("SETTINGS", fontSize: 28, in: panel, panelHeight: panelHeight)
 
         // Setting rows (from top to bottom)
         let rowStartY: CGFloat = panelHeight / 2 - 100
@@ -151,6 +99,8 @@ class SettingsMenu: SKNode {
                 in: panel,
                 name: SettingItem.devSettings.rawValue,
                 title: "Developer Settings",
+                width: buttonWidth,
+                height: buttonHeight,
                 yPosition: rowStartY - 2 * (rowHeight + rowSpacing),
                 color: SKColor(red: 0.6, green: 0.4, blue: 0.2, alpha: 1.0)
             )
@@ -161,12 +111,11 @@ class SettingsMenu: SKNode {
             in: panel,
             name: SettingItem.back.rawValue,
             title: "Back",
+            width: buttonWidth,
+            height: buttonHeight,
             yPosition: -panelHeight / 2 + 50,
             color: SKColor(red: 0.4, green: 0.4, blue: 0.5, alpha: 1.0)
         )
-
-        addChild(panel)
-        menuPanel = panel
 
         #if DEBUG
             // Setup DevSettingsPanel
@@ -251,32 +200,6 @@ class SettingsMenu: SKNode {
         return toggle
     }
 
-    private func createButton(in parent: SKNode, name: String, title: String, yPosition: CGFloat, color: SKColor) {
-        let button = SKNode()
-        button.name = name
-        button.position = CGPoint(x: 0, y: yPosition)
-
-        // Button background
-        let buttonBg = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 10)
-        buttonBg.fillColor = color
-        buttonBg.strokeColor = SKColor.white.withAlphaComponent(0.5)
-        buttonBg.lineWidth = 1
-        buttonBg.name = name
-        button.addChild(buttonBg)
-
-        // Title
-        let titleLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        titleLabel.text = title
-        titleLabel.fontSize = 18
-        titleLabel.fontColor = .white
-        titleLabel.verticalAlignmentMode = .center
-        titleLabel.horizontalAlignmentMode = .center
-        titleLabel.name = name
-        button.addChild(titleLabel)
-
-        parent.addChild(button)
-    }
-
     // MARK: - Toggle Animation
 
     private func updateToggle(_ toggle: SKNode?, isOn: Bool, name: String) {
@@ -312,10 +235,7 @@ class SettingsMenu: SKNode {
 
     // MARK: - Show/Hide
 
-    /// Show the settings menu with animation
-    func show() {
-        guard !isVisible else { return }
-
+    override func show() {
         // Refresh from current settings
         soundEffectsEnabled = GameSettings.shared.soundEffectsEnabled
         musicEnabled = GameSettings.shared.musicEnabled
@@ -324,48 +244,12 @@ class SettingsMenu: SKNode {
         updateToggle(soundEffectsToggle, isOn: soundEffectsEnabled, name: SettingItem.soundEffects.rawValue)
         updateToggle(musicToggle, isOn: musicEnabled, name: SettingItem.music.rawValue)
 
-        isVisible = true
-        isHidden = false
-
-        // Reset scale and alpha
-        menuPanel?.setScale(0.8)
-        alpha = 0
-
-        // Animate in
-        let fadeIn = SKAction.fadeIn(withDuration: animationDuration)
-        let scaleUp = SKAction.scale(to: 1.0, duration: animationDuration)
-        scaleUp.timingMode = .easeOut
-
-        run(fadeIn)
-        menuPanel?.run(scaleUp)
-    }
-
-    /// Hide the settings menu with animation
-    func hide(completion: (() -> Void)? = nil) {
-        guard isVisible else {
-            completion?()
-            return
-        }
-
-        // Animate out
-        let fadeOut = SKAction.fadeOut(withDuration: animationDuration)
-        let scaleDown = SKAction.scale(to: 0.8, duration: animationDuration)
-        scaleDown.timingMode = .easeIn
-
-        let hideAction = SKAction.run { [weak self] in
-            self?.isHidden = true
-            self?.isVisible = false
-            completion?()
-        }
-
-        run(SKAction.sequence([fadeOut, hideAction]))
-        menuPanel?.run(scaleDown)
+        super.show()
     }
 
     // MARK: - Touch Handling
 
-    /// Handle touch on settings menu - returns true if touch was handled
-    func handleTouch(at point: CGPoint) -> Bool {
+    override func handleTouch(at point: CGPoint) -> Bool {
         guard isVisible else { return false }
 
         #if DEBUG
@@ -381,10 +265,11 @@ class SettingsMenu: SKNode {
         // Check menu buttons
         guard let panel = menuPanel else { return false }
         let panelPoint = panel.convert(localPoint, from: self)
+        let rowSize = CGSize(width: rowWidth, height: rowHeight)
 
         // Sound Effects toggle
         if let row = panel.childNode(withName: SettingItem.soundEffects.rawValue),
-           nodeContainsPoint(row, point: panelPoint)
+           nodeContainsPoint(row, point: panelPoint, fallbackSize: rowSize)
         {
             animateButtonPress(row)
             soundEffectsEnabled = !soundEffectsEnabled
@@ -396,7 +281,7 @@ class SettingsMenu: SKNode {
 
         // Music toggle
         if let row = panel.childNode(withName: SettingItem.music.rawValue),
-           nodeContainsPoint(row, point: panelPoint)
+           nodeContainsPoint(row, point: panelPoint, fallbackSize: rowSize)
         {
             animateButtonPress(row)
             musicEnabled = !musicEnabled
@@ -417,7 +302,7 @@ class SettingsMenu: SKNode {
         #if DEBUG
             // Dev Settings button
             if let button = panel.childNode(withName: SettingItem.devSettings.rawValue),
-               nodeContainsPoint(button, point: panelPoint)
+               nodeContainsPoint(button, point: panelPoint, fallbackSize: CGSize(width: buttonWidth, height: buttonHeight))
             {
                 animateButtonPress(button)
                 devSettingsPanel?.show()
@@ -427,7 +312,7 @@ class SettingsMenu: SKNode {
 
         // Back button
         if let button = panel.childNode(withName: SettingItem.back.rawValue),
-           nodeContainsPoint(button, point: panelPoint)
+           nodeContainsPoint(button, point: panelPoint, fallbackSize: CGSize(width: buttonWidth, height: buttonHeight))
         {
             animateButtonPress(button)
             hide {
@@ -451,21 +336,4 @@ class SettingsMenu: SKNode {
             return false
         }
     #endif
-
-    private func nodeContainsPoint(_ node: SKNode, point: CGPoint) -> Bool {
-        // Check if point is within the node's bounding box
-        let nodePoint = node.convert(point, from: node.parent!)
-        if let shape = node.children.first as? SKShapeNode {
-            return shape.contains(nodePoint)
-        }
-        // Fallback to frame check for rows
-        let frame = CGRect(x: -rowWidth / 2, y: -rowHeight / 2, width: rowWidth, height: rowHeight)
-        return frame.contains(nodePoint)
-    }
-
-    private func animateButtonPress(_ button: SKNode) {
-        let scaleDown = SKAction.scale(to: 0.95, duration: 0.05)
-        let scaleUp = SKAction.scale(to: 1.0, duration: 0.1)
-        button.run(SKAction.sequence([scaleDown, scaleUp]))
-    }
 }
