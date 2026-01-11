@@ -1,6 +1,6 @@
 import SpriteKit
 
-class MainMenuScene: SKScene {
+class MainMenuScene: InputHandlingScene {
     // MARK: - Properties
 
     /// Title label
@@ -435,25 +435,11 @@ class MainMenuScene: SKScene {
     }
 }
 
-// MARK: - iOS Touch Handling
+// MARK: - Input Handling
 
-#if os(iOS) || os(tvOS)
-    extension MainMenuScene {
-        override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-            guard let touch = touches.first else { return }
-            let location = touch.location(in: self)
-            handleButtonTap(at: location)
-        }
+extension MainMenuScene {
+    override func handlePointerDown(at location: CGPoint) -> Bool {
+        handleButtonTap(at: location)
+        return true
     }
-#endif
-
-// MARK: - macOS Mouse Handling
-
-#if os(OSX)
-    extension MainMenuScene {
-        override func mouseDown(with event: NSEvent) {
-            let location = event.location(in: self)
-            handleButtonTap(at: location)
-        }
-    }
-#endif
+}

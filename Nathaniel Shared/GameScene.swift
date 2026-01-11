@@ -6,7 +6,7 @@ import SpriteKit
 
 private let logger = Logger(subsystem: "com.ruarfff.Nathaniel", category: "GameScene")
 
-class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPlacementControllerDelegate,
+class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPlacementControllerDelegate,
     StructureManagerDelegate
 {
     // MARK: - Properties
@@ -1397,142 +1397,110 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
     }
 }
 
-// MARK: - iOS Touch Handling
+// MARK: - Platform Input (via InputHandlingScene)
 
-#if os(iOS) || os(tvOS)
-    extension GameScene {
-        override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-            guard let touch = touches.first else { return }
-            let location = touch.location(in: self)
-
-            // Dispatch to overlay menus first
-            if dispatchInputToOverlayMenus(at: location) {
-                return
-            }
-
-            handleTap(at: location)
+extension GameScene {
+    override func handlePointerDown(at location: CGPoint) -> Bool {
+        // Dispatch to overlay menus first
+        if dispatchInputToOverlayMenus(at: location) {
+            return true
         }
 
-        override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-            guard let touch = touches.first else { return }
-            let location = touch.location(in: self)
-            let hudLocation = self.cameraNode.convert(location, from: self)
+        handleTap(at: location)
+        return true
+    }
 
-            // Forward to build menu if dragging
-            if let controller = towerPlacementController, controller.isDragging {
-                // Pass both coordinate spaces - HUD for ghost tower, world for placement
-                _ = controller.handleTouchMoved(to: location, hudLocation: hudLocation, in: self)
+    override func handlePointerMoved(to location: CGPoint) -> Bool {
+        let hudLocation = self.cameraNode.convert(location, from: self)
+
+        // Forward to build menu if dragging
+        if let controller = towerPlacementController, controller.isDragging {
+            // Pass both coordinate spaces - HUD for ghost tower, world for placement
+            _ = controller.handleTouchMoved(to: location, hudLocation: hudLocation, in: self)
+            return true
+        }
+        return false
+    }
+
+    override func handlePointerUp(at location: CGPoint) -> Bool {
+        let hudLocation = self.cameraNode.convert(location, from: self)
+
+        // Forward to build menu if dragging
+        if let controller = towerPlacementController, controller.isDragging {
+            _ = controller.handleTouchEnded(at: location, hudLocation: hudLocation)
+            return true
+        }
+        return false
+    }
+
+    override func handlePointerCancelled() {
+        // Cancel any active build menu drag
+        self.towerPlacementController?.handleTouchCancelled()
+    }
+
+    override func handleSecondaryClick(at location: CGPoint) -> Bool {
+        // Right-click to fire weapon at location (macOS only)
+        if let nathaniel {
+            if nathaniel.fireAt(location) {
+                logger.debug("Fired at \(location.x), \(location.y)")
             }
+            return true
+        }
+        return false
+    }
+
+    override func handleScroll(deltaY: CGFloat) -> Bool {
+        // Use scroll delta for zoom - positive deltaY = scroll up = zoom in
+        let zoomSensitivity: CGFloat = 0.02
+        let zoomDelta = deltaY * zoomSensitivity
+        self.updateZoom(by: 1.0 + zoomDelta)
+        return true
+    }
+
+    override func handleKeyDown(keyCode: UInt16) -> Bool {
+        // Escape key toggles pause (works in both playing and paused states)
+        if keyCode == 53 { // Escape key
+            if self.levelManager.state == .paused {
+                self.resumeGame()
+            } else if self.levelManager.state == .playing {
+                self.pauseGame()
+            }
+            return true
         }
 
-        override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-            guard let touch = touches.first else { return }
-            let location = touch.location(in: self)
-            let hudLocation = self.cameraNode.convert(location, from: self)
-
-            // Forward to build menu if dragging
-            if let controller = towerPlacementController, controller.isDragging {
-                _ = controller.handleTouchEnded(at: location, hudLocation: hudLocation)
-            }
+        // Check if the overlay is showing (victory/game over)
+        if self.gameOverlay.state == .victory || self.gameOverlay.state == .gameOver {
+            self.gameOverlay.handleInteraction()
+            return true
         }
 
-        override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-            // Cancel any active build menu drag
-            self.towerPlacementController?.handleTouchCancelled()
+        // Don't handle other keys if game is not in playing state
+        guard self.levelManager.state == .playing else { return false }
+
+        switch keyCode {
+        case 1: // S key - stop movement
+            self.selectedCharacter?.stop()
+            return true
+        #if os(OSX)
+        case 3: // F key - fire weapon at mouse position
+            self.fireAtMousePosition()
+            return true
+        #endif
+        case 15: // R key - toggle Hermes follow mode
+            if let hermes {
+                hermes.isInBuildMode.toggle()
+                logger.debug("Hermes follow mode: \(!hermes.isInBuildMode)")
+            }
+            return true
+        case 49: // Space key - switch selected character
+            toggleSelectedCharacter()
+            return true
+        default:
+            return false
         }
     }
-#endif
 
-// MARK: - macOS Mouse/Keyboard Handling
-
-#if os(OSX)
-    extension GameScene {
-        override func mouseDown(with event: NSEvent) {
-            let location = event.location(in: self)
-
-            // Dispatch to overlay menus first
-            if dispatchInputToOverlayMenus(at: location) {
-                return
-            }
-
-            handleTap(at: location)
-        }
-
-        override func mouseDragged(with event: NSEvent) {
-            let location = event.location(in: self)
-            let hudLocation = self.cameraNode.convert(location, from: self)
-
-            // Forward to build menu if dragging
-            if let controller = towerPlacementController, controller.isDragging {
-                // Pass both coordinate spaces - HUD for ghost tower, world for placement
-                _ = controller.handleTouchMoved(to: location, hudLocation: hudLocation, in: self)
-            }
-        }
-
-        override func mouseUp(with event: NSEvent) {
-            let location = event.location(in: self)
-            let hudLocation = self.cameraNode.convert(location, from: self)
-
-            // Forward to build menu if dragging
-            if let controller = towerPlacementController, controller.isDragging {
-                _ = controller.handleTouchEnded(at: location, hudLocation: hudLocation)
-            }
-        }
-
-        override func scrollWheel(with event: NSEvent) {
-            // Use scroll delta for zoom - positive deltaY = scroll up = zoom in
-            let zoomSensitivity: CGFloat = 0.02
-            let zoomDelta = event.scrollingDeltaY * zoomSensitivity
-            self.updateZoom(by: 1.0 + zoomDelta)
-        }
-
-        override func rightMouseDown(with event: NSEvent) {
-            // Right-click to fire weapon at location
-            let location = event.location(in: self)
-            if let nathaniel {
-                if nathaniel.fireAt(location) {
-                    logger.debug("Fired at \(location.x), \(location.y)")
-                }
-            }
-        }
-
-        override func keyDown(with event: NSEvent) {
-            // Escape key toggles pause (works in both playing and paused states)
-            if event.keyCode == 53 { // Escape key
-                if self.levelManager.state == .paused {
-                    self.resumeGame()
-                } else if self.levelManager.state == .playing {
-                    self.pauseGame()
-                }
-                return
-            }
-
-            // Check if the overlay is showing (victory/game over)
-            if self.gameOverlay.state == .victory || self.gameOverlay.state == .gameOver {
-                self.gameOverlay.handleInteraction()
-                return
-            }
-
-            // Don't handle other keys if game is not in playing state
-            guard self.levelManager.state == .playing else { return }
-
-            switch event.keyCode {
-            case 1: // S key - stop movement
-                self.selectedCharacter?.stop()
-            case 3: // F key - fire weapon at mouse position
-                self.fireAtMousePosition()
-            case 15: // R key - toggle Hermes follow mode
-                if let hermes {
-                    hermes.isInBuildMode.toggle()
-                    logger.debug("Hermes follow mode: \(!hermes.isInBuildMode)")
-                }
-            case 49: // Space key - switch selected character
-                toggleSelectedCharacter()
-            default:
-                break
-            }
-        }
-
+    #if os(OSX)
         /// Fire Nathaniel's weapon at the current mouse position
         private func fireAtMousePosition() {
             guard let view,
@@ -1548,8 +1516,8 @@ class GameScene: SKScene, LevelManagerDelegate, ResourceManagerDelegate, TowerPl
                 logger.debug("Fired at \(sceneLocation.x), \(sceneLocation.y)")
             }
         }
-    }
-#endif
+    #endif
+}
 
 // MARK: - Input Handling
 

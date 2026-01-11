@@ -1,6 +1,6 @@
 import SpriteKit
 
-class OptionsScene: SKScene {
+class OptionsScene: InputHandlingScene {
     // MARK: - Properties
 
     private var backButton: SKLabelNode!
@@ -251,52 +251,31 @@ class OptionsScene: SKScene {
     }
 }
 
-// MARK: - iOS Touch Handling
+// MARK: - Input Handling
 
-#if os(iOS) || os(tvOS)
-    extension OptionsScene {
-        override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-            guard let touch = touches.first else { return }
-            let location = touch.location(in: self)
-            handleButtonTap(at: location)
+extension OptionsScene {
+    override func handlePointerDown(at location: CGPoint) -> Bool {
+        handleButtonTap(at: location)
+        return true
+    }
+
+    #if DEBUG
+        /// Track last pointer location for drag delta calculation
+        private static var lastPointerLocation: CGPoint?
+
+        override func handlePointerMoved(to location: CGPoint) -> Bool {
+            let previousLocation = OptionsScene.lastPointerLocation ?? location
+            OptionsScene.lastPointerLocation = location
+
+            if let devPanel = devSettingsPanel, devPanel.isVisible {
+                return devPanel.handleDrag(from: previousLocation, to: location)
+            }
+            return false
         }
 
-        #if DEBUG
-            override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-                guard let touch = touches.first else { return }
-                let location = touch.location(in: self)
-                let previousLocation = touch.previousLocation(in: self)
-
-                if let devPanel = devSettingsPanel, devPanel.isVisible {
-                    _ = devPanel.handleDrag(from: previousLocation, to: location)
-                }
-            }
-        #endif
-    }
-#endif
-
-// MARK: - macOS Mouse Handling
-
-#if os(OSX)
-    extension OptionsScene {
-        override func mouseDown(with event: NSEvent) {
-            let location = event.location(in: self)
-            handleButtonTap(at: location)
+        override func handlePointerUp(at location: CGPoint) -> Bool {
+            OptionsScene.lastPointerLocation = nil
+            return false
         }
-
-        #if DEBUG
-            override func mouseDragged(with event: NSEvent) {
-                let location = event.location(in: self)
-                // For macOS, we use the delta from the event
-                let previousLocation = CGPoint(
-                    x: location.x - event.deltaX,
-                    y: location.y + event.deltaY // deltaY is inverted on macOS
-                )
-
-                if let devPanel = devSettingsPanel, devPanel.isVisible {
-                    _ = devPanel.handleDrag(from: previousLocation, to: location)
-                }
-            }
-        #endif
-    }
-#endif
+    #endif
+}
