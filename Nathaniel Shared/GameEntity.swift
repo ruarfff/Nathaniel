@@ -238,9 +238,6 @@ class Character: GameEntity, Damageable {
 
     let sprite: SKSpriteNode
 
-    /// Health bar display
-    var healthBar: HealthBar?
-
     var position: CGPoint {
         get { self.sprite.position }
         set { self.sprite.position = newValue }
@@ -248,44 +245,68 @@ class Character: GameEntity, Damageable {
 
     var isActive: Bool = true
 
+    // MARK: - Components
+
+    /// Animation component for sprite sheet handling
+    let animationComponent: AnimationComponent
+
+    /// Movement component for pathfinding and movement
+    let movementComponent: MovementComponent
+
+    /// Health component for damage and health management
+    let healthComponent: HealthComponent
+
     // MARK: - Character Properties
 
     /// Display name
     let name: String
 
-    /// Current health points
+    /// Current health points (delegates to healthComponent)
     var currentHP: Int {
-        didSet {
-            if self.currentHP <= 0 {
-                self.currentHP = 0
-                self.onDeath()
-            }
-        }
+        get { self.healthComponent.currentHP }
+        set { self.healthComponent.setHealth(newValue) }
     }
 
     /// Maximum health points
-    let maxHP: Int
+    var maxHP: Int { self.healthComponent.maxHP }
 
     /// Whether the character is alive
-    var isAlive: Bool { self.currentHP > 0 }
+    var isAlive: Bool { self.healthComponent.isAlive }
 
-    /// Movement speed in points per second
-    var speed: CGFloat
+    /// Health bar display (delegates to healthComponent)
+    var healthBar: HealthBar? {
+        get { self.healthComponent.healthBar }
+    }
+
+    /// Movement speed in points per second (delegates to movementComponent)
+    var speed: CGFloat {
+        get { self.movementComponent.speed }
+        set { self.movementComponent.speed = newValue }
+    }
 
     /// Maximum speed (for resetting after effects)
-    let maxSpeed: CGFloat
+    var maxSpeed: CGFloat { self.movementComponent.maxSpeed }
 
-    /// Current movement destination (nil if not moving)
-    var destination: CGPoint?
+    /// Current movement destination (delegates to movementComponent)
+    var destination: CGPoint? {
+        get { self.movementComponent.destination }
+        set { self.movementComponent.destination = newValue }
+    }
 
     /// Whether the character is currently moving
-    var isMoving: Bool { self.destination != nil }
+    var isMoving: Bool { self.movementComponent.isMoving }
 
-    /// Current facing direction
-    var facingDirection: FacingDirection = .south
+    /// Current facing direction (delegates to animationComponent)
+    var facingDirection: FacingDirection {
+        get { self.animationComponent.facingDirection }
+        set { self.animationComponent.facingDirection = newValue }
+    }
 
-    /// Current animation state
-    var animationState: AnimationState = .idle
+    /// Current animation state (delegates to animationComponent)
+    var animationState: AnimationState {
+        get { self.animationComponent.state }
+        set { self.animationComponent.state = newValue }
+    }
 
     /// Vision range for fog of war (how far the character can see)
     var visionRange: CGFloat = 200.0
@@ -295,7 +316,7 @@ class Character: GameEntity, Damageable {
         self.sprite.size.width * 0.4
     }
 
-    // MARK: - Animation
+    // MARK: - Animation (backward compatibility)
 
     /// Sprite sheet columns
     let spriteSheetCols: Int
@@ -303,16 +324,23 @@ class Character: GameEntity, Damageable {
     /// Sprite sheet rows
     let spriteSheetRows: Int
 
-    /// Individual frame textures organized by [row][col]
-    var frameTextures: [[SKTexture]] = []
+    /// Individual frame textures organized by [row][col] (delegates to animationComponent)
+    var frameTextures: [[SKTexture]] {
+        get { self.animationComponent.frameTextures }
+    }
 
-    /// Base texture (sprite sheet)
-    var baseTexture: SKTexture?
+    /// Base texture (sprite sheet) (delegates to animationComponent)
+    var baseTexture: SKTexture? {
+        get { self.animationComponent.baseTexture }
+    }
 
-    // MARK: - Pathfinding
+    // MARK: - Pathfinding (backward compatibility)
 
-    /// Pathfinding component for A* navigation (optional)
-    var pathfinding: PathfindingMovement?
+    /// Pathfinding component for A* navigation (delegates to movementComponent)
+    var pathfinding: PathfindingMovement? {
+        get { self.movementComponent.pathfinding }
+        set { self.movementComponent.pathfinding = newValue }
+    }
 
     // MARK: - Targeting
 
@@ -322,32 +350,47 @@ class Character: GameEntity, Damageable {
     /// Callback to get allied characters for group targeting
     var getAllies: (() -> [Character])?
 
-    /// Final destination when using pathfinding (may differ from current waypoint)
-    private var finalDestination: CGPoint?
-
-    /// Stuck detection: count of frames without significant movement
-    private var stuckFrameCount: Int = 0
-
-    /// Last position for stuck detection
-    private var lastPositionForStuckCheck: CGPoint = .zero
-
-    /// Threshold for stuck detection (frames at 60fps = ~0.5 seconds)
-    private let stuckFrameThreshold: Int = 30
-
     // MARK: - Initialization
 
     init(name: String, maxHP: Int, speed: CGFloat, spriteSheetCols: Int = 8, spriteSheetRows: Int = 2) {
         self.name = name
-        self.maxHP = maxHP
-        self.currentHP = maxHP
-        self.speed = speed
-        self.maxSpeed = speed
         self.spriteSheetCols = spriteSheetCols
         self.spriteSheetRows = spriteSheetRows
 
         // Create sprite node (will be configured by subclasses)
         self.sprite = SKSpriteNode()
         self.sprite.name = name
+
+        // Initialize components
+        self.animationComponent = AnimationComponent(
+            sprite: self.sprite,
+            columns: spriteSheetCols,
+            rows: spriteSheetRows
+        )
+        self.movementComponent = MovementComponent(speed: speed)
+        self.healthComponent = HealthComponent(maxHP: maxHP, sprite: self.sprite)
+
+        // Wire up component callbacks
+        self.setupComponentCallbacks()
+    }
+
+    /// Wire up callbacks between components
+    private func setupComponentCallbacks() {
+        // Movement -> Animation: update facing direction
+        self.movementComponent.onFacingDirectionChanged = { [weak self] direction in
+            self?.animationComponent.facingDirection = direction
+        }
+
+        // Movement -> Animation: update moving state
+        self.movementComponent.onMovementStateChanged = { [weak self] isMoving in
+            self?.animationComponent.isMoving = isMoving
+            self?.animationComponent.state = isMoving ? .moving : .idle
+        }
+
+        // Health -> Character: handle death
+        self.healthComponent.onDeath = { [weak self] in
+            self?.onDeath()
+        }
     }
 
     // MARK: - Texture Setup
@@ -355,70 +398,16 @@ class Character: GameEntity, Damageable {
     /// Load and slice a sprite sheet into individual frame textures
     func loadSpriteSheet(named textureName: String) {
         print("Character: Loading sprite sheet '\(textureName)'...")
-
-        let texture = SKTexture(imageNamed: textureName)
-        texture.filteringMode = .nearest
-        self.baseTexture = texture
-
-        let textureSize = texture.size()
-        print("Character: Texture size: \(textureSize)")
-
-        guard textureSize.width > 0, textureSize.height > 0 else {
-            print("Character: ERROR - Failed to load sprite sheet '\(textureName)' - size is zero")
-            // Try setting a placeholder color so we can at least see something
-            self.sprite.color = .blue
-            self.sprite.size = CGSize(width: 32, height: 48)
-            return
+        if self.animationComponent.loadSpriteSheet(named: textureName) {
+            print("Character: Sprite sheet loading complete. Frame textures: \(self.frameTextures.count) rows")
+        } else {
+            print("Character: ERROR - Failed to load sprite sheet '\(textureName)'")
         }
-
-        let frameWidth = textureSize.width / CGFloat(self.spriteSheetCols)
-        let frameHeight = textureSize.height / CGFloat(self.spriteSheetRows)
-        print("Character: Frame size: \(frameWidth) x \(frameHeight)")
-
-        // Configure sprite size based on a single frame
-        self.sprite.size = CGSize(width: frameWidth, height: frameHeight)
-        print("Character: Sprite size set to: \(self.sprite.size)")
-
-        // Slice the sprite sheet into individual textures
-        self.frameTextures = []
-        for row in 0 ..< self.spriteSheetRows {
-            var rowTextures: [SKTexture] = []
-            for col in 0 ..< self.spriteSheetCols {
-                // Calculate normalized rect (SpriteKit textures have origin at bottom-left)
-                let x = CGFloat(col) / CGFloat(self.spriteSheetCols)
-                let y = 1.0 - CGFloat(row + 1) / CGFloat(self.spriteSheetRows)
-                let w = 1.0 / CGFloat(self.spriteSheetCols)
-                let h = 1.0 / CGFloat(self.spriteSheetRows)
-
-                let rect = CGRect(x: x, y: y, width: w, height: h)
-                let frameTexture = SKTexture(rect: rect, in: texture)
-                frameTexture.filteringMode = .nearest
-                rowTextures.append(frameTexture)
-            }
-            self.frameTextures.append(rowTextures)
-        }
-
-        // Set initial texture
-        self.updateTexture()
-        print("Character: Sprite sheet loading complete. Frame textures: \(self.frameTextures.count) rows")
     }
 
     /// Update the sprite texture based on current state
     func updateTexture() {
-        guard !self.frameTextures.isEmpty else {
-            print("Character: updateTexture - no frame textures loaded!")
-            return
-        }
-
-        let col = self.facingDirection.rawValue
-        let row = self.isMoving ? 1 : 0
-
-        guard row < self.frameTextures.count, col < self.frameTextures[row].count else {
-            print("Character: updateTexture - invalid row/col: \(row)/\(col)")
-            return
-        }
-
-        self.sprite.texture = self.frameTextures[row][col]
+        self.animationComponent.updateTexture()
     }
 
     // MARK: - GameEntity Methods
@@ -434,110 +423,12 @@ class Character: GameEntity, Damageable {
 
     /// Update movement toward destination
     private func updateMovement(deltaTime: TimeInterval) {
-        // If using pathfinding, get next waypoint
-        if let pathfinding, pathfinding.hasActivePath {
-            self.updatePathfindingMovement(deltaTime: deltaTime, pathfinding: pathfinding)
-            return
-        }
-
-        // Direct movement (no pathfinding)
-        guard let dest = destination else {
-            self.animationState = .idle
-            return
-        }
-
-        self.moveTowardPoint(dest, deltaTime: deltaTime)
-
-        // Check if we've arrived at final destination
-        if self.position.distance(to: dest) <= 5 {
-            self.destination = nil
-            self.finalDestination = nil
-            self.animationState = .idle
-        }
-    }
-
-    /// Update movement using pathfinding waypoints
-    private func updatePathfindingMovement(deltaTime: TimeInterval, pathfinding: PathfindingMovement) {
-        // Get next waypoint from path follower, passing finalDestination for recalculation if blocked
-        guard let waypoint = pathfinding.update(currentPosition: position, destination: finalDestination) else {
-            // Path complete or blocked with no alternative - clear destinations
-            self.destination = nil
-            self.finalDestination = nil
-            self.animationState = .idle
-            self.stuckFrameCount = 0
-            return
-        }
-
-        // Move toward current waypoint
-        self.moveTowardPoint(waypoint, deltaTime: deltaTime)
-
-        // Update destination to current waypoint for isMoving check
-        self.destination = waypoint
-
-        // Stuck detection: if character hasn't moved significantly, increment counter
-        if self.lastPositionForStuckCheck.distance(to: self.position) < 0.5 {
-            self.stuckFrameCount += 1
-            if self.stuckFrameCount > self.stuckFrameThreshold {
-                // Character is stuck - clear path and try to recalculate
-                pathfinding.clearPath()
-                if let dest = finalDestination {
-                    _ = pathfinding.calculatePath(from: self.position, to: dest)
-                }
-                self.stuckFrameCount = 0
-            }
-        } else {
-            self.stuckFrameCount = 0
-        }
-        self.lastPositionForStuckCheck = self.position
-    }
-
-    /// Move toward a specific point (shared by direct and pathfinding movement)
-    private func moveTowardPoint(_ target: CGPoint, deltaTime: TimeInterval) {
-        let direction = CGVector(dx: target.x - self.position.x, dy: target.y - self.position.y)
-        let distance = self.position.distance(to: target)
-
-        guard distance > 0 else { return }
-
-        // Normalize and move
-        let normalizedDir = CGVector(dx: direction.dx / distance, dy: direction.dy / distance)
-        let moveDistance = self.speed * CGFloat(deltaTime)
-
-        // Don't overshoot
-        let actualMove = min(moveDistance, distance)
-
-        // Calculate new position
-        let newPosition = CGPoint(
-            x: position.x + normalizedDir.dx * actualMove,
-            y: self.position.y + normalizedDir.dy * actualMove
+        let newPosition = self.movementComponent.update(
+            currentPosition: self.position,
+            deltaTime: deltaTime,
+            collisionRadius: self.collisionRadius
         )
-
-        // Check collision if pathfinding is configured
-        if let pathfinding {
-            let radius = self.collisionRadius
-            if pathfinding.isWalkable(at: newPosition, entityRadius: radius) {
-                self.position = newPosition
-            } else {
-                // Try sliding along X axis
-                let slideX = CGPoint(x: newPosition.x, y: self.position.y)
-                if pathfinding.isWalkable(at: slideX, entityRadius: radius) {
-                    self.position = slideX
-                } else {
-                    // Try sliding along Y axis
-                    let slideY = CGPoint(x: position.x, y: newPosition.y)
-                    if pathfinding.isWalkable(at: slideY, entityRadius: radius) {
-                        self.position = slideY
-                    }
-                    // If both blocked, don't move (character is stuck)
-                }
-            }
-        } else {
-            // No pathfinding - direct movement without collision check
-            self.position = newPosition
-        }
-
-        // Update facing direction
-        self.facingDirection = FacingDirection.from(direction: direction)
-        self.animationState = .moving
+        self.position = newPosition
     }
 
     /// Update animation state and texture
@@ -553,49 +444,24 @@ class Character: GameEntity, Damageable {
     ///   - yOffset: Vertical offset above sprite
     ///   - compact: Use compact style (smaller height, rounded corners)
     func setupHealthBar(width: CGFloat? = nil, yOffset: CGFloat = 4, compact: Bool = false) {
-        let barWidth = width ?? self.sprite.size.width
-        let height = compact ? HealthBar.compactHeight : HealthBar.standardHeight
-        let cornerRadius = compact ? HealthBar.compactCornerRadius : HealthBar.standardCornerRadius
-
-        healthBar = HealthBar(width: barWidth, yOffset: yOffset, height: height, cornerRadius: cornerRadius)
-
-        if let healthBar {
-            healthBar.positionAbove(spriteHeight: self.sprite.size.height)
-            self.sprite.addChild(healthBar.node)
-            healthBar.update(currentHP: self.currentHP, maxHP: self.maxHP)
-        }
+        self.healthComponent.setupHealthBar(width: width, yOffset: yOffset, compact: compact)
     }
 
     /// Update the health bar display
     func updateHealthBar() {
-        self.healthBar?.update(currentHP: self.currentHP, maxHP: self.maxHP)
+        self.healthComponent.updateHealthBar()
     }
 
     // MARK: - Combat
 
     /// Take damage from a source
     func takeDamage(_ amount: Int) {
-        guard self.isAlive else { return }
-        self.currentHP -= amount
-
-        // Update health bar
-        self.updateHealthBar()
-
-        // Flash red to indicate damage
-        self.showDamageFlash()
+        self.healthComponent.takeDamage(amount)
     }
 
     /// Flash the sprite red briefly to indicate damage
     func showDamageFlash() {
-        // Enable color blending
-        self.sprite.colorBlendFactor = 0.0
-
-        // Flash sequence: tint red, then back to normal
-        let flashRed = SKAction.colorize(with: .red, colorBlendFactor: 0.7, duration: 0.05)
-        let flashBack = SKAction.colorize(withColorBlendFactor: 0.0, duration: 0.15)
-        let flashSequence = SKAction.sequence([flashRed, flashBack])
-
-        self.sprite.run(flashSequence)
+        self.healthComponent.showDamageFlash()
     }
 
     /// Called when the character dies
@@ -634,34 +500,17 @@ class Character: GameEntity, Damageable {
     /// If pathfinding is configured, calculates an A* path around obstacles.
     /// Otherwise, moves in a direct line.
     func moveTo(_ point: CGPoint) {
-        self.finalDestination = point
-
-        // Try pathfinding if available
-        if let pathfinding, pathfinding.isEnabled {
-            if pathfinding.calculatePath(from: self.position, to: point) {
-                // Path found - movement will follow waypoints
-                self.destination = pathfinding.currentWaypoint ?? point
-                return
-            }
-            // No path found - fall through to direct movement
-        }
-
-        // Direct movement (no pathfinding or path not found)
-        self.destination = point
+        self.movementComponent.moveTo(point, from: self.position)
     }
 
     /// Stop movement immediately
     func stop() {
-        self.destination = nil
-        self.finalDestination = nil
-        self.pathfinding?.clearPath()
+        self.movementComponent.stop()
     }
 
     /// Configure pathfinding for this character
     /// - Parameter renderer: The TMXRenderer providing collision data
     func configurePathfinding(with renderer: TMXRenderer) {
-        let pathfinding = PathfindingMovement()
-        pathfinding.configure(with: renderer)
-        self.pathfinding = pathfinding
+        self.movementComponent.configurePathfinding(with: renderer)
     }
 }
