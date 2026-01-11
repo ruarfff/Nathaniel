@@ -1,6 +1,6 @@
 import SpriteKit
 
-class CreditsScene: SKScene {
+class CreditsScene: InputHandlingScene {
     // MARK: - Properties
 
     private var backButton: SKLabelNode!
@@ -165,25 +165,11 @@ class CreditsScene: SKScene {
     }
 }
 
-// MARK: - iOS Touch Handling
+// MARK: - Input Handling
 
-#if os(iOS) || os(tvOS)
-    extension CreditsScene {
-        override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-            guard let touch = touches.first else { return }
-            let location = touch.location(in: self)
-            handleButtonTap(at: location)
-        }
+extension CreditsScene {
+    override func handlePointerDown(at location: CGPoint) -> Bool {
+        handleButtonTap(at: location)
+        return true
     }
-#endif
-
-// MARK: - macOS Mouse Handling
-
-#if os(OSX)
-    extension CreditsScene {
-        override func mouseDown(with event: NSEvent) {
-            let location = event.location(in: self)
-            handleButtonTap(at: location)
-        }
-    }
-#endif
+}
