@@ -13,11 +13,16 @@ class DefensiveStructure: Structure {
     /// Attack range for finding targets
     var attackRange: CGFloat = 300
 
-    /// Current target enemy
-    weak var currentTarget: Enemy?
+    /// Vision range for detecting enemies (towers use defensive mode so this equals attackRange)
+    var visionRange: CGFloat = 300
 
-    /// Callback for checking nearby enemies
-    var findNearestEnemy: (() -> Enemy?)?
+    /// Unified targeting component for threat-aware target selection
+    let targeting: TargetingComponent
+
+    /// Current target enemy (delegates to targeting component)
+    var currentTarget: Enemy? {
+        self.targeting.currentTarget as? Enemy
+    }
 
     /// Callback when structure is destroyed
     var onDestroyed: (() -> Void)?
@@ -26,6 +31,16 @@ class DefensiveStructure: Structure {
 
     init(name: String, maxHP: Int, attackRange: CGFloat) {
         self.attackRange = attackRange
+        self.visionRange = attackRange // Towers use defensive mode: vision == attack range
+
+        // Initialize targeting component with defensive behavior
+        // Defensive: only attack enemies within weapon range, don't pursue
+        self.targeting = TargetingComponent(
+            behavior: .defensive,
+            attackRange: attackRange,
+            visionRange: attackRange
+        )
+
         super.init(name: name, maxHP: maxHP)
     }
 
@@ -34,10 +49,8 @@ class DefensiveStructure: Structure {
     override func update(deltaTime: TimeInterval) {
         guard isActive, isAlive else { return }
 
-        // Find target if we don't have one or current target is dead
-        if self.currentTarget?.isAlive != true {
-            self.currentTarget = self.findTargetInRange()
-        }
+        // Update targeting via component (handles sticky targeting, threat assessment)
+        self.targeting.update(position: position, isActive: isActive && isAlive)
 
         // Attack current target if we have one
         if let target = currentTarget, target.isAlive {
@@ -45,9 +58,9 @@ class DefensiveStructure: Structure {
         }
     }
 
-    /// Find the nearest enemy within attack range
+    /// Find the nearest enemy within attack range (delegates to targeting component)
     func findTargetInRange() -> Enemy? {
-        self.findNearestEnemy?()
+        self.targeting.findBestTarget(from: position)
     }
 
     /// Attack the current target (override in subclasses)

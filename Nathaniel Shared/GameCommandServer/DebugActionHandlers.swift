@@ -83,7 +83,7 @@
             if let structMgr = context.structureManager {
                 var towerTargets: [String] = []
                 for (idx, tower) in structMgr.structures.enumerated() where tower.isActive {
-                    if let target = tower.currentTarget as? Enemy {
+                    if let target = tower.currentTarget {
                         let enemyIdx = context.enemyManager?.enemies.firstIndex(where: { $0 === target }) ?? -1
                         towerTargets.append("tower_\(idx)->enemy_\(enemyIdx)")
                     } else {
@@ -160,7 +160,7 @@
             var results: [String] = []
             for (idx, tower) in structMgr.structures.enumerated() where tower.isActive {
                 let typeName = tower.name
-                if let target = tower.currentTarget as? Enemy {
+                if let target = tower.currentTarget {
                     let enemyIdx = context.enemyManager?.enemies.firstIndex(where: { $0 === target }) ?? -1
                     results.append("\(typeName)_\(idx)->enemy_\(enemyIdx)")
                 } else {

@@ -88,11 +88,8 @@ class StructureManager {
             return self?.enemyManager?.checkProjectileCollision(projectile)
         }
 
-        tower.findNearestEnemy = { [weak self, weak tower] in
-            guard let self, let tower else { return nil }
-            // Use threat-based targeting: prioritize enemies attacking tower, then allies
-            return self.findBestTarget(for: tower, range: tower.attackRange)
-        }
+        // Wire up targeting component callbacks
+        self.setupTargetingCallbacks(for: tower)
 
         return tower
     }
@@ -118,11 +115,8 @@ class StructureManager {
             tower.setupBeamNode(in: scene)
         }
 
-        tower.findNearestEnemy = { [weak self, weak tower] in
-            guard let self, let tower else { return nil }
-            // Use threat-based targeting: prioritize enemies attacking tower, then allies
-            return self.findBestTarget(for: tower, range: tower.attackRange)
-        }
+        // Wire up targeting component callbacks
+        self.setupTargetingCallbacks(for: tower)
 
         return tower
     }
@@ -312,6 +306,24 @@ class StructureManager {
         structure.sprite.run(SKAction.sequence([animationGroup, showHealthBar]))
     }
 
+    /// Set up targeting component callbacks for a tower
+    /// Wires up the tower's TargetingComponent to find enemies and allies via the manager
+    private func setupTargetingCallbacks(for tower: DefensiveStructure) {
+        // Provide enemies to the targeting component
+        tower.targeting.findEnemies = { [weak self] in
+            self?.enemyManager?.aliveEnemies ?? []
+        }
+
+        // Provide allies for threat assessment (tower itself + player characters)
+        // Tower is first so enemies attacking it get the protectedAllyBonus
+        tower.targeting.getAllies = { [weak self, weak tower] in
+            guard let self, let tower else { return [] }
+            var allies: [Damageable] = [tower]
+            allies.append(contentsOf: self.playerCharacters)
+            return allies
+        }
+    }
+
     /// Remove a structure from the manager
     private func removeStructure(_ structure: DefensiveStructure) {
         if let index = structures.firstIndex(where: { $0 === structure }) {
@@ -341,53 +353,6 @@ class StructureManager {
     }
 
     // MARK: - Helpers
-
-    /// Find the nearest enemy to a position within range (legacy - prefer findBestTarget)
-    func findNearestEnemy(to position: CGPoint, range: CGFloat) -> Enemy? {
-        guard let enemyManager else { return nil }
-
-        var nearestEnemy: Enemy?
-        var nearestDistance: CGFloat = range
-
-        for enemy in enemyManager.enemies where enemy.isAlive {
-            let distance = position.distance(to: enemy.position)
-            if distance < nearestDistance {
-                nearestDistance = distance
-                nearestEnemy = enemy
-            }
-        }
-
-        return nearestEnemy
-    }
-
-    /// Find the best target for a tower using threat assessment
-    /// Priority: 1) Enemies attacking this tower, 2) Enemies attacking allies, 3) Nearest enemy
-    /// - Parameters:
-    ///   - tower: The tower looking for a target
-    ///   - range: Maximum range to search
-    /// - Returns: The best enemy target, or nil if none in range
-    func findBestTarget(for tower: DefensiveStructure, range: CGFloat) -> Enemy? {
-        guard let enemyManager else { return nil }
-
-        let enemies = enemyManager.aliveEnemies
-
-        // Build allies list: tower itself (highest priority) + player characters
-        // The tower is first so ThreatAssessment gives enemies attacking it the protectedAllyBonus
-        var allies: [Damageable] = [tower]
-        allies.append(contentsOf: self.playerCharacters)
-
-        // Use supportive behavior so:
-        // - Enemies attacking this tower (first ally) get protectedAllyBonus (+5.0)
-        // - Enemies attacking Nathaniel/Hermes get aggroWeight (+3.0)
-        // - Distance and low HP factors still apply
-        return ThreatAssessment.findBestTarget(
-            from: tower.position,
-            enemies: enemies,
-            allies: allies,
-            behavior: .supportive,
-            maxRange: range
-        )
-    }
 
     /// Get all active structures
     var activeStructures: [DefensiveStructure] {
