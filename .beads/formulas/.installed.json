@@ -1,0 +1,17 @@
+{
+  "formulas": {
+    "gastown-release.formula.toml": "daf8bbd47455b4dd25bdcaf68ae203b0ecbdb1c12a00b73ec0a310dbd424e2ae",
+    "mol-boot-triage.formula.toml": "bd18c046bdcea98a9cb83e19cb7e6f02a7d72d75b3774611a3b62b93abce5302",
+    "mol-deacon-patrol.formula.toml": "9c247a98a407ecfb12d91c4d2ba9408abe907c77cb256ad1c4b7d81aebc6b762",
+    "mol-gastown-boot.formula.toml": "4c24ae997f542e61f8f735134b84cb26aa3c79249e76493cceb26a5c79d4d229",
+    "mol-polecat-code-review.formula.toml": "8da5a328904102736e7d40583effda005eaab562e22bcca57b9dbb0348d61108",
+    "mol-polecat-review-pr.formula.toml": "558195ae2e9954484f8e7df1fe17ac5fb665c3615ffb1f6684ed95110b71a502",
+    "mol-polecat-work.formula.toml": "c1aaad8d8a6b9fdb6340c41dd8ba52d62056d7b264fc6461da644a43045cc23a",
+    "mol-shutdown-dance.formula.toml": "9b94ce6fccf43e51b83e8dcd1bfad5c732b0e1141610633816a748d36079f210",
+    "shiny.formula.toml": "919842b2c813cad4cbef5d68e44d1190eac3d75f6e09cd57c38d06d500cd5d6b",
+    "towers-of-hanoi-10.formula.toml": "bbf4b2e3f027f3ade251a8bbbe9f0bfd6b515ad6d32d03c32b1e0fe65bb1ce8f",
+    "towers-of-hanoi-7.formula.toml": "923e9c2de9546551e3b2fb6220178ac8496d0a99c1721a0873276a08eb9072c8",
+    "towers-of-hanoi-9.formula.toml": "741358c5b401f772f461df94ff34b99c66b74eaede43f7e0b9665dd43ff8649a",
+    "towers-of-hanoi.formula.toml": "f58bbb1bf5aa78135a8cd58866f58ecb3e02427131417fad7cf659e72f5482f2"
+  }
+}
