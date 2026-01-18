@@ -23,3 +23,13 @@ fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
 
+
+.workspaces/
+
+test-artifacts/
+test-screenshots/
+
+.derivedData/
+
+# Tiled Map Editor session files (user-specific)
+*.tiled-session

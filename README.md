@@ -1,0 +1,96 @@
+# Nathaniel
+
+A port of a Windows Phone 7 XNA game to iOS/macOS using Swift and SpriteKit.
+
+## The Game
+
+Nathaniel is a top-down RTS mobile game. Control Nathaniel and his robot companion Hermes as they fight alien invaders from a crashed vessel to save Earth.
+
+## Project Structure
+
+```
+Nathaniel/
+├── Legacy/              # Original WP7/XNA codebase (C#, ~2011)
+├── Nathaniel Shared/    # Swift/SpriteKit game code
+├── Nathaniel iOS/       # iOS app target
+└── Nathaniel macOS/     # macOS app target
+```
+
+## Quick Start
+
+**Requirements:** Xcode 15+, macOS Sonoma+
+
+**Run from Xcode:**
+1. Open `Nathaniel.xcodeproj`
+2. Select `Nathaniel iOS` or `Nathaniel macOS` scheme
+3. Press Cmd+R
+
+**Build from command line:**
+```bash
+# iOS
+xcodebuild -project Nathaniel.xcodeproj -scheme "Nathaniel iOS" build
+
+# macOS
+xcodebuild -project Nathaniel.xcodeproj -scheme "Nathaniel macOS" build
+```
+
+**Smoke test from command line:**
+```bash
+# macOS (builds + runs a headless smoke test)
+bash scripts/smoke_macos.sh
+
+# iOS Simulator (builds + installs + launches + screenshots)
+bash scripts/smoke_ios_sim.sh
+```
+
+See `docs/automation.md` for Codex MCP setup and script options.
+
+## Current Status
+
+- TMX map loading and rendering (Tiled format)
+- Player character (Nathaniel) with sprite animations
+- Touch/click-to-move controls
+- Camera following player
+
+## Development
+
+This is a learning project for Swift/SpriteKit development. See `AGENTS.md` for detailed architecture docs and legacy code reference.
+
+**Source control:** Uses `git`
+
+## Code Quality
+
+This project uses automated code quality tools:
+
+- **SwiftFormat** - Auto-formats Swift code
+- **SwiftLint** - Catches code quality issues
+- **pre-commit** - Runs checks on every commit
+
+### Setup
+
+```bash
+./scripts/setup-hooks.sh
+```
+
+This installs the tools via Homebrew and configures git hooks.
+
+### Manual Usage
+
+```bash
+# Format all Swift files
+swiftformat .
+
+# Lint all Swift files
+swiftlint
+
+# Auto-fix some lint issues
+swiftlint --fix
+```
+
+### Bypassing Hooks
+
+If you need to commit without running checks:
+
+```bash
+git commit --no-verify
+```

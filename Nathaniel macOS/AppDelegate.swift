@@ -10,10 +10,17 @@ import Cocoa
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
 
-
-
     func applicationDidFinishLaunching(_ aNotification: Notification) {
-        // Insert code here to initialize your application
+        if SmokeTestRunner.isEnabled {
+            let exitCode = SmokeTestRunner.runForProcessExit()
+            exit(exitCode)
+        }
+
+        #if DEBUG
+        // Start the game command server for agent testing
+        GameCommandServer.shared.start()
+        print("[AppDelegate] GameCommandServer started on port 8765")
+        #endif
     }
 
     func applicationWillTerminate(_ aNotification: Notification) {
@@ -26,4 +33,3 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 
 }
-
