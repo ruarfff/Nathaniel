@@ -33,3 +33,10 @@ test-screenshots/
 
 # Tiled Map Editor session files (user-specific)
 *.tiled-session
+
+# Godot generated imports, local exports and editor state
+godot/.godot/
+godot/exports/
+godot/**/__pycache__/
+godot/**/*.pyc
+build/

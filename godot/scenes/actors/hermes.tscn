@@ -1,0 +1,12 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/content/actor_view.gd" id="1"]
+[ext_resource type="Resource" path="res://resources/actors/hermes.tres" id="2"]
+
+[node name="Hermes" type="Node2D"]
+texture_filter = 1
+script = ExtResource("1")
+kind = "hermes"
+visual = ExtResource("2")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]

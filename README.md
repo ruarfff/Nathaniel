@@ -1,6 +1,34 @@
 # Nathaniel
 
-A port of a Windows Phone 7 XNA game to iOS/macOS using Swift and SpriteKit.
+A strategy/action game with the original Windows Phone 7 XNA code, a Swift/SpriteKit
+edition for iOS/macOS, and an isometric Godot edition.
+
+## Godot edition
+
+The isometric Godot port is in `godot/`. The Swift and Xcode projects remain
+available with their existing commands. Use **Godot 4.7.2 stable**:
+
+```sh
+make godot-editor                 # Open the visual editor
+make godot                        # Run the game menu
+make godot-level GODOT_LEVEL=1     # Run one campaign level (0 = survival)
+make godot-test                   # Content, gameplay, saves, UI and MCP checks
+make godot-profile                # Simulation workload
+make godot-profile-rendered       # Rendered workload and screenshot
+make godot-export-macos           # Local macOS release app
+make godot-export-ios             # Unsigned iOS Xcode project
+```
+
+All five campaign levels and survival use native editable Godot scenes. Open a
+level and press F6 to run its edited content. Mouse/keyboard commands retain the
+Swift actions; touch uses the same HUD and world commands. Godot saves use a
+separate three-slot store. Existing Swift saves can be imported from an explicit
+JSON export into an empty Godot slot.
+
+See [migration status and verification](docs/godot-migration.md),
+[content authoring and exports](docs/godot-authoring.md),
+[save import](docs/godot-saves.md), and [debug/MCP setup](docs/godot-debug.md).
+The verification record states platform limits; the Swift app has not been retired.
 
 ## The Game
 
@@ -13,7 +41,8 @@ Nathaniel/
 ├── Legacy/              # Original WP7/XNA codebase (C#, ~2011)
 ├── Nathaniel Shared/    # Swift/SpriteKit game code
 ├── Nathaniel iOS/       # iOS app target
-└── Nathaniel macOS/     # macOS app target
+├── Nathaniel macOS/     # macOS app target
+└── godot/               # Separate isometric game and native editor content
 ```
 
 ## Quick Start

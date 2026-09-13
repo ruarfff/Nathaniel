@@ -62,6 +62,7 @@ help:
 	@echo "  make open-project     Open project in Xcode"
 	@echo ""
 	@echo "Options:"
+	@echo "Godot (separate port): make godot, godot-editor, godot-test, godot-export-macos, godot-export-ios"
 	@echo "  SIMULATOR=<name>      iOS simulator name (default: $(SIMULATOR))"
 	@echo "  CONFIG=<Debug|Release> Build configuration (default: $(CONFIG))"
 	@echo "  DERIVED_DATA_PATH=<path> Build output directory (default: $(DERIVED_DATA_PATH))"
@@ -237,3 +238,56 @@ stop:
 	@pkill -f "Nathaniel.app" 2>/dev/null || true
 	@xcrun simctl terminate booted $(BUNDLE_ID) 2>/dev/null || true
 	@echo "Done."
+
+# Godot port. These targets do not change the Swift build or its save data.
+GODOT ?= godot
+GODOT_LEVEL ?= 1
+GODOT_TEST_STORAGE := $(CURDIR)/test-artifacts/godot-test-session
+
+.PHONY: godot godot-editor godot-level godot-version godot-import godot-test godot-test-mcp godot-format godot-format-check godot-profile godot-profile-rendered godot-export-macos godot-export-ios
+
+godot-version:
+	python3 godot/tools/check_version.py "$(GODOT)"
+
+godot: godot-version
+	"$(GODOT)" --path godot
+
+godot-editor: godot-version
+	"$(GODOT)" --editor --path godot
+
+godot-level: godot-version
+	"$(GODOT)" --path godot -- --level=$(GODOT_LEVEL)
+
+godot-import: godot-version
+	python3 godot/tools/run_checked.py "$(GODOT)" --headless --editor --path godot --import --quit
+
+godot-test: godot-import godot-format-check
+	python3 -m unittest discover -s godot/tools -p 'test_*.py'
+	python3 -m unittest discover -s godot/tests -p 'test_import*.py'
+	python3 godot/tools/run_checked.py "$(GODOT)" --headless --path godot --script res://tools/test_content.gd
+	python3 godot/tools/run_checked.py "$(GODOT)" --headless --path godot --script res://tests/test_gameplay.gd
+	python3 godot/tools/run_checked.py "$(GODOT)" --headless --path godot --script res://tests/test_services.gd
+	python3 godot/tools/run_checked.py "$(GODOT)" --headless --path godot --script res://tests/test_presentation.gd -- --storage-dir="$(GODOT_TEST_STORAGE)"
+	$(MAKE) godot-test-mcp
+
+godot-test-mcp: godot-version
+	npm --prefix game-mcp-server run build
+	python3 godot/tools/run_live_mcp.py "$(GODOT)"
+
+godot-format:
+	python3 godot/tools/format_sources.py
+
+godot-format-check:
+	python3 godot/tools/format_sources.py --check
+
+godot-profile: godot-version
+	python3 godot/tools/run_checked.py "$(GODOT)" --headless --path godot --script res://tests/profile_gameplay.gd
+
+godot-profile-rendered: godot-import
+	python3 godot/tools/run_checked.py "$(GODOT)" --path godot --script res://tests/profile_rendered.gd
+
+godot-export-macos: godot-version
+	python3 godot/tools/export_project.py macOS --godot "$(GODOT)" --release
+
+godot-export-ios: godot-version
+	python3 godot/tools/export_project.py iOS --godot "$(GODOT)" --unsigned-ios
