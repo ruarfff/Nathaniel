@@ -110,6 +110,7 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
             fatalError("Failed to load GameScene.sks - ensure the file exists in the bundle")
         }
 
+        scene.size = CGSize(width: 800, height: 480)
         scene.scaleMode = .aspectFill
         scene.levelConfig = levelConfig
 
@@ -123,6 +124,9 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
 
         self.setupCamera()
         self.setupLevelManager()
+        ResourceManager.shared.delegate = nil
+        ResourceManager.shared.reset()
+        ResourceManager.shared.restore(total: self.levelConfig.startingResources)
         self.setupEnemyManager()
         self.setupStructureManager()
         self.setupOverlay()
@@ -190,7 +194,7 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
     private func setupEnemyManager() {
         self.enemyManager = EnemyManager(scene: self)
         self.enemyManager.enemyZPosition = self.characterZPosition
-        self.enemyManager.enemyScale = 3.0
+        self.enemyManager.enemyScale = 1.0
         self.enemyManager.delegate = self.levelManager
         self.levelManager.enemyManager = self.enemyManager
     }
@@ -198,7 +202,7 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
     private func setupStructureManager() {
         self.structureManager = StructureManager(scene: self)
         self.structureManager.structureZPosition = self.characterZPosition
-        self.structureManager.structureScale = 1.25
+        self.structureManager.structureScale = 1.0
         self.structureManager.enemyManager = self.enemyManager
         self.structureManager.delegate = self
 
@@ -207,7 +211,7 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
             self?.structureManager.collidesWithStructure(at: position, entityRadius: radius) ?? false
         }
 
-        // Wire up structure manager for tower threat tracking
+        // Include towers among the enemies' possible targets.
         self.enemyManager.structureManager = self.structureManager
     }
 
@@ -223,6 +227,13 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
             hermes: self.hermes
         )
         controller.delegate = self
+        if let mapRenderer {
+            controller.configureValidator(
+                tmxRenderer: mapRenderer,
+                enemyManager: self.enemyManager,
+                playerCharacters: self.enemyManager.playerCharacters
+            )
+        }
 
         // Add build menu to camera (HUD layer)
         // zPosition 700: Above HUD (500) and HUD buttons (600), below PauseMenu (900)
@@ -237,10 +248,6 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
         // Wire up HUD callbacks
         self.hud.onBuildTapped = { [weak self] in
             self?.towerPlacementController?.toggleMenu()
-        }
-
-        self.hud.onReleaseHermes = { [weak self] in
-            self?.releaseHermes()
         }
     }
 
@@ -343,7 +350,7 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
         self.levelManager.restore(
             elapsedTime: state.elapsedTime,
             score: state.score,
-            lives: state.lives
+            lives: state.saveVersion < 2 ? max(0, state.lives - 1) : state.lives
         )
 
         // Restore resources
@@ -351,8 +358,12 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
 
         // Restore Nathaniel
         if let nathaniel {
-            nathaniel.restoreFromSavedState(state.nathaniel)
-            self.startPosition = nathaniel.position // Update respawn point
+            if state.nathaniel.currentHP <= 0 {
+                // Older saves can contain a respawn whose spare life was already spent.
+                nathaniel.respawn(at: self.startPosition)
+            } else {
+                nathaniel.restoreFromSavedState(state.nathaniel)
+            }
         }
 
         // Restore Hermes
@@ -381,7 +392,7 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
         // Restore towers
         for towerState in state.towers {
             let position = towerState.position.cgPoint
-            var tower: DefensiveStructure? = switch towerState.type {
+            let tower: DefensiveStructure? = switch towerState.type {
             case .gunTower:
                 self.structureManager.addGunTower(at: position)
             case .laserTower:
@@ -401,9 +412,10 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
             }
         }
 
-        // Restore wave state if applicable
-        if let currentWave = state.currentWave {
-            self.waveSpawner?.restore(wave: currentWave, timeUntilNext: state.timeUntilNextWave ?? 0)
+        ResourceManager.shared.restoreBattlefield(state.battlefieldResources ?? [], carrier: self.nathaniel)
+        self.waveSpawner?.restore(elapsedTime: state.elapsedTime, timeUntilNext: state.timeUntilNextWave ?? 0)
+        if self.hermes?.isAlive == false {
+            self.levelManager.triggerGameOver()
         }
 
         // Update camera to follow restored Nathaniel position (clamped to map bounds)
@@ -609,7 +621,6 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
         self.cameraNode.addChild(self.hud)
 
         // Wire up HUD button callbacks
-        self.hud.onReleaseHermes = { [weak self] in self?.releaseHermes() }
         self.hud.onCharacterToggle = { [weak self] in self?.toggleSelectedCharacter() }
         self.hud.onFollowModeToggle = { [weak self] in self?.toggleHermesFollowMode() }
         self.hud.onPauseTapped = { [weak self] in self?.pauseGame() }
@@ -730,9 +741,9 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
     private func configureCharacterCommon(_ character: Character, at position: CGPoint, with renderer: TMXRenderer) {
         character.position = position
         character.sprite.zPosition = self.characterZPosition
-        character.sprite.setScale(3.0)
+        character.sprite.setScale(1.0)
 
-        // Set up health bar (scaled for the 3x sprite size)
+        // Set up health bars in the original map coordinate scale
         character.setupHealthBar(width: 40, yOffset: 8)
         character.healthBar?.hideWhenFull = false // Always show player health
 
@@ -750,8 +761,12 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
         }
         character.getAllies = { [weak self] in
             var allies: [Character] = []
-            if let nathaniel = self?.nathaniel { allies.append(nathaniel) }
-            if let hermes = self?.hermes { allies.append(hermes) }
+            if let nathaniel = self?.nathaniel {
+                allies.append(nathaniel)
+            }
+            if let hermes = self?.hermes {
+                allies.append(hermes)
+            }
             return allies
         }
 
@@ -762,8 +777,12 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
             }
             nathaniel.targeting.getAllies = { [weak self] in
                 var allies: [Character] = []
-                if let n = self?.nathaniel { allies.append(n) }
-                if let h = self?.hermes { allies.append(h) }
+                if let n = self?.nathaniel {
+                    allies.append(n)
+                }
+                if let h = self?.hermes {
+                    allies.append(h)
+                }
                 return allies
             }
         } else if let hermes = character as? Hermes {
@@ -772,8 +791,12 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
             }
             hermes.targeting.getAllies = { [weak self] in
                 var allies: [Character] = []
-                if let n = self?.nathaniel { allies.append(n) }
-                if let h = self?.hermes { allies.append(h) }
+                if let n = self?.nathaniel {
+                    allies.append(n)
+                }
+                if let h = self?.hermes {
+                    allies.append(h)
+                }
                 return allies
             }
         }
@@ -796,7 +819,7 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
         // Spawn Nathaniel
         if let spawnObject = allObjects.first(where: { $0.name == "Nathaniel" }) {
             print("GameScene: Found Nathaniel spawn at TMX coords: (\(spawnObject.center.x), \(spawnObject.center.y))")
-            let spawnPos = renderer.convertToSpriteKit(point: spawnObject.center)
+            let spawnPos = renderer.convertToSpriteKit(point: CGPoint(x: spawnObject.x, y: spawnObject.y))
 
             // Store start position for respawning
             self.startPosition = spawnPos
@@ -828,7 +851,7 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
         // Spawn Hermes
         if let spawnObject = allObjects.first(where: { $0.name == "Hermes" }) {
             print("GameScene: Found Hermes spawn at TMX coords: (\(spawnObject.center.x), \(spawnObject.center.y))")
-            let spawnPos = renderer.convertToSpriteKit(point: spawnObject.center)
+            let spawnPos = renderer.convertToSpriteKit(point: CGPoint(x: spawnObject.x, y: spawnObject.y))
 
             hermes = Hermes()
             if let hermes {
@@ -836,9 +859,9 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
 
                 // Set Hermes to follow Nathaniel
                 hermes.followTarget = nathaniel
-                hermes.isInBuildMode = false // Start following
+                hermes.isInBuildMode = true // Start stationary, ready to build
 
-                // Wire up death callback for tower destruction
+                // Losing Hermes ends the level.
                 hermes.onDeathCallback = { [weak self] in
                     self?.handleHermesDeath()
                 }
@@ -872,8 +895,12 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
 
         // Register player characters with enemy manager
         var players: [Character] = []
-        if let nathanielChar = self.nathaniel { players.append(nathanielChar) }
-        if let hermesChar = hermes { players.append(hermesChar) }
+        if let nathanielChar = self.nathaniel {
+            players.append(nathanielChar)
+        }
+        if let hermesChar = hermes {
+            players.append(hermesChar)
+        }
         self.enemyManager.playerCharacters = players
 
         // Set up weapon collision callback for Nathaniel's bullets to hit enemies
@@ -886,6 +913,8 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
         ResourceManager.shared.scene = self
         ResourceManager.shared.collectors = players
         ResourceManager.shared.delegate = self
+
+        self.enemyManager.renderer = self.mapRenderer
 
         // Spawn enemies based on spawn mode
         switch self.levelConfig.spawnMode {
@@ -920,13 +949,6 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
         self.waveSpawner?.enemyManager = self.enemyManager
         self.waveSpawner?.mapWidth = CGFloat(renderer.map.pixelWidth)
         self.waveSpawner?.mapHeight = CGFloat(renderer.map.pixelHeight)
-
-        // Set difficulty based on level
-        if self.levelConfig.levelNumber == 5 { // Final level
-            self.waveSpawner?.difficulty = .hard
-        } else {
-            self.waveSpawner?.difficulty = .normal
-        }
 
         logger.info("Wave spawner set up for survival-style level")
     }
@@ -1174,28 +1196,17 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
 
     /// Handle Nathaniel's death
     private func handleNathanielDeath() {
+        ResourceManager.shared.dropCarriedResources()
         let shouldRespawn = self.levelManager.handlePlayerDeath()
 
         if shouldRespawn {
-            // Schedule respawn after a brief delay
-            let wait = SKAction.wait(forDuration: 2.0)
-            let respawn = SKAction.run { [weak self] in
-                self?.respawnNathaniel()
-            }
-            run(SKAction.sequence([wait, respawn]))
+            self.respawnNathaniel()
         }
     }
 
-    /// Handle Hermes death - destroy towers without recoup
+    /// Losing Hermes ends the game, as in the original.
     private func handleHermesDeath() {
-        // Destroy all Hermes towers immediately without recoup (penalty for death)
-        if self.structureManager.hasHermesTowers {
-            print("GameScene: Hermes died - destroying \(self.structureManager.hermesTowerCount) towers without recoup")
-            self.structureManager.destroyAllHermesTowersImmediate()
-        }
-
-        // Unlock Hermes state (will be needed for respawn)
-        self.hermes?.unlock()
+        self.levelManager.triggerGameOver()
     }
 
     /// Respawn Nathaniel at start position
@@ -1284,11 +1295,6 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
         didPlaceTower type: TowerType,
         at position: CGPoint
     ) {
-        // Lock Hermes - prevents all movement until towers are released
-        self.hermes?.lock()
-
-        // Update HUD with recoup preview
-        self.hud.showReleaseHermesButton(recoupAmount: self.structureManager.potentialRecoupAmount)
         self.hud.updateTowerCount(self.structureManager.hermesTowerCount)
 
         // Update affordability
@@ -1306,8 +1312,6 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
         switch reason {
         case .valid:
             logger.debug("Placement failed: insufficient resources")
-        case .outOfBuildRadius:
-            logger.debug("Placement failed: out of build radius")
         case .blockedByTerrain:
             logger.debug("Placement failed: blocked by terrain")
         case .overlapsStructure:
@@ -1316,25 +1320,15 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
             logger.debug("Placement failed: overlaps character")
         case .overlapsEnemy:
             logger.debug("Placement failed: overlaps enemy")
+        case .overlapsResource:
+            logger.debug("Placement failed: overlaps corpse")
         }
     }
 
     // MARK: - StructureManagerDelegate
 
-    func structureManager(
-        _ manager: StructureManager,
-        hermesTowerDestroyed remainingCount: Int,
-        potentialRecoup: Int
-    ) {
-        // Update HUD when a Hermes tower is destroyed by enemies
+    func structureManager(_ manager: StructureManager, hermesTowerDestroyed remainingCount: Int) {
         self.hud.updateTowerCount(remainingCount)
-        self.hud.updateReleaseButtonRecoup(potentialRecoup)
-
-        // Hide release button if all towers are destroyed
-        if remainingCount == 0 {
-            self.hud.hideReleaseHermesButton()
-            self.hermes?.unlock()
-        }
     }
 
     func placementController(_ controller: TowerPlacementController, didCancelPlacement type: TowerType) {
@@ -1479,12 +1473,12 @@ extension GameScene {
 
         switch keyCode {
         case 1: // S key - stop movement
-            self.selectedCharacter?.stop()
+            self.nathaniel?.stop()
             return true
         #if os(OSX)
-        case 3: // F key - fire weapon at mouse position
-            self.fireAtMousePosition()
-            return true
+            case 3: // F key - fire weapon at mouse position
+                self.fireAtMousePosition()
+                return true
         #endif
         case 15: // R key - toggle Hermes follow mode
             if let hermes {
@@ -1522,7 +1516,7 @@ extension GameScene {
 // MARK: - Input Handling
 
 extension GameScene {
-    /// Handle tap/click - either select a character, target an enemy, or move the selected character
+    /// Select a character, target an enemy, or move Nathaniel.
     func handleTap(at location: CGPoint) {
         // Check if the overlay is showing (victory/game over)
         if self.gameOverlay.state == .victory || self.gameOverlay.state == .gameOver {
@@ -1547,6 +1541,12 @@ extension GameScene {
         }
 
         if let hermes, hermes.contains(point: location) {
+            if self.selectedCharacter === self.nathaniel,
+               self.nathaniel?.hasCorpse == true, hermes.isInBuildMode
+            {
+                self.handleMoveCommand(to: hermes.position)
+                return
+            }
             self.selectCharacter(hermes)
             logger.debug("Selected Hermes")
             return
@@ -1558,7 +1558,7 @@ extension GameScene {
             return
         }
 
-        // Otherwise, move the selected character to the location
+        // Ground commands always move Nathaniel.
         self.handleMoveCommand(to: location)
     }
 
@@ -1571,19 +1571,20 @@ extension GameScene {
 
         // If selecting Hermes, show build button and put in independent control
         if let hermes, character === hermes {
-            hermes.isInBuildMode = true // Stops following, allows independent control
-            hermes.showSelectionHighlight() // Show build radius indicator
+            hermes.isInBuildMode = true // Stop following and prepare to build
+            hermes.showSelectionHighlight()
             self.hud.showBuildButton()
             self.hud.hideFollowModeButton() // Hide follow button when Hermes is selected
 
             // Update placement controller with Hermes reference
-            self.towerPlacementController?.validator.hermes = hermes
             self.towerPlacementController?.updateAffordability()
 
             // Configure validator with current game state
             if let mapRenderer {
                 var players: [Character] = []
-                if let nathanielChar = nathaniel { players.append(nathanielChar) }
+                if let nathanielChar = nathaniel {
+                    players.append(nathanielChar)
+                }
                 players.append(hermes) // hermes is known non-nil here
                 self.towerPlacementController?.configureValidator(
                     tmxRenderer: mapRenderer,
@@ -1626,12 +1627,6 @@ extension GameScene {
     /// Toggle Hermes between follow mode and independent mode
     func toggleHermesFollowMode() {
         guard let hermes else { return }
-
-        // Can't toggle mode while locked (towers deployed)
-        guard hermes.mode != .locked else {
-            logger.debug("Cannot toggle follow mode while Hermes is locked")
-            return
-        }
 
         hermes.toggleMode()
         let isFollowing = hermes.mode == .following
@@ -1690,54 +1685,17 @@ extension GameScene {
         self.dispatchInputToOverlayMenus(at: scenePoint)
     }
 
-    /// Release Hermes from build mode - destroy all towers and allow movement
-    private func releaseHermes() {
-        guard let hermes else { return }
-
-        logger.info("Releasing Hermes - destroying all towers with visual effects")
-
-        // Hide UI elements immediately
-        self.hud.hideReleaseHermesButton()
-        self.hud.updateTowerCount(0)
-        self.towerPlacementController?.hideMenu()
-
-        // Destroy all Hermes-owned towers with staggered visual effects
-        self.structureManager?.destroyAllHermesTowers(camera: self.cameraNode) { [weak self, weak hermes] in
-            guard let hermes else { return }
-
-            // Unlock Hermes to allow movement after destruction completes
-            hermes.unlock()
-
-            // Exit build mode (allow following again)
-            hermes.exitBuildMode()
-
-            print("Tower destruction complete - Hermes unlocked")
-        }
+    /// Build through the same placement validation used by touch and mouse input.
+    @discardableResult
+    func buildTower(type: TowerType, at position: CGPoint) -> Bool {
+        self.towerPlacementController?.attemptPlacement(type: type, at: position) ?? false
     }
 
-    /// Handle a move command to a world position
+    /// Ground commands always move Nathaniel, even when the camera follows Hermes.
     func handleMoveCommand(to location: CGPoint) {
-        guard let selected = selectedCharacter else { return }
-
-        // Check if the destination is walkable
-        if let renderer = mapRenderer {
-            let tile = renderer.worldToTile(point: location)
-            if !renderer.isWalkable(tileX: tile.x, tileY: tile.y) {
-                logger.debug("Destination not walkable: tile (\(tile.x), \(tile.y))")
-                // Still allow movement toward the location - pathfinding will handle obstacles
-            }
-        }
-
-        // Clear manual target when moving (user is redirecting, not targeting)
-        if selected === self.hermes {
-            self.hermes?.clearManualTarget()
-            // Clear target indicator if it was showing Hermes's target
-            self.targetIndicator?.remove()
-            self.targetIndicator = nil
-        }
-
-        selected.moveTo(location)
-        logger.debug("Moving \(selected.name) to \(location.x), \(location.y)")
+        guard self.levelManager.state == .playing, let nathaniel, nathaniel.isAlive else { return }
+        nathaniel.clearManualTarget()
+        nathaniel.moveTo(location)
     }
 
     // MARK: - Enemy Targeting
@@ -1772,16 +1730,7 @@ extension GameScene {
             return
         }
 
-        // Set target based on which character is selected
-        if self.selectedCharacter === self.hermes {
-            // Hermes is selected - set manual target override
-            self.hermes?.setManualTarget(enemy)
-            logger.debug("Hermes targeting enemy at (\(enemy.position.x), \(enemy.position.y))")
-        } else if let nathaniel {
-            // Nathaniel is selected - set manual target override
-            nathaniel.setManualTarget(enemy)
-            logger.debug("Nathaniel targeting enemy at (\(enemy.position.x), \(enemy.position.y))")
-        }
+        self.nathaniel?.setManualTarget(enemy)
 
         // Remove existing indicator
         self.targetIndicator?.remove()
@@ -1838,19 +1787,48 @@ extension GameScene {
 
 #if DEBUG
     extension GameScene {
-        /// Internal accessors for GameCommandDelegate to avoid Mirror reflection.
-        /// These expose private properties only in DEBUG builds for testing.
+        // Internal accessors for GameCommandDelegate to avoid Mirror reflection.
+        // These expose private properties only in DEBUG builds for testing.
 
-        var internalNathaniel: Nathaniel? { self.nathaniel }
-        var internalHermes: Hermes? { self.hermes }
-        var internalEnemyManager: EnemyManager? { self.enemyManager }
-        var internalStructureManager: StructureManager? { self.structureManager }
-        var internalLevelManager: LevelManager? { self.levelManager }
-        var internalPauseMenu: PauseMenu? { self.pauseMenu }
-        var internalSettingsMenu: SettingsMenu? { self.settingsMenu }
-        var internalSaveSlotSelector: SaveSlotSelector? { self.saveSlotSelector }
-        var internalCameraNode: SKCameraNode? { self.cameraNode }
-        var internalHUD: HUD? { self.hud }
+        var internalNathaniel: Nathaniel? {
+            self.nathaniel
+        }
+
+        var internalHermes: Hermes? {
+            self.hermes
+        }
+
+        var internalEnemyManager: EnemyManager? {
+            self.enemyManager
+        }
+
+        var internalStructureManager: StructureManager? {
+            self.structureManager
+        }
+
+        var internalLevelManager: LevelManager? {
+            self.levelManager
+        }
+
+        var internalPauseMenu: PauseMenu? {
+            self.pauseMenu
+        }
+
+        var internalSettingsMenu: SettingsMenu? {
+            self.settingsMenu
+        }
+
+        var internalSaveSlotSelector: SaveSlotSelector? {
+            self.saveSlotSelector
+        }
+
+        var internalCameraNode: SKCameraNode? {
+            self.cameraNode
+        }
+
+        var internalHUD: HUD? {
+            self.hud
+        }
     }
 #endif
 

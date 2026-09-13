@@ -9,14 +9,14 @@ class CreditsScene: InputHandlingScene {
 
     class func newCreditsScene() -> CreditsScene {
         let scene = CreditsScene(size: CGSize(width: 1_366, height: 1_024))
-        scene.scaleMode = .aspectFill
+        scene.scaleMode = .aspectFit
         return scene
     }
 
     override func didMove(to view: SKView) {
-        setupBackground()
-        setupCreditsContent()
-        setupBackButton()
+        self.setupBackground()
+        self.setupCreditsContent()
+        self.setupBackButton()
 
         #if DEBUG
             // Set this scene as the command server delegate
@@ -116,21 +116,21 @@ class CreditsScene: InputHandlingScene {
     }
 
     private func setupBackButton() {
-        backButton = SKLabelNode(fontNamed: "Copperplate-Bold")
-        backButton.text = "Back"
-        backButton.fontSize = 32
-        backButton.fontColor = .white
-        backButton.position = CGPoint(x: size.width / 2, y: size.height * 0.08)
-        backButton.horizontalAlignmentMode = .center
-        backButton.name = "backButton"
-        addChild(backButton)
+        self.backButton = SKLabelNode(fontNamed: "Copperplate-Bold")
+        self.backButton.text = "Back"
+        self.backButton.fontSize = 32
+        self.backButton.fontColor = .white
+        self.backButton.position = CGPoint(x: size.width / 2, y: size.height * 0.08)
+        self.backButton.horizontalAlignmentMode = .center
+        self.backButton.name = "backButton"
+        addChild(self.backButton)
     }
 
     // MARK: - Button Actions
 
     /// Handle a tap at the given location (used by GameCommandServer)
     func handleTap(at location: CGPoint) {
-        handleButtonTap(at: location)
+        self.handleButtonTap(at: location)
     }
 
     private func handleButtonTap(at location: CGPoint) {
@@ -138,7 +138,7 @@ class CreditsScene: InputHandlingScene {
 
         for node in nodesAtPoint {
             if node.name == "backButton" {
-                animateButtonPress(node as? SKLabelNode) {
+                self.animateButtonPress(node as? SKLabelNode) {
                     self.returnToMenu()
                 }
                 break
@@ -169,7 +169,7 @@ class CreditsScene: InputHandlingScene {
 
 extension CreditsScene {
     override func handlePointerDown(at location: CGPoint) -> Bool {
-        handleButtonTap(at: location)
+        self.handleButtonTap(at: location)
         return true
     }
 }

@@ -14,7 +14,9 @@ class MovementComponent {
     var destination: CGPoint?
 
     /// Whether the entity is currently moving
-    var isMoving: Bool { self.destination != nil }
+    var isMoving: Bool {
+        self.destination != nil
+    }
 
     /// Pathfinding component for A* navigation (optional)
     var pathfinding: PathfindingMovement?
@@ -55,6 +57,13 @@ class MovementComponent {
     ///   - collisionRadius: Radius for collision checking
     /// - Returns: The new position after movement
     func update(currentPosition: CGPoint, deltaTime: TimeInterval, collisionRadius: CGFloat) -> CGPoint {
+        if let pathfinding, pathfinding.entityRadius != collisionRadius {
+            pathfinding.entityRadius = collisionRadius
+            if let finalDestination {
+                pathfinding.calculatePath(from: currentPosition, to: finalDestination)
+            }
+        }
+
         // If using pathfinding, get next waypoint
         if let pathfinding, pathfinding.hasActivePath {
             return self.updatePathfindingMovement(

@@ -1,13 +1,18 @@
+//
+//  Hermes.swift
+//  Nathaniel Shared
+//
+//  Controls the stationary builder and following robot companion.
+//
+
 import SpriteKit
 
 /// Hermes operational modes - determines movement and ability behavior
 enum HermesMode {
     /// Automatically follows Nathaniel
     case following
-    /// Player controls Hermes directly (can place towers)
+    /// Hermes stays in place and can build towers
     case independent
-    /// Towers deployed, cannot move
-    case locked
 }
 
 /// The robot companion character class
@@ -15,50 +20,48 @@ class Hermes: Character {
     // MARK: - Constants
 
     /// Starting/maximum health points
-    static var defaultMaxHP: Int { GameBalance.Hermes.maxHP }
+    static var defaultMaxHP: Int {
+        GameBalance.Hermes.maxHP
+    }
 
     /// Movement speed in points per second
-    static var defaultSpeed: CGFloat { GameBalance.Hermes.speed }
+    static var defaultSpeed: CGFloat {
+        GameBalance.Hermes.speed
+    }
 
-    /// Weapon range in points (laser range, same as LaserTower)
-    static var weaponRange: CGFloat { GameBalance.Hermes.weaponRange }
+    /// Weapon range in points.
+    static var weaponRange: CGFloat {
+        GameBalance.Hermes.weaponRange
+    }
 
-    /// Visible range (for targeting) in points - covers most of the visible screen from camera center
-    static var visibleRange: CGFloat { GameBalance.Hermes.visionRange }
+    /// Visible range for targeting in points.
+    static var visibleRange: CGFloat {
+        GameBalance.Hermes.visionRange
+    }
 
     // MARK: - Laser Weapon Constants
 
-    /// Damage per second while laser is active (lower than tower for supporting role)
-    static var laserDPS: Int { GameBalance.Hermes.laserDPS }
+    /// Damage per second while the laser is active.
+    static var laserDPS: Int {
+        GameBalance.Hermes.laserDPS
+    }
 
     /// Duration of each laser burst
-    static var laserBurstDuration: TimeInterval { GameBalance.Hermes.laserBurstDuration }
+    static var laserBurstDuration: TimeInterval {
+        GameBalance.Hermes.laserBurstDuration
+    }
 
     /// Cooldown between laser bursts
-    static var laserCooldownTime: TimeInterval { GameBalance.Hermes.laserCooldown }
+    static var laserCooldownTime: TimeInterval {
+        GameBalance.Hermes.laserCooldown
+    }
 
     // MARK: - Follow Behavior Constants
 
     /// Distance at which Hermes stops following (arrival zone)
-    static var followStopDistance: CGFloat { GameBalance.Hermes.followStopDistance }
-
-    /// Distance at which Hermes slows down (deceleration zone)
-    static var followSlowDistance: CGFloat { GameBalance.Hermes.followSlowDistance }
-
-    /// Distance at which Hermes starts following
-    static var followStartDistance: CGFloat { GameBalance.Hermes.followStartDistance }
-
-    /// Distance at which Hermes teleports to catch up
-    static var teleportDistance: CGFloat { GameBalance.Hermes.teleportDistance }
-
-    /// Base speed when following at normal distance
-    static var baseFollowSpeed: CGFloat { GameBalance.Hermes.baseFollowSpeed }
-
-    /// Speed when catching up from far behind
-    static var catchUpSpeed: CGFloat { GameBalance.Hermes.catchUpSpeed }
-
-    /// Formation offset - position relative to Nathaniel (behind and to the left)
-    static var formationOffset: CGPoint { GameBalance.Hermes.formationOffset }
+    static var followStopDistance: CGFloat {
+        GameBalance.Hermes.followStopDistance
+    }
 
     // MARK: - Sprite Sheet Configuration
 
@@ -81,8 +84,9 @@ class Hermes: Character {
     /// Current operational mode
     var mode: HermesMode = .independent {
         didSet {
-            // Update visuals when mode changes
             if oldValue != self.mode {
+                stop()
+                self.followDestination = nil
                 self.updateModeVisual()
             }
         }
@@ -94,29 +98,9 @@ class Hermes: Character {
         set { self.mode = newValue ? .independent : .following }
     }
 
-    /// Whether Hermes is locked (has deployed towers and cannot move) - computed for backward compatibility
-    var isLocked: Bool {
-        self.mode == .locked
-    }
-
-    /// Visual indicator node for locked state
-    private var lockedIndicator: SKSpriteNode?
-
-    /// Visual indicator node for follow state
     private var followIndicator: SKSpriteNode?
-
-    /// Mode to restore after unlocking (nil if not locked)
-    private var preLockMode: HermesMode?
-
-    /// Build radius indicator circle
-    private var buildRadiusIndicator: SKShapeNode?
-
-    /// Whether to show build radius (when selected in build mode)
-    var showBuildRadius: Bool = false {
-        didSet {
-            self.updateBuildRadiusVisual()
-        }
-    }
+    private var selectionIndicator: SKShapeNode?
+    private var followDestination: CGPoint?
 
     /// The character Hermes should follow when not in build mode
     weak var followTarget: Character?
@@ -144,6 +128,9 @@ class Hermes: Character {
     /// Time elapsed in current cooldown
     private var cooldownElapsed: TimeInterval = 0
 
+    /// Fractional damage carried between frames while the laser is firing.
+    private var pendingLaserDamage: Double = 0
+
     /// Whether laser sound has been played this burst
     private var hasPlayedLaserSound: Bool = false
 
@@ -167,7 +154,7 @@ class Hermes: Character {
 
     init() {
         // Initialize laser before super.init (required for let property)
-        self.laser = LaserBeam(color: .cyan, thickness: 3)
+        self.laser = LaserBeam(color: .purple, thickness: 4)
 
         // Initialize targeting component with default supportive behavior
         self.targeting = TargetingComponent(
@@ -186,9 +173,6 @@ class Hermes: Character {
 
         // Set vision range to match static constant
         visionRange = Hermes.visibleRange
-
-        // Start cooldown ready to fire
-        self.cooldownElapsed = Hermes.laserCooldownTime
 
         // Wire up targeting callbacks
         self.targeting.onTargetChanged = { [weak self] _ in
@@ -236,12 +220,8 @@ class Hermes: Character {
             return
         }
 
-        let frameWidth = textureSize.width / CGFloat(Hermes.idleSheetCols)
-        let frameHeight = textureSize.height / CGFloat(Hermes.idleSheetRows)
-        print("Hermes: Idle frame size: \(frameWidth) x \(frameHeight)")
-
-        // Configure sprite size based on a single frame
-        sprite.size = CGSize(width: frameWidth, height: frameHeight)
+        // Original body dimensions on the 800 × 480 playfield.
+        sprite.size = CGSize(width: 80, height: 72)
 
         // Slice the idle sprite sheet into individual textures
         self.idleTextures = []
@@ -339,8 +319,10 @@ class Hermes: Character {
         #endif
 
         // Handle follow behavior only in following mode
-        if self.mode == .following, let target = followTarget {
+        if self.mode == .following, let target = followTarget, target.isAlive {
             self.updateFollowBehavior(target: target)
+        } else {
+            stop()
         }
 
         // Update combat (targeting and laser)
@@ -366,7 +348,7 @@ class Hermes: Character {
 
     /// Update combat state including targeting and laser firing
     func updateCombat(deltaTime: TimeInterval) {
-        guard isActive, isAlive, self.mode != .locked else {
+        guard isActive, isAlive else {
             // Deactivate laser if not able to fight
             self.laser.deactivate()
             self.isFiring = false
@@ -382,7 +364,7 @@ class Hermes: Character {
         self.targeting.behavior = switch self.mode {
         case .following:
             .supportive // Prioritize enemies attacking Nathaniel
-        case .independent, .locked:
+        case .independent:
             .aggressive // Attack anything in range
         }
 
@@ -431,7 +413,8 @@ class Hermes: Character {
         }
 
         if self.isFiring {
-            self.burstElapsed += deltaTime
+            let activeDuration = min(deltaTime, max(0, Hermes.laserBurstDuration - self.burstElapsed))
+            self.burstElapsed += activeDuration
 
             // Play sound during burst (once)
             if !self.hasPlayedLaserSound, self.burstElapsed > 0.1 {
@@ -445,7 +428,9 @@ class Hermes: Character {
             self.laser.fire(from: position, to: target.position)
 
             // Deal damage over time
-            let damage = Int(CGFloat(Hermes.laserDPS) * CGFloat(deltaTime))
+            self.pendingLaserDamage += Double(Hermes.laserDPS) * activeDuration
+            let damage = Int(self.pendingLaserDamage)
+            self.pendingLaserDamage -= Double(damage)
             if damage > 0 {
                 // Use threat-aware damage if target is an enemy
                 if let enemy = target as? Enemy {
@@ -478,92 +463,21 @@ class Hermes: Character {
         Hermes.weaponRange
     }
 
-    /// Update follow behavior with formation offset, speed zones, and smooth movement
+    /// Follow Nathaniel at the original speed and stop within 100 points.
     private func updateFollowBehavior(target: Character) {
-        // Calculate target position with formation offset
-        // Offset is relative to target's facing direction
-        let targetPos = self.calculateFormationPosition(for: target)
-        let distance = position.distance(to: targetPos)
-
-        // Teleport if too far behind
-        if distance > Hermes.teleportDistance {
-            self.teleportToFormation(target: target)
+        guard position.distance(to: target.position) > Hermes.followStopDistance else {
+            stop()
             return
         }
 
-        // Determine behavior based on distance zones
-        if distance <= Hermes.followStopDistance {
-            // Arrival zone - stop and match target's facing direction
-            self.destination = nil
-            speed = Hermes.defaultSpeed
-
-            // Face the same direction as the target when idle
-            if !target.isMoving {
-                facingDirection = target.facingDirection
-            }
-        } else if distance <= Hermes.followSlowDistance {
-            // Deceleration zone - slow approach
-            self.destination = targetPos
-            // Smoothly reduce speed as we get closer
-            let progress = (distance - Hermes.followStopDistance) /
-                (Hermes.followSlowDistance - Hermes.followStopDistance)
-            speed = Hermes.defaultSpeed + (Hermes.baseFollowSpeed - Hermes.defaultSpeed) * progress
-        } else if distance <= Hermes.followStartDistance {
-            // Normal follow zone
-            self.destination = targetPos
-            speed = Hermes.baseFollowSpeed
-        } else {
-            // Catch-up zone - move faster to close the gap
-            self.destination = targetPos
-            // Interpolate speed based on distance (faster when further)
-            let catchUpT = min(
-                1.0,
-                (distance - Hermes.followStartDistance) / (Hermes.teleportDistance - Hermes.followStartDistance)
-            )
-            speed = Hermes.baseFollowSpeed + (Hermes.catchUpSpeed - Hermes.baseFollowSpeed) * catchUpT
+        // Keep the current path until Nathaniel has moved beyond the arrival distance.
+        let targetMoved = self.followDestination.map {
+            $0.distance(to: target.position) > Hermes.followStopDistance
+        } ?? true
+        if !isMoving || targetMoved {
+            self.followDestination = target.position
+            super.moveTo(target.position)
         }
-    }
-
-    /// Calculate the formation position relative to the target
-    private func calculateFormationPosition(for target: Character) -> CGPoint {
-        // Rotate the formation offset based on target's facing direction
-        let offset = Hermes.formationOffset
-        let angle = self.facingAngle(for: target.facingDirection)
-
-        // Rotate offset by the facing angle
-        let cosAngle = cos(angle)
-        let sinAngle = sin(angle)
-        let rotatedX = offset.x * cosAngle - offset.y * sinAngle
-        let rotatedY = offset.x * sinAngle + offset.y * cosAngle
-
-        return CGPoint(
-            x: target.position.x + rotatedX,
-            y: target.position.y + rotatedY
-        )
-    }
-
-    /// Convert facing direction to angle in radians
-    private func facingAngle(for direction: FacingDirection) -> CGFloat {
-        switch direction {
-        case .south: 0
-        case .southWest: .pi * 0.25
-        case .west: .pi * 0.5
-        case .northWest: .pi * 0.75
-        case .north: .pi
-        case .northEast: .pi * 1.25
-        case .east: .pi * 1.5
-        case .southEast: .pi * 1.75
-        }
-    }
-
-    /// Teleport Hermes to formation position when too far behind
-    private func teleportToFormation(target: Character) {
-        let targetPos = self.calculateFormationPosition(for: target)
-        position = targetPos
-        self.destination = nil
-        facingDirection = target.facingDirection
-        speed = Hermes.defaultSpeed
-        print("Hermes: Teleported to formation (was too far behind)")
     }
 
     // MARK: - Overrides
@@ -591,7 +505,8 @@ class Hermes: Character {
         self.targeting.clearAll()
         self.isFiring = false
         self.laser.deactivate()
-        self.cooldownElapsed = Hermes.laserCooldownTime // Ready to fire
+        self.cooldownElapsed = 0
+        self.pendingLaserDamage = 0
         self.animationState = .idle
         self.isActive = true
         self.updateTexture()
@@ -599,147 +514,54 @@ class Hermes: Character {
 
     // MARK: - Mode Control
 
-    /// Toggle between following and independent modes
     func toggleMode() {
-        guard self.mode != .locked else { return } // Can't toggle while locked
-        self.mode = (self.mode == .following) ? .independent : .following
+        self.mode = self.mode == .following ? .independent : .following
     }
 
-    /// Toggle build mode on/off (backward compatible alias for toggleMode)
     func toggleBuildMode() {
         self.toggleMode()
     }
 
-    /// Enter independent mode (stop following, allow tower placement)
+    /// Stop Hermes so the player can place towers.
     func enterBuildMode() {
-        guard self.mode != .locked else { return }
         self.mode = .independent
         stop()
     }
 
-    /// Exit build mode (resume following)
     func exitBuildMode() {
-        guard self.mode != .locked else { return }
         self.mode = .following
     }
 
-    /// Enter following mode
     func enterFollowMode() {
-        guard self.mode != .locked else { return }
         self.mode = .following
     }
 
-    /// Enter independent mode (player controls directly)
+    /// Retained for saved games and command clients: independent means stationary building.
     func enterIndependentMode() {
-        guard self.mode != .locked else { return }
-        self.mode = .independent
+        self.enterBuildMode()
     }
 
-    // MARK: - Locked State (Tower Deployment)
-
-    /// Lock Hermes when towers are deployed
-    /// Prevents all movement until towers are released
-    func lock() {
-        guard self.mode != .locked else { return }
-        self.preLockMode = self.mode // Remember current mode
-        stop() // Stop any current movement AND clear pathfinding BEFORE locking
-        self.mode = .locked
-        print("Hermes: Locked - towers deployed")
-    }
-
-    /// Unlock Hermes when towers are destroyed/released
-    /// Allows movement again, restoring previous mode
-    func unlock() {
-        guard self.mode == .locked else { return }
-        self.mode = self.preLockMode ?? .independent // Restore previous mode
-        self.preLockMode = nil
-        print("Hermes: Unlocked - can move again")
-    }
-
-    /// Override destination to prevent movement when locked
+    /// Hermes moves only by following Nathaniel, never by a direct move command.
     override var destination: CGPoint? {
         get { super.destination }
         set {
-            if self.mode == .locked {
-                // Reject movement commands when locked
-                return
+            if newValue == nil {
+                stop()
             }
-            super.destination = newValue
         }
     }
 
-    /// Override moveTo to prevent all movement when locked
-    /// This blocks the entire movement pipeline including pathfinding
-    override func moveTo(_ point: CGPoint) {
-        guard self.mode != .locked else {
-            // Reject movement commands when locked
-            return
-        }
-        super.moveTo(point)
-    }
+    override func moveTo(_ point: CGPoint) {}
 
-    /// Update visual indicators based on current mode
     private func updateModeVisual() {
-        switch self.mode {
-        case .locked:
-            // Show locked indicator (anchor-like symbol)
-            self.showLockedIndicator()
-            self.hideFollowIndicator()
-            sprite.color = .yellow
-            sprite.colorBlendFactor = 0.15
-
-        case .following:
-            // Show follow indicator (chain link)
-            self.hideLockedIndicator()
+        if self.mode == .following {
             self.showFollowIndicator()
             sprite.color = .cyan
             sprite.colorBlendFactor = 0.12
-
-        case .independent:
-            // No indicators, no tint
-            self.hideLockedIndicator()
+        } else {
             self.hideFollowIndicator()
             sprite.colorBlendFactor = 0
         }
-    }
-
-    /// Show the locked state indicator
-    private func showLockedIndicator() {
-        if self.lockedIndicator == nil {
-            let indicator = SKSpriteNode(color: .clear, size: CGSize(width: 24, height: 24))
-
-            // Create an anchor shape using a shape node
-            let anchorShape = SKShapeNode()
-            let path = CGMutablePath()
-            // Simple anchor shape: circle with line down
-            path.addEllipse(in: CGRect(x: -6, y: 2, width: 12, height: 12))
-            path.move(to: CGPoint(x: 0, y: 2))
-            path.addLine(to: CGPoint(x: 0, y: -10))
-            path.move(to: CGPoint(x: -6, y: -6))
-            path.addLine(to: CGPoint(x: 6, y: -6))
-            anchorShape.path = path
-            anchorShape.strokeColor = .yellow
-            anchorShape.lineWidth = 2
-            anchorShape.zPosition = 1
-
-            indicator.addChild(anchorShape)
-            indicator.position = CGPoint(x: 0, y: sprite.size.height / 2 + 16)
-            indicator.zPosition = 200
-            sprite.addChild(indicator)
-            self.lockedIndicator = indicator
-
-            // Pulse animation
-            let scaleUp = SKAction.scale(to: 1.2, duration: 0.5)
-            let scaleDown = SKAction.scale(to: 1.0, duration: 0.5)
-            let pulse = SKAction.sequence([scaleUp, scaleDown])
-            indicator.run(SKAction.repeatForever(pulse))
-        }
-        self.lockedIndicator?.isHidden = false
-    }
-
-    /// Hide the locked state indicator
-    private func hideLockedIndicator() {
-        self.lockedIndicator?.isHidden = true
     }
 
     /// Show the follow state indicator (chain link above head)
@@ -847,54 +669,22 @@ class Hermes: Character {
         ]))
     }
 
-    // MARK: - Build Radius Visual
+    // MARK: - Selection
 
-    /// Update the build radius indicator
-    private func updateBuildRadiusVisual() {
-        if self.showBuildRadius {
-            // Create build radius circle if needed
-            if self.buildRadiusIndicator == nil {
-                let radius = TowerConfig.buildRadius
-                let circle = SKShapeNode(circleOfRadius: radius)
-                circle.strokeColor = SKColor.cyan.withAlphaComponent(0.5)
-                circle.fillColor = SKColor.cyan.withAlphaComponent(0.05)
-                circle.lineWidth = 2
-                circle.glowWidth = 1
-                circle.zPosition = -1 // Below Hermes sprite
-
-                // Add dashed line effect
-                let pattern: [CGFloat] = [10, 5]
-                let path = CGPath(
-                    ellipseIn: CGRect(x: -radius, y: -radius, width: radius * 2, height: radius * 2),
-                    transform: nil
-                )
-                circle.path = path.copy(dashingWithPhase: 0, lengths: pattern)
-
-                sprite.addChild(circle)
-                self.buildRadiusIndicator = circle
-
-                // Subtle rotation animation
-                let rotate = SKAction.rotate(byAngle: .pi * 2, duration: 20)
-                circle.run(SKAction.repeatForever(rotate))
-            }
-            self.buildRadiusIndicator?.isHidden = false
-        } else {
-            // Hide build radius
-            self.buildRadiusIndicator?.isHidden = true
-        }
-        // Note: Color tint is now handled by updateModeVisual()
-    }
-
-    /// Add a selection highlight ring (called externally when Hermes is selected)
     func showSelectionHighlight() {
-        // The build radius indicator serves as the selection highlight in build mode
-        if self.isInBuildMode {
-            self.showBuildRadius = true
+        if self.selectionIndicator == nil {
+            let circle = SKShapeNode(circleOfRadius: sprite.size.width * 0.6)
+            circle.strokeColor = .cyan
+            circle.fillColor = .clear
+            circle.lineWidth = 2
+            circle.zPosition = -1
+            sprite.addChild(circle)
+            self.selectionIndicator = circle
         }
+        self.selectionIndicator?.isHidden = false
     }
 
-    /// Remove selection highlight
     func hideSelectionHighlight() {
-        self.showBuildRadius = false
+        self.selectionIndicator?.isHidden = true
     }
 }

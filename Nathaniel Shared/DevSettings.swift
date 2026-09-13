@@ -57,7 +57,7 @@
         public var bulletSpeed: CGFloat = 450
 
         /// Boss arrow speed (pts/sec)
-        public var arrowSpeed: CGFloat = 400
+        public var arrowSpeed: CGFloat = 240
 
         /// Base projectile damage
         public var projectileDamage: Int = 25
@@ -146,7 +146,7 @@
 
             // Projectile settings
             bulletSpeed = 450
-            arrowSpeed = 400
+            arrowSpeed = 240
             projectileDamage = 25
 
             // Spawn settings
@@ -220,7 +220,7 @@
 
             // Projectile settings
             bulletSpeed = try container.decodeIfPresent(CGFloat.self, forKey: .bulletSpeed) ?? 450
-            arrowSpeed = try container.decodeIfPresent(CGFloat.self, forKey: .arrowSpeed) ?? 400
+            arrowSpeed = try container.decodeIfPresent(CGFloat.self, forKey: .arrowSpeed) ?? 240
             projectileDamage = try container.decodeIfPresent(Int.self, forKey: .projectileDamage) ?? 25
 
             // Spawn settings

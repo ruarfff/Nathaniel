@@ -1,3 +1,10 @@
+//
+//  TowerPlacementController.swift
+//  Nathaniel Shared
+//
+//  Coordinates tower construction through one validation and spending path.
+//
+
 import SpriteKit
 
 // MARK: - Placement Indicator
@@ -7,7 +14,6 @@ class PlacementIndicator: SKNode {
     // MARK: - Properties
 
     private let indicatorCircle: SKShapeNode
-    private let rangeCircle: SKShapeNode
 
     /// Whether the current position is valid for placement
     var isValid: Bool = true {
@@ -19,7 +25,6 @@ class PlacementIndicator: SKNode {
     // MARK: - Constants
 
     static let indicatorRadius: CGFloat = 25
-    static let rangeRadius: CGFloat = TowerConfig.buildRadius
 
     // MARK: - Initialization
 
@@ -27,12 +32,6 @@ class PlacementIndicator: SKNode {
         // Create placement indicator circle
         self.indicatorCircle = SKShapeNode(circleOfRadius: Self.indicatorRadius)
         self.indicatorCircle.lineWidth = 3
-
-        // Create build range circle (shows Hermes's build radius)
-        self.rangeCircle = SKShapeNode(circleOfRadius: Self.rangeRadius)
-        self.rangeCircle.lineWidth = 2
-        self.rangeCircle.strokeColor = SKColor.cyan.withAlphaComponent(0.3)
-        self.rangeCircle.fillColor = .clear
 
         super.init()
 
@@ -58,20 +57,6 @@ class PlacementIndicator: SKNode {
             self.indicatorCircle.strokeColor = SKColor.red
             self.indicatorCircle.fillColor = SKColor.red.withAlphaComponent(0.3)
         }
-    }
-
-    // MARK: - Range Circle
-
-    /// Show the build range circle centered on Hermes
-    func showRangeCircle(centeredAt hermesPosition: CGPoint, in scene: SKScene) {
-        self.rangeCircle.removeFromParent()
-        self.rangeCircle.position = hermesPosition
-        scene.addChild(self.rangeCircle)
-    }
-
-    /// Hide the build range circle
-    func hideRangeCircle() {
-        self.rangeCircle.removeFromParent()
     }
 }
 
@@ -114,6 +99,9 @@ class TowerPlacementController: BuildMenuDelegate {
     /// Placement validator
     let validator: PlacementValidator
 
+    /// Hermes must be stationary in build mode to place towers.
+    weak var hermes: Hermes?
+
     /// Reference to structure manager for creating towers
     weak var structureManager: StructureManager?
 
@@ -146,12 +134,13 @@ class TowerPlacementController: BuildMenuDelegate {
         scene: SKScene,
         structureManager: StructureManager,
         resourceManager: ResourceManager,
-        hermes: Character?
+        hermes: Hermes?
     ) {
         self.scene = scene
         self.structureManager = structureManager
         self.resourceManager = resourceManager
-        self.validator.hermes = hermes
+        self.validator.resourceManager = resourceManager
+        self.hermes = hermes
     }
 
     /// Configure validator with game objects
@@ -166,6 +155,7 @@ class TowerPlacementController: BuildMenuDelegate {
 
     /// Show the build menu
     func showMenu() {
+        guard self.hermes?.isInBuildMode == true else { return }
         self.buildMenu.show()
     }
 
@@ -176,7 +166,11 @@ class TowerPlacementController: BuildMenuDelegate {
 
     /// Toggle menu visibility
     func toggleMenu() {
-        self.buildMenu.toggle()
+        if self.buildMenu.isVisible {
+            self.hideMenu()
+        } else {
+            self.showMenu()
+        }
     }
 
     /// Update menu affordability based on current resources
@@ -238,7 +232,13 @@ class TowerPlacementController: BuildMenuDelegate {
     // MARK: - Placement
 
     /// Attempt to place a tower at the given position
-    private func attemptPlacement(type: TowerType, at position: CGPoint) {
+    @discardableResult
+    func attemptPlacement(type: TowerType, at position: CGPoint) -> Bool {
+        guard let hermes, hermes.isAlive, hermes.isInBuildMode, let structureManager else {
+            self.cleanupDragState()
+            return false
+        }
+
         // Validate position
         let result = self.validator.validate(position: position)
         guard result == .valid else {
@@ -248,7 +248,7 @@ class TowerPlacementController: BuildMenuDelegate {
             }
             self.delegate?.placementController(self, didFailPlacement: type, reason: result)
             self.cleanupDragState()
-            return
+            return false
         }
 
         // Check affordability
@@ -260,17 +260,17 @@ class TowerPlacementController: BuildMenuDelegate {
             self.delegate?
                 .placementController(self, didFailPlacement: type, reason: .valid) // Valid position but can't afford
             self.cleanupDragState()
-            return
+            return false
         }
 
         // Spend resources
         guard resourceManager.spendResources(type.cost) else {
             self.cleanupDragState()
-            return
+            return false
         }
 
         // Create tower
-        self.structureManager?.addHermesTower(type: type, at: position)
+        structureManager.addHermesTower(type: type, at: position)
 
         // Play success sound
         if let scene {
@@ -284,13 +284,13 @@ class TowerPlacementController: BuildMenuDelegate {
         self.buildMenu.updateAffordability()
 
         self.cleanupDragState()
+        return true
     }
 
     /// Clean up after drag ends
     private func cleanupDragState() {
         self.draggingType = nil
         self.placementIndicator.isHidden = true
-        self.placementIndicator.hideRangeCircle()
     }
 
     // MARK: - BuildMenuDelegate
@@ -300,11 +300,6 @@ class TowerPlacementController: BuildMenuDelegate {
 
         // Show placement indicator
         self.placementIndicator.isHidden = false
-
-        // Show build range circle around Hermes
-        if let hermes = validator.hermes, let scene {
-            self.placementIndicator.showRangeCircle(centeredAt: hermes.position, in: scene)
-        }
     }
 
     func buildMenu(_ menu: BuildMenu, didEndDragging type: TowerType, at position: CGPoint) {

@@ -1,3 +1,10 @@
+//
+//  LaserTower.swift
+//  Nathaniel Shared
+//
+//  Renders laser beams and applies tower laser damage over time.
+//
+
 import SpriteKit
 
 // MARK: - Laser Beam
@@ -82,6 +89,9 @@ class LaserTower: DefensiveStructure {
     /// Time elapsed in current burst
     private var burstElapsed: TimeInterval = 0
 
+    /// Fractional damage carried between frames while the beam is firing.
+    private var pendingDamage: Double = 0
+
     /// Whether currently firing
     private(set) var isFiring: Bool = false
 
@@ -101,9 +111,6 @@ class LaserTower: DefensiveStructure {
             maxHP: GameBalance.Towers.LaserTower.maxHP,
             attackRange: GameBalance.Towers.LaserTower.attackRange
         )
-
-        // Track build cost for recoup calculation
-        buildCost = LaserTower.cost
 
         // Load tower texture
         loadTexture(named: "lasertower", size: GameBalance.Towers.Visual.textureSize)
@@ -128,9 +135,20 @@ class LaserTower: DefensiveStructure {
         }
 
         super.update(deltaTime: deltaTime)
+
+        if self.currentTarget == nil {
+            self.isFiring = false
+            self.beam.deactivate()
+        }
     }
 
     override func attackTarget(_ target: Enemy, deltaTime: TimeInterval) {
+        guard target.isAlive, position.distance(to: target.position) <= attackRange else {
+            self.isFiring = false
+            self.beam.deactivate()
+            return
+        }
+
         // Check if ready to fire
         if !self.isFiring, self.cooldownElapsed >= self.cooldownTime {
             // Start firing
@@ -141,7 +159,8 @@ class LaserTower: DefensiveStructure {
         }
 
         if self.isFiring {
-            self.burstElapsed += deltaTime
+            let activeDuration = min(deltaTime, max(0, self.burstDuration - self.burstElapsed))
+            self.burstElapsed += activeDuration
 
             // Play sound during burst (once)
             if !self.hasPlayedSound, self.burstElapsed > 0.1 {
@@ -155,7 +174,9 @@ class LaserTower: DefensiveStructure {
             self.beam.fire(from: position, to: target.position)
 
             // Deal damage over time - towers generate threat so enemies retaliate
-            let damage = Int(CGFloat(damagePerSecond) * CGFloat(deltaTime))
+            self.pendingDamage += Double(self.damagePerSecond) * activeDuration
+            let damage = Int(self.pendingDamage)
+            self.pendingDamage -= Double(damage)
             if damage > 0 {
                 // target is already Enemy, use threat-aware damage
                 target.takeDamage(damage, from: self)

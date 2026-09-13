@@ -1,3 +1,10 @@
+//
+//  GameEntity.swift
+//  Nathaniel Shared
+//
+//  Defines shared character state, health, and movement.
+//
+
 import SpriteKit
 
 // MARK: - Direction
@@ -21,7 +28,7 @@ enum FacingDirection: Int, CaseIterable {
 
         // Calculate angle and convert to 8 regions
         // SpriteKit: +y is up, +x is right
-        let angle = atan2(-direction.dy, -direction.dx)
+        let angle = atan2(direction.dy, -direction.dx)
         let normalizedAngle = (angle + .pi * 2).truncatingRemainder(dividingBy: .pi * 2)
         let region = Int(round(normalizedAngle * 8 / (.pi * 2))) % 8
 
@@ -81,6 +88,9 @@ protocol Damageable: AnyObject {
     /// World position
     var position: CGPoint { get }
 
+    /// Collision radius in world coordinates
+    var collisionRadius: CGFloat { get }
+
     /// Current health points
     var currentHP: Int { get set }
 
@@ -132,16 +142,24 @@ class HealthBar {
     var hideWhenFull: Bool = true
 
     /// Standard height for health bars
-    static var standardHeight: CGFloat { GameBalance.UI.HealthBar.standardHeight }
+    static var standardHeight: CGFloat {
+        GameBalance.UI.HealthBar.standardHeight
+    }
 
     /// Compact height for enemy health bars
-    static var compactHeight: CGFloat { GameBalance.UI.HealthBar.compactHeight }
+    static var compactHeight: CGFloat {
+        GameBalance.UI.HealthBar.compactHeight
+    }
 
     /// Standard corner radius
-    static var standardCornerRadius: CGFloat { GameBalance.UI.HealthBar.standardCornerRadius }
+    static var standardCornerRadius: CGFloat {
+        GameBalance.UI.HealthBar.standardCornerRadius
+    }
 
     /// Compact corner radius
-    static var compactCornerRadius: CGFloat { GameBalance.UI.HealthBar.compactCornerRadius }
+    static var compactCornerRadius: CGFloat {
+        GameBalance.UI.HealthBar.compactCornerRadius
+    }
 
     init(
         width: CGFloat,
@@ -268,14 +286,18 @@ class Character: GameEntity, Damageable {
     }
 
     /// Maximum health points
-    var maxHP: Int { self.healthComponent.maxHP }
+    var maxHP: Int {
+        self.healthComponent.maxHP
+    }
 
     /// Whether the character is alive
-    var isAlive: Bool { self.healthComponent.isAlive }
+    var isAlive: Bool {
+        self.healthComponent.isAlive
+    }
 
     /// Health bar display (delegates to healthComponent)
     var healthBar: HealthBar? {
-        get { self.healthComponent.healthBar }
+        self.healthComponent.healthBar
     }
 
     /// Movement speed in points per second (delegates to movementComponent)
@@ -285,7 +307,9 @@ class Character: GameEntity, Damageable {
     }
 
     /// Maximum speed (for resetting after effects)
-    var maxSpeed: CGFloat { self.movementComponent.maxSpeed }
+    var maxSpeed: CGFloat {
+        self.movementComponent.maxSpeed
+    }
 
     /// Current movement destination (delegates to movementComponent)
     var destination: CGPoint? {
@@ -294,7 +318,9 @@ class Character: GameEntity, Damageable {
     }
 
     /// Whether the character is currently moving
-    var isMoving: Bool { self.movementComponent.isMoving }
+    var isMoving: Bool {
+        self.movementComponent.isMoving
+    }
 
     /// Current facing direction (delegates to animationComponent)
     var facingDirection: FacingDirection {
@@ -326,12 +352,12 @@ class Character: GameEntity, Damageable {
 
     /// Individual frame textures organized by [row][col] (delegates to animationComponent)
     var frameTextures: [[SKTexture]] {
-        get { self.animationComponent.frameTextures }
+        self.animationComponent.frameTextures
     }
 
     /// Base texture (sprite sheet) (delegates to animationComponent)
     var baseTexture: SKTexture? {
-        get { self.animationComponent.baseTexture }
+        self.animationComponent.baseTexture
     }
 
     // MARK: - Pathfinding (backward compatibility)

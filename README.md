@@ -18,7 +18,7 @@ Nathaniel/
 
 ## Quick Start
 
-**Requirements:** Xcode 15+, macOS Sonoma+
+**Requirements:** Xcode 26.1+, macOS 26.1+; iOS 26.1+ for the iOS target.
 
 **Run from Xcode:**
 1. Open `Nathaniel.xcodeproj`
@@ -28,10 +28,10 @@ Nathaniel/
 **Build from command line:**
 ```bash
 # iOS
-xcodebuild -project Nathaniel.xcodeproj -scheme "Nathaniel iOS" build
+make ios-build
 
 # macOS
-xcodebuild -project Nathaniel.xcodeproj -scheme "Nathaniel macOS" build
+make macos-build
 ```
 
 **Smoke test from command line:**
@@ -45,12 +45,30 @@ bash scripts/smoke_ios_sim.sh
 
 See `docs/automation.md` for Codex MCP setup and script options.
 
-## Current Status
+## Gameplay
 
-- TMX map loading and rendering (Tiled format)
-- Player character (Nathaniel) with sprite animations
-- Touch/click-to-move controls
-- Camera following player
+The Swift port restores the original XNA campaign and survival rules:
+
+- Tap or click the ground to move Nathaniel; tap an enemy to target it.
+- Select Hermes to focus the camera and build towers. He starts stationary in build mode.
+- Use the follow button (or **R** on macOS) to make Hermes follow Nathaniel. Existing towers stay in place.
+- Drag a tower from the build menu to clear ground. Towers cost 5, 10, or 15 resources.
+- Only Soldiers drop corpses, worth 10 resources. Walk Nathaniel over them, then tap stationary Hermes to deliver them. Loose corpses expire after 10 seconds; carried corpses do not.
+- Campaign levels start with three spare lives. Nathaniel respawns at the map start; losing Hermes ends the game. Survival has no spare lives.
+- Defeat a boss to complete a campaign level. Survival continues until a player dies.
+
+The port retains pathfinding, desktop controls, zoom, level selection, three save slots, and fog of war. Saves include carried corpses and Spawner production timers. Older save slots remain readable.
+
+**macOS controls:** Space switches camera focus, R changes Hermes mode, S stops Nathaniel, Escape pauses, and the mouse wheel zooms. Right-click or F fires Nathaniel's gun.
+
+**Regression tests:**
+
+```bash
+xcodebuild -project Nathaniel.xcodeproj -scheme "Nathaniel macOS" \
+  -configuration Debug -destination 'platform=macOS' test
+```
+
+Tests cover pathfinding, corpse delivery, Hermes and tower behavior, enemy weapons, Spawners, level rules, and save compatibility. Use the game MCP server for live gameplay interaction; see `AGENTS.md`.
 
 ## Development
 

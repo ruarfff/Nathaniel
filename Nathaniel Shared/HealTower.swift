@@ -1,3 +1,10 @@
+//
+//  HealTower.swift
+//  Nathaniel Shared
+//
+//  Heals Nathaniel first, then Hermes, once per healing tick.
+//
+
 import SpriteKit
 
 // MARK: - Heal Tower
@@ -35,9 +42,6 @@ class HealTower: DefensiveStructure {
             attackRange: GameBalance.Towers.HealTower.attackRange
         )
 
-        // Track build cost for recoup calculation
-        buildCost = HealTower.cost
-
         // Load tower texture
         loadTexture(named: "healtower", size: GameBalance.Towers.Visual.textureSize)
 
@@ -63,27 +67,26 @@ class HealTower: DefensiveStructure {
 
         self.healTimer += deltaTime
 
-        if self.healTimer >= self.healDelay {
-            self.healNearbyAllies()
+        if self.healTimer >= self.healDelay, self.healNearbyAllies() {
             self.healTimer = 0
         }
     }
 
-    /// Heal nearby allied characters
-    private func healNearbyAllies() {
-        for target in self.healTargets {
-            guard target.isAlive else { continue }
+    /// Heal Nathaniel first, then Hermes, once per tick.
+    private func healNearbyAllies() -> Bool {
+        let target = self.healTargets.first { $0 is Nathaniel && self.canHeal($0) }
+            ?? self.healTargets.first { $0 is Hermes && self.canHeal($0) }
+        guard let target else { return false }
 
-            // Heal if in range and not at full health
-            let distance = position.distance(to: target.position)
-            if distance < attackRange, target.currentHP < target.maxHP - self.healAmount {
-                target.currentHP = min(target.maxHP, target.currentHP + self.healAmount)
-                target.updateHealthBar()
+        target.currentHP = min(target.maxHP, target.currentHP + self.healAmount)
+        target.updateHealthBar()
+        self.showHealEffect(on: target)
+        return true
+    }
 
-                // Show heal effect
-                self.showHealEffect(on: target)
-            }
-        }
+    private func canHeal(_ target: Character) -> Bool {
+        target.isAlive && target.currentHP < target.maxHP &&
+            position.distance(to: target.position) < attackRange
     }
 
     /// Show visual heal effect on target
@@ -99,7 +102,10 @@ class HealTower: DefensiveStructure {
         self.healEffectNode?.isHidden = !show
     }
 
-    // Override attack methods - heal tower doesn't attack
-    override func findTargetInRange() -> Enemy? { nil }
+    /// Override attack methods - heal tower doesn't attack
+    override func findTargetInRange() -> Enemy? {
+        nil
+    }
+
     override func attackTarget(_ target: Enemy, deltaTime: TimeInterval) {}
 }

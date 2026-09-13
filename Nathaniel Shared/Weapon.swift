@@ -1,3 +1,10 @@
+//
+//  Weapon.swift
+//  Nathaniel Shared
+//
+//  Updates time-based projectiles and ranged weapons.
+//
+
 import SpriteKit
 
 // MARK: - Weapon Protocol
@@ -189,7 +196,7 @@ class Projectile: GameEntity {
     }
 
     /// Check collision with a character
-    func checkCollision(with character: Character) -> Bool {
+    func checkCollision(with character: Damageable) -> Bool {
         guard self.isActive, !self.hasCollision, character.isAlive else { return false }
         return self.position.distance(to: character.position) < self.collisionRadius + character.collisionRadius
     }
@@ -270,6 +277,9 @@ class Gun: Weapon {
     /// Bullet speed in points per second
     let bulletSpeed: CGFloat
 
+    /// Sound played when this weapon fires
+    let soundEffect: AudioManager.SoundEffect
+
     /// Projectile pool for bullets
     let projectilePool: ProjectilePool
 
@@ -277,17 +287,17 @@ class Gun: Weapon {
     var onFire: ((Projectile) -> Void)?
 
     /// Callback for collision checking (returns true if hit something)
-    var onCheckCollision: ((Projectile) -> Character?)?
+    var onCheckCollision: ((Projectile) -> Damageable?)?
 
     // MARK: - Initialization
 
     /// Create a gun with default bullet parameters
     convenience init() {
         self.init(
-            cooldownTime: 0.8,
-            damage: 25,
-            range: 600,
-            bulletSpeed: 450,
+            cooldownTime: GameBalance.Nathaniel.gunCooldown,
+            damage: GameBalance.Nathaniel.gunDamage,
+            range: GameBalance.Nathaniel.weaponRange,
+            bulletSpeed: GameBalance.Nathaniel.bulletSpeed,
             bulletTexture: "bullet"
         )
     }
@@ -299,19 +309,21 @@ class Gun: Weapon {
         range: CGFloat,
         bulletSpeed: CGFloat,
         bulletTexture: String,
-        projectileType: ProjectileType = .bullet
+        projectileType: ProjectileType = .bullet,
+        soundEffect: AudioManager.SoundEffect = .gunShot
     ) {
         self.cooldownTime = cooldownTime
         self.damage = damage
         self.range = range
         self.bulletSpeed = bulletSpeed
+        self.soundEffect = soundEffect
 
         self.projectilePool = ProjectilePool(maxSize: 20) {
             Projectile(
                 textureName: bulletTexture,
                 damage: damage,
                 speed: bulletSpeed,
-                maxDistance: range,
+                maxDistance: projectileType == .bullet ? 600 : range,
                 projectileType: projectileType
             )
         }
@@ -329,7 +341,7 @@ class Gun: Weapon {
         // Check collisions for active projectiles
         for projectile in self.projectilePool.activeProjectiles {
             if let hitCharacter = onCheckCollision?(projectile) {
-                // If hitting an enemy, use threat-aware damage
+                // Let idle enemies retaliate against the attacker
                 if let enemy = hitCharacter as? Enemy {
                     enemy.takeDamage(projectile.damage, from: self.owner)
                 } else {
@@ -372,7 +384,7 @@ class Gun: Weapon {
 
         // Play gunshot sound
         if let sprite = owner.sprite.scene {
-            AudioManager.shared.playSoundEffect(.gunShot, on: sprite)
+            AudioManager.shared.playSoundEffect(self.soundEffect, on: sprite)
         }
 
         return true

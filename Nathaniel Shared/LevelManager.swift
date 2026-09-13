@@ -21,19 +21,20 @@ enum LevelState {
 
 /// Spawn mode for levels - determines how enemies appear
 enum SpawnMode {
-    case mapBased       // Enemies spawn from map object points
-    case waveBased      // Enemies spawn in waves at regular intervals
+    case mapBased // Enemies spawn from map object points
+    case waveBased // Enemies spawn in waves at regular intervals
 }
 
 /// Configuration for a level
 struct LevelConfig {
     let levelNumber: Int
     let mapName: String
+    /// Spare lives available after Nathaniel's current life.
     let startingLives: Int
     let startingResources: Int
     let hasBoss: Bool
     let spawnMode: SpawnMode
-    let nextLevelNumber: Int?  // nil = game complete or survival mode
+    let nextLevelNumber: Int? // nil = game complete or survival mode
 
     /// Get the next level configuration
     var nextLevel: LevelConfig? {
@@ -85,7 +86,7 @@ struct LevelConfig {
         nextLevelNumber: 5
     )
 
-    /// Final Level configuration (wave-based, harder enemies)
+    /// Final Level configuration (wave-based)
     static let finalLevel = LevelConfig(
         levelNumber: 5,
         mapName: "survivalmap",
@@ -93,15 +94,15 @@ struct LevelConfig {
         startingResources: 0,
         hasBoss: true,
         spawnMode: .waveBased,
-        nextLevelNumber: nil  // Game complete after final level
+        nextLevelNumber: nil // Game complete after final level
     )
 
     /// Survival mode configuration (endless waves, no victory)
     static let survival = LevelConfig(
         levelNumber: 0,
         mapName: "survivalmap",
-        startingLives: 1,
-        startingResources: 50,
+        startingLives: 0,
+        startingResources: 30,
         hasBoss: false,
         spawnMode: .waveBased,
         nextLevelNumber: nil
@@ -110,19 +111,19 @@ struct LevelConfig {
     /// Get level config by number (for level select)
     static func level(_ number: Int) -> LevelConfig? {
         switch number {
-        case 0: return .survival
-        case 1: return .levelOne
-        case 2: return .levelTwo
-        case 3: return .levelThree
-        case 4: return .levelFour
-        case 5: return .finalLevel
-        default: return nil
+        case 0: .survival
+        case 1: .levelOne
+        case 2: .levelTwo
+        case 3: .levelThree
+        case 4: .levelFour
+        case 5: .finalLevel
+        default: nil
         }
     }
 
     /// All playable campaign levels in order
     static let campaignLevels: [LevelConfig] = [
-        .levelOne, .levelTwo, .levelThree, .levelFour, .finalLevel
+        .levelOne, .levelTwo, .levelThree, .levelFour, .finalLevel,
     ]
 }
 
@@ -147,7 +148,6 @@ protocol LevelManagerDelegate: AnyObject {
 
 /// Manages game state including lives, score, and win/lose conditions
 class LevelManager: EnemyManagerDelegate {
-
     // MARK: - Properties
 
     /// The current level configuration
@@ -156,14 +156,11 @@ class LevelManager: EnemyManagerDelegate {
     /// Current game state
     private(set) var state: LevelState = .playing
 
-    /// Remaining player lives
+    /// Remaining spare lives; zero means the next death ends the game.
     private(set) var lives: Int
 
     /// Current score
     private(set) var score: Int = 0
-
-    /// Current resources (for building structures)
-    private(set) var resources: Int
 
     /// Total elapsed time in seconds
     private(set) var elapsedTime: TimeInterval = 0
@@ -182,16 +179,14 @@ class LevelManager: EnemyManagerDelegate {
     init(config: LevelConfig) {
         self.config = config
         self.lives = config.startingLives
-        self.resources = config.startingResources
     }
 
     /// Reset level state (for restart)
     func reset() {
-        lives = config.startingLives
-        resources = config.startingResources
-        score = 0
-        elapsedTime = 0
-        state = .playing
+        self.lives = self.config.startingLives
+        self.score = 0
+        self.elapsedTime = 0
+        self.state = .playing
     }
 
     /// Restore state from saved game
@@ -206,28 +201,28 @@ class LevelManager: EnemyManagerDelegate {
 
     /// Pause the game
     func pause() {
-        guard state == .playing else { return }
-        state = .paused
+        guard self.state == .playing else { return }
+        self.state = .paused
     }
 
     /// Resume from pause
     func resume() {
-        guard state == .paused else { return }
-        state = .playing
+        guard self.state == .paused else { return }
+        self.state = .playing
     }
 
     /// Whether the game is currently paused
     var isPaused: Bool {
-        return state == .paused
+        self.state == .paused
     }
 
     // MARK: - Update
 
     /// Update the level manager each frame
     func update(deltaTime: TimeInterval) {
-        guard state == .playing else { return }
+        guard self.state == .playing else { return }
 
-        elapsedTime += deltaTime
+        self.elapsedTime += deltaTime
     }
 
     // MARK: - Player Death Handling
@@ -235,76 +230,55 @@ class LevelManager: EnemyManagerDelegate {
     /// Called when a player character dies
     /// - Returns: true if player should respawn, false if game over
     func handlePlayerDeath() -> Bool {
-        guard state == .playing else { return false }
+        guard self.state == .playing else { return false }
 
-        if lives > 0 {
-            lives -= 1
-            delegate?.levelManager(self, didLoseLife: lives)
-
-            if lives == 0 {
-                triggerGameOver()
-                return false
-            }
+        if self.lives > 0 {
+            self.lives -= 1
+            self.delegate?.levelManager(self, didLoseLife: self.lives)
 
             return true // Should respawn
         } else {
-            triggerGameOver()
+            self.triggerGameOver()
             return false
         }
     }
 
     /// Trigger game over state
-    private func triggerGameOver() {
-        state = .gameOver
-        delegate?.levelManagerDidGameOver(self)
+    func triggerGameOver() {
+        guard self.state == .playing else { return }
+        self.state = .gameOver
+        self.delegate?.levelManagerDidGameOver(self)
     }
 
     // MARK: - Victory Handling
 
     /// Called when the boss is defeated (level complete)
     func triggerVictory() {
-        guard state == .playing else { return }
+        guard self.state == .playing else { return }
 
-        state = .victory
-        delegate?.levelManagerDidWin(self)
+        self.state = .victory
+        self.delegate?.levelManagerDidWin(self)
     }
 
     // MARK: - Score
 
     /// Add to the current score
     func addScore(_ points: Int) {
-        score += points
-        delegate?.levelManager(self, didUpdateScore: score)
-    }
-
-    // MARK: - Resources
-
-    /// Add resources
-    func addResources(_ amount: Int) {
-        resources += amount
-    }
-
-    /// Spend resources if available
-    /// - Returns: true if resources were spent, false if insufficient
-    func spendResources(_ amount: Int) -> Bool {
-        if resources >= amount {
-            resources -= amount
-            return true
-        }
-        return false
+        self.score += points
+        self.delegate?.levelManager(self, didUpdateScore: self.score)
     }
 
     // MARK: - EnemyManagerDelegate
 
     func enemyManagerDidDefeatBoss(_ manager: EnemyManager) {
         // Only trigger victory for non-survival levels
-        if config.hasBoss && config.levelNumber > 0 {
-            triggerVictory()
+        if self.config.hasBoss, self.config.levelNumber > 0 {
+            self.triggerVictory()
         }
     }
 
     func enemyManager(_ manager: EnemyManager, enemyDidDie enemy: Enemy, score: Int) {
-        addScore(score)
+        self.addScore(score)
 
         // Spawn resource drop from the dead enemy
         ResourceManager.shared.spawnFromEnemy(enemy)

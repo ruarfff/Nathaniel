@@ -16,18 +16,18 @@ class OptionsScene: InputHandlingScene {
 
     class func newOptionsScene() -> OptionsScene {
         let scene = OptionsScene(size: CGSize(width: 1_366, height: 1_024))
-        scene.scaleMode = .aspectFill
+        scene.scaleMode = .aspectFit
         return scene
     }
 
     override func didMove(to view: SKView) {
-        setupBackground()
-        setupTitle()
-        setupOptions()
+        self.setupBackground()
+        self.setupTitle()
+        self.setupOptions()
         #if DEBUG
-            setupDevSettings()
+            self.setupDevSettings()
         #endif
-        setupBackButton()
+        self.setupBackButton()
 
         #if DEBUG
             // Set this scene as the command server delegate
@@ -66,12 +66,12 @@ class OptionsScene: InputHandlingScene {
         soundLabel.horizontalAlignmentMode = .right
         addChild(soundLabel)
 
-        soundToggle = createToggleButton(
+        self.soundToggle = self.createToggleButton(
             enabled: GameSettings.shared.soundEffectsEnabled,
             yPosition: startY,
             name: "soundToggle"
         )
-        addChild(soundToggle)
+        addChild(self.soundToggle)
 
         // Music toggle
         let musicLabel = SKLabelNode(fontNamed: "Copperplate-Bold")
@@ -82,12 +82,12 @@ class OptionsScene: InputHandlingScene {
         musicLabel.horizontalAlignmentMode = .right
         addChild(musicLabel)
 
-        musicToggle = createToggleButton(
+        self.musicToggle = self.createToggleButton(
             enabled: GameSettings.shared.musicEnabled,
             yPosition: startY - spacing,
             name: "musicToggle"
         )
-        addChild(musicToggle)
+        addChild(self.musicToggle)
     }
 
     #if DEBUG
@@ -104,22 +104,22 @@ class OptionsScene: InputHandlingScene {
             addChild(headerLabel)
 
             // Dev Settings button
-            devSettingsButton = SKLabelNode(fontNamed: "Copperplate-Bold")
-            devSettingsButton?.text = "Open Dev Settings"
-            devSettingsButton?.fontSize = 22
-            devSettingsButton?.fontColor = SKColor(red: 0.8, green: 0.5, blue: 0.2, alpha: 1.0)
-            devSettingsButton?.position = CGPoint(x: size.width / 2, y: sectionY - 50)
-            devSettingsButton?.horizontalAlignmentMode = .center
-            devSettingsButton?.name = "devSettingsButton"
-            addChild(devSettingsButton!)
+            self.devSettingsButton = SKLabelNode(fontNamed: "Copperplate-Bold")
+            self.devSettingsButton?.text = "Open Dev Settings"
+            self.devSettingsButton?.fontSize = 22
+            self.devSettingsButton?.fontColor = SKColor(red: 0.8, green: 0.5, blue: 0.2, alpha: 1.0)
+            self.devSettingsButton?.position = CGPoint(x: size.width / 2, y: sectionY - 50)
+            self.devSettingsButton?.horizontalAlignmentMode = .center
+            self.devSettingsButton?.name = "devSettingsButton"
+            addChild(self.devSettingsButton!)
 
             // Create DevSettingsPanel
-            devSettingsPanel = DevSettingsPanel(size: size)
-            devSettingsPanel?.position = CGPoint(x: size.width / 2, y: size.height / 2)
-            devSettingsPanel?.zPosition = 1_000
-            addChild(devSettingsPanel!)
+            self.devSettingsPanel = DevSettingsPanel(size: size)
+            self.devSettingsPanel?.position = CGPoint(x: size.width / 2, y: size.height / 2)
+            self.devSettingsPanel?.zPosition = 1_000
+            addChild(self.devSettingsPanel!)
 
-            devSettingsPanel?.onBack = { [weak self] in
+            self.devSettingsPanel?.onBack = { [weak self] in
                 // Panel handles its own hide
             }
         }
@@ -156,22 +156,22 @@ class OptionsScene: InputHandlingScene {
     }
 
     private func setupBackButton() {
-        backButton = SKLabelNode(fontNamed: "Copperplate-Bold")
-        backButton.text = "Back"
-        backButton.fontSize = 32
-        backButton.fontColor = .white
+        self.backButton = SKLabelNode(fontNamed: "Copperplate-Bold")
+        self.backButton.text = "Back"
+        self.backButton.fontSize = 32
+        self.backButton.fontColor = .white
         // Position higher to avoid being cut off on devices with different aspect ratios
-        backButton.position = CGPoint(x: size.width / 2, y: size.height * 0.25)
-        backButton.horizontalAlignmentMode = .center
-        backButton.name = "backButton"
-        addChild(backButton)
+        self.backButton.position = CGPoint(x: size.width / 2, y: size.height * 0.25)
+        self.backButton.horizontalAlignmentMode = .center
+        self.backButton.name = "backButton"
+        addChild(self.backButton)
     }
 
     // MARK: - Button Actions
 
     /// Handle a tap at the given location (used by GameCommandServer)
     func handleTap(at location: CGPoint) {
-        handleButtonTap(at: location)
+        self.handleButtonTap(at: location)
     }
 
     private func handleButtonTap(at location: CGPoint) {
@@ -190,17 +190,17 @@ class OptionsScene: InputHandlingScene {
 
             switch nodeName {
             case "backButton":
-                animateButtonPress(node as? SKLabelNode) {
+                self.animateButtonPress(node as? SKLabelNode) {
                     self.returnToMenu()
                 }
             case "soundToggle":
-                toggleSound()
+                self.toggleSound()
             case "musicToggle":
-                toggleMusic()
+                self.toggleMusic()
             #if DEBUG
                 case "devSettingsButton":
-                    animateToggle(devSettingsButton!)
-                    devSettingsPanel?.show()
+                    self.animateToggle(self.devSettingsButton!)
+                    self.devSettingsPanel?.show()
             #endif
             default:
                 break
@@ -210,14 +210,14 @@ class OptionsScene: InputHandlingScene {
 
     private func toggleSound() {
         GameSettings.shared.soundEffectsEnabled.toggle()
-        updateToggle(soundToggle, enabled: GameSettings.shared.soundEffectsEnabled)
-        animateToggle(soundToggle)
+        self.updateToggle(self.soundToggle, enabled: GameSettings.shared.soundEffectsEnabled)
+        self.animateToggle(self.soundToggle)
     }
 
     private func toggleMusic() {
         GameSettings.shared.musicEnabled.toggle()
-        updateToggle(musicToggle, enabled: GameSettings.shared.musicEnabled)
-        animateToggle(musicToggle)
+        self.updateToggle(self.musicToggle, enabled: GameSettings.shared.musicEnabled)
+        self.animateToggle(self.musicToggle)
 
         // Immediately start/stop music based on new setting
         AudioManager.shared.onMusicSettingChanged()
@@ -255,7 +255,7 @@ class OptionsScene: InputHandlingScene {
 
 extension OptionsScene {
     override func handlePointerDown(at location: CGPoint) -> Bool {
-        handleButtonTap(at: location)
+        self.handleButtonTap(at: location)
         return true
     }
 

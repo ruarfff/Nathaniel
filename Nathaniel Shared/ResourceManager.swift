@@ -33,7 +33,7 @@ class ResourceManager {
     /// Delegate for events
     weak var delegate: ResourceManagerDelegate?
 
-    /// Characters that can collect resources (players)
+    /// Nathaniel carries corpses; Hermes converts them into building resources.
     var collectors: [Character] = []
 
     // MARK: - Statistics
@@ -61,6 +61,11 @@ class ResourceManager {
         self.totalSpawned = 0
         self.totalExpired = 0
 
+        for case let nathaniel as Nathaniel in self.collectors {
+            nathaniel.hasCorpse = false
+        }
+        self.collectors.removeAll()
+
         // Notify delegate
         self.delegate?.resourceManager(self, didUpdateTotal: self.totalCollected)
     }
@@ -79,6 +84,24 @@ class ResourceManager {
     func restore(total: Int) {
         self.totalCollected = total
         self.delegate?.resourceManager(self, didUpdateTotal: self.totalCollected)
+    }
+
+    /// Restore loose and carried corpses without crediting the wallet again.
+    func restoreBattlefield(_ states: [SavedResourceState], carrier: Nathaniel?) {
+        self.resetBattlefield()
+        for state in states {
+            let resource = Resource(
+                amount: state.amount,
+                position: state.position.cgPoint,
+                expirationTime: state.timeToExpiration
+            )
+            if state.isCarried, let carrier, carrier.isAlive {
+                resource.startCollecting(toward: carrier)
+            }
+            self.scene?.addChild(resource.sprite)
+            self.resources.append(resource)
+        }
+        carrier?.hasCorpse = self.resources.contains { $0.collectionState == .collecting }
     }
 
     // MARK: - Spawning
@@ -108,18 +131,8 @@ class ResourceManager {
     /// Spawn resources from a dying enemy
     /// - Parameter enemy: The enemy that died
     func spawnFromEnemy(_ enemy: Enemy) {
-        let amount = enemy.calculateResourceDrop()
-        guard amount > 0 else { return }
-
-        // Spawn at enemy position with slight random offset
-        let offsetX = CGFloat.random(in: -10 ... 10)
-        let offsetY = CGFloat.random(in: -10 ... 10)
-        let position = CGPoint(
-            x: enemy.position.x + offsetX,
-            y: enemy.position.y + offsetY
-        )
-
-        self.spawnResource(amount: amount, at: position)
+        guard enemy is Soldier else { return }
+        self.spawnResource(amount: 10, at: enemy.position)
     }
 
     /// Add a visual spawn effect
@@ -148,15 +161,22 @@ class ResourceManager {
     /// Update all resources (call each frame)
     func update(deltaTime: TimeInterval) {
         var indicesToRemove: [Int] = []
+        let nathaniel = self.collectors.first { $0 is Nathaniel } as? Nathaniel
+        let hermes = self.collectors.first { $0 is Hermes } as? Hermes
 
         for (index, resource) in self.resources.enumerated() {
-            // Check for auto-collection before updating
-            if resource.collectionState == .idle {
-                self.checkAutoCollection(for: resource)
+            if resource.collectionState == .idle,
+               let nathaniel, nathaniel.isAlive, resource.isInCollectRange(of: nathaniel)
+            {
+                resource.startCollecting(toward: nathaniel)
             }
 
             // Update the resource
             resource.update(deltaTime: deltaTime)
+
+            if resource.isActive, let hermes, hermes.isAlive, resource.isInCollectRange(of: hermes) {
+                resource.collect()
+            }
 
             // Check if should be removed
             if !resource.isActive {
@@ -177,17 +197,17 @@ class ResourceManager {
             resource.sprite.removeFromParent()
             self.resources.remove(at: index)
         }
+        nathaniel?.hasCorpse = self.resources.contains { $0.collectionState == .collecting }
     }
 
     // MARK: - Collection
 
-    /// Check if any collector is in range and start auto-collection
-    private func checkAutoCollection(for resource: Resource) {
-        for collector in self.collectors where collector.isAlive {
-            if resource.isInCollectRange(of: collector) {
-                resource.startCollecting(toward: collector)
-                break
-            }
+    func dropCarriedResources() {
+        for resource in self.resources where resource.collectionState == .collecting {
+            resource.drop()
+        }
+        for case let nathaniel as Nathaniel in self.collectors {
+            nathaniel.hasCorpse = false
         }
     }
 
@@ -204,7 +224,7 @@ class ResourceManager {
     /// - Parameter amount: Amount to spend
     /// - Returns: True if successful, false if insufficient
     func spendResources(_ amount: Int) -> Bool {
-        guard self.totalCollected >= amount else {
+        guard amount >= 0, self.totalCollected >= amount else {
             return false
         }
 

@@ -12,7 +12,7 @@ import SpriteKit
 extension Character {
     /// Create a saved state from this character
     func toSavedCharacterState() -> SavedCharacterState {
-        return SavedCharacterState(
+        SavedCharacterState(
             position: SavedPoint(position),
             currentHP: currentHP,
             maxHP: maxHP,
@@ -57,7 +57,7 @@ extension Nathaniel {
 extension Hermes {
     /// Create a saved state from Hermes
     func toSavedHermesState() -> SavedHermesState {
-        return SavedHermesState(
+        SavedHermesState(
             characterState: toSavedCharacterState(),
             mode: SavedHermesMode(from: mode)
         )
@@ -90,10 +90,11 @@ extension Enemy {
     /// Determine the saved enemy type from this enemy instance
     var savedEnemyType: SavedEnemyType? {
         switch self {
-        case is Grunt: return .grunt
-        case is Soldier: return .soldier
-        case is Boss: return .boss
-        default: return nil
+        case is Grunt: .grunt
+        case is Soldier: .soldier
+        case is Boss: .boss
+        case is Spawner: .spawner
+        default: nil
         }
     }
 
@@ -108,12 +109,20 @@ extension Enemy {
             maxHP: maxHP,
             facingDirection: SavedFacingDirection(from: facingDirection),
             destination: destination.map { SavedPoint($0) },
-            targetIndex: targetIndex
+            targetIndex: targetIndex,
+            timeUntilNextSpawn: (self as? Spawner)?.timeUntilNextSpawn,
+            initialSpawnsRemaining: (self as? Spawner)?.initialSpawnsRemaining
         )
     }
 
     /// Restore enemy state from saved state
     func restore(from state: SavedEnemyState) {
+        if let spawner = self as? Spawner,
+           let remainingTime = state.timeUntilNextSpawn,
+           let initialSpawns = state.initialSpawnsRemaining
+        {
+            spawner.restoreSpawnState(timeUntilNextSpawn: remainingTime, initialSpawnsRemaining: initialSpawns)
+        }
         position = state.position.cgPoint
         currentHP = state.currentHP
         facingDirection = state.facingDirection.facingDirection
@@ -130,10 +139,10 @@ extension DefensiveStructure {
     /// Determine the saved tower type from this structure instance
     var savedTowerType: SavedTowerType? {
         switch self {
-        case is GunTower: return .gunTower
-        case is LaserTower: return .laserTower
-        case is HealTower: return .healTower
-        default: return nil
+        case is GunTower: .gunTower
+        case is LaserTower: .laserTower
+        case is HealTower: .healTower
+        default: nil
         }
     }
 
@@ -147,7 +156,7 @@ extension DefensiveStructure {
             currentHP: currentHP,
             maxHP: maxHP,
             isHermesOwned: isHermesOwned,
-            cooldownRemaining: 0  // Cooldown resets on load
+            cooldownRemaining: 0 // Cooldown resets on load
         )
     }
 }
@@ -160,7 +169,8 @@ extension GameScene {
         // Get references using Mirror (same approach as command delegate)
         guard let nathaniel = findNathanielForSave(),
               let hermes = findHermesForSave(),
-              let levelManager = findLevelManagerForSave() else {
+              let levelManager = findLevelManagerForSave()
+        else {
             return nil
         }
 
@@ -219,7 +229,8 @@ extension GameScene {
             enemies: enemyStates,
             towers: towerStates,
             currentWave: currentWave,
-            timeUntilNextWave: timeUntilNextWave
+            timeUntilNextWave: timeUntilNextWave,
+            battlefieldResources: ResourceManager.shared.resources.map { $0.toSavedResourceState() }
         )
     }
 
@@ -312,37 +323,15 @@ extension StructureManager {
     }
 }
 
-// MARK: - WaveSpawner Extension
+// MARK: - Resource Extension
 
-extension WaveSpawner {
-    /// Current wave number for serialization (based on elapsed time)
-    var currentWave: Int {
-        // Access elapsedTime through Mirror
-        let mirror = Mirror(reflecting: self)
-        for child in mirror.children {
-            if child.label == "elapsedTime", let time = child.value as? TimeInterval {
-                // Wave number is approximately elapsed time in minutes
-                return Int(time / 60.0)
-            }
-        }
-        return 0
-    }
-
-    /// Time until next wave for serialization
-    var timeUntilNextWave: TimeInterval {
-        let mirror = Mirror(reflecting: self)
-        var spawnInterval: TimeInterval = 5.0
-        var timeSinceLastSpawn: TimeInterval = 0
-
-        for child in mirror.children {
-            if child.label == "spawnInterval", let interval = child.value as? TimeInterval {
-                spawnInterval = interval
-            }
-            if child.label == "timeSinceLastSpawn", let time = child.value as? TimeInterval {
-                timeSinceLastSpawn = time
-            }
-        }
-
-        return max(0, spawnInterval - timeSinceLastSpawn)
+extension Resource {
+    func toSavedResourceState() -> SavedResourceState {
+        SavedResourceState(
+            position: SavedPoint(position),
+            amount: amount,
+            timeToExpiration: timeToExpiration,
+            isCarried: collectionState == .collecting
+        )
     }
 }

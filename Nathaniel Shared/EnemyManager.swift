@@ -1,3 +1,10 @@
+//
+//  EnemyManager.swift
+//  Nathaniel Shared
+//
+//  Creates enemies and manages their targets, projectiles, and lifetime.
+//
+
 import SpriteKit
 
 // MARK: - Enemy Manager Delegate
@@ -33,7 +40,7 @@ class EnemyManager {
     var enemyZPosition: CGFloat = 100
 
     /// Scale for enemy sprites
-    var enemyScale: CGFloat = 3.0
+    var enemyScale: CGFloat = 1.0
 
     /// Player characters that enemies can target
     var playerCharacters: [Character] = []
@@ -41,7 +48,7 @@ class EnemyManager {
     /// Callback to check structure collision (for pathfinding around towers)
     var structureCollisionCheck: ((CGPoint, CGFloat) -> Bool)?
 
-    /// Reference to structure manager for tower threat tracking
+    /// Reference to structures that enemies can target
     weak var structureManager: StructureManager?
 
     // MARK: - Statistics
@@ -71,7 +78,7 @@ class EnemyManager {
     func reset() {
         // Remove all enemy sprites
         for enemy in self.enemies {
-            enemy.sprite.removeFromParent()
+            enemy.removeFromScene()
         }
         self.enemies.removeAll()
 
@@ -86,7 +93,7 @@ class EnemyManager {
     /// Remove all enemies from the scene (for loading saved game)
     func removeAllEnemies() {
         for enemy in self.enemies {
-            enemy.sprite.removeFromParent()
+            enemy.removeFromScene()
         }
         self.enemies.removeAll()
         self.numSpawners = 0
@@ -106,13 +113,24 @@ class EnemyManager {
         enemy.healthBar?.hideWhenFull = true
 
         // Set up ranged weapon if applicable
-        if enemy is Soldier || enemy is Boss {
-            self.setupRangedWeapon(for: enemy)
+        self.setupRangedWeapon(for: enemy)
+        if let spawner = enemy as? Spawner {
+            self.scene?.addChild(spawner.beam.node)
+            spawner.onSpawn = { [weak self] position in
+                self?.addEnemy(name: "Grunt", at: position)
+            }
         }
 
         // Track type counts
-        if enemy is Soldier { self.numSoldiers += 1 }
-        if enemy is Boss { self.numBosses += 1 }
+        if enemy is Soldier {
+            self.numSoldiers += 1
+        }
+        if enemy is Boss {
+            self.numBosses += 1
+        }
+        if enemy is Spawner {
+            self.numSpawners += 1
+        }
 
         // Configure pathfinding if renderer is available
         if let renderer {
@@ -144,43 +162,20 @@ class EnemyManager {
             enemy = Grunt()
         } else if name.hasPrefix("So") {
             enemy = Soldier()
-            self.numSoldiers += 1
-            self.setupRangedWeapon(for: enemy)
         } else if name.hasPrefix("Sp") {
-            // TODO: Implement Spawner enemy
-            print("EnemyManager: Spawner not yet implemented")
-            return nil
+            enemy = Spawner()
         } else if name.hasPrefix("Bo") {
             enemy = Boss()
-            self.numBosses += 1
-            self.setupRangedWeapon(for: enemy)
         } else {
             print("EnemyManager: Unknown enemy type '\(name)'")
             return nil
         }
 
-        // Configure common properties
         enemy.position = position
-        enemy.sprite.zPosition = self.enemyZPosition
-        enemy.sprite.setScale(self.enemyScale)
-        enemy.target = target
-
-        // Set up compact health bar (smaller, closer to sprite, rounded)
-        enemy.setupHealthBar(width: 32, yOffset: 3, compact: true)
-        enemy.healthBar?.hideWhenFull = true
-
-        // Configure pathfinding if renderer is available
-        if let renderer {
-            enemy.configurePathfinding(with: renderer)
-            enemy.pathfinding?.structureCollisionCheck = self.structureCollisionCheck
-        }
-
-        // Add to scene
-        self.scene?.addChild(enemy.sprite)
-
-        // Track
-        self.enemies.append(enemy)
-        self.totalSpawned += 1
+        // Grunts attack Nathaniel by default. Other map enemies acquire a target
+        // when one enters sight or attacks them.
+        enemy.target = target ?? (enemy is Grunt ? self.playerCharacters.first(where: { $0 is Nathaniel }) : nil)
+        self.addEnemy(enemy)
 
         print("EnemyManager: Spawned \(enemy.name) at (\(Int(position.x)), \(Int(position.y)))")
 
@@ -201,12 +196,8 @@ class EnemyManager {
             if name.hasPrefix("Gr") || name.hasPrefix("So") ||
                 name.hasPrefix("Sp") || name.hasPrefix("Bo")
             {
-                let position = renderer.convertToSpriteKit(point: obj.center)
-
-                // Find nearest player to set as initial target
-                let target = self.findNearestPlayer(to: position)
-
-                self.addEnemy(name: name, at: position, target: target)
+                let position = renderer.convertToSpriteKit(point: CGPoint(x: obj.x, y: obj.y))
+                self.addEnemy(name: name, at: position)
             }
         }
     }
@@ -230,6 +221,11 @@ class EnemyManager {
                     return player
                 }
             }
+            for structure in self.structureManager?.structures ?? [] where structure.isAlive && structure.isActive {
+                if projectile.checkCollision(with: structure) {
+                    return structure
+                }
+            }
             return nil
         }
     }
@@ -241,10 +237,6 @@ class EnemyManager {
         var indicesToRemove: [Int] = []
 
         for (index, enemy) in self.enemies.enumerated() {
-            // Update threat system
-            self.updateThreat(for: enemy, deltaTime: deltaTime)
-
-            // Select target based on threat
             self.selectTarget(for: enemy)
 
             // Update the enemy
@@ -271,55 +263,34 @@ class EnemyManager {
                 self.delegate?.enemyManagerDidDefeatBoss(self)
             }
 
+            if enemy is Soldier {
+                self.numSoldiers -= 1
+            }
+            if enemy is Spawner {
+                self.numSpawners -= 1
+            }
             self.enemies.remove(at: index)
         }
     }
 
-    // MARK: - Threat System
-
-    /// Update threat for an enemy based on nearby players and towers
-    private func updateThreat(for enemy: Enemy, deltaTime: TimeInterval) {
-        // Decay existing threat over time
-        enemy.updateThreatDecay(deltaTime: deltaTime)
-
-        // Generate threat for each player in visible range
-        for player in self.playerCharacters where player.isAlive {
-            let distance = enemy.position.distance(to: player.position)
-
-            // Check if player is in visible range
-            if distance <= enemy.visibleRange {
-                // Generate initial aggro if this is the first time seeing any player
-                enemy.generateInitialAggro(for: player)
-
-                // Generate continuous proximity threat
-                enemy.generateProximityThreat(for: player, deltaTime: deltaTime)
-            }
-        }
-
-        // Generate proximity threat for towers in range
-        // Towers don't get initial aggro - only proximity and damage threat
-        guard let structures = structureManager?.structures else { return }
-        for structure in structures where structure.isAlive && structure.isActive {
-            let distance = enemy.position.distance(to: structure.position)
-
-            if distance <= enemy.visibleRange {
-                let amount = ThreatConfig.towerProximityThreatPerSecond * Float(deltaTime)
-                enemy.threatTable.addThreat(for: structure, amount: amount * enemy.threatMultiplier)
-            }
-        }
-    }
-
-    /// Select the best target for an enemy based on threat
+    /// Keep a live target. Otherwise acquire visible allies or an ally targeting
+    /// this enemy, in the original player/tower order.
     private func selectTarget(for enemy: Enemy) {
-        // Try to get highest threat target
-        if let threatTarget = enemy.getHighestThreatTarget() {
-            enemy.target = threatTarget
-            return
+        guard enemy.isAlive, enemy.target?.isAlive != true else { return }
+        enemy.target = nil
+        for player in self.playerCharacters where player.isAlive {
+            let isTargetingEnemy = (player as? Nathaniel)?.currentTarget === enemy ||
+                (player as? Hermes)?.currentTarget === enemy
+            if enemy.position.distance(to: player.position) < enemy.visibleRange || isTargetingEnemy {
+                enemy.target = player
+            }
         }
-
-        // Fallback: find nearest player if no threat (shouldn't happen often)
-        if enemy.target == nil || !enemy.target!.isAlive {
-            enemy.target = self.findNearestPlayer(to: enemy.position, withinRange: enemy.visibleRange)
+        for structure in self.structureManager?.structures ?? [] where structure.isAlive && structure.isActive {
+            if enemy.position.distance(to: structure.position) < enemy.visibleRange || structure
+                .currentTarget === enemy
+            {
+                enemy.target = structure
+            }
         }
     }
 

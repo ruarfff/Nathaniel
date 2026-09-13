@@ -154,7 +154,6 @@
 				96B123C62EDB62E100C1F1CA /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				96B123862EDB62E100C1F1CA /* Nathaniel Shared */,
 				96B123C22EDB62E100C1F1CA /* NathanielTests */,
 			);
 			name = NathanielTests;

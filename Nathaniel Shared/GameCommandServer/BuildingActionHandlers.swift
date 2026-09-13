@@ -9,12 +9,11 @@
 
     import SpriteKit
 
-    /// Handles building-related actions: towers, build menu, Hermes release
+    /// Handles tower construction and build menu actions.
     enum BuildingActionHandlers: GameActionHandler {
         static let actionNames = [
             "toggleBuildMenu",
             "buildTower",
-            "releaseHermes",
             "getTowerInfo",
         ]
 
@@ -28,8 +27,6 @@
                 self.toggleBuildMenu(context: context)
             case "buildTower":
                 self.buildTower(params: params, context: context)
-            case "releaseHermes":
-                self.releaseHermes(context: context)
             case "getTowerInfo":
                 self.getTowerInfo(context: context)
             default:
@@ -88,51 +85,16 @@
                 CGPoint(x: hermes.position.x + 80, y: hermes.position.y)
             }
 
-            // Validate position is within build radius
-            guard TowerConfig.isWithinBuildRange(towerPosition: position, hermesPosition: hermes.position) else {
-                return .failure("Position out of build range (max \(TowerConfig.buildRadius) from Hermes)")
+            guard hermes.isInBuildMode else {
+                return .failure("Hermes must be in build mode")
             }
-
-            // Spend resources and build
-            guard ResourceManager.shared.spendResources(towerType.cost) else {
-                return .failure("Failed to spend resources")
-            }
-
-            structMgr.addHermesTower(type: towerType, at: position)
-
-            // Lock Hermes if this is the first tower
-            if structMgr.hermesTowerCount == 1 {
-                hermes.lock()
+            guard context.scene?.buildTower(type: towerType, at: position) == true else {
+                return .failure("Tower placement failed: position blocked or resources unavailable")
             }
 
             return .success(
                 "Built \(towerType.displayName) at (\(Int(position.x)), \(Int(position.y))). Towers: \(structMgr.hermesTowerCount)"
             )
-        }
-
-        // MARK: - Hermes Release
-
-        private static func releaseHermes(context: GameActionContext) -> ActionResult {
-            guard let hermes = context.hermes else {
-                return .failure("Hermes not found")
-            }
-            guard let structMgr = context.structureManager else {
-                return .failure("StructureManager not found")
-            }
-
-            let towerCount = structMgr.hermesTowerCount
-            guard towerCount > 0 else {
-                return .failure("No towers deployed")
-            }
-
-            let recoupAmount = structMgr.destroyAllHermesTowers(camera: context.cameraNode)
-
-            // Unlock Hermes if locked
-            if hermes.mode == .locked {
-                hermes.unlock()
-            }
-
-            return .success("Released Hermes. Destroyed \(towerCount) towers, recouped \(recoupAmount) resources")
         }
 
         // MARK: - Tower Info
@@ -142,8 +104,7 @@
                 return .failure("StructureManager not found")
             }
             let count = structMgr.hermesTowerCount
-            let recoup = structMgr.potentialRecoupAmount
-            return .success("Towers: \(count), potential recoup: \(recoup)")
+            return .success("Towers: \(count)")
         }
     }
 

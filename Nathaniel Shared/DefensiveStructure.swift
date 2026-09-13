@@ -1,3 +1,10 @@
+//
+//  DefensiveStructure.swift
+//  Nathaniel Shared
+//
+//  Provides targeting and health behavior for defensive towers.
+//
+
 import SpriteKit
 
 // MARK: - Defensive Structure Base Class
@@ -6,9 +13,6 @@ import SpriteKit
 /// Structures are stationary, cannot move, and perform automated actions
 class DefensiveStructure: Structure {
     // MARK: - Properties
-
-    /// Original resource cost paid to build this structure (for recoup calculation)
-    var buildCost: Int = 0
 
     /// Attack range for finding targets
     var attackRange: CGFloat = 300

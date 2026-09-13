@@ -74,7 +74,6 @@
                 let modeString = switch hermes.mode {
                 case .following: "following"
                 case .independent: "independent"
-                case .locked: "locked"
                 }
                 state["hermesMode"] = modeString
             }
@@ -136,7 +135,6 @@
             let modeString = switch hermes.mode {
             case .following: "following"
             case .independent: "independent"
-            case .locked: "locked"
             }
             state.append("mode=\(modeString)")
             state.append("isFiring=\(hermes.isFiring)")

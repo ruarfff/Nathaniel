@@ -50,10 +50,6 @@ struct GridPosition: Hashable, Equatable {
     let x: Int
     let y: Int
 
-    static func == (lhs: GridPosition, rhs: GridPosition) -> Bool {
-        lhs.x == rhs.x && lhs.y == rhs.y
-    }
-
     func hash(into hasher: inout Hasher) {
         hasher.combine(self.x)
         hasher.combine(self.y)
@@ -312,12 +308,20 @@ class PathFinder {
 class TMXCollisionGrid: CollisionGrid {
     private let renderer: TMXRenderer
 
+    /// Clearance used by the moving character around structures.
+    var entityRadius: CGFloat = 0
+
     /// Optional callback to check if a position collides with a structure (tower)
     /// Parameters: (worldPosition, entityRadius) -> Bool
     var structureCollisionCheck: ((CGPoint, CGFloat) -> Bool)?
 
-    var gridWidth: Int { self.renderer.map.width }
-    var gridHeight: Int { self.renderer.map.height }
+    var gridWidth: Int {
+        self.renderer.map.width
+    }
+
+    var gridHeight: Int {
+        self.renderer.map.height
+    }
 
     init(renderer: TMXRenderer) {
         self.renderer = renderer
@@ -332,7 +336,7 @@ class TMXCollisionGrid: CollisionGrid {
         // Check structure collision if callback is set
         if let check = structureCollisionCheck {
             let worldPos = self.renderer.tileToWorld(x: x, y: y)
-            if check(worldPos, 0) {
+            if check(worldPos, self.entityRadius) {
                 return true
             }
         }

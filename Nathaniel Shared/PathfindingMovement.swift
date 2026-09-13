@@ -19,6 +19,13 @@ class PathfindingMovement {
     /// Whether pathfinding is enabled (falls back to direct movement if false)
     var isEnabled: Bool = true
 
+    /// Keep planned routes and waypoint checks consistent with movement collision.
+    var entityRadius: CGFloat = 0 {
+        didSet {
+            self.collisionGrid?.entityRadius = self.entityRadius
+        }
+    }
+
     /// Optional callback to check structure collision at a position
     /// Returns true if the position collides with a structure
     var structureCollisionCheck: ((CGPoint, CGFloat) -> Bool)? {
@@ -67,6 +74,7 @@ class PathfindingMovement {
 
         // Create cached pathfinder using the renderer's collision data
         let grid = TMXCollisionGrid(renderer: renderer)
+        grid.entityRadius = self.entityRadius
         self.collisionGrid = grid
         self.pathFinder = PathFinder(grid: grid)
 
@@ -154,9 +162,9 @@ class PathfindingMovement {
     /// Check if a position is walkable (terrain + structures)
     /// - Parameters:
     ///   - point: World position to check
-    ///   - entityRadius: Collision radius of the entity (default 0)
+    ///   - entityRadius: Collision radius override (defaults to the configured clearance)
     /// - Returns: true if the position is walkable (no terrain or structure collision)
-    func isWalkable(at point: CGPoint, entityRadius: CGFloat = 0) -> Bool {
+    func isWalkable(at point: CGPoint, entityRadius: CGFloat? = nil) -> Bool {
         guard let renderer else { return true }
 
         // Check terrain collision
@@ -166,7 +174,7 @@ class PathfindingMovement {
         }
 
         // Check structure collision if callback is set
-        if let check = structureCollisionCheck, check(point, entityRadius) {
+        if let check = structureCollisionCheck, check(point, entityRadius ?? self.entityRadius) {
             return false
         }
 

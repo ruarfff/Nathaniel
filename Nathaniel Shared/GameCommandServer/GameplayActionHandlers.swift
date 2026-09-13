@@ -56,7 +56,7 @@
             context: GameActionContext
         ) -> ActionResult {
             guard let typeStr = ActionParams.parseString("type", from: params) else {
-                return .failure("Missing type parameter (grunt, soldier, boss)")
+                return .failure("Missing type parameter (grunt, soldier, boss, spawner)")
             }
             guard let point = ActionParams.parsePoint(from: params) else {
                 return .failure("Missing x,y parameters")
@@ -78,6 +78,9 @@
             case "boss", "bo":
                 enemyManager.addEnemy(name: "Boss", at: point, target: target)
                 return .success("Spawned Boss at (\(point.x), \(point.y))")
+            case "spawner", "sp":
+                enemyManager.addEnemy(name: "Spawner", at: point, target: target)
+                return .success("Spawned Spawner")
             default:
                 return .failure("Unknown enemy type: \(typeStr). Use: grunt, soldier, or boss")
             }
@@ -133,10 +136,6 @@
             guard let hermes = context.hermes else {
                 return .failure("Hermes not found")
             }
-            // Can't change mode while locked
-            guard hermes.mode != .locked else {
-                return .failure("Cannot change mode while Hermes is locked (towers deployed)")
-            }
 
             switch modeStr.lowercased() {
             case "following", "follow":
@@ -154,9 +153,6 @@
             guard let hermes = context.hermes else {
                 return .failure("Hermes not found")
             }
-            guard hermes.mode != .locked else {
-                return .failure("Cannot toggle mode while Hermes is locked (towers deployed)")
-            }
             hermes.toggleMode()
             let newMode = hermes.mode == .following ? "following" : "independent"
             return .success("Hermes mode toggled to \(newMode)")
@@ -169,7 +165,6 @@
             let modeString = switch hermes.mode {
             case .following: "following"
             case .independent: "independent"
-            case .locked: "locked"
             }
             return .success("Hermes mode: \(modeString)")
         }

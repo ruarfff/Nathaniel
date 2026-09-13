@@ -23,17 +23,17 @@ class MainMenuScene: InputHandlingScene {
 
     class func newMenuScene() -> MainMenuScene {
         let scene = MainMenuScene(size: CGSize(width: 1_366, height: 1_024))
-        scene.scaleMode = .aspectFill
+        scene.scaleMode = .aspectFit
         return scene
     }
 
     override func didMove(to view: SKView) {
-        setupBackground()
-        setupTitle()
-        setupCornerSprites()
-        setupBottomDecoration()
-        setupMenuButtons()
-        setupSaveSlotSelector()
+        self.setupBackground()
+        self.setupTitle()
+        self.setupCornerSprites()
+        self.setupBottomDecoration()
+        self.setupMenuButtons()
+        self.setupSaveSlotSelector()
 
         // Start menu music
         AudioManager.shared.playMusic(.menu)
@@ -68,7 +68,7 @@ class MainMenuScene: InputHandlingScene {
             sprite.position = CGPoint(x: margin, y: size.height - margin)
             sprite.zPosition = 5
             addChild(sprite)
-            addFloatingAnimation(to: sprite)
+            self.addFloatingAnimation(to: sprite)
         }
 
         // Top-right: Nathaniel sprite (first frame)
@@ -84,7 +84,7 @@ class MainMenuScene: InputHandlingScene {
             sprite.position = CGPoint(x: size.width - margin, y: size.height - margin)
             sprite.zPosition = 5
             addChild(sprite)
-            addFloatingAnimation(to: sprite)
+            self.addFloatingAnimation(to: sprite)
         }
 
         // Bottom-left: Grunt enemy sprite (first frame)
@@ -100,7 +100,7 @@ class MainMenuScene: InputHandlingScene {
             sprite.position = CGPoint(x: margin, y: margin + 40)
             sprite.zPosition = 5
             addChild(sprite)
-            addFloatingAnimation(to: sprite)
+            self.addFloatingAnimation(to: sprite)
         }
 
         // Bottom-right: Hermes sprite (first frame from idle sheet)
@@ -116,7 +116,7 @@ class MainMenuScene: InputHandlingScene {
             sprite.position = CGPoint(x: size.width - margin, y: margin + 40)
             sprite.zPosition = 5
             addChild(sprite)
-            addFloatingAnimation(to: sprite)
+            self.addFloatingAnimation(to: sprite)
         }
     }
 
@@ -240,20 +240,20 @@ class MainMenuScene: InputHandlingScene {
         addChild(glowContainer)
 
         // Main title (crisp, on top)
-        titleLabel = SKLabelNode(fontNamed: "Copperplate-Bold")
-        titleLabel.text = "NATHANIEL"
-        titleLabel.fontSize = 80
-        titleLabel.fontColor = titleBlue
-        titleLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.85)
-        titleLabel.horizontalAlignmentMode = .center
-        titleLabel.zPosition = 2
-        addChild(titleLabel)
+        self.titleLabel = SKLabelNode(fontNamed: "Copperplate-Bold")
+        self.titleLabel.text = "NATHANIEL"
+        self.titleLabel.fontSize = 80
+        self.titleLabel.fontColor = titleBlue
+        self.titleLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.85)
+        self.titleLabel.horizontalAlignmentMode = .center
+        self.titleLabel.zPosition = 2
+        addChild(self.titleLabel)
 
         // Subtle pulse animation on main title
         let scaleUp = SKAction.scale(to: 1.02, duration: 2.0)
         let scaleDown = SKAction.scale(to: 1.0, duration: 2.0)
         let pulse = SKAction.sequence([scaleUp, scaleDown])
-        titleLabel.run(SKAction.repeatForever(pulse))
+        self.titleLabel.run(SKAction.repeatForever(pulse))
     }
 
     private func setupMenuButtons() {
@@ -263,38 +263,38 @@ class MainMenuScene: InputHandlingScene {
         // Continue button (only if there's saved campaign progress)
         if GameSettings.shared.hasSavedProgress {
             let continueLevel = GameSettings.shared.continueLevel
-            continueButton = createMenuButton(text: "Continue (Level \(continueLevel))", yPosition: currentY)
-            continueButton?.name = "continueButton"
-            continueButton?.fontColor = SKColor(red: 0.3, green: 0.9, blue: 0.4, alpha: 1.0) // Green highlight
-            addChild(continueButton!)
+            self.continueButton = self.createMenuButton(text: "Continue (Level \(continueLevel))", yPosition: currentY)
+            self.continueButton?.name = "continueButton"
+            self.continueButton?.fontColor = SKColor(red: 0.3, green: 0.9, blue: 0.4, alpha: 1.0) // Green highlight
+            addChild(self.continueButton!)
             currentY -= buttonSpacing
         }
 
         // Load Game button (only if there are mid-level saves)
         if SaveManager.shared.hasSaves {
-            loadGameButton = createMenuButton(text: "Load Game", yPosition: currentY)
-            loadGameButton?.name = "loadGameButton"
-            loadGameButton?.fontColor = SKColor(red: 0.4, green: 0.7, blue: 1.0, alpha: 1.0) // Blue highlight
-            addChild(loadGameButton!)
+            self.loadGameButton = self.createMenuButton(text: "Load Game", yPosition: currentY)
+            self.loadGameButton?.name = "loadGameButton"
+            self.loadGameButton?.fontColor = SKColor(red: 0.4, green: 0.7, blue: 1.0, alpha: 1.0) // Blue highlight
+            addChild(self.loadGameButton!)
             currentY -= buttonSpacing
         }
 
         // Start Game button (now goes to level select or new game)
-        startButton = createMenuButton(text: "Level Select", yPosition: currentY)
-        startButton.name = "startButton"
-        addChild(startButton)
+        self.startButton = self.createMenuButton(text: "Level Select", yPosition: currentY)
+        self.startButton.name = "startButton"
+        addChild(self.startButton)
         currentY -= buttonSpacing
 
         // Options button
-        optionsButton = createMenuButton(text: "Options", yPosition: currentY)
-        optionsButton.name = "optionsButton"
-        addChild(optionsButton)
+        self.optionsButton = self.createMenuButton(text: "Options", yPosition: currentY)
+        self.optionsButton.name = "optionsButton"
+        addChild(self.optionsButton)
         currentY -= buttonSpacing
 
         // Credits button
-        creditsButton = createMenuButton(text: "Credits", yPosition: currentY)
-        creditsButton.name = "creditsButton"
-        addChild(creditsButton)
+        self.creditsButton = self.createMenuButton(text: "Credits", yPosition: currentY)
+        self.creditsButton.name = "creditsButton"
+        addChild(self.creditsButton)
     }
 
     private func setupSaveSlotSelector() {
@@ -303,7 +303,7 @@ class MainMenuScene: InputHandlingScene {
         // Position at center of scene (SaveSlotSelector is centered at origin)
         selector.position = CGPoint(x: size.width / 2, y: size.height / 2)
         addChild(selector)
-        saveSlotSelector = selector
+        self.saveSlotSelector = selector
 
         // Set up callbacks
         selector.onSlotSelected = { [weak self] slotId in
@@ -331,7 +331,7 @@ class MainMenuScene: InputHandlingScene {
 
     /// Handle a tap at the given location (used by GameCommandServer)
     func handleTap(at location: CGPoint) {
-        handleButtonTap(at: location)
+        self.handleButtonTap(at: location)
     }
 
     private func handleButtonTap(at location: CGPoint) {
@@ -348,23 +348,23 @@ class MainMenuScene: InputHandlingScene {
 
             switch nodeName {
             case "continueButton":
-                animateButtonPress(node as? SKLabelNode) {
+                self.animateButtonPress(node as? SKLabelNode) {
                     self.continueGame()
                 }
             case "loadGameButton":
-                animateButtonPress(node as? SKLabelNode) {
+                self.animateButtonPress(node as? SKLabelNode) {
                     self.showLoadGameSelector()
                 }
             case "startButton":
-                animateButtonPress(node as? SKLabelNode) {
+                self.animateButtonPress(node as? SKLabelNode) {
                     self.startGame()
                 }
             case "optionsButton":
-                animateButtonPress(node as? SKLabelNode) {
+                self.animateButtonPress(node as? SKLabelNode) {
                     self.showOptions()
                 }
             case "creditsButton":
-                animateButtonPress(node as? SKLabelNode) {
+                self.animateButtonPress(node as? SKLabelNode) {
                     self.showCredits()
                 }
             default:
@@ -390,7 +390,7 @@ class MainMenuScene: InputHandlingScene {
         let continueLevel = GameSettings.shared.continueLevel
         guard let levelConfig = LevelConfig.level(continueLevel) else {
             // If invalid, just go to level select
-            startGame()
+            self.startGame()
             return
         }
 
@@ -418,7 +418,7 @@ class MainMenuScene: InputHandlingScene {
     }
 
     private func showLoadGameSelector() {
-        saveSlotSelector?.show(mode: .load)
+        self.saveSlotSelector?.show(mode: .load)
     }
 
     private func loadGameFromSlot(_ slotId: Int) {
@@ -439,7 +439,7 @@ class MainMenuScene: InputHandlingScene {
 
 extension MainMenuScene {
     override func handlePointerDown(at location: CGPoint) -> Bool {
-        handleButtonTap(at: location)
+        self.handleButtonTap(at: location)
         return true
     }
 }

@@ -1,3 +1,10 @@
+//
+//  TowerConfig.swift
+//  Nathaniel Shared
+//
+//  Defines available tower types and their costs.
+//
+
 import Foundation
 import SpriteKit
 
@@ -83,42 +90,10 @@ enum TowerConfig {
         #endif
     }
 
-    // MARK: - Build Radius
-
-    /// Maximum distance from Hermes where towers can be placed
-    static var buildRadius: CGFloat { GameBalance.Towers.buildRadius }
-
-    /// Minimum distance from Hermes where towers can be placed (to avoid overlap)
-    static var minBuildDistance: CGFloat { GameBalance.Towers.minBuildDistance }
-
-    // MARK: - Validation
-
-    /// Minimum distance between towers to prevent overlap
-    static var towerSpacing: CGFloat { GameBalance.Towers.towerSpacing }
-
-    // MARK: - Recoup System
-
-    /// Percentage of tower cost returned when Hermes releases towers (0.0 to 1.0)
-    /// Only towers still standing are eligible - towers destroyed by enemies give nothing
-    static var recoupPercentage: Double { GameBalance.Towers.recoupPercentage }
-
     // MARK: - Helper Methods
 
     /// Check if the player can afford a tower type
     static func canAfford(_ type: TowerType, currentResources: Int) -> Bool {
         currentResources >= type.cost
-    }
-
-    /// Check if a position is within valid build range of Hermes
-    static func isWithinBuildRange(towerPosition: CGPoint, hermesPosition: CGPoint) -> Bool {
-        let distance = towerPosition.distance(to: hermesPosition)
-        return distance >= self.minBuildDistance && distance <= self.buildRadius
-    }
-
-    /// Calculate recoup amount for a tower cost
-    /// - Parameter cost: Original build cost of the tower
-    /// - Returns: Amount of resources to return (rounded down)
-    static func calculateRecoup(for cost: Int) -> Int {
-        Int(Double(cost) * self.recoupPercentage)
     }
 }

@@ -94,6 +94,35 @@ final class PathFinderTests: XCTestCase {
 
     // MARK: - Obstacle Avoidance
 
+    func testMovementRoutesAroundTowerWithCharacterClearance() {
+        let renderer = TMXRenderer(map: TMXMap(width: 20, height: 12, tileWidth: 32, tileHeight: 32))
+        let movement = MovementComponent(speed: 200)
+        movement.configurePathfinding(with: renderer)
+        let towerPosition = CGPoint(x: 320, y: 200)
+        let characterRadius: CGFloat = 19.2
+        let towerRadius: CGFloat = 24
+        movement.pathfinding?.structureCollisionCheck = { position, radius in
+            position.distance(to: towerPosition) < towerRadius + radius
+        }
+
+        // The direct row is clear for a point, but too close to the tower for Nathaniel.
+        var position = CGPoint(x: 272, y: 176)
+        let destination = CGPoint(x: 400, y: 176)
+        movement.moveTo(destination, from: position)
+
+        for _ in 0 ..< 600 {
+            position = movement.update(
+                currentPosition: position,
+                deltaTime: 1.0 / 60,
+                collisionRadius: characterRadius
+            )
+            XCTAssertGreaterThanOrEqual(position.distance(to: towerPosition), towerRadius + characterRadius)
+        }
+
+        XCTAssertLessThanOrEqual(position.distance(to: destination), 16)
+        XCTAssertFalse(movement.isMoving)
+    }
+
     func testPathFinderAvoidsObstacles() {
         // Given: A 5x5 grid with a wall blocking the direct path
         //   0 1 2 3 4

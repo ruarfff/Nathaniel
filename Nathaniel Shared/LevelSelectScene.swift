@@ -19,15 +19,15 @@ class LevelSelectScene: InputHandlingScene {
 
     class func newLevelSelectScene() -> LevelSelectScene {
         let scene = LevelSelectScene(size: CGSize(width: 1_366, height: 1_024))
-        scene.scaleMode = .aspectFill
+        scene.scaleMode = .aspectFit
         return scene
     }
 
     override func didMove(to view: SKView) {
-        setupBackground()
-        setupTitle()
-        setupLevelButtons()
-        setupBackButton()
+        self.setupBackground()
+        self.setupTitle()
+        self.setupLevelButtons()
+        self.setupBackButton()
 
         #if DEBUG
             // Set this scene as the command server delegate
@@ -42,13 +42,13 @@ class LevelSelectScene: InputHandlingScene {
     }
 
     private func setupTitle() {
-        titleLabel = SKLabelNode(fontNamed: "Copperplate-Bold")
-        titleLabel.text = "SELECT LEVEL"
-        titleLabel.fontSize = 48
-        titleLabel.fontColor = SKColor(red: 0.9, green: 0.8, blue: 0.5, alpha: 1.0)
-        titleLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.85)
-        titleLabel.horizontalAlignmentMode = .center
-        addChild(titleLabel)
+        self.titleLabel = SKLabelNode(fontNamed: "Copperplate-Bold")
+        self.titleLabel.text = "SELECT LEVEL"
+        self.titleLabel.fontSize = 48
+        self.titleLabel.fontColor = SKColor(red: 0.9, green: 0.8, blue: 0.5, alpha: 1.0)
+        self.titleLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.85)
+        self.titleLabel.horizontalAlignmentMode = .center
+        addChild(self.titleLabel)
     }
 
     private func setupLevelButtons() {
@@ -73,14 +73,14 @@ class LevelSelectScene: InputHandlingScene {
 
         // Create level buttons
         for (index, config) in campaignLevels.enumerated() {
-            let button = createLevelButton(
+            let button = self.createLevelButton(
                 level: config.levelNumber,
                 x: startX + CGFloat(index) * (buttonWidth + padding),
                 y: size.height * 0.55
             )
             button.name = "level_\(config.levelNumber)"
             addChild(button)
-            levelButtons.append(button)
+            self.levelButtons.append(button)
         }
 
         // Survival mode section
@@ -93,10 +93,10 @@ class LevelSelectScene: InputHandlingScene {
         addChild(survivalLabel)
 
         // Survival button
-        survivalButton = createSurvivalButton()
-        survivalButton.position = CGPoint(x: size.width / 2, y: size.height * 0.25)
-        survivalButton.name = "level_0"
-        addChild(survivalButton)
+        self.survivalButton = self.createSurvivalButton()
+        self.survivalButton.position = CGPoint(x: size.width / 2, y: size.height * 0.25)
+        self.survivalButton.name = "level_0"
+        addChild(self.survivalButton)
     }
 
     private func createLevelButton(level: Int, x: CGFloat, y: CGFloat) -> SKLabelNode {
@@ -185,22 +185,22 @@ class LevelSelectScene: InputHandlingScene {
     }
 
     private func setupBackButton() {
-        backButton = SKLabelNode(fontNamed: "Copperplate-Bold")
-        backButton.text = "Back"
-        backButton.fontSize = 32
-        backButton.fontColor = .white
+        self.backButton = SKLabelNode(fontNamed: "Copperplate-Bold")
+        self.backButton.text = "Back"
+        self.backButton.fontSize = 32
+        self.backButton.fontColor = .white
         // Position at bottom center to stay within visible area on all aspect ratios
-        backButton.position = CGPoint(x: size.width / 2, y: size.height * 0.10)
-        backButton.horizontalAlignmentMode = .center
-        backButton.name = "backButton"
-        addChild(backButton)
+        self.backButton.position = CGPoint(x: size.width / 2, y: size.height * 0.10)
+        self.backButton.horizontalAlignmentMode = .center
+        self.backButton.name = "backButton"
+        addChild(self.backButton)
     }
 
     // MARK: - Button Actions
 
     /// Handle a tap at the given location (used by GameCommandServer)
     func handleTap(at location: CGPoint) {
-        handleButtonTap(at: location)
+        self.handleButtonTap(at: location)
     }
 
     private func handleButtonTap(at location: CGPoint) {
@@ -210,7 +210,7 @@ class LevelSelectScene: InputHandlingScene {
             guard let nodeName = node.name else { continue }
 
             if nodeName == "backButton" {
-                animateButtonPress(node as? SKLabelNode) {
+                self.animateButtonPress(node as? SKLabelNode) {
                     self.goBack()
                 }
                 return
@@ -218,7 +218,7 @@ class LevelSelectScene: InputHandlingScene {
 
             if nodeName.hasPrefix("level_") {
                 if let levelNum = Int(nodeName.dropFirst(6)) {
-                    animateButtonPress(findLevelButton(nodeName)) {
+                    self.animateButtonPress(self.findLevelButton(nodeName)) {
                         self.startLevel(levelNum)
                     }
                 }
@@ -229,7 +229,7 @@ class LevelSelectScene: InputHandlingScene {
             if let parent = node.parent as? SKLabelNode, let parentName = parent.name {
                 if parentName.hasPrefix("level_") {
                     if let levelNum = Int(parentName.dropFirst(6)) {
-                        animateButtonPress(parent) {
+                        self.animateButtonPress(parent) {
                             self.startLevel(levelNum)
                         }
                     }
@@ -241,9 +241,9 @@ class LevelSelectScene: InputHandlingScene {
 
     private func findLevelButton(_ name: String) -> SKLabelNode? {
         if name == "level_0" {
-            return survivalButton
+            return self.survivalButton
         }
-        return levelButtons.first { $0.name == name }
+        return self.levelButtons.first { $0.name == name }
     }
 
     private func animateButtonPress(_ button: SKLabelNode?, completion: @escaping () -> Void) {
@@ -280,7 +280,7 @@ class LevelSelectScene: InputHandlingScene {
 
 extension LevelSelectScene {
     override func handlePointerDown(at location: CGPoint) -> Bool {
-        handleButtonTap(at: location)
+        self.handleButtonTap(at: location)
         return true
     }
 }

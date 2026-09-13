@@ -5,16 +5,24 @@ class Nathaniel: Character {
     // MARK: - Constants
 
     /// Starting/maximum health points
-    static var defaultMaxHP: Int { GameBalance.Nathaniel.maxHP }
+    static var defaultMaxHP: Int {
+        GameBalance.Nathaniel.maxHP
+    }
 
     /// Movement speed in points per second
-    static var defaultSpeed: CGFloat { GameBalance.Nathaniel.speed }
+    static var defaultSpeed: CGFloat {
+        GameBalance.Nathaniel.speed
+    }
 
     /// Weapon range in points (slightly less than vision range so players see enemies before attacking)
-    static var weaponRange: CGFloat { GameBalance.Nathaniel.weaponRange }
+    static var weaponRange: CGFloat {
+        GameBalance.Nathaniel.weaponRange
+    }
 
     /// Visible range (for targeting) in points - covers most of the visible screen from camera center
-    static var visibleRange: CGFloat { GameBalance.Nathaniel.visionRange }
+    static var visibleRange: CGFloat {
+        GameBalance.Nathaniel.visionRange
+    }
 
     // MARK: - Properties
 
@@ -88,6 +96,7 @@ class Nathaniel: Character {
 
         // Load the sprite sheet
         loadSpriteSheet(named: "nathanielspritesheet")
+        sprite.size = CGSize(width: 48, height: 72)
 
         print("Nathaniel: Sprite size after loading: \(sprite.size)")
         print("Nathaniel: Frame textures count: \(frameTextures.count)")
@@ -200,7 +209,7 @@ class Nathaniel: Character {
     func respawn(at position: CGPoint) {
         self.position = position
         self.currentHP = maxHP
-        self.destination = nil
+        self.stop()
         self.facingDirection = .south
         self.animationState = .idle
         self.isActive = true

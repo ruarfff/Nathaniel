@@ -14,29 +14,13 @@
         // MARK: - State Queries
 
         public func getCurrentGameState() -> GameCommandServer.GameState {
-            // Determine game status and pause state
-            let status: String
-            let isPaused: Bool
             let levelInfo = self.findLevelManagerPublic()
-
-            if levelInfo?.isPaused == true {
-                status = "paused"
-                isPaused = true
-            } else if let overlay = children.first(where: { $0 is GameOverlay }) as? GameOverlay {
-                isPaused = false
-                switch overlay.state {
-                case .hidden:
-                    status = "playing"
-                case .victory:
-                    status = "victory"
-                case .gameOver:
-                    status = "gameOver"
-                case .lifeLost:
-                    status = "lifeLost"
-                }
-            } else {
-                status = "playing"
-                isPaused = false
+            let isPaused = levelInfo?.state == .paused
+            let status = switch levelInfo?.state {
+            case .paused: "paused"
+            case .victory: "victory"
+            case .gameOver: "gameOver"
+            default: "playing"
             }
 
             // Get player positions
@@ -84,6 +68,7 @@
                     properties: [
                         "health": "\(nathaniel.currentHP)/\(nathaniel.maxHP)",
                         "isAlive": "\(nathaniel.isAlive)",
+                        "hasCorpse": "\(nathaniel.hasCorpse)",
                     ]
                 ))
             }
@@ -101,7 +86,6 @@
                 let modeString = switch hermes.mode {
                 case .following: "following"
                 case .independent: "independent"
-                case .locked: "locked"
                 }
 
                 nodes.append(GameCommandServer.NodeInfo(
@@ -194,19 +178,48 @@
 
         // MARK: - Public Accessors for Action Handlers
 
-        /// These accessors use internal properties exposed by GameScene in DEBUG builds,
-        /// avoiding slow and fragile Mirror reflection.
+        // These accessors use internal properties exposed by GameScene in DEBUG builds,
+        // avoiding slow and fragile Mirror reflection.
 
-        func findNathanielPublic() -> Nathaniel? { internalNathaniel }
-        func findHermesPublic() -> Hermes? { internalHermes }
-        func findEnemyManagerPublic() -> EnemyManager? { internalEnemyManager }
-        func findLevelManagerPublic() -> LevelManager? { internalLevelManager }
-        func findHUDPublic() -> HUD? { internalHUD }
-        func findPauseMenuPublic() -> PauseMenu? { internalPauseMenu }
-        func findSaveSlotSelectorPublic() -> SaveSlotSelector? { internalSaveSlotSelector }
-        func findSettingsMenuPublic() -> SettingsMenu? { internalSettingsMenu }
-        func findStructureManagerPublic() -> StructureManager? { internalStructureManager }
-        func findCameraNodePublic() -> SKCameraNode? { internalCameraNode }
+        func findNathanielPublic() -> Nathaniel? {
+            internalNathaniel
+        }
+
+        func findHermesPublic() -> Hermes? {
+            internalHermes
+        }
+
+        func findEnemyManagerPublic() -> EnemyManager? {
+            internalEnemyManager
+        }
+
+        func findLevelManagerPublic() -> LevelManager? {
+            internalLevelManager
+        }
+
+        func findHUDPublic() -> HUD? {
+            internalHUD
+        }
+
+        func findPauseMenuPublic() -> PauseMenu? {
+            internalPauseMenu
+        }
+
+        func findSaveSlotSelectorPublic() -> SaveSlotSelector? {
+            internalSaveSlotSelector
+        }
+
+        func findSettingsMenuPublic() -> SettingsMenu? {
+            internalSettingsMenu
+        }
+
+        func findStructureManagerPublic() -> StructureManager? {
+            internalStructureManager
+        }
+
+        func findCameraNodePublic() -> SKCameraNode? {
+            internalCameraNode
+        }
     }
 
 #endif

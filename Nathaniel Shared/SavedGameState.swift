@@ -5,18 +5,17 @@
 //  Codable structures for game state serialization (save/load system).
 //
 
-import Foundation
 import CoreGraphics
+import Foundation
 
 // MARK: - Saved Game State
 
 /// Top-level structure representing a complete saved game
 struct SavedGameState: Codable {
-
     // MARK: - Metadata
 
     /// Version number for save format compatibility
-    let saveVersion: Int = 1
+    let saveVersion: Int
 
     /// Timestamp when the game was saved
     let savedAt: Date
@@ -57,6 +56,9 @@ struct SavedGameState: Codable {
     /// All towers currently deployed
     let towers: [SavedTowerState]
 
+    /// Loose and carried corpses; absent in saves from before corpse delivery.
+    let battlefieldResources: [SavedResourceState]?
+
     // MARK: - Wave State (for wave-based levels)
 
     /// Current wave number (nil for map-based levels)
@@ -80,8 +82,10 @@ struct SavedGameState: Codable {
         enemies: [SavedEnemyState],
         towers: [SavedTowerState],
         currentWave: Int? = nil,
-        timeUntilNextWave: TimeInterval? = nil
+        timeUntilNextWave: TimeInterval? = nil,
+        battlefieldResources: [SavedResourceState]? = nil
     ) {
+        self.saveVersion = 2
         self.savedAt = savedAt
         self.displayName = displayName
         self.levelNumber = levelNumber
@@ -95,6 +99,7 @@ struct SavedGameState: Codable {
         self.towers = towers
         self.currentWave = currentWave
         self.timeUntilNextWave = timeUntilNextWave
+        self.battlefieldResources = battlefieldResources
     }
 }
 
@@ -111,7 +116,7 @@ struct SavedPoint: Codable, Equatable {
     }
 
     var cgPoint: CGPoint {
-        CGPoint(x: x, y: y)
+        CGPoint(x: self.x, y: self.y)
     }
 }
 
@@ -183,15 +188,14 @@ enum SavedHermesMode: String, Codable {
         switch mode {
         case .following: self = .following
         case .independent: self = .independent
-        case .locked: self = .locked
         }
     }
 
     var hermesMode: HermesMode {
         switch self {
-        case .following: return .following
-        case .independent: return .independent
-        case .locked: return .locked
+        case .following: .following
+        case .independent: .independent
+        case .locked: .independent
         }
     }
 }
@@ -205,11 +209,6 @@ struct SavedHermesState: Codable {
 
     /// Current operational mode
     let mode: SavedHermesMode
-
-    init(characterState: SavedCharacterState, mode: SavedHermesMode) {
-        self.characterState = characterState
-        self.mode = mode
-    }
 }
 
 // MARK: - Enemy Type (Codable)
@@ -219,16 +218,19 @@ enum SavedEnemyType: String, Codable {
     case grunt
     case soldier
     case boss
+    case spawner
 
     /// Create the appropriate enemy instance
     func createEnemy() -> Enemy {
         switch self {
         case .grunt:
-            return Grunt()
+            Grunt()
         case .soldier:
-            return Soldier()
+            Soldier()
         case .boss:
-            return Boss()
+            Boss()
+        case .spawner:
+            Spawner()
         }
     }
 }
@@ -255,6 +257,10 @@ struct SavedEnemyState: Codable {
     /// Current movement destination (nil if not moving)
     let destination: SavedPoint?
 
+    /// Spawner production state, optional for older saves.
+    let timeUntilNextSpawn: TimeInterval?
+    let initialSpawnsRemaining: Int?
+
     /// Index of targeted player character (0 = Nathaniel, 1 = Hermes, nil = no target)
     let targetIndex: Int?
 
@@ -265,7 +271,9 @@ struct SavedEnemyState: Codable {
         maxHP: Int,
         facingDirection: SavedFacingDirection,
         destination: SavedPoint? = nil,
-        targetIndex: Int? = nil
+        targetIndex: Int? = nil,
+        timeUntilNextSpawn: TimeInterval? = nil,
+        initialSpawnsRemaining: Int? = nil
     ) {
         self.type = type
         self.position = position
@@ -274,6 +282,8 @@ struct SavedEnemyState: Codable {
         self.facingDirection = facingDirection
         self.destination = destination
         self.targetIndex = targetIndex
+        self.timeUntilNextSpawn = timeUntilNextSpawn
+        self.initialSpawnsRemaining = initialSpawnsRemaining
     }
 }
 
@@ -295,9 +305,9 @@ enum SavedTowerType: String, Codable {
 
     var towerType: TowerType {
         switch self {
-        case .gunTower: return .gunTower
-        case .laserTower: return .laserTower
-        case .healTower: return .healTower
+        case .gunTower: .gunTower
+        case .laserTower: .laserTower
+        case .healTower: .healTower
         }
     }
 }
@@ -388,4 +398,13 @@ struct SaveSlot: Codable, Identifiable {
         self.elapsedTime = nil
         self.score = nil
     }
+}
+
+// MARK: - Saved Resources
+
+struct SavedResourceState: Codable {
+    let position: SavedPoint
+    let amount: Int
+    let timeToExpiration: TimeInterval
+    let isCarried: Bool
 }

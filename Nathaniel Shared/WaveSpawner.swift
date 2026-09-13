@@ -12,7 +12,6 @@ import SpriteKit
 
 /// Handles wave-based enemy spawning for survival-style levels
 class WaveSpawner {
-
     // MARK: - Properties
 
     /// Reference to enemy manager for spawning
@@ -37,13 +36,15 @@ class WaveSpawner {
     /// Whether the spawner is active
     var isActive: Bool = true
 
-    /// Difficulty level (affects spawn rates and enemy types)
-    enum Difficulty {
-        case normal     // Level 4 / Standard survival
-        case hard       // Final level
+    /// Completed minutes, retained for the saved wave display.
+    var currentWave: Int {
+        Int(self.elapsedTime / 60)
     }
 
-    var difficulty: Difficulty = .normal
+    /// Seconds remaining before the next enemy spawns.
+    var timeUntilNextWave: TimeInterval {
+        max(0, self.spawnInterval - self.timeSinceLastSpawn)
+    }
 
     /// Random number generator
     private var random = SystemRandomNumberGenerator()
@@ -54,122 +55,93 @@ class WaveSpawner {
 
     /// Reset for new level
     func reset() {
-        timeSinceLastSpawn = 0
-        spawnInterval = 5.0
-        elapsedTime = 0
-        maxEnemyTypeIndex = 2
-        isActive = true
+        self.timeSinceLastSpawn = 0
+        self.spawnInterval = 5.0
+        self.elapsedTime = 0
+        self.maxEnemyTypeIndex = 2
+        self.isActive = true
     }
 
     /// Restore state from saved game
-    func restore(wave: Int, timeUntilNext: TimeInterval) {
-        // Wave number roughly corresponds to time thresholds
-        // Use wave to estimate elapsed time (each "wave" ~= 1 minute)
-        elapsedTime = TimeInterval(wave) * 60.0
-        timeSinceLastSpawn = spawnInterval - timeUntilNext
-
-        // Update difficulty immediately based on restored time
-        let minutes = elapsedTime / 60.0
-        updateDifficulty(minutes: minutes)
+    func restore(elapsedTime: TimeInterval, timeUntilNext: TimeInterval) {
+        self.elapsedTime = max(0, elapsedTime)
+        self.updateDifficulty()
+        self.timeSinceLastSpawn = self.spawnInterval - min(self.spawnInterval, max(0, timeUntilNext))
+        self.isActive = true
     }
 
     // MARK: - Update
 
     /// Update the spawner each frame
     func update(deltaTime: TimeInterval) {
-        guard isActive, let enemyManager = enemyManager else { return }
+        guard self.isActive, let enemyManager else { return }
 
-        elapsedTime += deltaTime
-        timeSinceLastSpawn += deltaTime
+        self.elapsedTime += deltaTime
+        self.timeSinceLastSpawn += deltaTime
 
-        // Update difficulty scaling based on elapsed time (in minutes)
-        let minutes = elapsedTime / 60.0
-        updateDifficulty(minutes: minutes)
+        self.updateDifficulty()
 
         // Spawn enemy if interval has passed
-        if timeSinceLastSpawn >= spawnInterval {
-            spawnEnemy(using: enemyManager)
-            timeSinceLastSpawn = 0
+        if self.timeSinceLastSpawn >= self.spawnInterval {
+            self.spawnEnemy(using: enemyManager)
+            self.timeSinceLastSpawn = 0
         }
     }
 
     /// Update difficulty scaling based on elapsed time
-    private func updateDifficulty(minutes: TimeInterval) {
-        switch difficulty {
-        case .normal:
-            // Standard progression (like legacy LevelFour/FinalLevel)
-            if minutes > 5 {
-                maxEnemyTypeIndex = 7
-            } else if minutes > 4 {
-                maxEnemyTypeIndex = 6
-                spawnInterval = max(1.0, spawnInterval - 0.1)
-            } else if minutes > 3 {
-                maxEnemyTypeIndex = 5
-                spawnInterval = max(2.0, spawnInterval - 0.1)
-            } else if minutes > 2 {
-                maxEnemyTypeIndex = 4
-                spawnInterval = max(3.0, spawnInterval - 0.1)
-            } else if minutes > 1 {
-                maxEnemyTypeIndex = 3
-                spawnInterval = max(4.0, spawnInterval - 0.1)
-            }
-
-        case .hard:
-            // Harder progression for final level
-            if minutes > 3 {
-                maxEnemyTypeIndex = 7
-                spawnInterval = max(1.0, spawnInterval - 0.1)
-            } else if minutes > 2 {
-                maxEnemyTypeIndex = 6
-                spawnInterval = max(1.5, spawnInterval - 0.1)
-            } else if minutes > 1 {
-                maxEnemyTypeIndex = 5
-                spawnInterval = max(2.0, spawnInterval - 0.1)
-            } else if minutes > 0.5 {
-                maxEnemyTypeIndex = 4
-                spawnInterval = max(3.0, spawnInterval - 0.1)
-            }
+    private func updateDifficulty() {
+        // Use fixed level-time thresholds so frame rate cannot change the schedule.
+        if self.elapsedTime > 300 {
+            self.maxEnemyTypeIndex = 7
+            self.spawnInterval = 1
+        } else if self.elapsedTime > 240 {
+            self.maxEnemyTypeIndex = 6
+            self.spawnInterval = 1
+        } else if self.elapsedTime > 180 {
+            self.maxEnemyTypeIndex = 5
+            self.spawnInterval = 2
+        } else if self.elapsedTime > 120 {
+            self.maxEnemyTypeIndex = 4
+            self.spawnInterval = 3
+        } else if self.elapsedTime > 60 {
+            self.maxEnemyTypeIndex = 3
+            self.spawnInterval = 4
+        } else {
+            self.maxEnemyTypeIndex = 2
+            self.spawnInterval = 5
         }
     }
 
     /// Spawn a random enemy at a random edge position
     private func spawnEnemy(using enemyManager: EnemyManager) {
-        guard mapWidth > 0 && mapHeight > 0 else { return }
+        guard self.mapWidth > 0 && self.mapHeight > 0 else { return }
 
         // Pick a random enemy type
-        let typeIndex = Int.random(in: 0..<maxEnemyTypeIndex, using: &random)
-        let enemyName: String
+        let typeIndex = Int.random(in: 0 ..< self.maxEnemyTypeIndex, using: &self.random)
+        let enemyName
 
-        // Enemy type distribution based on index (matches legacy logic)
-        switch typeIndex {
+            // Enemy type distribution based on index (matches legacy logic)
+            = switch typeIndex
+        {
         case 0:
-            enemyName = "Grunt"
+            "Grunt"
         case 1:
-            enemyName = "Soldier"
+            "Soldier"
         case 2:
-            enemyName = "Spawner"  // Will be skipped if not implemented
+            "Spawner"
         case 3:
-            enemyName = "Boss"
+            "Boss"
         default:
-            enemyName = "Soldier"  // Default to soldiers for higher indices
+            "Soldier" // Default to soldiers for higher indices
         }
 
-        // Spawn position at bottom edge of map (like legacy code)
-        let spawnX = CGFloat.random(in: 50...(mapWidth - 50), using: &random)
-        let spawnY: CGFloat
+        let spawnX = typeIndex == 2 ? self.mapWidth / 4 : CGFloat.random(in: 0 ..< self.mapWidth, using: &self.random)
+        // XNA uses top-left coordinates. These are its bottom-edge offsets after conversion.
+        let spawnY: CGFloat = typeIndex == 2 ? 200 : (typeIndex == 0 ? 10 : 50)
+        let position = CGPoint(x: spawnX, y: min(spawnY, mapHeight))
 
-        // Vary spawn position slightly
-        if typeIndex == 2 {
-            // Spawners spawn further from edge
-            spawnY = mapHeight - 200
-        } else {
-            spawnY = mapHeight - 50
-        }
-
-        let position = CGPoint(x: spawnX, y: spawnY)
-
-        // Find a target for the enemy
-        let target = enemyManager.findNearestPlayer(to: position)
+        // The original waves send Grunts, early Soldiers, and Spawners toward Nathaniel.
+        let target = typeIndex <= 2 ? enemyManager.playerCharacters.first { $0 is Nathaniel } : nil
 
         // Spawn the enemy
         enemyManager.addEnemy(name: enemyName, at: position, target: target)

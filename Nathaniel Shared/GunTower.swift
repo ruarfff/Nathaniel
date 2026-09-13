@@ -1,3 +1,10 @@
+//
+//  GunTower.swift
+//  Nathaniel Shared
+//
+//  Fires the original gun from a stationary defensive tower.
+//
+
 import SpriteKit
 
 // MARK: - Gun Tower
@@ -37,9 +44,6 @@ class GunTower: DefensiveStructure {
             maxHP: GameBalance.Towers.GunTower.maxHP,
             attackRange: GameBalance.Towers.GunTower.attackRange
         )
-
-        // Track build cost for recoup calculation
-        buildCost = GunTower.cost
 
         // Load tower texture
         loadTexture(named: "guntower", size: GameBalance.Towers.Visual.textureSize)

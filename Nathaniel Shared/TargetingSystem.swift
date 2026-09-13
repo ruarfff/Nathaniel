@@ -124,7 +124,7 @@ enum ThreatAssessmentConfig {
 // MARK: - Threat Assessment
 
 /// Utility for assessing enemy threats from the friendly perspective
-/// This is the inverse of the enemy ThreatTable - evaluates which enemies
+/// Evaluates which enemies
 /// friendlies should prioritize attacking.
 enum ThreatAssessment {
     /// Assess all enemies and return sorted by threat score (highest first)

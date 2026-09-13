@@ -233,7 +233,7 @@
                     [
                         "name": "spawnEnemy",
                         "description": "Spawn enemy for testing",
-                        "params": "type (grunt|soldier|boss), x, y",
+                        "params": "type (grunt|soldier|boss|spawner), x, y",
                     ],
                     ["name": "killAllEnemies", "description": "Kill all enemies"],
                     ["name": "healPlayer", "description": "Heal all players to full"],
@@ -249,10 +249,8 @@
                 ],
                 "building": [
                     ["name": "toggleBuildMenu", "description": "Toggle build menu"],
-                    ["name": "buildMenuIsVisible", "description": "Check if build menu open"],
                     ["name": "buildTower", "description": "Build tower", "params": "type (gun|laser|heal), x, y"],
-                    ["name": "sellTower", "description": "Sell tower", "params": "index"],
-                    ["name": "getTowerCount", "description": "Get number of towers"],
+                    ["name": "getTowerInfo", "description": "Get tower count and resource balance"],
                 ],
             ]
         }

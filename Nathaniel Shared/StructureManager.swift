@@ -1,3 +1,10 @@
+//
+//  StructureManager.swift
+//  Nathaniel Shared
+//
+//  Manages defensive towers and their battlefield lifetime.
+//
+
 import SpriteKit
 
 // MARK: - Structure Manager Delegate
@@ -8,11 +15,9 @@ protocol StructureManagerDelegate: AnyObject {
     /// - Parameters:
     ///   - manager: The structure manager
     ///   - remainingCount: Number of Hermes towers still standing
-    ///   - potentialRecoup: New potential recoup amount
     func structureManager(
         _ manager: StructureManager,
-        hermesTowerDestroyed remainingCount: Int,
-        potentialRecoup: Int
+        hermesTowerDestroyed remainingCount: Int
     )
 }
 
@@ -44,7 +49,7 @@ class StructureManager {
     var structureZPosition: CGFloat = 100
 
     /// Scale for structure sprites
-    var structureScale: CGFloat = 2.0
+    var structureScale: CGFloat = 1.0
 
     /// Whether Hermes has any deployed towers
     var hasHermesTowers: Bool {
@@ -54,14 +59,6 @@ class StructureManager {
     /// Count of Hermes's deployed towers
     var hermesTowerCount: Int {
         self.hermesTowers.count
-    }
-
-    /// Calculate potential recoup if all surviving towers are released now
-    /// Used by HUD to show preview on release button
-    var potentialRecoupAmount: Int {
-        self.hermesTowers.reduce(0) { total, tower in
-            total + TowerConfig.calculateRecoup(for: tower.buildCost)
-        }
     }
 
     // MARK: - Initialization
@@ -80,12 +77,12 @@ class StructureManager {
         // Set up gun tower callbacks
         tower.onFire = { [weak self] projectile in
             guard let scene = self?.scene else { return }
-            projectile.sprite.setScale(2.0)
+            projectile.sprite.setScale(1.0)
             scene.addChild(projectile.sprite)
         }
 
         tower.onCheckCollision = { [weak self] projectile in
-            return self?.enemyManager?.checkProjectileCollision(projectile)
+            self?.enemyManager?.checkProjectileCollision(projectile)
         }
 
         // Wire up targeting component callbacks
@@ -153,96 +150,6 @@ class StructureManager {
     func markAsHermesOwned(_ tower: DefensiveStructure) {
         guard !self.hermesTowers.contains(where: { $0 === tower }) else { return }
         self.hermesTowers.append(tower)
-    }
-
-    /// Destroy all towers owned by Hermes and return 20% of their costs
-    /// Called when releasing Hermes to move again
-    /// - Parameters:
-    ///   - camera: Camera for screen shake effects (optional)
-    ///   - completion: Called when all towers are destroyed
-    /// - Returns: Total resources recovered from surviving towers
-    @discardableResult
-    func destroyAllHermesTowers(camera: SKCameraNode? = nil, completion: (() -> Void)? = nil) -> Int {
-        print("StructureManager: Destroying \(self.hermesTowerCount) Hermes towers with effects")
-
-        guard let scene, !hermesTowers.isEmpty else {
-            self.hermesTowers.removeAll()
-            completion?()
-            return 0
-        }
-
-        // Calculate recoup BEFORE destroying - only surviving towers count
-        let recoupAmount = self.hermesTowers.reduce(0) { total, tower in
-            total + TowerConfig.calculateRecoup(for: tower.buildCost)
-        }
-
-        // Add recoup to resources
-        if recoupAmount > 0 {
-            ResourceManager.shared.addResources(recoupAmount)
-            print("StructureManager: Recouped \(recoupAmount) resources from \(self.hermesTowerCount) towers")
-
-            // Show visual feedback at first tower's position
-            if let firstTower = hermesTowers.first {
-                self.showRecoupEffect(amount: recoupAmount, at: firstTower.position, in: scene)
-            }
-        }
-
-        // Capture towers to destroy
-        let towersToDestroy = self.hermesTowers
-
-        // Clear the array immediately to prevent issues
-        self.hermesTowers.removeAll()
-
-        // Use staggered destruction for dramatic effect
-        StaggeredDestruction.destroy(
-            towers: towersToDestroy,
-            in: scene,
-            camera: camera,
-            delayBetween: 0.12,
-            completion: completion
-        )
-
-        return recoupAmount
-    }
-
-    /// Show floating text effect for resource recoup
-    private func showRecoupEffect(amount: Int, at position: CGPoint, in scene: SKScene) {
-        let label = SKLabelNode(text: "+\(amount)")
-        label.fontName = "AvenirNext-Bold"
-        label.fontSize = 24
-        label.fontColor = SKColor(red: 0.5, green: 1.0, blue: 0.5, alpha: 1.0) // Light green
-        label.position = CGPoint(x: position.x, y: position.y + 40)
-        label.zPosition = 500
-        scene.addChild(label)
-
-        // Float up and fade out
-        let moveUp = SKAction.moveBy(x: 0, y: 60, duration: 1.2)
-        moveUp.timingMode = .easeOut
-        let fadeIn = SKAction.fadeIn(withDuration: 0.1)
-        let wait = SKAction.wait(forDuration: 0.6)
-        let fadeOut = SKAction.fadeOut(withDuration: 0.5)
-        let remove = SKAction.removeFromParent()
-
-        let sequence = SKAction.sequence([
-            fadeIn,
-            SKAction.group([moveUp, SKAction.sequence([wait, fadeOut])]),
-            remove,
-        ])
-        label.run(sequence)
-
-        // Play collect sound
-        AudioManager.shared.playSoundEffect(.collect, on: scene)
-    }
-
-    /// Destroy all towers immediately without effects (for cleanup/reset)
-    func destroyAllHermesTowersImmediate() {
-        print("StructureManager: Immediately destroying \(self.hermesTowerCount) Hermes towers")
-
-        for tower in self.hermesTowers {
-            tower.onDeath()
-        }
-
-        self.hermesTowers.removeAll()
     }
 
     /// Common setup for all structures
@@ -337,8 +244,7 @@ class StructureManager {
             // Notify delegate of tower destruction (for HUD updates)
             self.delegate?.structureManager(
                 self,
-                hermesTowerDestroyed: self.hermesTowerCount,
-                potentialRecoup: self.potentialRecoupAmount
+                hermesTowerDestroyed: self.hermesTowerCount
             )
         }
     }
