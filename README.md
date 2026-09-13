@@ -17,12 +17,16 @@ make profile              # Simulation workload
 make profile-rendered     # Rendered workload and screenshot
 make export-macos         # Local release app
 make export-ios           # Unsigned Xcode project
+make export-web           # Browser release in exports/web/
+make serve-web            # Preview at http://127.0.0.1:8060/
 make help                 # Commands and options
 ```
 
 Open `project.godot` directly in the editor if preferred. Native scenes in `levels/` are authoritative: edit a level and press **F6** to play it. **F5** opens the menu. `make import` refreshes Godot's resource imports.
 
 Exports go to `exports/macos/Nathaniel.app` and `exports/ios/Nathaniel.xcodeproj`. [Authoring and exports](docs/authoring.md) covers scene editing, templates, and iOS setup. [Verification](docs/verification.md) records the tested platforms and remaining device checks.
+
+The [browser version](docs/web.md) uses the same game and runs from a static web server. Export it, run `make serve-web`, then open <http://127.0.0.1:8060/>. Browser saves are separate from native saves.
 
 ## Play
 

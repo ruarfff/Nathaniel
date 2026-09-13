@@ -428,7 +428,7 @@ func _load(slot: int) -> void:
 
 
 func _start_debug(port: int) -> void:
-	if _debug != null or not OS.is_debug_build():
+	if _debug != null or not OS.is_debug_build() or OS.has_feature("web"):
 		return
 	var bridge_script := load("res://scripts/presentation/debug_bridge.gd") as GDScript
 	_debug_bridge = bridge_script.new(self)

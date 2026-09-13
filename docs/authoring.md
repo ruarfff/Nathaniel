@@ -121,7 +121,7 @@ Current content checks validate the native scenes and resources.
 
 ## Export and platform checks
 
-`export_presets.cfg` defines macOS and iOS exports. Keep the bundle identifier
+`export_presets.cfg` defines macOS, iOS, and Web exports. Keep the bundle identifier
 `dev.ruarfff.nathaniel.godot` and custom user directory `NathanielGodot` stable so
 existing saves remain accessible. The visible app is named Nathaniel. The macOS
 preset uses local ad-hoc signing; the iOS preset creates an Xcode project.
@@ -136,6 +136,7 @@ pinned version and fails on logged engine errors. It does not download tools.
 ```sh
 make export-macos
 make export-ios
+make export-web
 ```
 
 Outputs are `exports/macos/Nathaniel.app` and
@@ -143,6 +144,10 @@ Outputs are `exports/macos/Nathaniel.app` and
 custom output and template options. The iOS Make target exports an unsigned test
 project with a placeholder team in its staged preset; it grants no signing
 access and does not create an installable App Store archive.
+
+The Web export produces `exports/web/index.html` and its companion files.
+Use `make serve-web` for a local preview. See [browser setup and limits](web.md)
+for templates, persistence, and static hosting.
 
 The official template used during local verification lacked its advertised ARM64
 Simulator library. A separate template copy adds a debug Simulator library built

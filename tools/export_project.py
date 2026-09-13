@@ -100,7 +100,11 @@ def export(
     version = subprocess.check_output([executable, "--version"], text=True).strip()
     if not version.startswith(VERSION):
         raise ValueError(f"Expected Godot {VERSION}, found {version}")
-    filename = "macos.zip" if platform == "macOS" else "ios.zip"
+    filename = {
+        "macOS": "macos.zip",
+        "iOS": "ios.zip",
+        "Web": f"web_nothreads_{'release' if release else 'debug'}.zip",
+    }[platform]
     template = next(
         (
             directory / filename
@@ -129,7 +133,8 @@ def export(
         stage_project(PROJECT, project)
         if platform == "iOS" and unsigned_ios:
             configure_unsigned_ios(project / "export_presets.cfg")
-        log = output.parent / f"{platform.lower()}-export.log"
+        log_directory = output.parent.parent if platform == "Web" else output.parent
+        log = log_directory / f"{platform.lower()}-export.log"
         print(
             f"Exporting {platform} with Godot {version}; isolated project and editor cache.",
             flush=True,
@@ -162,7 +167,7 @@ def export(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("platform", choices=("macOS", "iOS"))
+    parser.add_argument("platform", choices=("macOS", "iOS", "Web"))
     parser.add_argument("--output", type=Path)
     parser.add_argument("--godot", default=os.environ.get("GODOT", "godot"))
     parser.add_argument(
@@ -179,9 +184,10 @@ def main() -> None:
     )
     parser.add_argument("--release", action="store_true")
     args = parser.parse_args()
-    output = args.output or PROJECT / "exports" / args.platform.lower() / (
-        "Nathaniel.app" if args.platform == "macOS" else "Nathaniel.zip"
-    )
+    filename = {"macOS": "Nathaniel.app", "iOS": "Nathaniel.zip", "Web": "index.html"}[
+        args.platform
+    ]
+    output = args.output or PROJECT / "exports" / args.platform.lower() / filename
     try:
         status = export(
             args.platform,

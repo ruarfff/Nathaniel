@@ -3,9 +3,10 @@
 GODOT ?= godot
 LEVEL ?= 1
 DEBUG_PORT ?= 8766
+WEB_PORT ?= 8060
 TEST_STORAGE := $(CURDIR)/test-artifacts/test-session
 
-.PHONY: help version run editor level debug import test test-tooling test-mcp format format-check profile profile-rendered export-macos export-ios health clean
+.PHONY: help version run editor level debug import test test-tooling test-mcp format format-check profile profile-rendered export-macos export-ios export-web serve-web health clean
 
 help:
 	@echo "make / make run       Run Nathaniel"
@@ -21,9 +22,11 @@ help:
 	@echo "make profile-rendered Measure a rendered battle"
 	@echo "make export-macos     Export the macOS release app"
 	@echo "make export-ios       Export an unsigned iOS Xcode project"
+	@echo "make export-web       Export the browser release build"
+	@echo "make serve-web        Serve exports/web on http://127.0.0.1:$(WEB_PORT)"
 	@echo "make health           Check the running debug interface"
 	@echo "make clean            Remove generated imports and exports"
-	@echo "Override GODOT, LEVEL, DEBUG_PORT, or GODOT_TEMPLATE_DIR as needed."
+	@echo "Override GODOT, LEVEL, DEBUG_PORT, WEB_PORT, or GODOT_TEMPLATE_DIR as needed."
 
 version:
 	python3 tools/check_version.py "$(GODOT)"
@@ -75,8 +78,15 @@ export-macos: version
 export-ios: version
 	python3 tools/export_project.py iOS --godot "$(GODOT)" --unsigned-ios
 
+export-web: version
+	python3 tools/export_project.py Web --godot "$(GODOT)" --release
+
+serve-web:
+	test -f exports/web/index.html
+	python3 -m http.server "$(WEB_PORT)" --bind 127.0.0.1 --directory exports/web
+
 health:
 	curl --fail --silent --show-error http://127.0.0.1:$(DEBUG_PORT)/health
 
 clean:
-	rm -rf .godot exports/macos exports/ios
+	rm -rf .godot exports/macos exports/ios exports/web exports/web-export.log exports/web-export.stdout.log

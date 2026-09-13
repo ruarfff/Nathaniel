@@ -77,7 +77,8 @@ func show_menu(which: String, context: Dictionary = {}) -> void:
 			_menu_button("Load game", "load_menu")
 			_menu_button("Settings", "settings")
 			_menu_button("Credits", "credits")
-			_menu_button("Quit", "quit")
+			if not OS.has_feature("web"):
+				_menu_button("Quit", "quit")
 		"levels":
 			_heading("CAMPAIGN", "Choose an encounter")
 			for number in range(1, 6):

@@ -3,6 +3,50 @@
 Test host: Apple M4 Pro (12 CPU cores), arm64 macOS, Xcode 26.6 (17F113),
 Godot 4.7.2 stable. Results are local measurements, not guarantees for other hardware.
 
+## Desktop browser preview — 2026-09-13
+
+`make export-web` passed with the matching official single-thread release
+template. An initial sandboxed attempt reported denial of the macOS certificate
+service; the export passed with normal system access. `make serve-web` serves
+only the generated site at `http://127.0.0.1:8060/`. Local socket binding also
+required normal system access on this host.
+
+In the Codex in-app browser at 1280×720, real computer input verified Survival
+start, terrain movement, Space focus, R follow, Escape pause/resume, and wheel
+zoom. A gun-tower drag changed resources from 30 to 25; follow removed it and
+refunded one resource (26). Terrain, actors, combat, fog, and the HUD rendered.
+The main menu omitted Quit. The browser console capture reported no warnings
+or errors during this session.
+
+All three slots were initially empty in the new localhost browser origin.
+Saving slot 1, reloading the page, and loading slot 1 retained the saved Survival
+state, 30 resources, Hermes focus, and Following mode. This test used browser
+storage separate from native user files. It establishes normal same-origin
+reload persistence, not immediate durable writes, private-mode support, or
+browser-restart persistence.
+
+The static payload has nine files totaling 52,225,759 bytes (52.2 MB decimal).
+Compressing each file with Python gzip totals 21,054,414 bytes (21.1 MB); this is
+an offline size measurement, not a measured network transfer or load time. The
+local server does not enable response compression. The PCK has 464 entries and
+excludes repository tooling, tests, dependencies, and artifacts. Its generated
+HTML disables threads and requires no cross-origin isolation headers.
+
+All 11 Python tooling tests, formatting, and diff whitespace checks passed.
+The native presentation suite passed 135 checks with a 60 FPS cap. An initial
+uncapped run passed its assertions but failed teardown with an audio resource
+leak; that first run was not clean. Native macOS/iOS exports and the full native
+suite were not rerun for these export and web-only guard changes.
+
+Screenshot and payload hashes are in ignored `test-artifacts/web-preview/`;
+export logs are `exports/web-export.log` and `exports/web-export.stdout.log`.
+Template hashes are in `test-artifacts/export-templates/MANIFEST.json`.
+
+This is a desktop feasibility preview. Other browsers, mobile browser layout
+and touch, audible playback, performance/load-time profiling, blocked storage,
+offline operation, and public hosting remain unverified. Phone browsers still
+use desktop control sizing; see [browser behavior and hosting](web.md).
+
 ## Root project cleanup
 
 The active project is at the repository root. Swift/SpriteKit, Windows Phone,

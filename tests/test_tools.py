@@ -2,6 +2,7 @@
 
 import contextlib
 import io
+import shlex
 import subprocess
 import tempfile
 import unittest
@@ -151,6 +152,97 @@ class ProjectToolTests(unittest.TestCase):
             )
         self.assertEqual(status, 1)
         self.assertEqual((self.source / "export_presets.cfg").read_bytes(), original)
+
+    def test_web_exports_select_single_thread_template_and_keep_logs_outside_site(self):
+        engine = self.directory / "godot"
+        engine.write_text("local engine stand-in")
+        for release in (False, True):
+            with self.subTest(release=release):
+                mode = "release" if release else "debug"
+                templates = self.directory / mode / "templates"
+                templates.mkdir(parents=True)
+                (templates / f"web_nothreads_{mode}.zip").write_bytes(
+                    b"template stand-in"
+                )
+                output = (self.directory / mode / "site/index.html").resolve()
+
+                def successful_export(
+                    command, stdout, mode=mode, output=output, **_kwargs
+                ):
+                    self.assertIn(f"--export-{mode}", command)
+                    self.assertIn("Web", command)
+                    self.assertEqual(
+                        command[command.index(f"--export-{mode}") + 2], str(output)
+                    )
+                    log = Path(command[command.index("--log-file") + 1])
+                    self.assertFalse(log.is_relative_to(output.parent))
+                    output.write_text("<html>export fixture</html>")
+                    stdout.write("Export fixture complete\n")
+                    return subprocess.CompletedProcess(command, 0)
+
+                with (
+                    mock.patch.object(export_project, "PROJECT", self.source),
+                    mock.patch.object(
+                        export_project.shutil, "which", return_value=str(engine)
+                    ),
+                    mock.patch.object(
+                        export_project.subprocess,
+                        "check_output",
+                        return_value=export_project.VERSION,
+                    ),
+                    mock.patch.object(
+                        export_project.subprocess, "run", side_effect=successful_export
+                    ),
+                    contextlib.redirect_stdout(io.StringIO()),
+                ):
+                    status = export_project.export(
+                        "Web", output, str(engine), templates, release=release
+                    )
+                self.assertEqual(status, 0)
+                self.assertEqual(
+                    {path.name for path in output.parent.iterdir()}, {"index.html"}
+                )
+                self.assertTrue(
+                    (output.parent.parent / "web-export.stdout.log").is_file()
+                )
+
+    def test_web_command_defaults_to_index_html(self):
+        with (
+            mock.patch.object(export_project, "PROJECT", self.source),
+            mock.patch("sys.argv", ["export_project.py", "Web", "--release"]),
+            mock.patch.object(export_project, "export", return_value=0) as run_export,
+            self.assertRaises(SystemExit) as result,
+        ):
+            export_project.main()
+        self.assertEqual(result.exception.code, 0)
+        self.assertEqual(run_export.call_args.args[0], "Web")
+        self.assertEqual(
+            run_export.call_args.args[1], self.source / "exports/web/index.html"
+        )
+        self.assertTrue(run_export.call_args.args[-1])
+
+    def test_web_preview_serves_only_export_directory_on_loopback(self):
+        preview = subprocess.check_output(
+            ["make", "-n", "serve-web", "WEB_PORT=8123"],
+            cwd=Path(__file__).resolve().parents[1],
+            text=True,
+        )
+        command = next(
+            shlex.split(line) for line in preview.splitlines() if "http.server" in line
+        )
+        self.assertEqual(
+            command,
+            [
+                "python3",
+                "-m",
+                "http.server",
+                "8123",
+                "--bind",
+                "127.0.0.1",
+                "--directory",
+                "exports/web",
+            ],
+        )
 
 
 if __name__ == "__main__":
