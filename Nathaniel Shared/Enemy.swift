@@ -17,6 +17,7 @@ class Enemy: Character {
     weak var target: Damageable?
     var weapon: Gun?
     var isAttacking = false
+    var onDeathCallback: ((Enemy) -> Void)?
 
     var hasActiveProjectiles: Bool {
         self.weapon?.hasActiveProjectiles ?? false
@@ -61,6 +62,12 @@ class Enemy: Character {
         #endif
         self.updateAI(deltaTime: deltaTime)
         super.update(deltaTime: deltaTime)
+    }
+
+    override func onDeath() {
+        guard isActive else { return }
+        super.onDeath()
+        self.onDeathCallback?(self)
     }
 
     func updateAI(deltaTime: TimeInterval) {

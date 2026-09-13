@@ -43,6 +43,8 @@ class GameSettings {
 
     static let shared = GameSettings()
 
+    private let defaults: UserDefaults
+
     // MARK: - Keys
 
     private enum Keys {
@@ -54,13 +56,13 @@ class GameSettings {
     // MARK: - Audio Settings
 
     var soundEffectsEnabled: Bool {
-        get { UserDefaults.standard.object(forKey: Keys.soundEffectsEnabled) as? Bool ?? false }
-        set { UserDefaults.standard.set(newValue, forKey: Keys.soundEffectsEnabled) }
+        get { self.defaults.object(forKey: Keys.soundEffectsEnabled) as? Bool ?? false }
+        set { self.defaults.set(newValue, forKey: Keys.soundEffectsEnabled) }
     }
 
     var musicEnabled: Bool {
-        get { UserDefaults.standard.object(forKey: Keys.musicEnabled) as? Bool ?? false }
-        set { UserDefaults.standard.set(newValue, forKey: Keys.musicEnabled) }
+        get { self.defaults.object(forKey: Keys.musicEnabled) as? Bool ?? false }
+        set { self.defaults.set(newValue, forKey: Keys.musicEnabled) }
     }
 
     // MARK: - Save Game Data
@@ -80,7 +82,8 @@ class GameSettings {
 
     // MARK: - Init
 
-    private init() {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         self.loadSaveData()
     }
 
@@ -88,7 +91,7 @@ class GameSettings {
 
     /// Load save data from UserDefaults
     private func loadSaveData() {
-        guard let data = UserDefaults.standard.data(forKey: Keys.saveGameData),
+        guard let data = self.defaults.data(forKey: Keys.saveGameData),
               let decoded = try? JSONDecoder().decode(SaveGameData.self, from: data)
         else {
             self.saveData = .empty
@@ -100,7 +103,7 @@ class GameSettings {
     /// Save current data to UserDefaults
     private func persistSaveData() {
         guard let encoded = try? JSONEncoder().encode(saveData) else { return }
-        UserDefaults.standard.set(encoded, forKey: Keys.saveGameData)
+        self.defaults.set(encoded, forKey: Keys.saveGameData)
     }
 
     /// Record completion of a level

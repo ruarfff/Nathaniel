@@ -40,14 +40,22 @@ class AudioManager {
     // MARK: - Properties
 
     private var musicPlayer: AVAudioPlayer?
-    private var currentMusic: Music?
+    private var requestedMusic: Music?
+    private var shouldLoopMusic = true
+    private let settings: GameSettings
+    private let makeMusicPlayer: (URL) throws -> AVAudioPlayer
 
     /// Preloaded sound effect actions for better performance
     private var soundEffectActions: [SoundEffect: SKAction] = [:]
 
     // MARK: - Init
 
-    private init() {
+    init(
+        settings: GameSettings = .shared,
+        makeMusicPlayer: @escaping (URL) throws -> AVAudioPlayer = { try AVAudioPlayer(contentsOf: $0) }
+    ) {
+        self.settings = settings
+        self.makeMusicPlayer = makeMusicPlayer
         self.preloadSoundEffects()
         self.configureAudioSession()
     }
@@ -89,7 +97,7 @@ class AudioManager {
     ///   - effect: The sound effect to play
     ///   - node: The node to run the action on (usually the scene)
     func playSoundEffect(_ effect: SoundEffect, on node: SKNode) {
-        guard GameSettings.shared.soundEffectsEnabled else { return }
+        guard self.settings.soundEffectsEnabled else { return }
 
         if let action = soundEffectActions[effect] {
             node.run(action)
@@ -103,7 +111,7 @@ class AudioManager {
     /// Convenience method to get the action for running on a node
     /// Useful when you want to combine with other actions
     func soundEffectAction(_ effect: SoundEffect) -> SKAction? {
-        guard GameSettings.shared.soundEffectsEnabled else { return nil }
+        guard self.settings.soundEffectsEnabled else { return nil }
         return self.soundEffectActions[effect]
     }
 
@@ -114,60 +122,51 @@ class AudioManager {
     ///   - music: The music track to play
     ///   - loop: Whether to loop the music (default: true)
     func playMusic(_ music: Music, loop: Bool = true) {
-        guard GameSettings.shared.musicEnabled else { return }
-
-        // Don't restart if already playing the same track
-        if self.currentMusic == music, self.musicPlayer?.isPlaying == true {
-            return
+        if self.requestedMusic != music {
+            self.musicPlayer?.stop()
+            self.musicPlayer = nil
         }
-
-        self.stopMusic()
-
-        guard let url = Bundle.main.url(forResource: music.rawValue, withExtension: "mp3") else {
-            print("AudioManager: Could not find music file: \(music.rawValue).mp3")
-            return
-        }
-
-        do {
-            self.musicPlayer = try AVAudioPlayer(contentsOf: url)
-            self.musicPlayer?.numberOfLoops = loop ? -1 : 0
-            self.musicPlayer?.volume = 0.7
-            self.musicPlayer?.prepareToPlay()
-            self.musicPlayer?.play()
-            self.currentMusic = music
-        } catch {
-            print("AudioManager: Failed to play music: \(error)")
-        }
+        self.requestedMusic = music
+        self.shouldLoopMusic = loop
+        self.onMusicSettingChanged()
     }
 
     /// Stop the currently playing music
     func stopMusic() {
         self.musicPlayer?.stop()
         self.musicPlayer = nil
-        self.currentMusic = nil
-    }
-
-    /// Pause the currently playing music
-    func pauseMusic() {
-        self.musicPlayer?.pause()
-    }
-
-    /// Resume paused music
-    func resumeMusic() {
-        guard GameSettings.shared.musicEnabled else { return }
-        self.musicPlayer?.play()
+        self.requestedMusic = nil
     }
 
     // MARK: - Settings Integration
 
-    /// Call this when music setting changes to stop/resume music
+    /// Apply the music setting to the latest track requested by a scene.
     func onMusicSettingChanged() {
-        if GameSettings.shared.musicEnabled {
-            if let music = currentMusic, musicPlayer?.isPlaying == false {
-                self.resumeMusic()
+        guard self.settings.musicEnabled else {
+            self.musicPlayer?.pause()
+            return
+        }
+        guard let music = requestedMusic else { return }
+
+        if self.musicPlayer == nil {
+            guard let url = Bundle.main.url(forResource: music.rawValue, withExtension: "mp3") else {
+                print("AudioManager: Could not find music file: \(music.rawValue).mp3")
+                return
             }
-        } else {
-            self.pauseMusic()
+
+            do {
+                self.musicPlayer = try self.makeMusicPlayer(url)
+                self.musicPlayer?.volume = 0.7
+                self.musicPlayer?.prepareToPlay()
+            } catch {
+                print("AudioManager: Failed to play music: \(error)")
+                return
+            }
+        }
+
+        self.musicPlayer?.numberOfLoops = self.shouldLoopMusic ? -1 : 0
+        if self.musicPlayer?.isPlaying == false {
+            self.musicPlayer?.play()
         }
     }
 }

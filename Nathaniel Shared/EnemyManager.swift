@@ -65,6 +65,7 @@ class EnemyManager {
     /// Remove all enemies from the scene (for loading saved game)
     func removeAllEnemies() {
         for enemy in self.enemies {
+            enemy.onDeathCallback = nil
             enemy.removeFromScene()
         }
         self.enemies.removeAll()
@@ -73,6 +74,14 @@ class EnemyManager {
     /// Add a pre-created enemy to the manager
     /// - Parameter enemy: The enemy to add
     func addEnemy(_ enemy: Enemy) {
+        enemy.onDeathCallback = { [weak self] enemy in
+            guard let self else { return }
+            self.delegate?.enemyManager(self, enemyDidDie: enemy, score: enemy.killScore)
+            if enemy is Boss {
+                self.delegate?.enemyManagerDidDefeatBoss(self)
+            }
+        }
+
         // Configure display properties
         enemy.sprite.zPosition = self.enemyZPosition
         enemy.sprite.setScale(self.enemyScale)
@@ -199,8 +208,7 @@ class EnemyManager {
             // Update the enemy
             enemy.update(deltaTime: deltaTime)
 
-            // Check if dead and inactive (death animation finished)
-            // Also wait for any projectiles to complete their trajectory
+            // Death rewards are already paid; keep the shooter until its shots finish.
             if !enemy.isAlive, !enemy.isActive, !enemy.hasActiveProjectiles {
                 indicesToRemove.append(index)
             }
@@ -208,16 +216,6 @@ class EnemyManager {
 
         // Remove dead enemies (in reverse order to maintain indices)
         for index in indicesToRemove.reversed() {
-            let enemy = self.enemies[index]
-
-            // Notify delegate
-            self.delegate?.enemyManager(self, enemyDidDie: enemy, score: enemy.killScore)
-
-            // Check if this was a boss
-            if enemy is Boss {
-                self.delegate?.enemyManagerDidDefeatBoss(self)
-            }
-
             self.enemies.remove(at: index)
         }
     }

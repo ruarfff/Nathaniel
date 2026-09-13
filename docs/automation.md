@@ -2,6 +2,12 @@
 
 This repo supports lightweight “smoke tests” so an agent (or CI-style workflow) can verify the game builds and launches.
 
+## Regression Tests
+
+`make test-unit` runs the macOS XCTest suite. `make test-tooling` checks build and run commands with stubbed tools; it does not launch apps or change saved games.
+
+Make targets use `build/DerivedData` by default. Override `DERIVED_DATA_PATH` to choose another build directory. `make ios` updates the installed app and keeps its data. Only `make ios-fresh` removes that data. Build, lint, and format failures stop their Make targets.
+
 ## Smoke Test Mode
 
 `--smoke-test` (or `NATHANIEL_SMOKE_TEST=1`) enables smoke-test behavior:
@@ -33,7 +39,7 @@ Takes a screenshot at `test-artifacts/ios-sim-smoke.png`.
 
 ### Useful Overrides
 
-- `DERIVED_DATA_PATH`: where Xcode writes DerivedData (default: `test-artifacts/DerivedData`)
+- `DERIVED_DATA_PATH`: where Xcode writes DerivedData (standalone smoke scripts default to `test-artifacts/DerivedData`; Make targets use `build/DerivedData`)
 - `CONFIGURATION`: Xcode configuration (default: `Debug`)
 - `SIMULATOR_UDID`: force a specific simulator device
 - `DESTINATION`: xcodebuild destination string (default: `generic/platform=iOS Simulator`)

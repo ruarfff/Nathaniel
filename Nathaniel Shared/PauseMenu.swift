@@ -11,7 +11,6 @@ import SpriteKit
 
 /// Overlay menu displayed when the game is paused
 class PauseMenu: OverlayMenu {
-
     // MARK: - Types
 
     /// Menu button identifiers
@@ -58,18 +57,18 @@ class PauseMenu: OverlayMenu {
         let panel = createPanelContainer(width: panelWidth, height: panelHeight)
 
         // Title
-        createTitle("PAUSED", in: panel, panelHeight: panelHeight)
+        createTitle("PAUSED", in: panel, panelHeight: self.panelHeight)
 
         // Buttons (from top to bottom)
-        let buttonStartY: CGFloat = panelHeight / 2 - 110
+        let buttonStartY: CGFloat = self.panelHeight / 2 - 110
 
         createButtonWithIcon(
             in: panel,
             name: MenuButton.resume.rawValue,
             title: "Resume",
             emoji: "▶️",
-            width: buttonWidth,
-            height: buttonHeight,
+            width: self.buttonWidth,
+            height: self.buttonHeight,
             yPosition: buttonStartY,
             color: SKColor(red: 0.2, green: 0.6, blue: 0.3, alpha: 1.0)
         )
@@ -79,9 +78,9 @@ class PauseMenu: OverlayMenu {
             name: MenuButton.settings.rawValue,
             title: "Settings",
             emoji: "⚙️",
-            width: buttonWidth,
-            height: buttonHeight,
-            yPosition: buttonStartY - (buttonHeight + buttonSpacing),
+            width: self.buttonWidth,
+            height: self.buttonHeight,
+            yPosition: buttonStartY - (self.buttonHeight + self.buttonSpacing),
             color: SKColor(red: 0.3, green: 0.4, blue: 0.6, alpha: 1.0)
         )
 
@@ -90,9 +89,9 @@ class PauseMenu: OverlayMenu {
             name: MenuButton.saveGame.rawValue,
             title: "Save Game",
             emoji: "💾",
-            width: buttonWidth,
-            height: buttonHeight,
-            yPosition: buttonStartY - 2 * (buttonHeight + buttonSpacing),
+            width: self.buttonWidth,
+            height: self.buttonHeight,
+            yPosition: buttonStartY - 2 * (self.buttonHeight + self.buttonSpacing),
             color: SKColor(red: 0.4, green: 0.5, blue: 0.3, alpha: 1.0)
         )
 
@@ -101,9 +100,9 @@ class PauseMenu: OverlayMenu {
             name: MenuButton.exitToMenu.rawValue,
             title: "Exit to Menu",
             emoji: "🚪",
-            width: buttonWidth,
-            height: buttonHeight,
-            yPosition: buttonStartY - 3 * (buttonHeight + buttonSpacing),
+            width: self.buttonWidth,
+            height: self.buttonHeight,
+            yPosition: buttonStartY - 3 * (self.buttonHeight + self.buttonSpacing),
             color: SKColor(red: 0.6, green: 0.3, blue: 0.3, alpha: 1.0)
         )
     }
@@ -112,7 +111,7 @@ class PauseMenu: OverlayMenu {
 
     override func hide(completion: (() -> Void)? = nil) {
         // Also hide confirmation if showing
-        hideConfirmation()
+        self.hideConfirmation()
         super.hide(completion: completion)
     }
 
@@ -120,9 +119,9 @@ class PauseMenu: OverlayMenu {
 
     /// Show exit confirmation dialog
     func showExitConfirmation() {
-        guard !isShowingConfirmation else { return }
+        guard !self.isShowingConfirmation else { return }
 
-        isShowingConfirmation = true
+        self.isShowingConfirmation = true
 
         // Dim the menu panel
         menuPanel?.alpha = 0.3
@@ -165,7 +164,7 @@ class PauseMenu: OverlayMenu {
         dialog.addChild(questionLabel)
 
         // Cancel button
-        let cancelButton = createConfirmButton(
+        let cancelButton = self.createConfirmButton(
             name: "cancelExit",
             title: "Cancel",
             xPosition: -70,
@@ -175,7 +174,7 @@ class PauseMenu: OverlayMenu {
         dialog.addChild(cancelButton)
 
         // Confirm button
-        let confirmButton = createConfirmButton(
+        let confirmButton = self.createConfirmButton(
             name: "confirmExit",
             title: "Exit",
             xPosition: 70,
@@ -188,7 +187,7 @@ class PauseMenu: OverlayMenu {
         dialog.setScale(0.8)
         dialog.alpha = 0
         addChild(dialog)
-        confirmationDialog = dialog
+        self.confirmationDialog = dialog
 
         let fadeIn = SKAction.fadeIn(withDuration: 0.15)
         let scaleUp = SKAction.scale(to: 1.0, duration: 0.15)
@@ -221,9 +220,9 @@ class PauseMenu: OverlayMenu {
 
     /// Hide the confirmation dialog
     func hideConfirmation() {
-        guard isShowingConfirmation else { return }
+        guard self.isShowingConfirmation else { return }
 
-        isShowingConfirmation = false
+        self.isShowingConfirmation = false
         menuPanel?.alpha = 1.0
 
         if let dialog = confirmationDialog {
@@ -231,7 +230,7 @@ class PauseMenu: OverlayMenu {
             let scaleDown = SKAction.scale(to: 0.8, duration: 0.15)
             let remove = SKAction.removeFromParent()
             dialog.run(SKAction.sequence([SKAction.group([fadeOut, scaleDown]), remove]))
-            confirmationDialog = nil
+            self.confirmationDialog = nil
         }
     }
 
@@ -244,27 +243,28 @@ class PauseMenu: OverlayMenu {
         let localPoint = convert(point, from: parent!)
 
         // Check confirmation dialog first if showing
-        if isShowingConfirmation, let dialog = confirmationDialog {
+        if self.isShowingConfirmation, let dialog = confirmationDialog {
             let dialogPoint = dialog.convert(localPoint, from: self)
 
             if let cancelButton = dialog.childNode(withName: "cancelExit"),
-               nodeContainsPoint(cancelButton, point: dialogPoint, fallbackSize: CGSize(width: 100, height: 40)) {
+               nodeContainsPoint(cancelButton, point: dialogPoint, fallbackSize: CGSize(width: 100, height: 40))
+            {
                 animateButtonPress(cancelButton)
-                hideConfirmation()
+                self.hideConfirmation()
                 return true
             }
 
             if let confirmButton = dialog.childNode(withName: "confirmExit"),
-               nodeContainsPoint(confirmButton, point: dialogPoint, fallbackSize: CGSize(width: 100, height: 40)) {
+               nodeContainsPoint(confirmButton, point: dialogPoint, fallbackSize: CGSize(width: 100, height: 40))
+            {
                 animateButtonPress(confirmButton)
-                hide {
-                    self.onExitToMenu?()
-                }
+                self.hide()
+                self.onExitToMenu?()
                 return true
             }
 
             // Tap outside dialog cancels it
-            hideConfirmation()
+            self.hideConfirmation()
             return true
         }
 
@@ -275,35 +275,38 @@ class PauseMenu: OverlayMenu {
 
         // Resume button
         if let button = panel.childNode(withName: MenuButton.resume.rawValue),
-           nodeContainsPoint(button, point: panelPoint, fallbackSize: buttonSize) {
+           nodeContainsPoint(button, point: panelPoint, fallbackSize: buttonSize)
+        {
             animateButtonPress(button)
-            hide {
-                self.onResume?()
-            }
+            self.hide()
+            self.onResume?()
             return true
         }
 
         // Settings button
         if let button = panel.childNode(withName: MenuButton.settings.rawValue),
-           nodeContainsPoint(button, point: panelPoint, fallbackSize: buttonSize) {
+           nodeContainsPoint(button, point: panelPoint, fallbackSize: buttonSize)
+        {
             animateButtonPress(button)
-            onSettings?()
+            self.onSettings?()
             return true
         }
 
         // Save Game button
         if let button = panel.childNode(withName: MenuButton.saveGame.rawValue),
-           nodeContainsPoint(button, point: panelPoint, fallbackSize: buttonSize) {
+           nodeContainsPoint(button, point: panelPoint, fallbackSize: buttonSize)
+        {
             animateButtonPress(button)
-            onSaveGame?()
+            self.onSaveGame?()
             return true
         }
 
         // Exit to Menu button
         if let button = panel.childNode(withName: MenuButton.exitToMenu.rawValue),
-           nodeContainsPoint(button, point: panelPoint, fallbackSize: buttonSize) {
+           nodeContainsPoint(button, point: panelPoint, fallbackSize: buttonSize)
+        {
             animateButtonPress(button)
-            showExitConfirmation()
+            self.showExitConfirmation()
             return true
         }
 

@@ -1,3 +1,10 @@
+//
+//  SettingsMenu.swift
+//  Nathaniel Shared
+//
+//  In-game sound and developer settings controls.
+//
+
 import SpriteKit
 
 // MARK: - Settings Menu
@@ -293,12 +300,7 @@ class SettingsMenu: OverlayMenu {
             self.updateToggle(self.musicToggle, isOn: self.musicEnabled, name: SettingItem.music.rawValue)
             self.onSettingChanged?(.music, self.musicEnabled)
 
-            // Apply music setting immediately
-            if self.musicEnabled {
-                AudioManager.shared.resumeMusic()
-            } else {
-                AudioManager.shared.pauseMusic()
-            }
+            AudioManager.shared.onMusicSettingChanged()
 
             return true
         }
@@ -323,15 +325,41 @@ class SettingsMenu: OverlayMenu {
            nodeContainsPoint(button, point: panelPoint, fallbackSize: CGSize(width: buttonWidth, height: buttonHeight))
         {
             animateButtonPress(button)
-            hide {
-                self.onBack?()
-            }
+            self.hide()
+            self.onBack?()
             return true
         }
 
         // Touch on overlay (outside panel) does nothing (keeps menu open)
         return true
     }
+
+    override func hide(completion: (() -> Void)? = nil) {
+        #if DEBUG
+            _ = self.dismissDevSettings()
+        #endif
+        super.hide(completion: completion)
+    }
+
+    #if DEBUG
+        func commandControls() -> [GameCommandServer.NodeInfo] {
+            if let panel = devSettingsPanel, panel.isVisible {
+                // The developer panel's Back button takes priority over Settings Back.
+                return panel
+                    .namedControls(["backButton", "resetButton"] + DevSettingsPanel.Tab.allCases
+                        .map { "tab_\($0.rawValue)" })
+            }
+            return namedControls(["soundEffectsToggle", "musicToggle", "devSettingsButton", "backButton"])
+        }
+
+        /// Close the nested developer panel before leaving settings.
+        @discardableResult
+        func dismissDevSettings() -> Bool {
+            guard let panel = devSettingsPanel, panel.isVisible else { return false }
+            panel.hide()
+            return true
+        }
+    #endif
 
     #if DEBUG
         /// Handle drag for slider adjustment in DevSettingsPanel

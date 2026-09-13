@@ -8,14 +8,15 @@
 # Usage: ./scripts/test-macos.sh [--skip-build] [--screenshots-dir DIR]
 #
 
-set -e
+set -euo pipefail
 
 # Configuration
 GAME_SERVER_URL="http://localhost:8765"
 SCREENSHOTS_DIR="${SCREENSHOTS_DIR:-/tmp/nathaniel-macos-test}"
 SKIP_BUILD=false
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-APP_PATH=""
+DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-$PROJECT_DIR/build/DerivedData}"
+APP_PATH="$DERIVED_DATA_PATH/Build/Products/Debug/Nathaniel.app"
 
 # Colors for output
 RED='\033[0;31m'
@@ -187,6 +188,7 @@ main() {
         if xcodebuild -project Nathaniel.xcodeproj \
             -scheme "Nathaniel macOS" \
             -configuration Debug \
+            -derivedDataPath "$DERIVED_DATA_PATH" \
             build 2>&1 | tail -5; then
             log_success "Build succeeded"
         else
@@ -197,10 +199,8 @@ main() {
         log_info "Skipping build (--skip-build)"
     fi
 
-    # Find and launch the app (macOS app is in Debug/, not Debug-iphonesimulator/)
-    APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "Nathaniel.app" -path "*Products/Debug/*" ! -path "*-iphonesimulator*" ! -path "*-iphoneos*" 2>/dev/null | head -1)
-
-    if [ -z "$APP_PATH" ]; then
+    # Launch only the product from this build.
+    if [ ! -d "$APP_PATH" ]; then
         log_error "Could not find built Nathaniel.app"
         exit 1
     fi

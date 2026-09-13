@@ -1,3 +1,10 @@
+//
+//  DevSettingsPanel.swift
+//  Nathaniel Shared
+//
+//  Debug controls for tuning gameplay.
+//
+
 #if DEBUG
 
     import SpriteKit
@@ -50,7 +57,7 @@
 
         // MARK: - Properties
 
-        /// Whether the panel is currently visible
+        /// Whether the panel accepts input (false as soon as dismissal starts)
         private(set) var isVisible: Bool = false
 
         /// Currently selected tab
@@ -507,6 +514,8 @@
         /// Show the panel with animation
         func show() {
             guard !self.isVisible else { return }
+            removeAction(forKey: "presentation")
+            self.panelNode.removeAction(forKey: "presentation")
             self.isVisible = true
             isHidden = false
 
@@ -522,8 +531,8 @@
             let scaleUp = SKAction.scale(to: 1.0, duration: self.animationDuration)
             scaleUp.timingMode = .easeOut
 
-            run(fadeIn)
-            self.panelNode.run(scaleUp)
+            run(fadeIn, withKey: "presentation")
+            self.panelNode.run(scaleUp, withKey: "presentation")
         }
 
         /// Hide the panel with animation
@@ -533,18 +542,21 @@
                 return
             }
 
+            self.isVisible = false
+            removeAction(forKey: "presentation")
+            self.panelNode.removeAction(forKey: "presentation")
+
             let fadeOut = SKAction.fadeOut(withDuration: self.animationDuration)
             let scaleDown = SKAction.scale(to: 0.8, duration: self.animationDuration)
             scaleDown.timingMode = .easeIn
 
             let hideAction = SKAction.run { [weak self] in
                 self?.isHidden = true
-                self?.isVisible = false
                 completion?()
             }
 
-            run(SKAction.sequence([fadeOut, hideAction]))
-            self.panelNode.run(scaleDown)
+            run(SKAction.sequence([fadeOut, hideAction]), withKey: "presentation")
+            self.panelNode.run(scaleDown, withKey: "presentation")
         }
 
         // MARK: - Touch Handling

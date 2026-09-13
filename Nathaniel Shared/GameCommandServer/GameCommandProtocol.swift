@@ -272,7 +272,23 @@ import SpriteKit
         public func toNodeInfo(interactive: Bool = false, properties: [String: String]? = nil) -> GameCommandServer
             .NodeInfo
         {
-            let frame = frame
+            let bounds = calculateAccumulatedFrame()
+            let frame: CGRect
+            if let scene, let parent {
+                let corners = [
+                    CGPoint(x: bounds.minX, y: bounds.minY),
+                    CGPoint(x: bounds.minX, y: bounds.maxY),
+                    CGPoint(x: bounds.maxX, y: bounds.minY),
+                    CGPoint(x: bounds.maxX, y: bounds.maxY),
+                ].map { scene.convert($0, from: parent) }
+                let xs = corners.map(\.x)
+                let ys = corners.map(\.y)
+                let minX = xs.min() ?? 0
+                let minY = ys.min() ?? 0
+                frame = CGRect(x: minX, y: minY, width: (xs.max() ?? 0) - minX, height: (ys.max() ?? 0) - minY)
+            } else {
+                frame = bounds
+            }
             return GameCommandServer.NodeInfo(
                 name: name ?? "unnamed",
                 type: String(describing: type(of: self)),
@@ -285,6 +301,23 @@ import SpriteKit
                 interactive: interactive,
                 properties: properties
             )
+        }
+    }
+
+    extension SKNode {
+        /// Find one visible control per name, including controls nested under a camera.
+        func namedControls(_ names: [String]) -> [GameCommandServer.NodeInfo] {
+            names.compactMap { name in
+                guard let node = childNode(withName: ".//\(name)") else { return nil }
+                var ancestor: SKNode? = node
+                while let current = ancestor {
+                    if current.isHidden {
+                        return nil
+                    }
+                    ancestor = current.parent
+                }
+                return node.toNodeInfo(interactive: true)
+            }
         }
     }
 

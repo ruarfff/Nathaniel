@@ -43,7 +43,9 @@ bash scripts/smoke_macos.sh
 bash scripts/smoke_ios_sim.sh
 ```
 
-See `docs/automation.md` for Codex MCP setup and script options.
+`make ios` and `make macos` build and run the app from `build/DerivedData`. Set `DERIVED_DATA_PATH` to use another directory. Normal iOS installs keep saved games; `make ios-fresh` explicitly removes app data.
+
+See `docs/automation.md` for MCP setup and script options.
 
 ## Gameplay
 
@@ -58,18 +60,18 @@ The Swift port restores the original XNA campaign and survival rules:
 - Campaign levels start with three spare lives. Nathaniel respawns at the map start; losing Hermes ends the game. Survival has no spare lives.
 - Defeat a boss to complete a campaign level. Survival continues until a player dies.
 
-The port retains pathfinding, desktop controls, zoom, level selection, three save slots, and fog of war. Saves include carried corpses, Spawner production timers, and tower build costs. Older save slots remain readable; their tower refunds use the current build cost.
+The port retains pathfinding, desktop controls, zoom, level selection, three save slots, and fog of war. Saves include carried corpses, Spawner production timers, tower build costs, and the requested movement destination. Loading recalculates routes around restored towers. Older save slots remain readable; their tower refunds use the current build cost.
 
-**macOS controls:** Space switches camera focus, R changes Hermes mode, S stops Nathaniel, Escape pauses, and the mouse wheel zooms. Right-click or F fires Nathaniel's gun.
+**macOS controls:** Space switches camera focus, R changes Hermes mode, S stops Nathaniel, Escape pauses or closes the top menu, and the mouse wheel zooms. Right-click or F fires Nathaniel's gun.
 
 **Regression tests:**
 
 ```bash
-xcodebuild -project Nathaniel.xcodeproj -scheme "Nathaniel macOS" \
-  -configuration Debug -destination 'platform=macOS' test
+make test-unit       # macOS XCTest suite
+make test-tooling    # Build-command tests with stubbed platform tools
 ```
 
-Tests cover pathfinding, corpse delivery, Hermes and tower behavior, enemy weapons, Spawners, level rules, and save compatibility. Use the game MCP server for live gameplay interaction; see `AGENTS.md`.
+Tests cover gameplay parity, save compatibility and navigation, menu input, music settings, and the debug HTTP interface. Use the game MCP server for live gameplay interaction; see `AGENTS.md`.
 
 ## Development
 

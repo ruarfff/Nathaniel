@@ -41,17 +41,11 @@
                 return .success("settingsMenuIsVisible: \(settingsMenu.isVisible)")
 
             case "openSettings", "showSettingsMenu":
-                guard let settingsMenu = scene.internalSettingsMenu else {
-                    return .failure("Settings menu not found")
-                }
-                settingsMenu.show()
+                scene.showSettings()
                 return .success("Settings menu opened")
 
             case "closeSettings", "hideSettingsMenu":
-                guard let settingsMenu = scene.internalSettingsMenu else {
-                    return .failure("Settings menu not found")
-                }
-                settingsMenu.hide()
+                scene.closeSettings()
                 return .success("Settings menu closed")
 
             case "toggleSoundEffects":
@@ -62,12 +56,7 @@
             case "toggleMusic":
                 let current = GameSettings.shared.musicEnabled
                 GameSettings.shared.musicEnabled = !current
-                // Apply immediately
-                if !current {
-                    AudioManager.shared.resumeMusic()
-                } else {
-                    AudioManager.shared.pauseMusic()
-                }
+                AudioManager.shared.onMusicSettingChanged()
                 return .success("Music: \(!current)")
 
             case "getSoundEffectsEnabled":
@@ -93,11 +82,7 @@
                     return .failure("Missing or invalid 'enabled' parameter (true/false)")
                 }
                 GameSettings.shared.musicEnabled = enabled
-                if enabled {
-                    AudioManager.shared.resumeMusic()
-                } else {
-                    AudioManager.shared.pauseMusic()
-                }
+                AudioManager.shared.onMusicSettingChanged()
                 return .success("Music set to: \(enabled)")
 
             case "settingsMenuTapBack":
@@ -107,9 +92,7 @@
                 guard settingsMenu.isVisible else {
                     return .failure("Settings menu is not visible")
                 }
-                settingsMenu.hide {
-                    settingsMenu.onBack?()
-                }
+                scene.closeSettings()
                 return .success("Tapped Back button")
 
             default:

@@ -50,6 +50,9 @@
         }
 
         public func getInteractiveNodes() -> [GameCommandServer.NodeInfo] {
+            if let controls = activeOverlayControls() {
+                return controls
+            }
             var nodes: [GameCommandServer.NodeInfo] = []
 
             // Add player characters
@@ -132,7 +135,7 @@
 
             // Add HUD elements
             if let hud = internalHUD {
-                nodes.append(hud.toNodeInfo(interactive: true, properties: ["type": "HUD"]))
+                nodes += hud.namedControls(["pauseButton", "characterToggleButton", "followModeButton", "buildButton"])
             }
 
             return nodes
@@ -145,21 +148,17 @@
         // MARK: - Input Injection
 
         public func injectTap(at point: CGPoint) -> Bool {
-            // Check if build menu should handle this tap (close if outside)
-            if handleTapWithBuildMenuCheck(at: point) {
-                return true
-            }
-
-            // Use the existing handleTap method for other interactions
-            handleTap(at: point)
-            return true
+            handlePointerDown(at: point)
         }
 
         public func injectSwipe(from: CGPoint, to: CGPoint, duration: CGFloat) -> Bool {
-            // For game purposes, a swipe is essentially a move command from start to end
-            // We'll treat it as tapping the end point (move to destination)
-            handleTap(at: to)
-            return true
+            if isBuildMenuVisible {
+                _ = handlePointerDown(at: from)
+                _ = handlePointerMoved(to: to)
+                _ = handlePointerUp(at: to)
+                return true
+            }
+            return self.injectTap(at: to)
         }
 
         // MARK: - Custom Actions

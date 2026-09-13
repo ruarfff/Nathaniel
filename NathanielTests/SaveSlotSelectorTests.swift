@@ -45,7 +45,7 @@ final class SaveSlotSelectorTests: XCTestCase {
         XCTAssertFalse(selector.isVisible)
     }
 
-    func testSlotAndCancelCallbacksRunAfterDismissal() async throws {
+    func testSlotAndCancelCallbacksRunWhenSelected() async throws {
         let frame = CGRect(x: 0, y: 0, width: 800, height: 480)
         let view = SKView(frame: frame)
         let window = NSWindow(contentRect: frame, styleMask: [.borderless], backing: .buffered, defer: false)
@@ -60,10 +60,12 @@ final class SaveSlotSelectorTests: XCTestCase {
         }
         let selector = SaveSlotSelector(size: frame.size)
         scene.addChild(selector)
-        let selected = expectation(description: "Slot selected after hide")
+        let selected = expectation(description: "Slot selected before the fade completes")
+        var selectedSlot: Int?
         selector.onSlotSelected = { [weak selector] slot in
+            selectedSlot = slot
             XCTAssertEqual(slot, 2)
-            XCTAssertEqual(selector?.isHidden, true)
+            XCTAssertEqual(selector?.isHidden, false)
             XCTAssertEqual(selector?.isVisible, false)
             selected.fulfill()
         }
@@ -71,12 +73,13 @@ final class SaveSlotSelectorTests: XCTestCase {
         let slot = try XCTUnwrap(selector.menuPanel?.childNode(withName: "slot_2"))
 
         XCTAssertTrue(selector.handleTouch(at: scene.convert(.zero, from: slot)))
-        XCTAssertTrue(selector.isVisible)
+        XCTAssertFalse(selector.isVisible)
+        XCTAssertEqual(selectedSlot, 2)
         await fulfillment(of: [selected], timeout: 3)
 
-        let cancelled = expectation(description: "Cancel after hide")
+        let cancelled = expectation(description: "Cancel before the fade completes")
         selector.onCancel = { [weak selector] in
-            XCTAssertEqual(selector?.isHidden, true)
+            XCTAssertEqual(selector?.isHidden, false)
             XCTAssertEqual(selector?.isVisible, false)
             cancelled.fulfill()
         }

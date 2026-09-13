@@ -71,7 +71,7 @@ class Hunter: Enemy {
             performAttack()
         } else {
             // Move toward target (hunters are fast!)
-            destination = target.position
+            moveTo(target.position)
         }
     }
 }
@@ -222,7 +222,8 @@ To heal a living character, set `currentHP` to
 
 ```swift
 var position: CGPoint       // Current position
-var destination: CGPoint?   // nil = not moving
+var destination: CGPoint?   // Current waypoint; nil = not moving
+var requestedDestination: CGPoint? { get } // Goal used for route calculation and saves
 var speed: CGFloat          // Points per second
 var facingDirection: FacingDirection  // 8 directions
 var collisionRadius: CGFloat { get }  // Calculated from sprite

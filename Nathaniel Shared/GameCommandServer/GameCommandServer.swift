@@ -1,8 +1,76 @@
+//
+//  GameCommandServer.swift
+//  Nathaniel Shared
+//
+//  Serves HTTP commands for inspecting and controlling debug builds.
+//
+
 #if DEBUG
 
     import Foundation
     import Network
     import SpriteKit
+
+    /// Byte framing for the server's single-request HTTP connections.
+    private enum HTTPRequestResult {
+        case incomplete
+        case complete(method: String, path: String, body: Data)
+        case rejected(status: Int, message: String)
+
+        private static let maximumHeaderBytes = 16_384
+        private static let maximumBodyBytes = 16 * 1_024 * 1_024
+
+        static func parse(_ data: Data) -> Self {
+            guard let separator = data.range(of: Data("\r\n\r\n".utf8)) else {
+                return data.count > self.maximumHeaderBytes
+                    ? .rejected(status: 413, message: "HTTP headers too large")
+                    : .incomplete
+            }
+            guard separator.upperBound <= self.maximumHeaderBytes else {
+                return .rejected(status: 413, message: "HTTP headers too large")
+            }
+            guard let header = String(data: data[..<separator.lowerBound], encoding: .utf8) else {
+                return .rejected(status: 400, message: "Invalid request encoding")
+            }
+            let lines = header.components(separatedBy: "\r\n")
+            let parts = (lines.first ?? "").components(separatedBy: " ")
+            guard parts.count == 3, parts[2].hasPrefix("HTTP/1.") else {
+                return .rejected(status: 400, message: "Invalid request line")
+            }
+
+            var contentLength: Int?
+            for line in lines.dropFirst() {
+                guard let colon = line.firstIndex(of: ":") else {
+                    return .rejected(status: 400, message: "Invalid HTTP header")
+                }
+                let name = line[..<colon].lowercased()
+                let value = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
+                if name == "transfer-encoding" {
+                    return .rejected(status: 400, message: "Transfer-Encoding is not supported")
+                }
+                if name == "content-length" {
+                    guard contentLength == nil, !value.isEmpty,
+                          value.utf8.allSatisfy({ (48 ... 57).contains($0) }), let length = Int(value)
+                    else {
+                        return .rejected(status: 400, message: "Invalid Content-Length")
+                    }
+                    contentLength = length
+                }
+            }
+
+            let bodyLength = contentLength ?? 0
+            guard bodyLength <= self.maximumBodyBytes else {
+                return .rejected(status: 413, message: "HTTP body too large")
+            }
+            let requestEnd = separator.upperBound + bodyLength
+            guard data.count >= requestEnd else { return .incomplete }
+            return .complete(
+                method: parts[0],
+                path: parts[1],
+                body: data.subdata(in: separator.upperBound ..< requestEnd)
+            )
+        }
+    }
 
     // MARK: - Notification Names
 
@@ -299,7 +367,9 @@
             connection.stateUpdateHandler = { [weak self, weak connection] state in
                 switch state {
                 case .ready:
-                    self?.receiveRequest(from: connection!)
+                    if let connection {
+                        self?.receiveRequest(from: connection)
+                    }
                 case .failed, .cancelled:
                     if let connection {
                         self?.connections.removeAll { $0 === connection }
@@ -312,56 +382,40 @@
             connection.start(queue: self.queue)
         }
 
-        private func receiveRequest(from connection: NWConnection) {
+        private func receiveRequest(from connection: NWConnection, buffer: Data = Data()) {
             connection
                 .receive(minimumIncompleteLength: 1, maximumLength: 65_536) { [weak self] data, _, isComplete, error in
-                    if let data, !data.isEmpty {
-                        self?.handleRequest(data: data, connection: connection)
+                    guard let self else {
+                        connection.cancel()
+                        return
                     }
-
+                    var buffer = buffer
+                    if let data {
+                        buffer.append(data)
+                    }
+                    switch HTTPRequestResult.parse(buffer) {
+                    case let .complete(method, path, body):
+                        // Each connection carries one request; the response closes it.
+                        self.routeRequest(method: method, path: path, body: body, connection: connection)
+                        return
+                    case let .rejected(status, message):
+                        self.sendErrorResponse(connection: connection, status: status, message: message)
+                        return
+                    case .incomplete:
+                        break
+                    }
                     if let error {
                         print("[GameCommandServer] Receive error: \(error)")
                         connection.cancel()
                     } else if isComplete {
-                        connection.cancel()
+                        self.sendErrorResponse(connection: connection, status: 400, message: "Incomplete HTTP request")
+                    } else {
+                        self.receiveRequest(from: connection, buffer: buffer)
                     }
                 }
         }
 
         // MARK: - HTTP Request Handling
-
-        private func handleRequest(data: Data, connection: NWConnection) {
-            guard let requestString = String(data: data, encoding: .utf8) else {
-                self.sendErrorResponse(connection: connection, status: 400, message: "Invalid request encoding")
-                return
-            }
-
-            // Parse HTTP request
-            let lines = requestString.components(separatedBy: "\r\n")
-            guard let firstLine = lines.first else {
-                self.sendErrorResponse(connection: connection, status: 400, message: "Empty request")
-                return
-            }
-
-            let parts = firstLine.components(separatedBy: " ")
-            guard parts.count >= 2 else {
-                self.sendErrorResponse(connection: connection, status: 400, message: "Invalid request line")
-                return
-            }
-
-            let method = parts[0]
-            let path = parts[1]
-
-            // Extract body (after blank line)
-            var body: Data? = nil
-            if let blankLineIndex = lines.firstIndex(of: "") {
-                let bodyString = lines.dropFirst(blankLineIndex + 1).joined(separator: "\r\n")
-                body = bodyString.data(using: .utf8)
-            }
-
-            // Route the request
-            self.routeRequest(method: method, path: path, body: body, connection: connection)
-        }
 
         private func routeRequest(method: String, path: String, body: Data?, connection: NWConnection) {
             switch (method, path) {
@@ -1071,6 +1125,7 @@
             switch status {
             case 200: "OK"
             case 400: "Bad Request"
+            case 413: "Payload Too Large"
             case 404: "Not Found"
             case 500: "Internal Server Error"
             case 503: "Service Unavailable"

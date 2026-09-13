@@ -140,6 +140,14 @@ curl -X POST http://localhost:8765/action \
   -d '{"name":"moveNathaniel", "params":{"x":"500","y":"400"}}'
 ```
 
+## Named Controls and Actions
+
+Use `game_list_actions` for the current scene's action list. Use `game_nodes` and `game_tap(node: "pauseButton")` for pointer controls. Node frames are in scene coordinates, including camera and HUD scale. While a menu is open, discovery lists its controls instead of covered gameplay controls. Save selectors expose `slot_1` through `slot_3` and `cancelButton`.
+
+Opening Settings or the save selector pauses gameplay. Back returns to Pause; Resume clears all menus. Music toggles apply to the latest scene track, including scene changes made while muted.
+
+The debug HTTP transport accepts one request per connection, framed by `Content-Length`. It buffers fragmented requests, limits headers to 16 KiB and bodies to 16 MiB, and rejects transfer encoding. The MCP client supplies `Content-Length`.
+
 ## Available Actions by Scene
 
 ### MainMenuScene
@@ -166,7 +174,7 @@ curl -X POST http://localhost:8765/action \
 | `selectNathaniel` | - | Select Nathaniel |
 | `selectHermes` | - | Select Hermes |
 | `moveNathaniel` | `x`, `y` | Move Nathaniel to position |
-| `moveHermes` | `x`, `y` | Move Hermes to position |
+| `setHermesMode` | `mode=following` or `independent` | Follow Nathaniel or stop to build |
 | `targetEnemy` | `index` | Target enemy by index |
 | `pause` | - | Pause game |
 | `resume` | - | Resume game |

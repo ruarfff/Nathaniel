@@ -11,7 +11,6 @@ import SpriteKit
 
 /// Base class for modal overlay menus with a dark background and centered panel
 class OverlayMenu: SKNode {
-
     // MARK: - Properties
 
     /// Size of the viewport
@@ -23,7 +22,7 @@ class OverlayMenu: SKNode {
     /// Menu panel container
     private(set) var menuPanel: SKNode?
 
-    /// Whether the menu is currently visible
+    /// Whether the menu accepts input (false as soon as dismissal starts)
     private(set) var isVisible: Bool = false
 
     // MARK: - Configuration
@@ -38,10 +37,10 @@ class OverlayMenu: SKNode {
     var panelCornerRadius: CGFloat = 16
 
     /// Panel background color
-    var panelBackgroundColor: SKColor = SKColor(red: 0.15, green: 0.15, blue: 0.2, alpha: 0.95)
+    var panelBackgroundColor: SKColor = .init(red: 0.15, green: 0.15, blue: 0.2, alpha: 0.95)
 
     /// Panel border color
-    var panelBorderColor: SKColor = SKColor.white.withAlphaComponent(0.3)
+    var panelBorderColor: SKColor = .white.withAlphaComponent(0.3)
 
     /// Panel border width
     var panelBorderWidth: CGFloat = 2
@@ -52,8 +51,8 @@ class OverlayMenu: SKNode {
         self.viewportSize = size
         super.init()
 
-        setupOverlay()
-        setupMenuPanel()
+        self.setupOverlay()
+        self.setupMenuPanel()
 
         // Start hidden
         isHidden = true
@@ -69,13 +68,13 @@ class OverlayMenu: SKNode {
 
     /// Set up the dark background overlay. Called automatically during init.
     func setupOverlay() {
-        let overlay = SKShapeNode(rectOf: CGSize(width: viewportSize.width * 2, height: viewportSize.height * 2))
-        overlay.fillColor = SKColor.black.withAlphaComponent(overlayOpacity)
+        let overlay = SKShapeNode(rectOf: CGSize(width: viewportSize.width * 2, height: self.viewportSize.height * 2))
+        overlay.fillColor = SKColor.black.withAlphaComponent(self.overlayOpacity)
         overlay.strokeColor = .clear
         overlay.zPosition = 0
         overlay.name = "overlayBackground"
         addChild(overlay)
-        overlayBackground = overlay
+        self.overlayBackground = overlay
     }
 
     /// Set up the menu panel. Override in subclasses to add custom content.
@@ -96,14 +95,14 @@ class OverlayMenu: SKNode {
 
         // Panel background
         let panelBg = SKShapeNode(rectOf: CGSize(width: width, height: height), cornerRadius: panelCornerRadius)
-        panelBg.fillColor = panelBackgroundColor
-        panelBg.strokeColor = panelBorderColor
-        panelBg.lineWidth = panelBorderWidth
+        panelBg.fillColor = self.panelBackgroundColor
+        panelBg.strokeColor = self.panelBorderColor
+        panelBg.lineWidth = self.panelBorderWidth
         panelBg.name = "panelBackground"
         panel.addChild(panelBg)
 
         addChild(panel)
-        menuPanel = panel
+        self.menuPanel = panel
 
         return panel
     }
@@ -112,45 +111,50 @@ class OverlayMenu: SKNode {
 
     /// Show the menu with animation
     func show() {
-        guard !isVisible else { return }
+        guard !self.isVisible else { return }
 
-        isVisible = true
+        removeAction(forKey: "presentation")
+        self.menuPanel?.removeAction(forKey: "presentation")
+        self.isVisible = true
         isHidden = false
 
         // Reset scale and alpha
-        menuPanel?.setScale(0.8)
+        self.menuPanel?.setScale(0.8)
         alpha = 0
 
         // Animate in
-        let fadeIn = SKAction.fadeIn(withDuration: animationDuration)
-        let scaleUp = SKAction.scale(to: 1.0, duration: animationDuration)
+        let fadeIn = SKAction.fadeIn(withDuration: self.animationDuration)
+        let scaleUp = SKAction.scale(to: 1.0, duration: self.animationDuration)
         scaleUp.timingMode = .easeOut
 
-        run(fadeIn)
-        menuPanel?.run(scaleUp)
+        run(fadeIn, withKey: "presentation")
+        self.menuPanel?.run(scaleUp, withKey: "presentation")
     }
 
     /// Hide the menu with animation
     /// - Parameter completion: Called after hide animation completes
     func hide(completion: (() -> Void)? = nil) {
-        guard isVisible else {
+        guard self.isVisible else {
             completion?()
             return
         }
 
+        self.isVisible = false
+        removeAction(forKey: "presentation")
+        self.menuPanel?.removeAction(forKey: "presentation")
+
         // Animate out
-        let fadeOut = SKAction.fadeOut(withDuration: animationDuration)
-        let scaleDown = SKAction.scale(to: 0.8, duration: animationDuration)
+        let fadeOut = SKAction.fadeOut(withDuration: self.animationDuration)
+        let scaleDown = SKAction.scale(to: 0.8, duration: self.animationDuration)
         scaleDown.timingMode = .easeIn
 
         let hideAction = SKAction.run { [weak self] in
             self?.isHidden = true
-            self?.isVisible = false
             completion?()
         }
 
-        run(SKAction.sequence([fadeOut, hideAction]))
-        menuPanel?.run(scaleDown)
+        run(SKAction.sequence([fadeOut, hideAction]), withKey: "presentation")
+        self.menuPanel?.run(scaleDown, withKey: "presentation")
     }
 
     // MARK: - Touch Handling
@@ -159,7 +163,7 @@ class OverlayMenu: SKNode {
     /// - Parameter point: Touch point in parent coordinate space
     /// - Returns: True if touch was handled
     func handleTouch(at point: CGPoint) -> Bool {
-        guard isVisible else { return false }
+        guard self.isVisible else { return false }
         // Default: consume all touches when visible
         return true
     }

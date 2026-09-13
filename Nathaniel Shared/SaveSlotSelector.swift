@@ -211,9 +211,8 @@ class SaveSlotSelector: OverlayMenu {
            )
         {
             animateButtonPress(cancelButton)
-            hide {
-                self.onCancel?()
-            }
+            hide()
+            self.onCancel?()
             return true
         }
 
@@ -235,18 +234,15 @@ class SaveSlotSelector: OverlayMenu {
                 }
 
                 animateButtonPress(slotButton)
-                let selectedSlot = slotId
-                hide {
-                    self.onSlotSelected?(selectedSlot)
-                }
+                hide()
+                self.onSlotSelected?(slotId)
                 return true
             }
         }
 
         // Touch on overlay but not on any button - close
-        hide {
-            self.onCancel?()
-        }
+        hide()
+        self.onCancel?()
         return true
     }
 }

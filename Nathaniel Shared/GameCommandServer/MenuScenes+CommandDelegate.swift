@@ -28,6 +28,9 @@
         }
 
         public func getInteractiveNodes() -> [GameCommandServer.NodeInfo] {
+            if let selector = children.compactMap({ $0 as? SaveSlotSelector }).first, selector.isVisible {
+                return selector.namedControls(["slot_1", "slot_2", "slot_3", "cancelButton"])
+            }
             var nodes: [GameCommandServer.NodeInfo] = []
 
             // Find all labeled button nodes
@@ -56,10 +59,10 @@
         }
 
         public func injectTap(at point: CGPoint) -> Bool {
-            // Use frame-based hit testing to find button, then tap at its center
-            // This is more reliable than nodes(at:) for SKLabelNodes
-            if let buttonName = findButtonAtPoint(point),
-               let button = children.first(where: { $0.name == buttonName })
+            if let selector = children.compactMap({ $0 as? SaveSlotSelector }).first, selector.isVisible {
+                handleTap(at: point)
+            } else if let buttonName = findButtonAtPoint(point),
+                      let button = children.first(where: { $0.name == buttonName })
             {
                 handleTap(at: button.position)
             } else {

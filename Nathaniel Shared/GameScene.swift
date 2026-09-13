@@ -1,3 +1,10 @@
+//
+//  GameScene.swift
+//  Nathaniel Shared
+//
+//  Coordinates gameplay, scene input, and modal menus.
+//
+
 import os.log
 import SpriteKit
 #if os(iOS)
@@ -49,6 +56,12 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
 
     /// Game overlay for victory/game over screens
     private var gameOverlay: GameOverlay!
+
+    private enum Modal {
+        case none, pause, settings, save
+    }
+
+    private var modal: Modal = .none
 
     /// Pause menu overlay
     private var pauseMenu: PauseMenu!
@@ -286,8 +299,7 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
         self.cameraNode.addChild(self.settingsMenu)
 
         self.settingsMenu.onBack = { [weak self] in
-            // Return focus to pause menu (which is still visible underneath)
-            logger.debug("Settings menu closed")
+            self?.closeSettings()
         }
 
         self.settingsMenu.onSettingChanged = { setting, value in
@@ -300,12 +312,13 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
         self.cameraNode.addChild(self.saveSlotSelector)
 
         self.saveSlotSelector.onSlotSelected = { [weak self] slotId in
-            self?.saveGameToSlot(slotId)
+            guard let self, self.modal == .save else { return }
+            self.saveGameToSlot(slotId)
+            self.hideSaveSlotSelector()
         }
 
         self.saveSlotSelector.onCancel = { [weak self] in
-            // Return focus to pause menu
-            logger.debug("Save slot selection cancelled")
+            self?.hideSaveSlotSelector()
         }
 
         self.pauseMenu.onExitToMenu = { [weak self] in
@@ -349,40 +362,7 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
         // Restore resources
         ResourceManager.shared.restore(total: state.resources)
 
-        // Restore Nathaniel
-        if let nathaniel {
-            if state.nathaniel.currentHP <= 0 {
-                // Older saves can contain a respawn whose spare life was already spent.
-                nathaniel.respawn(at: self.startPosition)
-            } else {
-                nathaniel.restoreFromSavedState(state.nathaniel)
-            }
-        }
-
-        // Restore Hermes
-        if let hermes {
-            hermes.restoreFromSavedState(state.hermes)
-        }
-
-        // Clear existing enemies and restore from save
-        self.enemyManager.removeAllEnemies()
-        for enemyState in state.enemies {
-            let enemy = enemyState.type.createEnemy()
-            enemy.restore(from: enemyState)
-
-            // Restore target reference
-            if let targetIndex = enemyState.targetIndex {
-                if targetIndex == 0 {
-                    enemy.target = nathaniel
-                } else if targetIndex == 1 {
-                    enemy.target = hermes
-                }
-            }
-
-            self.enemyManager.addEnemy(enemy)
-        }
-
-        // Restore towers
+        // Restore obstacles before requesting routes for saved destinations.
         for towerState in state.towers {
             let position = towerState.position.cgPoint
             let tower: DefensiveStructure? = switch towerState.type {
@@ -402,6 +382,38 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
                 if towerState.isHermesOwned {
                     tower.constructionCost = max(0, towerState.constructionCost ?? towerState.type.towerType.cost)
                     self.structureManager.markAsHermesOwned(tower)
+                }
+            }
+        }
+
+        // Restore Nathaniel
+        if let nathaniel {
+            if state.nathaniel.currentHP <= 0 {
+                // Older saves can contain a respawn whose spare life was already spent.
+                nathaniel.respawn(at: self.startPosition)
+            } else {
+                nathaniel.restoreFromSavedState(state.nathaniel)
+            }
+        }
+
+        // Restore Hermes
+        if let hermes {
+            hermes.restoreFromSavedState(state.hermes)
+        }
+
+        // Clear existing enemies and restore from save
+        self.enemyManager.removeAllEnemies()
+        for enemyState in state.enemies {
+            let enemy = enemyState.type.createEnemy()
+            self.enemyManager.addEnemy(enemy)
+            enemy.restore(from: enemyState)
+
+            // Restore target reference
+            if let targetIndex = enemyState.targetIndex {
+                if targetIndex == 0 {
+                    enemy.target = nathaniel
+                } else if targetIndex == 1 {
+                    enemy.target = hermes
                 }
             }
         }
@@ -453,34 +465,83 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
 
     // MARK: - Pause/Resume
 
-    /// Pause the game
+    /// Pause gameplay and show its menu.
     func pauseGame() {
         guard self.levelManager.state == .playing else { return }
-        self.levelManager.pause()
-        self.towerPlacementController?.hideMenu() // Close build menu if open
-        self.pauseMenu.show()
-        logger.info("Game paused")
+        self.setModal(.pause)
     }
 
-    /// Resume the game from pause
+    /// Resume gameplay and dismiss all blocking menus.
     func resumeGame() {
-        guard self.levelManager.state == .paused else { return }
-        self.pauseMenu.hide { [weak self] in
-            self?.levelManager.resume()
-            logger.info("Game resumed")
+        self.setModal(.none)
+    }
+
+    func showSettings() {
+        self.setModal(.settings)
+    }
+
+    func closeSettings() {
+        guard self.modal == .settings else { return }
+        self.setModal(.pause)
+    }
+
+    func showSaveSlotSelector() {
+        self.setModal(.save)
+    }
+
+    func hideSaveSlotSelector() {
+        guard self.modal == .save else { return }
+        self.setModal(.pause)
+    }
+
+    private func closeTopModal() {
+        switch self.modal {
+        case .settings:
+            #if DEBUG
+                if self.settingsMenu.dismissDevSettings() {
+                    return
+                }
+            #endif
+            self.closeSettings()
+        case .save:
+            self.hideSaveSlotSelector()
+        case .pause:
+            if self.pauseMenu.isShowingConfirmation {
+                self.pauseMenu.hideConfirmation()
+            } else {
+                self.resumeGame()
+            }
+        case .none:
+            self.pauseGame()
         }
     }
 
-    /// Show the settings menu
-    private func showSettings() {
-        self.settingsMenu.show()
-        logger.debug("Showing settings menu")
-    }
+    /// The scene owns pause state; menu animations only change presentation.
+    private func setModal(_ next: Modal) {
+        guard next == .none || self.levelManager.state == .playing || self.levelManager.state == .paused else {
+            return
+        }
+        self.modal = next
+        self.towerPlacementController?.handleTouchCancelled()
+        self.towerPlacementController?.hideMenu()
 
-    /// Show the save slot selector
-    private func showSaveSlotSelector() {
-        self.saveSlotSelector.show(mode: .save)
-        logger.debug("Showing save slot selector")
+        if next == .none {
+            self.pauseMenu.hide()
+            self.levelManager.resume()
+        } else {
+            self.levelManager.pause()
+            self.pauseMenu.show()
+        }
+        if next == .settings {
+            self.settingsMenu.show()
+        } else {
+            self.settingsMenu.hide()
+        }
+        if next == .save {
+            self.saveSlotSelector.show(mode: .save)
+        } else {
+            self.saveSlotSelector.hide()
+        }
     }
 
     /// Save the game to a specific slot
@@ -1135,11 +1196,13 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
     // MARK: - LevelManagerDelegate
 
     func levelManagerDidGameOver(_ manager: LevelManager) {
+        self.setModal(.none)
         logger.info("Game Over!")
         self.gameOverlay.showGameOver(score: manager.score, time: manager.elapsedTime)
     }
 
     func levelManagerDidWin(_ manager: LevelManager) {
+        self.setModal(.none)
         logger.info("Victory!")
 
         // Save progress for campaign levels (not survival mode)
@@ -1322,6 +1385,7 @@ extension GameScene {
     }
 
     override func handleSecondaryClick(at location: CGPoint) -> Bool {
+        guard self.levelManager.state == .playing, self.modal == .none else { return false }
         // Right-click to fire weapon at location (macOS only)
         if let nathaniel {
             if nathaniel.fireAt(location) {
@@ -1341,19 +1405,13 @@ extension GameScene {
     }
 
     override func handleKeyDown(keyCode: UInt16) -> Bool {
-        // Escape key toggles pause (works in both playing and paused states)
-        if keyCode == 53 { // Escape key
-            if self.levelManager.state == .paused {
-                self.resumeGame()
-            } else if self.levelManager.state == .playing {
-                self.pauseGame()
-            }
+        if self.gameOverlay.state == .victory || self.gameOverlay.state == .gameOver {
+            self.gameOverlay.handleInteraction()
             return true
         }
 
-        // Check if the overlay is showing (victory/game over)
-        if self.gameOverlay.state == .victory || self.gameOverlay.state == .gameOver {
-            self.gameOverlay.handleInteraction()
+        if keyCode == 53 { // Escape closes the top menu before resuming.
+            self.closeTopModal()
             return true
         }
 
@@ -1413,8 +1471,8 @@ extension GameScene {
         // Don't handle taps if game is not in playing state
         guard self.levelManager.state == .playing else { return }
 
-        // Check if tap is on HUD elements (in camera/HUD coordinate space)
-        let hudLocation = self.cameraNode.convert(location, from: self)
+        // HUD has its own scale, so convert directly into its local space.
+        let hudLocation = self.hud.convert(location, from: self)
         if self.hud.handleTouch(at: hudLocation) {
             return
         }
@@ -1548,20 +1606,22 @@ extension GameScene {
     private func dispatchInputToOverlayMenus(at scenePoint: CGPoint) -> Bool {
         let hudLocation = self.cameraNode.convert(scenePoint, from: self)
 
-        // Check overlays in z-order priority (highest first)
-        if self.saveSlotSelector.isVisible {
+        if self.gameOverlay.state == .victory || self.gameOverlay.state == .gameOver {
+            self.gameOverlay.handleInteraction()
+            return true
+        }
+        switch self.modal {
+        case .save:
             _ = self.saveSlotSelector.handleTouch(at: hudLocation)
             return true
-        }
-
-        if self.settingsMenu.isVisible {
+        case .settings:
             _ = self.settingsMenu.handleTouch(at: hudLocation)
             return true
-        }
-
-        if self.pauseMenu.isVisible {
+        case .pause:
             _ = self.pauseMenu.handleTouch(at: hudLocation)
             return true
+        case .none:
+            break
         }
 
         if let controller = towerPlacementController {
@@ -1574,13 +1634,6 @@ extension GameScene {
         }
 
         return false
-    }
-
-    /// Handle tap with build menu consideration - closes menu if tap is outside
-    /// Returns true if menu was closed (tap was consumed), false if tap should be processed normally
-    func handleTapWithBuildMenuCheck(at scenePoint: CGPoint) -> Bool {
-        // Use the unified dispatch helper
-        self.dispatchInputToOverlayMenus(at: scenePoint)
     }
 
     /// Build through the same placement validation used by touch and mouse input.
@@ -1687,6 +1740,29 @@ extension GameScene {
     extension GameScene {
         // Internal accessors for GameCommandDelegate to avoid Mirror reflection.
         // These expose private properties only in DEBUG builds for testing.
+
+        /// Expose only the controls that currently receive pointer input.
+        func activeOverlayControls() -> [GameCommandServer.NodeInfo]? {
+            if self.gameOverlay.state == .victory || self.gameOverlay.state == .gameOver {
+                return [self.gameOverlay.toNodeInfo(interactive: true)]
+            }
+            switch self.modal {
+            case .pause:
+                let names = self.pauseMenu.isShowingConfirmation
+                    ? ["cancelExit", "confirmExit"]
+                    : ["resumeButton", "settingsButton", "saveGameButton", "exitToMenuButton"]
+                return self.pauseMenu.namedControls(names)
+            case .settings:
+                return self.settingsMenu.commandControls()
+            case .save:
+                return self.saveSlotSelector.namedControls(["slot_1", "slot_2", "slot_3", "cancelButton"])
+            case .none:
+                if let menu = self.towerPlacementController?.buildMenu, menu.isVisible {
+                    return menu.namedControls(TowerType.allCases.map { "buildMenuItem_\($0.rawValue)" })
+                }
+                return nil
+            }
+        }
 
         var internalNathaniel: Nathaniel? {
             self.nathaniel

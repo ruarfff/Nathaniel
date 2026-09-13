@@ -159,29 +159,7 @@ const tools: Tool[] = [
   },
   {
     name: 'game_action',
-    description: `Execute a named game action. Available actions depend on the current scene.
-
-**MainMenuScene:** startGame, continueGame, loadGame, options, credits, hasSaves, getSaveSlots
-
-**LevelSelectScene:** level_1, level_2, level_3, level_4, level_5, back
-
-**OptionsScene:** back, toggleSound, toggleMusic
-
-**CreditsScene:** back
-
-**GameScene - Character:** selectNathaniel, selectHermes, toggleCharacter, moveNathaniel (x, y), targetEnemy (index)
-
-**GameScene - Hermes:** setHermesMode (mode: following|independent), toggleHermesFollow, getHermesMode
-
-**GameScene - Pause:** pause, resume, isPaused, showPauseMenu, hidePauseMenu, pauseMenuIsVisible, pauseMenuTapResume, pauseMenuTapSettings, pauseMenuTapSaveGame, pauseMenuTapExitToMenu, pauseMenuConfirmExit, pauseMenuCancelExit, exitToMenu (skipConfirm: true)
-
-**GameScene - Settings:** openSettings, closeSettings, settingsMenuIsVisible, toggleSoundEffects, toggleMusic, getSoundEffectsEnabled, getMusicEnabled, getCurrentSettings, setSoundEffects (enabled), setMusic (enabled), settingsMenuTapBack
-
-**GameScene - Save:** saveGame (slot: 1-3), getSaveSlots, hasSaves, showSaveSlotSelector, hideSaveSlotSelector, saveSlotSelectorIsVisible, deleteSaveSlot (slot), deleteAllSaves
-
-**GameScene - Debug:** spawnEnemy (type: grunt|soldier|boss, x, y), killAllEnemies, healPlayer, addResources (amount), getCombatState, getNathanielTarget, getHermesTarget, getHermesCombatState, getTowerTargets, waitForCombat
-
-**GameScene - Building:** toggleBuildMenu, buildMenuIsVisible, buildTower (type: gun|laser|heal, x, y), sellTower (index), getTowerCount`,
+    description: 'Execute a named game action. Use game_list_actions to discover the actions and parameters available in the current scene.',
     inputSchema: {
       type: 'object',
       properties: {

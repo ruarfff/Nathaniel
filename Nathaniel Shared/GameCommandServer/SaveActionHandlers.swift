@@ -38,17 +38,11 @@
                 return .success("hasSaves: \(SaveManager.shared.hasSaves)")
 
             case "showSaveSlotSelector":
-                guard let selector = scene.internalSaveSlotSelector else {
-                    return .failure("Save slot selector not found")
-                }
-                selector.show(mode: .save)
+                scene.showSaveSlotSelector()
                 return .success("Save slot selector shown")
 
             case "hideSaveSlotSelector":
-                guard let selector = scene.internalSaveSlotSelector else {
-                    return .failure("Save slot selector not found")
-                }
-                selector.hide()
+                scene.hideSaveSlotSelector()
                 return .success("Save slot selector hidden")
 
             case "saveSlotSelectorIsVisible":

@@ -17,7 +17,7 @@ extension Character {
             currentHP: currentHP,
             maxHP: maxHP,
             facingDirection: SavedFacingDirection(from: facingDirection),
-            destination: destination.map { SavedPoint($0) }
+            destination: requestedDestination.map { SavedPoint($0) }
         )
     }
 }
@@ -30,7 +30,10 @@ extension Nathaniel {
         position = state.position.cgPoint
         currentHP = state.currentHP
         facingDirection = state.facingDirection.facingDirection
-        destination = state.destination?.cgPoint
+        stop()
+        if let destination = state.destination {
+            moveTo(destination.cgPoint)
+        }
 
         // Reset sprite visibility in case it was dead
         sprite.alpha = 1.0
@@ -59,7 +62,7 @@ extension Hermes {
         position = state.characterState.position.cgPoint
         currentHP = state.characterState.currentHP
         facingDirection = state.characterState.facingDirection.facingDirection
-        destination = state.characterState.destination?.cgPoint
+        stop()
 
         // Restore Hermes-specific state
         mode = state.mode.hermesMode
@@ -98,7 +101,7 @@ extension Enemy {
             currentHP: currentHP,
             maxHP: maxHP,
             facingDirection: SavedFacingDirection(from: facingDirection),
-            destination: destination.map { SavedPoint($0) },
+            destination: requestedDestination.map { SavedPoint($0) },
             targetIndex: targetIndex,
             timeUntilNextSpawn: (self as? Spawner)?.timeUntilNextSpawn,
             initialSpawnsRemaining: (self as? Spawner)?.initialSpawnsRemaining
@@ -116,7 +119,10 @@ extension Enemy {
         position = state.position.cgPoint
         currentHP = state.currentHP
         facingDirection = state.facingDirection.facingDirection
-        destination = state.destination?.cgPoint
+        stop()
+        if let destination = state.destination {
+            moveTo(destination.cgPoint)
+        }
 
         updateHealthBar()
         updateTexture()

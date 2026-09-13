@@ -40,7 +40,7 @@
 --extensionacl on-declarations
 
 # Header
---header strip
+--header ignore
 
 # Other
 --commas always

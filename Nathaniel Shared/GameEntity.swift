@@ -311,10 +311,15 @@ class Character: GameEntity, Damageable {
         self.movementComponent.maxSpeed
     }
 
-    /// Current movement destination (delegates to movementComponent)
+    /// Current waypoint, or the destination for direct movement.
     var destination: CGPoint? {
         get { self.movementComponent.destination }
         set { self.movementComponent.destination = newValue }
+    }
+
+    /// Requested goal, independent of the current pathfinding waypoint.
+    var requestedDestination: CGPoint? {
+        self.movementComponent.requestedDestination
     }
 
     /// Whether the character is currently moving

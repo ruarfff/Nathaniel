@@ -158,7 +158,7 @@ struct SavedCharacterState: Codable {
     /// Direction the character is facing
     let facingDirection: SavedFacingDirection
 
-    /// Current movement destination (nil if not moving)
+    /// Requested movement goal; older saves may contain an intermediate waypoint.
     let destination: SavedPoint?
 
     init(
@@ -254,7 +254,7 @@ struct SavedEnemyState: Codable {
     /// Direction the enemy is facing
     let facingDirection: SavedFacingDirection
 
-    /// Current movement destination (nil if not moving)
+    /// Requested movement goal; older saves may contain an intermediate waypoint.
     let destination: SavedPoint?
 
     /// Spawner production state, optional for older saves.

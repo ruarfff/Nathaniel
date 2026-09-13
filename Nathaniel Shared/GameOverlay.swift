@@ -21,7 +21,6 @@ enum OverlayState {
 
 /// Overlay node for victory/game over screens
 class GameOverlay: SKNode {
-
     // MARK: - Properties
 
     /// Background dim
@@ -60,44 +59,46 @@ class GameOverlay: SKNode {
         self.overlaySize = size
 
         // Create dim background
-        dimNode = SKShapeNode(rectOf: CGSize(width: size.width * 2, height: size.height * 2))
-        dimNode.fillColor = SKColor.black.withAlphaComponent(0.7)
-        dimNode.strokeColor = .clear
-        dimNode.zPosition = 900
+        self.dimNode = SKShapeNode(rectOf: CGSize(width: size.width * 2, height: size.height * 2))
+        self.dimNode.fillColor = SKColor.black.withAlphaComponent(0.7)
+        self.dimNode.strokeColor = .clear
+        self.dimNode.zPosition = 900
 
         // Title label
-        titleLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        titleLabel.fontSize = 48
-        titleLabel.fontColor = .white
-        titleLabel.position = CGPoint(x: 0, y: 60)
-        titleLabel.zPosition = 910
+        self.titleLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        self.titleLabel.fontSize = 48
+        self.titleLabel.fontColor = .white
+        self.titleLabel.position = CGPoint(x: 0, y: 60)
+        self.titleLabel.zPosition = 910
 
         // Subtitle label
-        subtitleLabel = SKLabelNode(fontNamed: "Helvetica")
-        subtitleLabel.fontSize = 24
-        subtitleLabel.fontColor = SKColor(white: 0.9, alpha: 1.0)
-        subtitleLabel.position = CGPoint(x: 0, y: 0)
-        subtitleLabel.zPosition = 910
+        self.subtitleLabel = SKLabelNode(fontNamed: "Helvetica")
+        self.subtitleLabel.fontSize = 24
+        self.subtitleLabel.fontColor = SKColor(white: 0.9, alpha: 1.0)
+        self.subtitleLabel.position = CGPoint(x: 0, y: 0)
+        self.subtitleLabel.zPosition = 910
 
         // Instruction label
-        instructionLabel = SKLabelNode(fontNamed: "Helvetica")
-        instructionLabel.fontSize = 18
-        instructionLabel.fontColor = SKColor(white: 0.7, alpha: 1.0)
-        instructionLabel.position = CGPoint(x: 0, y: -60)
-        instructionLabel.zPosition = 910
+        self.instructionLabel = SKLabelNode(fontNamed: "Helvetica")
+        self.instructionLabel.fontSize = 18
+        self.instructionLabel.fontColor = SKColor(white: 0.7, alpha: 1.0)
+        self.instructionLabel.position = CGPoint(x: 0, y: -60)
+        self.instructionLabel.zPosition = 910
 
         super.init()
+        name = "resultOverlay"
 
-        addChild(dimNode)
-        addChild(titleLabel)
-        addChild(subtitleLabel)
-        addChild(instructionLabel)
+        addChild(self.dimNode)
+        addChild(self.titleLabel)
+        addChild(self.subtitleLabel)
+        addChild(self.instructionLabel)
 
         // Start hidden
         alpha = 0
         isHidden = true
     }
 
+    @available(*, unavailable)
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
@@ -106,81 +107,84 @@ class GameOverlay: SKNode {
 
     /// Show victory screen
     func showVictory(score: Int, time: TimeInterval, hasNextLevel: Bool = false) {
-        state = .victory
+        self.state = .victory
         self.hasNextLevel = hasNextLevel
 
-        titleLabel.text = "VICTORY!"
-        titleLabel.fontColor = SKColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)
+        self.titleLabel.text = "VICTORY!"
+        self.titleLabel.fontColor = SKColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)
 
         let minutes = Int(time) / 60
         let seconds = Int(time) % 60
-        subtitleLabel.text = "Score: \(score) | Time: \(minutes):\(String(format: "%02d", seconds))"
+        self.subtitleLabel.text = "Score: \(score) | Time: \(minutes):\(String(format: "%02d", seconds))"
 
         if hasNextLevel {
             #if os(iOS) || os(tvOS)
-            instructionLabel.text = "Tap for Next Level"
+                self.instructionLabel.text = "Tap for Next Level"
             #else
-            instructionLabel.text = "Press any key for Next Level"
+                self.instructionLabel.text = "Press any key for Next Level"
             #endif
         } else {
             // Final level or survival - completed the game
-            titleLabel.text = "GAME COMPLETE!"
+            self.titleLabel.text = "GAME COMPLETE!"
             #if os(iOS) || os(tvOS)
-            instructionLabel.text = "Tap to return to menu"
+                self.instructionLabel.text = "Tap to return to menu"
             #else
-            instructionLabel.text = "Press any key to return to menu"
+                self.instructionLabel.text = "Press any key to return to menu"
             #endif
         }
 
-        animateIn()
+        self.animateIn()
     }
 
     /// Show game over screen
     func showGameOver(score: Int, time: TimeInterval) {
-        state = .gameOver
-        hasNextLevel = false
+        self.state = .gameOver
+        self.hasNextLevel = false
 
-        titleLabel.text = "GAME OVER"
-        titleLabel.fontColor = SKColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 1.0)
+        self.titleLabel.text = "GAME OVER"
+        self.titleLabel.fontColor = SKColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 1.0)
 
         let minutes = Int(time) / 60
         let seconds = Int(time) % 60
-        subtitleLabel.text = "Score: \(score) | Time: \(minutes):\(String(format: "%02d", seconds))"
+        self.subtitleLabel.text = "Score: \(score) | Time: \(minutes):\(String(format: "%02d", seconds))"
 
         #if os(iOS) || os(tvOS)
-        instructionLabel.text = "Tap to retry"
+            self.instructionLabel.text = "Tap to retry"
         #else
-        instructionLabel.text = "Press any key to retry"
+            self.instructionLabel.text = "Press any key to retry"
         #endif
 
-        animateIn()
+        self.animateIn()
     }
 
     /// Handle user interaction with the overlay
     func handleInteraction() {
-        switch state {
+        switch self.state {
         case .hidden, .lifeLost:
             break
         case .victory:
-            if hasNextLevel {
-                onNextLevel?()
+            if self.hasNextLevel {
+                self.onNextLevel?()
             } else {
-                onMainMenu?()
+                self.onMainMenu?()
             }
         case .gameOver:
-            onRetry?()
+            self.onRetry?()
         }
     }
 
     /// Show life lost notification (brief)
     func showLifeLost(remainingLives: Int) {
-        state = .lifeLost
+        guard self.state != .victory, self.state != .gameOver else { return }
+        removeAction(forKey: "presentation")
+        self.instructionLabel.removeAllActions()
+        self.state = .lifeLost
 
-        titleLabel.text = "Life Lost!"
-        titleLabel.fontColor = SKColor(red: 0.9, green: 0.6, blue: 0.2, alpha: 1.0)
+        self.titleLabel.text = "Life Lost!"
+        self.titleLabel.fontColor = SKColor(red: 0.9, green: 0.6, blue: 0.2, alpha: 1.0)
 
-        subtitleLabel.text = "Lives remaining: \(remainingLives)"
-        instructionLabel.text = ""
+        self.subtitleLabel.text = "Lives remaining: \(remainingLives)"
+        self.instructionLabel.text = ""
 
         // Brief appearance
         isHidden = false
@@ -192,31 +196,37 @@ class GameOverlay: SKNode {
             self?.isHidden = true
             self?.state = .hidden
         }
-        run(SKAction.sequence([wait, fadeOut, hide]))
+        run(SKAction.sequence([wait, fadeOut, hide]), withKey: "presentation")
     }
 
     /// Hide the overlay
     func hide() {
+        removeAction(forKey: "presentation")
+        self.instructionLabel.removeAllActions()
+        self.state = .hidden
         let fadeOut = SKAction.fadeOut(withDuration: 0.3)
         let hide = SKAction.run { [weak self] in
             self?.isHidden = true
         }
-        run(SKAction.sequence([fadeOut, hide]))
+        run(SKAction.sequence([fadeOut, hide]), withKey: "presentation")
     }
 
     // MARK: - Animation
 
     private func animateIn() {
+        removeAction(forKey: "presentation")
+        self.instructionLabel.removeAllActions()
+        self.instructionLabel.setScale(1)
         isHidden = false
 
         // Fade in
         let fadeIn = SKAction.fadeIn(withDuration: 0.5)
-        run(fadeIn)
+        run(fadeIn, withKey: "presentation")
 
         // Pulse instruction label
         let scaleUp = SKAction.scale(to: 1.1, duration: 0.8)
         let scaleDown = SKAction.scale(to: 1.0, duration: 0.8)
         let pulse = SKAction.sequence([scaleUp, scaleDown])
-        instructionLabel.run(SKAction.repeatForever(pulse))
+        self.instructionLabel.run(SKAction.repeatForever(pulse))
     }
 }

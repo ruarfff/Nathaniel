@@ -1,3 +1,10 @@
+//
+//  OptionsScene.swift
+//  Nathaniel Shared
+//
+//  Presents sound and music preferences from the main menu.
+//
+
 import SpriteKit
 
 class OptionsScene: InputHandlingScene {
@@ -219,11 +226,7 @@ class OptionsScene: InputHandlingScene {
         self.updateToggle(self.musicToggle, enabled: GameSettings.shared.musicEnabled)
         self.animateToggle(self.musicToggle)
 
-        // Immediately start/stop music based on new setting
         AudioManager.shared.onMusicSettingChanged()
-        if GameSettings.shared.musicEnabled {
-            AudioManager.shared.playMusic(.menu)
-        }
     }
 
     private func animateToggle(_ toggle: SKLabelNode) {

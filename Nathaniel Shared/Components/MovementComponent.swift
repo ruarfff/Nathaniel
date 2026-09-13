@@ -1,3 +1,10 @@
+//
+//  MovementComponent.swift
+//  Nathaniel Shared
+//
+//  Character movement and requested pathfinding destinations.
+//
+
 import SpriteKit
 
 /// Component handling movement and pathfinding for game entities
@@ -10,7 +17,7 @@ class MovementComponent {
     /// Maximum speed (for resetting after effects)
     let maxSpeed: CGFloat
 
-    /// Current movement destination (nil if not moving)
+    /// Current waypoint, or the destination for direct movement.
     var destination: CGPoint?
 
     /// Whether the entity is currently moving
@@ -21,8 +28,8 @@ class MovementComponent {
     /// Pathfinding component for A* navigation (optional)
     var pathfinding: PathfindingMovement?
 
-    /// Final destination when using pathfinding (may differ from current waypoint)
-    private var finalDestination: CGPoint?
+    /// Requested goal, independent of the current pathfinding waypoint.
+    private(set) var requestedDestination: CGPoint?
 
     /// Stuck detection: count of frames without significant movement
     private var stuckFrameCount: Int = 0
@@ -59,8 +66,8 @@ class MovementComponent {
     func update(currentPosition: CGPoint, deltaTime: TimeInterval, collisionRadius: CGFloat) -> CGPoint {
         if let pathfinding, pathfinding.entityRadius != collisionRadius {
             pathfinding.entityRadius = collisionRadius
-            if let finalDestination {
-                pathfinding.calculatePath(from: currentPosition, to: finalDestination)
+            if let requestedDestination {
+                pathfinding.calculatePath(from: currentPosition, to: requestedDestination)
             }
         }
 
@@ -89,7 +96,7 @@ class MovementComponent {
         // Check if we've arrived at final destination
         if newPosition.distance(to: dest) <= 5 {
             self.destination = nil
-            self.finalDestination = nil
+            self.requestedDestination = nil
             self.onMovementStateChanged?(false)
         }
 
@@ -105,12 +112,15 @@ class MovementComponent {
         collisionRadius: CGFloat,
         pathfinding: PathfindingMovement
     ) -> CGPoint {
-        // Get next waypoint from path follower, passing finalDestination for recalculation if blocked
-        guard let waypoint = pathfinding.update(currentPosition: currentPosition, destination: self.finalDestination)
+        // Keep the requested goal when a blocked route must be recalculated.
+        guard let waypoint = pathfinding.update(
+            currentPosition: currentPosition,
+            destination: self.requestedDestination
+        )
         else {
             // Path complete or blocked with no alternative - clear destinations
             self.destination = nil
-            self.finalDestination = nil
+            self.requestedDestination = nil
             self.stuckFrameCount = 0
             self.onMovementStateChanged?(false)
             return currentPosition
@@ -133,7 +143,7 @@ class MovementComponent {
             if self.stuckFrameCount > self.stuckFrameThreshold {
                 // Character is stuck - clear path and try to recalculate
                 pathfinding.clearPath()
-                if let dest = finalDestination {
+                if let dest = requestedDestination {
                     _ = pathfinding.calculatePath(from: newPosition, to: dest)
                 }
                 self.stuckFrameCount = 0
@@ -216,7 +226,7 @@ class MovementComponent {
     ///   - point: The destination point
     ///   - from: The starting position
     func moveTo(_ point: CGPoint, from currentPosition: CGPoint) {
-        self.finalDestination = point
+        self.requestedDestination = point
 
         // Try pathfinding if available
         if let pathfinding, pathfinding.isEnabled {
@@ -235,7 +245,7 @@ class MovementComponent {
     /// Stop movement immediately
     func stop() {
         self.destination = nil
-        self.finalDestination = nil
+        self.requestedDestination = nil
         self.pathfinding?.clearPath()
         self.onMovementStateChanged?(false)
     }
