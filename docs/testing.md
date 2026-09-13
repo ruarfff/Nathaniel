@@ -1,51 +1,43 @@
 # Testing
 
-Use XCTest for gameplay rules, computer use for real input, and the small debug interface for exact state and test setup.
+Use native GDScript tests for gameplay rules, real computer input for controls, and the debug interface for exact state and repeatable setup. Each test process must use explicit isolated storage.
 
 ## Automated checks
 
-- `make test-unit`: macOS XCTest suite, including gameplay, saves, menus, camera input, and isolated HTTP transport tests.
-- `make test-tooling`: build-command tests with stubbed platform tools.
-- `npm --prefix game-mcp-server test`: MCP stdio integration tests against an isolated HTTP fixture. No running game is required.
-- `make test`: resource/map checks on macOS, then an iOS Simulator launch and screenshot. These smoke checks do not establish gameplay correctness.
-
-See [automation.md](automation.md) for build paths and smoke-test options.
-
-## Computer-use playtest
-
-Build and launch with `make macos` and `make ios`. On each platform:
-
-1. Open Level Select and start a level through the visible menus.
-2. Move Nathaniel, target an enemy, and switch camera focus to Hermes.
-3. Make Hermes stop. Open Build and drag a tower to clear ground.
-4. Make Hermes follow. Check that his towers disappear and each refunds 25% of its build cost, rounded down.
-5. Pause, open Settings, return to Pause, and resume. Inspect the save selector and cancel without replacing existing saves.
-6. Check desktop wheel zoom and iOS pinch zoom where the available input tools support the gesture. Verify HUD buttons still work after zoom.
-
-Use screenshots to inspect the visible UI. Accessibility may expose hidden SpriteKit labels, so an accessibility match alone does not prove a control is visible. Simulator automation can take seconds while gameplay continues; pause between checks or use debug setup to prepare a repeatable situation. Report the platform and any input that could not be tested.
-
-Known desktop limitation: the HUD assumes a landscape window and does not relayout when the window changes shape. Narrow windows and some full-screen transitions can clip controls.
-
-## Debug inspection and setup
-
-The DEBUG-only `GameCommandServer` uses port 8765 on macOS and iOS Simulator. Run only one game instance when using this port. Release builds omit the interface. Configure the optional MCP adapter as described in [its README](../game-mcp-server/README.md).
-
-Start with `game_state` and `game_list_actions`. State includes score, lives, resources, elapsed time, pause/result status, player positions and health, enemy count, Hermes mode, and tower count. Gameplay-only fields are omitted in menu scenes.
-
-`game_action` supports `loadLevel`, `mainMenu`, `pause`, `resume`, `spawnEnemy`, `killAllEnemies`, `healPlayer`, `addResources`, and `setHermesMode`. Discovery returns the actions available in the current scene and their parameter hints. Pass parameter values as strings. For example:
-
-```json
-{"name":"loadLevel","params":{"level":"1"}}
+```sh
+make test
+make test-mcp
+make format-check
 ```
 
-`loadLevel` accepts campaign levels 1–5 and survival level 0. It starts a fresh scene without changing saves. `mainMenu` discards the current unsaved session. `killAllEnemies` uses normal death handling and can record campaign completion; use survival for automated fixtures that must not change campaign progress. Setup actions bypass UI; their success does not prove the corresponding button or gesture works.
+`make test` imports the root project, checks source formatting, runs Python tooling tests and native content/gameplay/persistence/presentation suites, and exercises the MCP adapter against a separate headless game. `make test-mcp` runs the adapter checks. The runners treat engine/script errors as failures even when Godot returns exit code zero. These checks do not read live saves.
 
-`game_nodes` returns names and bounds in SpriteKit scene coordinates (origin at bottom-left). Covered controls are excluded while a modal menu is open. `game_tap` accepts a node name or scene x,y. `game_swipe` is a fallback for tower dragging; elsewhere it taps the endpoint. It does not simulate OS gesture recognition or elapsed drag time. Use computer use for real input validation.
+Run a native suite directly when investigating a failure:
 
-`game_screenshot` captures the SpriteKit scene as a PNG. Inspect screenshots directly; this project does not maintain image baselines or pixel-diff tests.
+```sh
+python3 tools/run_checked.py godot --headless --path . --script res://tests/test_gameplay.gd
+python3 tools/run_checked.py godot --headless --path . --script res://tests/test_services.gd
+python3 tools/run_checked.py godot --headless --path . --script res://tests/test_presentation.gd -- --storage-dir="$(mktemp -d /tmp/nathaniel-presentation.XXXXXX)"
+```
 
-## Maintaining the interface
+Presentation tests instantiate the actual scenes and check menu paths, all three slots, settings, input dispatch, scrolling, and camera conversion. Synthetic input proves event dispatch, not OS gesture recognition. Audio assertions inspect player state, not audible output. The [verification record](verification.md) distinguishes prior evidence from current checks.
 
-Keep setup actions in `GameDebugAction`. Its enum is the source for both dispatch and discovery. Prefer exposing a missing value in structured state to adding another query action. Add gameplay regression tests directly in XCTest.
+## Real input playtest
 
-The HTTP transport accepts one request per connection, buffers fragmented requests, and uses `Content-Length`. It limits headers to 16 KiB and bodies to 16 MiB and rejects transfer encoding. The MCP client supplies the HTTP framing.
+Use [export instructions](authoring.md#export-and-platform-checks) to build and run macOS and iOS. Launch a debug build with an explicit unused `--storage-dir` before save or progression checks. Add `--debug-port=18766` for state inspection when needed. On each platform:
+
+1. Start a campaign level and survival through visible menus.
+2. Move Nathaniel, target an enemy, and switch camera focus to Hermes.
+3. Stop Hermes, open Build, and drag a tower onto clear ground. Check placement rejection on blocked ground.
+4. Make Hermes follow. Check tower removal and the rounded 25% refund for each surviving paid tower.
+5. Pause, open Settings, return, and resume. Exercise save/load and replacement/cancel in the isolated slots.
+6. Check desktop keys and wheel zoom, touch zoom buttons, and two-finger pinch where the available input tool supports it. Check HUD input after zoom.
+7. Scroll long menus; test both a drag over a button and an ordinary tap. Verify the last menu item is reachable.
+
+Inspect rendered screenshots; an accessibility match alone does not establish visibility. Simulator automation can take time while gameplay continues, so pause between checks or prepare a repeatable scenario through debug setup. Report the platform, input method, outcome, and gestures that could not be tested.
+
+## Debug inspection and profiling
+
+The [debug interface](debug-interface.md) documents the opt-in loopback server, coordinates, actions, and MCP setup. Actions and fallback taps bypass OS input. `killAllEnemies` uses normal death handling and can record campaign progress; use survival and isolated storage for fixtures.
+
+`make profile` measures the logical simulation. `make profile-rendered` measures the complete rendered game and saves a viewport image. Record hardware, engine version, workload, warmup, sample count and frame settings with results. Build success and average FPS alone do not establish input correctness or consistent frame pacing.

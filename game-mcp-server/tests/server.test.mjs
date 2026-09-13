@@ -50,7 +50,7 @@ test('small tool interface forwards requests and reports failures', async (t) =>
     const shot = await client.callTool({ name: 'game_screenshot' });
     assert.deepEqual(shot.content, [{ type: 'image', mimeType: 'image/png', data: 'aW1hZ2U=' }]);
   });
-  await t.test('forwards named taps and scene-space swipes', async () => {
+  await t.test('forwards named taps and viewport swipes', async () => {
     await client.callTool({ name: 'game_tap', arguments: { node: 'pauseButton' } });
     assert.deepEqual(requests.at(-1), { method: 'POST', path: '/tap', body: { node: 'pauseButton' } });
     await client.callTool({ name: 'game_swipe', arguments: { fromX: 1, fromY: 2, toX: 3, toY: 4 } });

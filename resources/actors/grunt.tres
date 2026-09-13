@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ActorVisual" format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/actors/actor_visual.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/Sprites/Characters/gruntspritesheet.png" id="2"]
+
+[resource]
+script = ExtResource("1")
+texture = ExtResource("2")
+columns = 8
+rows = 4
+display_size = Vector2(72, 33)
+shadow_radius = 24.0

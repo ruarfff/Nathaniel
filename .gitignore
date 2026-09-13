@@ -1,42 +1,22 @@
-## User settings
+# Godot editor cache and platform build output
+.godot/
+/exports/*
+!/exports/.gdignore
+/build/*
+!/build/.gdignore
+*.ipa
+*.dSYM
+*.dSYM.zip
 xcuserdata/
 
-## Obj-C/Swift specific
-*.hmap
-
-## App packaging
-*.ipa
-*.dSYM.zip
-*.dSYM
-
-## Playgrounds
-timeline.xctimeline
-playground.xcworkspace
-
-.build/
-
-# Carthage
-Carthage/Build/
-
-fastlane/report.xml
-fastlane/Preview.html
-fastlane/screenshots/**/*.png
-fastlane/test_output
-
-
-.workspaces/
-
-test-artifacts/
+# Local verification and Python caches
+/test-artifacts/*
+!/test-artifacts/.gdignore
 test-screenshots/
+__pycache__/
+*.py[cod]
+.ruff_cache/
 
-.derivedData/
-
-# Tiled Map Editor session files (user-specific)
-*.tiled-session
-
-# Godot generated imports, local exports and editor state
-godot/.godot/
-godot/exports/
-godot/**/__pycache__/
-godot/**/*.pyc
-build/
+# Local workspaces and operating system files
+.workspaces/
+.DS_Store

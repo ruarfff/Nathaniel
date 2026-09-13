@@ -1,23 +1,9 @@
-# Pre-commit hooks for Nathaniel
-# https://pre-commit.com
-
 repos:
-  # SwiftFormat - runs first to auto-fix formatting
   - repo: local
     hooks:
-      - id: swiftformat
-        name: SwiftFormat
-        entry: swiftformat
+      - id: source-format
+        name: Project source whitespace
+        entry: python3 tools/format_sources.py --check
         language: system
-        types: [swift]
-        exclude: ^Legacy/
-
-  # SwiftLint - runs second to catch remaining issues
-  - repo: local
-    hooks:
-      - id: swiftlint
-        name: SwiftLint
-        entry: swiftlint lint --quiet
-        language: system
-        types: [swift]
-        exclude: ^Legacy/
+        pass_filenames: false
+        files: '\.(gd|tscn|tres|godot|cfg|py)$'

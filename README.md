@@ -1,138 +1,55 @@
 # Nathaniel
 
-A strategy/action game with the original Windows Phone 7 XNA code, a Swift/SpriteKit
-edition for iOS/macOS, and an isometric Godot edition.
+An isometric strategy/action game built with Godot. Control Nathaniel and his robot companion Hermes through five campaign levels and survival mode.
 
-## Godot edition
+## Run and develop
 
-The isometric Godot port is in `godot/`. The Swift and Xcode projects remain
-available with their existing commands. Use **Godot 4.7.2 stable**:
+Use **Godot 4.7.2 stable**. Python 3 and Node.js 18+ with npm are used by the checks and developer tools. iOS exports also need Xcode and matching Godot export templates.
 
 ```sh
-make godot-editor                 # Open the visual editor
-make godot                        # Run the game menu
-make godot-level GODOT_LEVEL=1     # Run one campaign level (0 = survival)
-make godot-test                   # Content, gameplay, saves, UI and MCP checks
-make godot-profile                # Simulation workload
-make godot-profile-rendered       # Rendered workload and screenshot
-make godot-export-macos           # Local macOS release app
-make godot-export-ios             # Unsigned iOS Xcode project
+npm --prefix game-mcp-server ci  # Install the test adapter dependencies once
+make                      # Run the game
+make editor               # Open the visual editor
+make level LEVEL=1        # Start a campaign level; 0 is survival
+make test                 # Native content, gameplay, saves, UI, tooling and MCP
+make format-check
+make profile              # Simulation workload
+make profile-rendered     # Rendered workload and screenshot
+make export-macos         # Local release app
+make export-ios           # Unsigned Xcode project
+make help                 # Commands and options
 ```
 
-All five campaign levels and survival use native editable Godot scenes. Open a
-level and press F6 to run its edited content. Mouse/keyboard commands retain the
-Swift actions; touch uses the same HUD and world commands. Godot saves use a
-separate three-slot store. Existing Swift saves can be imported from an explicit
-JSON export into an empty Godot slot.
+Open `project.godot` directly in the editor if preferred. Native scenes in `levels/` are authoritative: edit a level and press **F6** to play it. **F5** opens the menu. `make import` refreshes Godot's resource imports.
 
-See [migration status and verification](docs/godot-migration.md),
-[content authoring and exports](docs/godot-authoring.md),
-[save import](docs/godot-saves.md), and [debug/MCP setup](docs/godot-debug.md).
-The verification record states platform limits; the Swift app has not been retired.
+Exports go to `exports/macos/Nathaniel.app` and `exports/ios/Nathaniel.xcodeproj`. [Authoring and exports](docs/authoring.md) covers scene editing, templates, and iOS setup. [Verification](docs/verification.md) records the tested platforms and remaining device checks.
 
-## The Game
+## Play
 
-Nathaniel is a top-down RTS mobile game. Control Nathaniel and his robot companion Hermes as they fight alien invaders from a crashed vessel to save Earth.
+- Click or tap the ground to move Nathaniel; select an enemy to target it.
+- Select Hermes to focus the camera. He starts stationary in build mode. Focus does not change his mode.
+- Stop Hermes and select him to open Build. Drag a tower onto clear ground. Gun, laser, and heal towers cost 5, 10, and 15 resources.
+- Make Hermes follow to remove his surviving towers and refund 25% of each paid cost, rounded down. Enemy destruction gives no refund.
+- Collect Soldier corpses with Nathaniel, then contact stationary Hermes to deliver them. Each is worth 10 resources. Loose corpses expire after 10 seconds; carried corpses do not.
+- Campaign levels start with three spare lives. Nathaniel respawns at the level start; losing Hermes ends the game. Defeat a boss to advance. Survival has no spare lives.
 
-## Project Structure
+Desktop controls: **Space** switches focus, **R** changes Hermes mode, **S** stops Nathaniel, **Escape** pauses or closes the top menu, and the mouse wheel zooms. **F** or right-click fires at the pointer; the HUD Fire button uses the current target. Touch uses the HUD and world controls, with zoom buttons and a two-finger camera gesture.
 
-```
-Nathaniel/
-├── Legacy/              # Original WP7/XNA codebase (C#, ~2011)
-├── Nathaniel Shared/    # Swift/SpriteKit game code
-├── Nathaniel iOS/       # iOS app target
-├── Nathaniel macOS/     # macOS app target
-└── godot/               # Separate isometric game and native editor content
-```
+Pause to save into one of three slots. Settings and campaign records are stored separately. Existing Swift saves can be imported from an explicit exported file into an empty slot; see [saves and compatibility](docs/saves.md).
 
-## Quick Start
+## Code and content
 
-**Requirements:** Xcode 26.1+, macOS 26.1+; iOS 26.1+ for the iOS target.
+| Path | Responsibility |
+| --- | --- |
+| `scripts/domain/` | Gameplay state and use cases, combat, balance, navigation, snapshots |
+| `scripts/presentation/` | Input, camera projection, UI, audio, effects and scene views |
+| `scripts/presentation/game_app.gd` | Composition root: connects the simulation, views, and services |
+| `scripts/presentation/actors/` | Actor views and visual resources |
+| `scripts/presentation/levels/` | Native level resources and encounter markers |
+| `scripts/infrastructure/` | Atomic files, save/settings/progress stores, Swift-save conversion and debug HTTP |
+| `levels/`, `scenes/`, `resources/`, `assets/` | Editable native content and artwork |
+| `tests/`, `tools/`, `game-mcp-server/` | Automated checks, local developer tools and MCP adapter |
 
-**Run from Xcode:**
-1. Open `Nathaniel.xcodeproj`
-2. Select `Nathaniel iOS` or `Nathaniel macOS` scheme
-3. Press Cmd+R
+`GameSimulation` owns gameplay use cases and uses logical world coordinates with positive Y up. It has no scene-tree, rendering, input, or disk dependency. Presentation converts between that world and the isometric viewport. Infrastructure owns persistence and external protocols. There is no separate application wrapper around the simulation. See [architecture](docs/architecture.md) for dependencies. Read the [domain boundary](scripts/domain/README.md) before changing simulation state directly.
 
-**Build from command line:**
-```bash
-# iOS
-make ios-build
-
-# macOS
-make macos-build
-```
-
-**Smoke test from command line:**
-```bash
-# macOS (builds + runs a headless smoke test)
-bash scripts/smoke_macos.sh
-
-# iOS Simulator (builds + installs + launches + screenshots)
-bash scripts/smoke_ios_sim.sh
-```
-
-`make ios` and `make macos` build and run the app from `build/DerivedData`. Set `DERIVED_DATA_PATH` to use another directory. Normal iOS installs keep saved games; `make ios-fresh` explicitly removes app data.
-
-See [docs/automation.md](docs/automation.md) for script options.
-
-## Gameplay
-
-The Swift port restores the original XNA campaign and survival rules:
-
-- Tap or click the ground to move Nathaniel; tap an enemy to target it.
-- Select Hermes to focus the camera. He starts stationary in build mode.
-- Use **Hermes Follow** (or **R** on macOS) to make him follow Nathaniel. Leaving build mode destroys his surviving towers and refunds 25% of each tower's build cost, rounded down. Towers destroyed by enemies give no refund.
-- Use **Hermes Stop** to stop him, then select him to build again. Selecting a character does not change Hermes's mode.
-- Drag a tower from the build menu to clear ground. Towers cost 5, 10, or 15 resources.
-- Only Soldiers drop corpses, worth 10 resources. Walk Nathaniel over them, then tap stationary Hermes to deliver them. Loose corpses expire after 10 seconds; carried corpses do not.
-- Campaign levels start with three spare lives. Nathaniel respawns at the map start; losing Hermes ends the game. Survival has no spare lives.
-- Defeat a boss to complete a campaign level. Survival continues until a player dies.
-
-The port retains pathfinding, desktop controls, zoom, level selection, three save slots, and fog of war. Saves include carried corpses, Spawner production timers, tower build costs, and the requested movement destination. Loading recalculates routes around restored towers. Older save slots remain readable; their tower refunds use the current build cost.
-
-**macOS controls:** Space switches camera focus, R changes Hermes mode, S stops Nathaniel, Escape pauses or closes the top menu, and the mouse wheel zooms. Right-click or F fires Nathaniel's gun.
-
-**Regression tests:**
-
-```bash
-make test-unit       # macOS XCTest suite
-make test-tooling    # Build-command tests with stubbed platform tools
-```
-
-Tests cover gameplay parity, save compatibility and navigation, menu input, music settings, and the debug HTTP interface. Use computer use for real input and the small debug interface for exact state and setup; see [docs/testing.md](docs/testing.md).
-
-## Development
-
-This is a learning project for Swift/SpriteKit development. See `AGENTS.md` for detailed architecture docs and legacy code reference.
-
-**Source control:** Uses `git`
-
-## Code Quality
-
-This project uses automated code quality tools:
-
-- **SwiftFormat** - Auto-formats Swift code
-- **SwiftLint** - Catches code quality issues
-- **pre-commit** - Runs checks on every commit
-
-### Setup
-
-```bash
-./scripts/setup-hooks.sh
-```
-
-This installs the tools via Homebrew and configures git hooks.
-
-### Manual Usage
-
-```bash
-# Format all Swift files
-swiftformat .
-
-# Lint all Swift files
-swiftlint
-
-# Auto-fix some lint issues
-swiftlint --fix
-```
+Use [testing](docs/testing.md) for validation and [debug/MCP](docs/debug-interface.md) for inspection and repeatable setup. The former Swift/SpriteKit and Windows Phone projects are retired from the working tree; Git commit `824c8f1` retains their source and migration provenance. Save formats and app storage identifiers remain compatible with the existing Godot edition.

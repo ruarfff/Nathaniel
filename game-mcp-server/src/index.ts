@@ -6,13 +6,13 @@ import { CallToolRequestSchema, ListToolsRequestSchema, Tool } from '@modelconte
 import { GameClient } from './gameClient.js';
 
 const client = new GameClient(
-  process.env.GAME_SERVER_URL || 'http://localhost:8765',
+  process.env.GAME_SERVER_URL || 'http://127.0.0.1:8766',
   Number(process.env.GAME_SERVER_TIMEOUT || 5000),
 );
 const reads = {
   game_health: ['/health', 'Check whether the debug server is running.'],
   game_state: ['/state', 'Read exact game state, positions, health, Hermes mode, and tower count.'],
-  game_nodes: ['/nodes', 'Read named controls and entities with scene-space bounds.'],
+  game_nodes: ['/nodes', 'Read named controls and entities with viewport bounds (origin top-left).'],
   game_screenshot: ['/screenshot', 'Capture the scene as a PNG.'],
   game_list_actions: ['/actions', 'Discover the current scene’s debug setup actions and parameters.'],
 };
@@ -30,7 +30,7 @@ const tools: Tool[] = [
   },
   {
     name: 'game_tap',
-    description: 'Fallback pointer input by node name or scene x,y (origin bottom-left). This bypasses OS input.',
+    description: 'Fallback pointer input by node name or viewport x,y (origin top-left). This bypasses OS input.',
     inputSchema: {
       type: 'object',
       properties: { node: { type: 'string' }, x: { type: 'number' }, y: { type: 'number' } },
@@ -39,7 +39,7 @@ const tools: Tool[] = [
   },
   {
     name: 'game_swipe',
-    description: 'Fallback tower drag in scene coordinates; elsewhere taps the endpoint. Does not simulate OS gestures or timing.',
+    description: 'Fallback tower drag in viewport coordinates (origin top-left); elsewhere taps the endpoint. Does not simulate OS gestures or timing.',
     inputSchema: {
       type: 'object', required: ['fromX', 'fromY', 'toX', 'toY'],
       properties: {
