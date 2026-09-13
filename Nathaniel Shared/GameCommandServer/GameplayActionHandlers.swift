@@ -133,16 +133,19 @@
             guard let modeStr = ActionParams.parseString("mode", from: params) else {
                 return .failure("Missing mode parameter (following, independent)")
             }
-            guard let hermes = context.hermes else {
+            guard let scene = context.scene, let hermes = context.hermes else {
                 return .failure("Hermes not found")
+            }
+            guard context.levelManager?.state == .playing, hermes.isAlive else {
+                return .failure("Hermes can only change mode during play")
             }
 
             switch modeStr.lowercased() {
             case "following", "follow":
-                hermes.enterFollowMode()
+                scene.setHermesMode(.following)
                 return .success("Hermes set to following mode")
             case "independent", "build":
-                hermes.enterIndependentMode()
+                scene.setHermesMode(.independent)
                 return .success("Hermes set to independent mode")
             default:
                 return .failure("Unknown mode: \(modeStr). Use: following or independent")
@@ -153,7 +156,10 @@
             guard let hermes = context.hermes else {
                 return .failure("Hermes not found")
             }
-            hermes.toggleMode()
+            guard context.levelManager?.state == .playing, hermes.isAlive else {
+                return .failure("Hermes can only change mode during play")
+            }
+            context.scene?.toggleHermesFollowMode()
             let newMode = hermes.mode == .following ? "following" : "independent"
             return .success("Hermes mode toggled to \(newMode)")
         }

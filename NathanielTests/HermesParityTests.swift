@@ -51,7 +51,7 @@ final class HermesParityTests: XCTestCase {
         XCTAssertFalse(hermes.isMoving)
     }
 
-    func testTowersRemainWhenHermesFollowsAndHaveNoBuildRadius() {
+    func testBuildingHasNoRadiusAndRequiresStationaryHermes() {
         let resources = ResourceManager.shared
         let previousTotal = resources.totalCollected
         resources.restore(total: 30)
@@ -70,15 +70,105 @@ final class HermesParityTests: XCTestCase {
         XCTAssertEqual(resources.totalCollected, 30 - cost)
         XCTAssertEqual(structures.hermesTowerCount, 1)
 
-        hermes.enterFollowMode()
-        XCTAssertEqual(structures.hermesTowerCount, 1)
-        XCTAssertEqual(resources.totalCollected, 30 - cost)
-        XCTAssertFalse(controller.attemptPlacement(type: .gunTower, at: CGPoint(x: 1_200, y: 1_000)))
-
-        hermes.enterBuildMode()
         XCTAssertFalse(controller.attemptPlacement(type: .gunTower, at: CGPoint(x: 1_040, y: 1_000)))
+        hermes.enterFollowMode()
+        XCTAssertFalse(controller.attemptPlacement(type: .gunTower, at: CGPoint(x: 1_200, y: 1_000)))
         XCTAssertEqual(resources.totalCollected, 30 - cost)
-        XCTAssertEqual(structures.hermesTowerCount, 1)
+    }
+
+    @MainActor
+    func testFollowingDestroysBuiltTowersAndTheirProjectiles() throws {
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 800, height: 480))
+        let scene = GameScene.newGameScene()
+        view.presentScene(scene)
+        defer { view.presentScene(nil) }
+        let structures = try XCTUnwrap(scene.findStructureManagerPublic())
+        let gun = try XCTUnwrap(structures.addHermesTower(type: .gunTower, at: CGPoint(x: 320, y: 200)) as? GunTower)
+        let laser = structures.addHermesTower(type: .laserTower, at: CGPoint(x: 400, y: 200))
+        let mapTower = structures.addHealTower(at: CGPoint(x: 500, y: 200))
+        let enemy = Grunt()
+        enemy.position = CGPoint(x: 360, y: 200)
+        gun.gun.update(deltaTime: gun.gun.cooldownTime)
+        gun.attackTarget(enemy, deltaTime: 0)
+        let bullet = try XCTUnwrap(gun.gun.activeBullets.first)
+        scene.toggleSelectedCharacter()
+        scene.toggleBuildMenu()
+        let wallet = ResourceManager.shared.totalCollected
+        let refund = gun.constructionCost / 4 + laser.constructionCost / 4
+
+        scene.setHermesMode(.following)
+
+        XCTAssertEqual(structures.hermesTowerCount, 0)
+        XCTAssertEqual(structures.count, 1)
+        XCTAssertTrue(mapTower.isAlive)
+        XCTAssertFalse(gun.isAlive)
+        XCTAssertFalse(laser.isAlive)
+        XCTAssertFalse(gun.isActive)
+        XCTAssertFalse(laser.isActive)
+        XCTAssertFalse(bullet.isActive)
+        XCTAssertNil(bullet.sprite.parent)
+        XCTAssertFalse(scene.isBuildMenuVisible)
+        XCTAssertEqual(scene.findHermesPublic()?.mode, .following)
+        XCTAssertEqual(ResourceManager.shared.totalCollected, wallet + refund)
+        scene.setHermesMode(.following)
+        XCTAssertEqual(ResourceManager.shared.totalCollected, wallet + refund)
+    }
+
+    func testDismantlingRefundsEachSurvivingTowerOnceAndRoundsDown() {
+        let scene = SKScene()
+        let structures = StructureManager(scene: scene)
+        for (type, paidCost) in [(TowerType.gunTower, 5), (.laserTower, 15), (.healTower, 10)] {
+            let tower = structures.addHermesTower(type: type, at: .zero)
+            tower.constructionCost = paidCost
+        }
+        let destroyed = structures.addHermesTower(type: .gunTower, at: .zero)
+        destroyed.constructionCost = 100
+        destroyed.currentHP = 0
+
+        XCTAssertEqual(structures.dismantleHermesTowers(), 6)
+        XCTAssertEqual(structures.hermesTowerCount, 0)
+        XCTAssertEqual(structures.dismantleHermesTowers(), 0)
+    }
+
+    @MainActor
+    func testLoadingFollowingDeploymentPreservesPaidCostAndRefundsOnce() throws {
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 800, height: 480))
+        let original = GameScene.newGameScene()
+        view.presentScene(original)
+        defer { view.presentScene(nil) }
+        let structures = try XCTUnwrap(original.findStructureManagerPublic())
+        let tower = structures.addHermesTower(type: .gunTower, at: CGPoint(x: 320, y: 200))
+        tower.constructionCost = 11
+        let save = try XCTUnwrap(original.createSaveState(displayName: "Following deployment"))
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(save)) as? [String: Any])
+        var hermes = try XCTUnwrap(json["hermes"] as? [String: Any])
+        hermes["mode"] = "following"
+        json["hermes"] = hermes
+        let state = try JSONDecoder().decode(SavedGameState.self, from: JSONSerialization.data(withJSONObject: json))
+        let restored = GameScene.newGameScene(fromSave: state)
+        view.presentScene(restored)
+
+        XCTAssertEqual(restored.findStructureManagerPublic()?.hermesTowerCount, 0)
+        XCTAssertEqual(ResourceManager.shared.totalCollected, save.resources + 2)
+        restored.setHermesMode(.following)
+        XCTAssertEqual(ResourceManager.shared.totalCollected, save.resources + 2)
+
+        let secondSave = try XCTUnwrap(restored.createSaveState(displayName: "After dismantling"))
+        let reloaded = GameScene.newGameScene(fromSave: secondSave)
+        view.presentScene(reloaded)
+        XCTAssertEqual(ResourceManager.shared.totalCollected, save.resources + 2)
+        XCTAssertTrue(try XCTUnwrap(reloaded.createSaveState(displayName: "Check")).towers.isEmpty)
+    }
+
+    func testOlderTowerSavesDecodeWithoutAPaidCost() throws {
+        let saved = try XCTUnwrap(GunTower().toSavedTowerState(isHermesOwned: true))
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(saved)) as? [String: Any])
+        json.removeValue(forKey: "constructionCost")
+        let restored = try JSONDecoder().decode(
+            SavedTowerState.self,
+            from: JSONSerialization.data(withJSONObject: json)
+        )
+        XCTAssertNil(restored.constructionCost)
     }
 
     func testCorpsesBlockTowerPlacement() {

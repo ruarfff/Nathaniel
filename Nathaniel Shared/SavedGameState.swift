@@ -334,13 +334,17 @@ struct SavedTowerState: Codable {
     /// Attack cooldown remaining (seconds)
     let cooldownRemaining: TimeInterval
 
+    /// Actual build cost, absent in older saves.
+    let constructionCost: Int?
+
     init(
         type: SavedTowerType,
         position: SavedPoint,
         currentHP: Int,
         maxHP: Int,
         isHermesOwned: Bool,
-        cooldownRemaining: TimeInterval = 0
+        cooldownRemaining: TimeInterval = 0,
+        constructionCost: Int? = nil
     ) {
         self.type = type
         self.position = position
@@ -348,6 +352,7 @@ struct SavedTowerState: Codable {
         self.maxHP = maxHP
         self.isHermesOwned = isHermesOwned
         self.cooldownRemaining = cooldownRemaining
+        self.constructionCost = constructionCost
     }
 }
 

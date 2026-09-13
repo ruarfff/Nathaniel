@@ -153,6 +153,9 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
 
         // Restore from save if loading from saved game
         self.restoreFromSavedState()
+        if let hermes {
+            self.setHermesMode(hermes.mode)
+        }
     }
 
     private func setupHaptics() {
@@ -407,6 +410,7 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
 
                 // Mark as Hermes-owned if applicable
                 if towerState.isHermesOwned {
+                    tower.constructionCost = max(0, towerState.constructionCost ?? towerState.type.towerType.cost)
                     self.structureManager.markAsHermesOwned(tower)
                 }
             }
@@ -1481,10 +1485,7 @@ extension GameScene {
                 return true
         #endif
         case 15: // R key - toggle Hermes follow mode
-            if let hermes {
-                hermes.isInBuildMode.toggle()
-                logger.debug("Hermes follow mode: \(!hermes.isInBuildMode)")
-            }
+            self.toggleHermesFollowMode()
             return true
         case 49: // Space key - switch selected character
             toggleSelectedCharacter()
@@ -1569,12 +1570,9 @@ extension GameScene {
 
         self.selectedCharacter = character
 
-        // If selecting Hermes, show build button and put in independent control
+        // Camera selection does not change Hermes's movement mode.
         if let hermes, character === hermes {
-            hermes.isInBuildMode = true // Stop following and prepare to build
             hermes.showSelectionHighlight()
-            self.hud.showBuildButton()
-            self.hud.hideFollowModeButton() // Hide follow button when Hermes is selected
 
             // Update placement controller with Hermes reference
             self.towerPlacementController?.updateAffordability()
@@ -1597,13 +1595,8 @@ extension GameScene {
             self.hud.hideBuildButton()
             self.towerPlacementController?.hideMenu()
             hermes?.hideSelectionHighlight()
-
-            // Show follow mode button when Nathaniel is selected (to control Hermes)
-            if let hermes {
-                let isFollowing = hermes.mode == .following
-                self.hud.showFollowModeButton(isFollowing: isFollowing)
-            }
         }
+        self.updateHermesControls()
 
         // Animate camera to new character position
         self.cameraController.animateTo(character.position)
@@ -1627,11 +1620,31 @@ extension GameScene {
     /// Toggle Hermes between follow mode and independent mode
     func toggleHermesFollowMode() {
         guard let hermes else { return }
+        self.setHermesMode(hermes.mode == .following ? .independent : .following)
+    }
 
-        hermes.toggleMode()
-        let isFollowing = hermes.mode == .following
-        self.hud.updateFollowMode(isFollowing: isFollowing)
-        logger.debug("Hermes follow mode: \(isFollowing)")
+    /// Apply Hermes commands from the HUD, keyboard, and game command server.
+    func setHermesMode(_ mode: HermesMode) {
+        guard self.levelManager.state == .playing, let hermes, hermes.isAlive else { return }
+        hermes.mode = mode
+        if mode == .following {
+            let refund = self.structureManager.dismantleHermesTowers()
+            if refund > 0 {
+                ResourceManager.shared.addResources(refund)
+            }
+        }
+        self.updateHermesControls()
+    }
+
+    private func updateHermesControls() {
+        guard let hermes else { return }
+        self.hud.updateFollowMode(isFollowing: hermes.mode == .following)
+        if self.selectedCharacter === hermes, hermes.isInBuildMode {
+            self.hud.showBuildButton()
+        } else {
+            self.hud.hideBuildButton()
+            self.towerPlacementController?.hideMenu()
+        }
     }
 
     /// Toggle the build menu visibility

@@ -156,7 +156,8 @@ extension DefensiveStructure {
             currentHP: currentHP,
             maxHP: maxHP,
             isHermesOwned: isHermesOwned,
-            cooldownRemaining: 0 // Cooldown resets on load
+            cooldownRemaining: 0, // Cooldown resets on load
+            constructionCost: self.constructionCost
         )
     }
 }

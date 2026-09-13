@@ -137,6 +137,7 @@ class StructureManager {
         }
 
         // Track as Hermes tower
+        tower.constructionCost = max(0, type.cost)
         self.hermesTowers.append(tower)
 
         print(
@@ -148,8 +149,20 @@ class StructureManager {
 
     /// Mark an existing tower as Hermes-owned (for restoring saved game)
     func markAsHermesOwned(_ tower: DefensiveStructure) {
-        guard !self.hermesTowers.contains(where: { $0 === tower }) else { return }
+        guard tower.isAlive, !self.hermesTowers.contains(where: { $0 === tower }) else { return }
         self.hermesTowers.append(tower)
+    }
+
+    /// Remove the deployment and return 25% of each surviving tower's cost, rounded down.
+    func dismantleHermesTowers() -> Int {
+        // Death callbacks remove towers from both manager arrays.
+        let towers = self.hermesTowers
+        var refund = 0
+        for tower in towers where tower.isAlive {
+            refund += tower.constructionCost / 4
+            tower.currentHP = 0
+        }
+        return refund
     }
 
     /// Common setup for all structures

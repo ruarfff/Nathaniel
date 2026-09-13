@@ -82,4 +82,9 @@ class GunTower: DefensiveStructure {
         self.gun.owner = self
         _ = self.gun.use(target: target.position)
     }
+
+    override func onDeath() {
+        self.gun.projectilePool.clear()
+        super.onDeath()
+    }
 }

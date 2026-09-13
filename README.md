@@ -50,14 +50,15 @@ See `docs/automation.md` for Codex MCP setup and script options.
 The Swift port restores the original XNA campaign and survival rules:
 
 - Tap or click the ground to move Nathaniel; tap an enemy to target it.
-- Select Hermes to focus the camera and build towers. He starts stationary in build mode.
-- Use the follow button (or **R** on macOS) to make Hermes follow Nathaniel. Existing towers stay in place.
+- Select Hermes to focus the camera. He starts stationary in build mode.
+- Use **Hermes Follow** (or **R** on macOS) to make him follow Nathaniel. Leaving build mode destroys his surviving towers and refunds 25% of each tower's build cost, rounded down. Towers destroyed by enemies give no refund.
+- Use **Hermes Stop** to stop him, then select him to build again. Selecting a character does not change Hermes's mode.
 - Drag a tower from the build menu to clear ground. Towers cost 5, 10, or 15 resources.
 - Only Soldiers drop corpses, worth 10 resources. Walk Nathaniel over them, then tap stationary Hermes to deliver them. Loose corpses expire after 10 seconds; carried corpses do not.
 - Campaign levels start with three spare lives. Nathaniel respawns at the map start; losing Hermes ends the game. Survival has no spare lives.
 - Defeat a boss to complete a campaign level. Survival continues until a player dies.
 
-The port retains pathfinding, desktop controls, zoom, level selection, three save slots, and fog of war. Saves include carried corpses and Spawner production timers. Older save slots remain readable.
+The port retains pathfinding, desktop controls, zoom, level selection, three save slots, and fog of war. Saves include carried corpses, Spawner production timers, and tower build costs. Older save slots remain readable; their tower refunds use the current build cost.
 
 **macOS controls:** Space switches camera focus, R changes Hermes mode, S stops Nathaniel, Escape pauses, and the mouse wheel zooms. Right-click or F fires Nathaniel's gun.
 

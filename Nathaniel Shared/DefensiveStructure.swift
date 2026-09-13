@@ -31,6 +31,9 @@ class DefensiveStructure: Structure {
     /// Callback when structure is destroyed
     var onDestroyed: (() -> Void)?
 
+    /// Resources paid to build this tower; map towers have no construction cost.
+    var constructionCost: Int = 0
+
     // MARK: - Initialization
 
     init(name: String, maxHP: Int, attackRange: CGFloat) {
