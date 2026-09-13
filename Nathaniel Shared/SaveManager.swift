@@ -11,7 +11,6 @@ import Foundation
 
 /// Manages game save slots and persistence
 class SaveManager {
-
     // MARK: - Singleton
 
     static let shared = SaveManager()
@@ -24,35 +23,35 @@ class SaveManager {
     /// Key prefix for save slots
     private let slotKeyPrefix = "save_slot_"
 
-    /// Key for save slot metadata
-    private let metadataKey = "save_slot_metadata"
-
     // MARK: - Properties
+
+    private let defaults: UserDefaults
 
     /// Cached save slot metadata
     private var slotMetadata: [SaveSlot] = []
 
     // MARK: - Init
 
-    private init() {
-        loadMetadata()
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        self.loadMetadata()
     }
 
     // MARK: - Public Methods
 
     /// Get all save slots with their metadata
     func getSaveSlots() -> [SaveSlot] {
-        return slotMetadata
+        self.slotMetadata
     }
 
     /// Get a specific save slot
     func getSlot(_ slotId: Int) -> SaveSlot? {
-        return slotMetadata.first { $0.id == slotId }
+        self.slotMetadata.first { $0.id == slotId }
     }
 
     /// Check if any save slots have data
     var hasSaves: Bool {
-        return slotMetadata.contains { $0.hasSave }
+        self.slotMetadata.contains { $0.hasSave }
     }
 
     /// Save game state to a slot
@@ -62,7 +61,7 @@ class SaveManager {
     /// - Returns: true if save was successful
     @discardableResult
     func saveToSlot(_ state: SavedGameState, slotId: Int) -> Bool {
-        guard slotId >= 1 && slotId <= SaveManager.slotCount else {
+        guard slotId >= 1, slotId <= SaveManager.slotCount else {
             print("[SaveManager] Invalid slot ID: \(slotId)")
             return false
         }
@@ -73,14 +72,13 @@ class SaveManager {
             return false
         }
 
-        let key = slotKeyPrefix + String(slotId)
-        UserDefaults.standard.set(encoded, forKey: key)
+        let key = self.slotKeyPrefix + String(slotId)
+        self.defaults.set(encoded, forKey: key)
 
         // Update metadata
         if let index = slotMetadata.firstIndex(where: { $0.id == slotId }) {
-            slotMetadata[index].update(from: state)
+            self.slotMetadata[index].update(from: state)
         }
-        persistMetadata()
 
         print("[SaveManager] Saved to slot \(slotId): Level \(state.levelNumber), Score \(state.score)")
         return true
@@ -90,13 +88,13 @@ class SaveManager {
     /// - Parameter slotId: The slot ID (1-3)
     /// - Returns: The saved game state, or nil if slot is empty or corrupted
     func loadFromSlot(_ slotId: Int) -> SavedGameState? {
-        guard slotId >= 1 && slotId <= SaveManager.slotCount else {
+        guard slotId >= 1, slotId <= SaveManager.slotCount else {
             print("[SaveManager] Invalid slot ID: \(slotId)")
             return nil
         }
 
-        let key = slotKeyPrefix + String(slotId)
-        guard let data = UserDefaults.standard.data(forKey: key) else {
+        let key = self.slotKeyPrefix + String(slotId)
+        guard let data = defaults.data(forKey: key) else {
             print("[SaveManager] No data in slot \(slotId)")
             return nil
         }
@@ -113,75 +111,46 @@ class SaveManager {
     /// Delete a save slot
     /// - Parameter slotId: The slot ID (1-3)
     func deleteSlot(_ slotId: Int) {
-        guard slotId >= 1 && slotId <= SaveManager.slotCount else {
+        guard slotId >= 1, slotId <= SaveManager.slotCount else {
             print("[SaveManager] Invalid slot ID: \(slotId)")
             return
         }
 
-        let key = slotKeyPrefix + String(slotId)
-        UserDefaults.standard.removeObject(forKey: key)
+        let key = self.slotKeyPrefix + String(slotId)
+        self.defaults.removeObject(forKey: key)
 
         // Update metadata
         if let index = slotMetadata.firstIndex(where: { $0.id == slotId }) {
-            slotMetadata[index].clear()
+            self.slotMetadata[index].clear()
         }
-        persistMetadata()
 
         print("[SaveManager] Deleted slot \(slotId)")
     }
 
     /// Delete all save slots
     func deleteAllSlots() {
-        for slotId in 1...SaveManager.slotCount {
-            let key = slotKeyPrefix + String(slotId)
-            UserDefaults.standard.removeObject(forKey: key)
+        for slotId in 1 ... SaveManager.slotCount {
+            let key = self.slotKeyPrefix + String(slotId)
+            self.defaults.removeObject(forKey: key)
         }
 
         // Reset metadata
-        slotMetadata = (1...SaveManager.slotCount).map { SaveSlot(id: $0) }
-        persistMetadata()
+        self.slotMetadata = (1 ... SaveManager.slotCount).map { SaveSlot(id: $0) }
 
         print("[SaveManager] Deleted all save slots")
     }
 
     // MARK: - Private Methods
 
-    /// Load metadata from UserDefaults
+    /// Derive slot metadata from the saved games so there is only one persisted source.
     private func loadMetadata() {
-        if let data = UserDefaults.standard.data(forKey: metadataKey),
-           let decoded = try? JSONDecoder().decode([SaveSlot].self, from: data) {
-            slotMetadata = decoded
-        } else {
-            // Initialize empty slots
-            slotMetadata = (1...SaveManager.slotCount).map { SaveSlot(id: $0) }
-        }
-
-        // Verify metadata matches actual save data
-        for i in 0..<slotMetadata.count {
-            let slotId = slotMetadata[i].id
-            let key = slotKeyPrefix + String(slotId)
-            let hasData = UserDefaults.standard.data(forKey: key) != nil
-
-            if slotMetadata[i].hasSave != hasData {
-                // Metadata is out of sync - refresh from actual data
-                if hasData {
-                    if let state = loadFromSlot(slotId) {
-                        slotMetadata[i].update(from: state)
-                    }
-                } else {
-                    slotMetadata[i].clear()
-                }
+        self.slotMetadata = (1 ... SaveManager.slotCount).map { slotId in
+            var slot = SaveSlot(id: slotId)
+            if let state = loadFromSlot(slotId) {
+                slot.update(from: state)
             }
+            return slot
         }
-    }
-
-    /// Persist metadata to UserDefaults
-    private func persistMetadata() {
-        guard let encoded = try? JSONEncoder().encode(slotMetadata) else {
-            print("[SaveManager] Failed to encode metadata")
-            return
-        }
-        UserDefaults.standard.set(encoded, forKey: metadataKey)
     }
 }
 
@@ -219,13 +188,13 @@ extension SaveSlot {
         guard hasSave else { return "Empty" }
 
         var parts: [String] = []
-        if let levelName = levelName {
+        if let levelName {
             parts.append(levelName)
         }
         if let time = formattedTime {
             parts.append(time)
         }
-        if let score = score {
+        if let score {
             parts.append("Score: \(score)")
         }
         return parts.joined(separator: " - ")

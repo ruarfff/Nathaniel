@@ -1,3 +1,10 @@
+//
+//  PathfindingMovement.swift
+//  Nathaniel Shared
+//
+//  Integrates pathfinding with character movement.
+//
+
 import Foundation
 
 // MARK: - Pathfinding Movement
@@ -80,12 +87,6 @@ class PathfindingMovement {
 
         // Create path follower
         self.pathFollower = PathFollower(renderer: renderer)
-    }
-
-    /// Update the structure collision callback on the pathfinding grid
-    /// Call this after setting structureCollisionCheck to ensure it's used during pathfinding
-    func updateCollisionCallback() {
-        self.collisionGrid?.structureCollisionCheck = self.structureCollisionCheck
     }
 
     // MARK: - Path Calculation
@@ -178,21 +179,6 @@ class PathfindingMovement {
             return false
         }
 
-        return true
-    }
-
-    /// Recalculate path if blocked
-    /// - Parameters:
-    ///   - currentPosition: Current world position
-    ///   - destination: Final destination
-    /// - Returns: true if path was recalculated successfully
-    @discardableResult
-    func recalculateIfBlocked(currentPosition: CGPoint, destination: CGPoint) -> Bool {
-        // Check if current waypoint is still valid
-        if let waypoint = currentWaypoint, !isWalkable(at: waypoint) {
-            // Waypoint became blocked, recalculate
-            return self.calculatePath(from: currentPosition, to: destination)
-        }
         return true
     }
 }

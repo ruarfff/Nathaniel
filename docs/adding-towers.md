@@ -132,9 +132,9 @@ class SlowTower: DefensiveStructure {
     }
 
     private func applySlowToNearbyEnemies() {
-        guard let enemies = findEnemiesInRange?() else { return }
+        guard let enemies = targeting.findEnemies?() else { return }
 
-        for enemy in enemies {
+        for enemy in enemies where position.distance(to: enemy.position) <= attackRange {
             // Apply slow effect
             enemy.applySpeedModifier(SlowTower.slowAmount, duration: SlowTower.slowDuration)
 
@@ -157,9 +157,6 @@ class SlowTower: DefensiveStructure {
         let remove = SKAction.removeFromParent()
         effect.run(SKAction.sequence([fadeOut, remove]))
     }
-
-    // MARK: - Callbacks
-    var findEnemiesInRange: (() -> [Enemy])?
 }
 ```
 
@@ -173,22 +170,10 @@ func addSlowTower(at position: CGPoint) -> SlowTower {
     let tower = SlowTower()
     setupStructure(tower, at: position)
 
-    // Set up callbacks
-    tower.findEnemiesInRange = { [weak self] in
-        guard let self = self else { return [] }
-        return self.findEnemiesInRange(of: position, range: SlowTower.defaultAttackRange)
-    }
+    // Use the same enemy and ally providers as other towers.
+    setupTargetingCallbacks(for: tower)
 
     return tower
-}
-
-// Helper to find enemies in range
-private func findEnemiesInRange(of position: CGPoint, range: CGFloat) -> [Enemy] {
-    return enemyManager?.enemies.filter { enemy in
-        let dx = enemy.position.x - position.x
-        let dy = enemy.position.y - position.y
-        return hypot(dx, dy) <= range
-    } ?? []
 }
 ```
 
@@ -272,16 +257,26 @@ override func update(deltaTime: TimeInterval) {
 
 ### Projectile Towers
 
-Use callbacks for projectile management:
+Store a `Gun` and set `gun.owner = self` in the tower initializer. In
+`StructureManager`, wire `gun.onFire` and `gun.onCheckCollision`, as
+`addGunTower` does. `Gun.update` moves projectiles, checks hits, and applies
+damage; the tower does not need a second collision loop.
 
 ```swift
-var onFire: ((Projectile) -> Void)?
-var onCheckCollision: ((Projectile) -> Character?)?
+let gun = Gun()
+
+override func update(deltaTime: TimeInterval) {
+    gun.update(deltaTime: deltaTime)
+    super.update(deltaTime: deltaTime)
+}
 
 override func attackTarget(_ target: Enemy, deltaTime: TimeInterval) {
-    if let projectile = weapon?.fire(at: target.position) {
-        onFire?(projectile)
-    }
+    _ = gun.use(target: target.position)
+}
+
+override func onDeath() {
+    gun.projectilePool.clear()
+    super.onDeath()
 }
 ```
 

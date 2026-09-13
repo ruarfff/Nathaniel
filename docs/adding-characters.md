@@ -127,6 +127,13 @@ class NewHero: Character {
 
     // MARK: - Properties
     var specialAbilityCooldown: TimeInterval = 0
+    let weapon = Gun(
+        cooldownTime: 0.3,
+        damage: 30,
+        range: 400,
+        bulletSpeed: 450,
+        bulletTexture: "bullet"
+    )
 
     // MARK: - Initialization
     init() {
@@ -139,14 +146,8 @@ class NewHero: Character {
         )
 
         loadSpriteSheet(named: "newhero_spritesheet")
-        setupWeapon()
+        weapon.owner = self
         setupHealthBar(width: 60, yOffset: 40)
-    }
-
-    private func setupWeapon() {
-        // Create weapon (see Weapon.swift for types)
-        let gun = Gun(damage: 30, range: 400, cooldown: 0.3)
-        self.weapon = gun
     }
 
     // MARK: - Special Ability
@@ -158,6 +159,7 @@ class NewHero: Character {
 
     override func update(deltaTime: TimeInterval) {
         super.update(deltaTime: deltaTime)
+        weapon.update(deltaTime: deltaTime)
 
         // Update cooldowns
         if specialAbilityCooldown > 0 {
@@ -166,6 +168,10 @@ class NewHero: Character {
     }
 }
 ```
+
+Wire `weapon.onFire` and `weapon.onCheckCollision` when adding the hero to
+`GameScene`, as for Nathaniel. These callbacks add projectiles to the scene and
+find enemies hit by each shot.
 
 ### Step 2: Add to GameScene
 
@@ -206,9 +212,11 @@ var currentHP: Int          // Current health
 var maxHP: Int { get }      // Maximum health
 var isAlive: Bool { get }   // currentHP > 0
 func takeDamage(_ amount: Int)
-func heal(_ amount: Int)
 func onDeath()              // Called when HP reaches 0
 ```
+
+To heal a living character, set `currentHP` to
+`min(currentHP + amount, maxHP)`. The setter updates the health bar.
 
 ### Movement
 
@@ -232,11 +240,13 @@ func updateTexture()        // Updates sprite based on direction/state
 
 ### Combat
 
+`Character` does not own a weapon. Player subclasses can store a `Gun`, as in
+the example above. `Enemy` provides these combat members:
+
 ```swift
-var weapon: Weapon?         // Optional weapon
-var attackRange: CGFloat    // Range for attacks
-var damage: Int             // Base damage dealt
-func performAttack()        // Execute attack
+var weapon: Gun?            // Optional ranged weapon
+let attackRange: CGFloat    // Range for attacks
+func updateAI(deltaTime: TimeInterval)
 ```
 
 ## Sprite Sheet Format

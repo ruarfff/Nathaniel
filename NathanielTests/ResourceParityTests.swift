@@ -121,8 +121,8 @@ final class ResourceParityTests: XCTestCase {
         let scene = GameScene.newGameScene()
         view.presentScene(scene)
         defer { view.presentScene(nil) }
-        let nathaniel = try XCTUnwrap(scene.findNathanielPublic())
-        let hermes = try XCTUnwrap(scene.findHermesPublic())
+        let nathaniel = try XCTUnwrap(scene.internalNathaniel)
+        let hermes = try XCTUnwrap(scene.internalHermes)
         nathaniel.movementComponent.pathfinding = nil
         ResourceManager.shared.spawnResource(amount: 10, at: nathaniel.position)
         ResourceManager.shared.update(deltaTime: 0)
@@ -141,7 +141,7 @@ final class ResourceParityTests: XCTestCase {
         let original = GameScene.newGameScene()
         view.presentScene(original)
         defer { view.presentScene(nil) }
-        let spawn = try XCTUnwrap(original.findNathanielPublic()).position
+        let spawn = try XCTUnwrap(original.internalNathaniel).position
         let save = original.createSaveState(displayName: "Pending respawn")
         var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(save)) as? [String: Any])
         json["saveVersion"] = 1
@@ -154,8 +154,8 @@ final class ResourceParityTests: XCTestCase {
 
         let restored = GameScene.newGameScene(fromSave: state)
         view.presentScene(restored)
-        let nathaniel = try XCTUnwrap(restored.findNathanielPublic())
-        XCTAssertEqual(restored.findLevelManagerPublic()?.lives, 1)
+        let nathaniel = try XCTUnwrap(restored.internalNathaniel)
+        XCTAssertEqual(restored.internalLevelManager?.lives, 1)
         XCTAssertEqual(nathaniel.currentHP, nathaniel.maxHP)
         XCTAssertEqual(nathaniel.position, spawn)
     }

@@ -11,21 +11,10 @@ import SpriteKit
 
 /// Armed tower that fires bullets at enemies
 class GunTower: DefensiveStructure {
-    // MARK: - Constants
-
-    /// Resource cost to build this tower
-    static let cost: Int = BuildConfig.TowerCosts.gunTower
-
     // MARK: - Properties
 
     /// The gun weapon
     let gun: Gun
-
-    /// Callback when a bullet is fired (for adding to scene)
-    var onFire: ((Projectile) -> Void)?
-
-    /// Callback for bullet collision checking
-    var onCheckCollision: ((Projectile) -> Character?)?
 
     // MARK: - Initialization
 
@@ -48,10 +37,7 @@ class GunTower: DefensiveStructure {
         // Load tower texture
         loadTexture(named: "guntower", size: GameBalance.Towers.Visual.textureSize)
 
-        // Set up weapon callbacks
-        self.gun.onFire = { [weak self] projectile in
-            self?.onFire?(projectile)
-        }
+        self.gun.owner = self
     }
 
     // MARK: - Update
@@ -60,26 +46,11 @@ class GunTower: DefensiveStructure {
         // Update gun cooldown and projectiles
         self.gun.update(deltaTime: deltaTime)
 
-        // Check bullet collisions
-        for projectile in self.gun.activeBullets {
-            if let hit = onCheckCollision?(projectile) {
-                // Towers generate threat so enemies will retaliate
-                if let enemy = hit as? Enemy {
-                    enemy.takeDamage(projectile.damage, from: self)
-                } else {
-                    hit.takeDamage(projectile.damage)
-                }
-                projectile.hasCollision = true
-                projectile.deactivate()
-            }
-        }
-
         super.update(deltaTime: deltaTime)
     }
 
     override func attackTarget(_ target: Enemy, deltaTime: TimeInterval) {
         // Try to fire at target
-        self.gun.owner = self
         _ = self.gun.use(target: target.position)
     }
 

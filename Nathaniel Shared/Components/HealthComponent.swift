@@ -14,7 +14,6 @@ class HealthComponent {
                 self.currentHP = 0
                 self.onDeath?()
             }
-            self.onHealthChanged?(self.currentHP, self.maxHP)
         }
     }
 
@@ -22,21 +21,17 @@ class HealthComponent {
     let maxHP: Int
 
     /// Whether the entity is alive
-    var isAlive: Bool { self.currentHP > 0 }
+    var isAlive: Bool {
+        self.currentHP > 0
+    }
 
     /// Health bar display
     private(set) var healthBar: HealthBar?
 
     // MARK: - Callbacks
 
-    /// Called when health changes
-    var onHealthChanged: ((_ current: Int, _ max: Int) -> Void)?
-
     /// Called when the entity dies
     var onDeath: (() -> Void)?
-
-    /// Called when damage is taken (for visual feedback)
-    var onDamageTaken: ((_ amount: Int) -> Void)?
 
     // MARK: - Initialization
 
@@ -55,27 +50,12 @@ class HealthComponent {
         self.currentHP -= amount
         self.updateHealthBar()
         self.showDamageFlash()
-        self.onDamageTaken?(amount)
-    }
-
-    /// Heal the entity
-    /// - Parameter amount: The amount to heal
-    func heal(_ amount: Int) {
-        guard self.isAlive else { return }
-        self.currentHP = min(self.currentHP + amount, self.maxHP)
-        self.updateHealthBar()
     }
 
     /// Set health directly (for respawn, etc.)
     /// - Parameter value: The new health value
     func setHealth(_ value: Int) {
         self.currentHP = min(max(0, value), self.maxHP)
-        self.updateHealthBar()
-    }
-
-    /// Restore to full health
-    func restoreFullHealth() {
-        self.currentHP = self.maxHP
         self.updateHealthBar()
     }
 
@@ -122,32 +102,5 @@ class HealthComponent {
     /// Update the health bar display
     func updateHealthBar() {
         self.healthBar?.update(currentHP: self.currentHP, maxHP: self.maxHP)
-    }
-
-    // MARK: - Death Animation
-
-    /// Play the default death animation (fade out and remove)
-    /// - Parameter completion: Called when animation completes
-    func playDeathAnimation(completion: (() -> Void)? = nil) {
-        guard let sprite else {
-            completion?()
-            return
-        }
-
-        // Play explosion sound
-        if let scene = sprite.scene {
-            AudioManager.shared.playSoundEffect(.explosion, on: scene)
-        }
-
-        // Fade out and remove
-        let fadeOut = SKAction.fadeOut(withDuration: 0.5)
-        let remove = SKAction.removeFromParent()
-        let deathSequence = SKAction.sequence([fadeOut, remove])
-
-        if let completion {
-            sprite.run(SKAction.sequence([deathSequence, SKAction.run(completion)]))
-        } else {
-            sprite.run(deathSequence)
-        }
     }
 }

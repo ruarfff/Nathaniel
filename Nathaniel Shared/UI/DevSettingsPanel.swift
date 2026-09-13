@@ -31,12 +31,12 @@
 
         /// Panel width based on viewport (max 850, with 60pt margin)
         private var panelWidth: CGFloat {
-            min(850, viewportSize.width - 60)
+            min(850, self.viewportSize.width - 60)
         }
 
         /// Panel height based on viewport (max 550, with 50pt margin)
         private var panelHeight: CGFloat {
-            min(550, viewportSize.height - 50)
+            min(550, self.viewportSize.height - 50)
         }
 
         // MARK: - Colors
@@ -78,24 +78,22 @@
 
         private var scrollOffset: CGFloat = 0
         private var maxScrollOffset: CGFloat = 0
-        private var isDragging = false
-        private var lastDragY: CGFloat = 0
 
         // MARK: - Initialization
 
         init(size: CGSize) {
-            viewportSize = size
+            self.viewportSize = size
             super.init()
 
-            setupOverlay()
-            setupPanel()
-            setupHeader()
-            setupTabBar()
-            setupContentArea()
-            setupFooter()
+            self.setupOverlay()
+            self.setupPanel()
+            self.setupHeader()
+            self.setupTabBar()
+            self.setupContentArea()
+            self.setupFooter()
 
             // Load initial tab content
-            loadTabContent(tab: .player)
+            self.loadTabContent(tab: .player)
 
             // Start hidden
             isHidden = true
@@ -110,31 +108,31 @@
         // MARK: - Setup
 
         private func setupOverlay() {
-            overlayBackground = SKShapeNode(rectOf: CGSize(
-                width: viewportSize.width * 2,
-                height: viewportSize.height * 2
+            self.overlayBackground = SKShapeNode(rectOf: CGSize(
+                width: self.viewportSize.width * 2,
+                height: self.viewportSize.height * 2
             ))
-            overlayBackground.fillColor = SKColor.black.withAlphaComponent(0.7)
-            overlayBackground.strokeColor = .clear
-            overlayBackground.zPosition = 0
-            addChild(overlayBackground)
+            self.overlayBackground.fillColor = SKColor.black.withAlphaComponent(0.7)
+            self.overlayBackground.strokeColor = .clear
+            self.overlayBackground.zPosition = 0
+            addChild(self.overlayBackground)
         }
 
         private func setupPanel() {
-            panelNode = SKNode()
-            panelNode.zPosition = 1
+            self.panelNode = SKNode()
+            self.panelNode.zPosition = 1
 
             let panelBg = SKShapeNode(rectOf: CGSize(width: panelWidth, height: panelHeight), cornerRadius: 16)
-            panelBg.fillColor = panelBgColor
-            panelBg.strokeColor = panelStrokeColor
+            panelBg.fillColor = self.panelBgColor
+            panelBg.strokeColor = self.panelStrokeColor
             panelBg.lineWidth = 2
-            panelNode.addChild(panelBg)
+            self.panelNode.addChild(panelBg)
 
-            addChild(panelNode)
+            addChild(self.panelNode)
         }
 
         private func setupHeader() {
-            let headerY = panelHeight / 2 - headerHeight / 2
+            let headerY = self.panelHeight / 2 - self.headerHeight / 2
 
             // Title
             let titleLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
@@ -144,40 +142,40 @@
             titleLabel.horizontalAlignmentMode = .center
             titleLabel.verticalAlignmentMode = .center
             titleLabel.position = CGPoint(x: 0, y: headerY)
-            panelNode.addChild(titleLabel)
+            self.panelNode.addChild(titleLabel)
 
             // Reset button (right side of header)
-            let resetButton = createButton(title: "Reset", width: 70, height: 30, color: resetButtonColor)
+            let resetButton = self.createButton(title: "Reset", width: 70, height: 30, color: self.resetButtonColor)
             resetButton.name = "resetButton"
-            resetButton.position = CGPoint(x: panelWidth / 2 - 50, y: headerY)
-            panelNode.addChild(resetButton)
+            resetButton.position = CGPoint(x: self.panelWidth / 2 - 50, y: headerY)
+            self.panelNode.addChild(resetButton)
         }
 
         private func setupTabBar() {
-            let tabBarY = panelHeight / 2 - headerHeight - tabBarHeight / 2
+            let tabBarY = self.panelHeight / 2 - self.headerHeight - self.tabBarHeight / 2
 
             let tabs = Tab.allCases
             let tabSpacing: CGFloat = 8
-            let totalWidth = CGFloat(tabs.count) * tabWidth + CGFloat(tabs.count - 1) * tabSpacing
-            var startX = -totalWidth / 2 + tabWidth / 2
+            let totalWidth = CGFloat(tabs.count) * self.tabWidth + CGFloat(tabs.count - 1) * tabSpacing
+            var startX = -totalWidth / 2 + self.tabWidth / 2
 
             for tab in tabs {
-                let tabButton = createTabButton(tab: tab)
+                let tabButton = self.createTabButton(tab: tab)
                 tabButton.position = CGPoint(x: startX, y: tabBarY)
                 tabButton.name = "tab_\(tab.rawValue)"
-                panelNode.addChild(tabButton)
-                tabButtons[tab] = tabButton
-                startX += tabWidth + tabSpacing
+                self.panelNode.addChild(tabButton)
+                self.tabButtons[tab] = tabButton
+                startX += self.tabWidth + tabSpacing
             }
 
-            updateTabSelection()
+            self.updateTabSelection()
         }
 
         private func createTabButton(tab: Tab) -> SKNode {
             let button = SKNode()
 
             let bg = SKShapeNode(rectOf: CGSize(width: tabWidth, height: tabHeight), cornerRadius: 6)
-            bg.fillColor = tab == selectedTab ? tabSelectedColor : tabUnselectedColor
+            bg.fillColor = tab == self.selectedTab ? self.tabSelectedColor : self.tabUnselectedColor
             bg.strokeColor = .clear
             bg.name = "tabBg"
             button.addChild(bg)
@@ -194,35 +192,36 @@
         }
 
         private func setupContentArea() {
-            let contentY = panelHeight / 2 - headerHeight - tabBarHeight - contentPadding
-            let contentHeight = panelHeight - headerHeight - tabBarHeight - footerHeight - contentPadding * 2
+            let contentY = self.panelHeight / 2 - self.headerHeight - self.tabBarHeight - self.contentPadding
+            let contentHeight = self.panelHeight - self.headerHeight - self.tabBarHeight - self.footerHeight - self
+                .contentPadding * 2
 
             // Container for clipping
-            contentContainer = SKNode()
-            contentContainer.position = CGPoint(x: 0, y: contentY - contentHeight / 2)
-            panelNode.addChild(contentContainer)
+            self.contentContainer = SKNode()
+            self.contentContainer.position = CGPoint(x: 0, y: contentY - contentHeight / 2)
+            self.panelNode.addChild(self.contentContainer)
 
             // Crop node for scrolling
-            contentClipNode = SKCropNode()
+            self.contentClipNode = SKCropNode()
 
             let maskNode = SKShapeNode(rectOf: CGSize(width: panelWidth - 20, height: contentHeight))
             maskNode.fillColor = .white
-            contentClipNode.maskNode = maskNode
+            self.contentClipNode.maskNode = maskNode
 
-            contentContainer.addChild(contentClipNode)
+            self.contentContainer.addChild(self.contentClipNode)
 
             // Scroll content
-            scrollContent = SKNode()
-            contentClipNode.addChild(scrollContent)
+            self.scrollContent = SKNode()
+            self.contentClipNode.addChild(self.scrollContent)
         }
 
         private func setupFooter() {
-            let footerY = -panelHeight / 2 + footerHeight / 2
+            let footerY = -self.panelHeight / 2 + self.footerHeight / 2
 
-            let backButton = createButton(title: "Back", width: 120, height: 40, color: buttonColor)
+            let backButton = self.createButton(title: "Back", width: 120, height: 40, color: self.buttonColor)
             backButton.name = "backButton"
             backButton.position = CGPoint(x: 0, y: footerY)
-            panelNode.addChild(backButton)
+            self.panelNode.addChild(backButton)
         }
 
         private func createButton(title: String, width: CGFloat, height: CGFloat, color: SKColor) -> SKNode {
@@ -248,32 +247,32 @@
         // MARK: - Tab Selection
 
         private func updateTabSelection() {
-            for (tab, button) in tabButtons {
+            for (tab, button) in self.tabButtons {
                 if let bg = button.childNode(withName: "tabBg") as? SKShapeNode {
-                    bg.fillColor = tab == selectedTab ? tabSelectedColor : tabUnselectedColor
+                    bg.fillColor = tab == self.selectedTab ? self.tabSelectedColor : self.tabUnselectedColor
                 }
             }
         }
 
         private func selectTab(_ tab: Tab) {
-            guard tab != selectedTab else { return }
-            selectedTab = tab
-            updateTabSelection()
-            loadTabContent(tab: tab)
+            guard tab != self.selectedTab else { return }
+            self.selectedTab = tab
+            self.updateTabSelection()
+            self.loadTabContent(tab: tab)
         }
 
         // MARK: - Content Loading
 
         private func loadTabContent(tab: Tab) {
             // Clear existing content
-            scrollContent.removeAllChildren()
-            settingsRows.removeAll()
-            scrollOffset = 0
-            scrollContent.position = .zero
+            self.scrollContent.removeAllChildren()
+            self.settingsRows.removeAll()
+            self.scrollOffset = 0
+            self.scrollContent.position = .zero
 
             // Build rows for this tab
-            let rows = buildRows(for: tab)
-            settingsRows = rows
+            let rows = self.buildRows(for: tab)
+            self.settingsRows = rows
 
             // Layout rows
             let rowHeight = DevSettingsControls.rowHeight
@@ -282,14 +281,15 @@
 
             for row in rows {
                 row.position = CGPoint(x: 0, y: -yOffset - rowHeight / 2)
-                scrollContent.addChild(row)
+                self.scrollContent.addChild(row)
                 yOffset += rowHeight + rowSpacing
             }
 
             // Calculate max scroll
-            let contentHeight = panelHeight - headerHeight - tabBarHeight - footerHeight - contentPadding * 2
+            let contentHeight = self.panelHeight - self.headerHeight - self.tabBarHeight - self.footerHeight - self
+                .contentPadding * 2
             let totalContentHeight = yOffset
-            maxScrollOffset = max(0, totalContentHeight - contentHeight)
+            self.maxScrollOffset = max(0, totalContentHeight - contentHeight)
         }
 
         // swiftlint:disable function_body_length
@@ -506,35 +506,35 @@
 
         /// Show the panel with animation
         func show() {
-            guard !isVisible else { return }
-            isVisible = true
+            guard !self.isVisible else { return }
+            self.isVisible = true
             isHidden = false
 
             // Refresh content
-            loadTabContent(tab: selectedTab)
+            self.loadTabContent(tab: self.selectedTab)
 
             // Reset scale and alpha
-            panelNode.setScale(0.8)
+            self.panelNode.setScale(0.8)
             alpha = 0
 
             // Animate in
-            let fadeIn = SKAction.fadeIn(withDuration: animationDuration)
-            let scaleUp = SKAction.scale(to: 1.0, duration: animationDuration)
+            let fadeIn = SKAction.fadeIn(withDuration: self.animationDuration)
+            let scaleUp = SKAction.scale(to: 1.0, duration: self.animationDuration)
             scaleUp.timingMode = .easeOut
 
             run(fadeIn)
-            panelNode.run(scaleUp)
+            self.panelNode.run(scaleUp)
         }
 
         /// Hide the panel with animation
         func hide(completion: (() -> Void)? = nil) {
-            guard isVisible else {
+            guard self.isVisible else {
                 completion?()
                 return
             }
 
-            let fadeOut = SKAction.fadeOut(withDuration: animationDuration)
-            let scaleDown = SKAction.scale(to: 0.8, duration: animationDuration)
+            let fadeOut = SKAction.fadeOut(withDuration: self.animationDuration)
+            let scaleDown = SKAction.scale(to: 0.8, duration: self.animationDuration)
             scaleDown.timingMode = .easeIn
 
             let hideAction = SKAction.run { [weak self] in
@@ -544,23 +544,27 @@
             }
 
             run(SKAction.sequence([fadeOut, hideAction]))
-            panelNode.run(scaleDown)
+            self.panelNode.run(scaleDown)
         }
 
         // MARK: - Touch Handling
 
         /// Handle touch at point - returns true if handled
         func handleTouch(at point: CGPoint) -> Bool {
-            guard isVisible else { return false }
+            guard self.isVisible else { return false }
 
             let localPoint = convert(point, from: parent!)
-            let panelPoint = panelNode.convert(localPoint, from: self)
+            let panelPoint = self.panelNode.convert(localPoint, from: self)
 
             // Check tabs
-            for (tab, button) in tabButtons {
-                if nodeContainsPoint(button, point: panelPoint, size: CGSize(width: tabWidth, height: tabHeight)) {
-                    animateButtonPress(button)
-                    selectTab(tab)
+            for (tab, button) in self.tabButtons {
+                if self.nodeContainsPoint(
+                    button,
+                    point: panelPoint,
+                    size: CGSize(width: self.tabWidth, height: self.tabHeight)
+                ) {
+                    self.animateButtonPress(button)
+                    self.selectTab(tab)
                     return true
                 }
             }
@@ -569,9 +573,9 @@
             if let resetButton = panelNode.childNode(withName: "resetButton"),
                nodeContainsPoint(resetButton, point: panelPoint, size: CGSize(width: 70, height: 30))
             {
-                animateButtonPress(resetButton)
+                self.animateButtonPress(resetButton)
                 DevSettings.shared.reset()
-                loadTabContent(tab: selectedTab)
+                self.loadTabContent(tab: self.selectedTab)
                 return true
             }
 
@@ -579,19 +583,19 @@
             if let backButton = panelNode.childNode(withName: "backButton"),
                nodeContainsPoint(backButton, point: panelPoint, size: CGSize(width: 120, height: 40))
             {
-                animateButtonPress(backButton)
-                hide {
+                self.animateButtonPress(backButton)
+                self.hide {
                     self.onBack?()
                 }
                 return true
             }
 
             // Check content rows
-            let contentPoint = contentContainer.convert(panelPoint, from: panelNode)
-            let scrollPoint = CGPoint(x: contentPoint.x, y: contentPoint.y - scrollOffset)
+            let contentPoint = self.contentContainer.convert(panelPoint, from: self.panelNode)
+            let scrollPoint = CGPoint(x: contentPoint.x, y: contentPoint.y - self.scrollOffset)
 
-            for row in settingsRows {
-                let rowPoint = row.convert(scrollPoint, from: scrollContent)
+            for row in self.settingsRows {
+                let rowPoint = row.convert(scrollPoint, from: self.scrollContent)
 
                 if let toggleRow = row as? DevSettingsToggleRow {
                     if toggleRow.hitTestPoint(rowPoint) {
@@ -606,26 +610,31 @@
             }
 
             // Touch on panel consumes event
-            let panelRect = CGRect(x: -panelWidth / 2, y: -panelHeight / 2, width: panelWidth, height: panelHeight)
+            let panelRect = CGRect(
+                x: -self.panelWidth / 2,
+                y: -self.panelHeight / 2,
+                width: self.panelWidth,
+                height: self.panelHeight
+            )
             return panelRect.contains(panelPoint)
         }
 
         /// Handle drag for slider adjustment and scrolling
         func handleDrag(from start: CGPoint, to end: CGPoint) -> Bool {
-            guard isVisible else { return false }
+            guard self.isVisible else { return false }
 
             let localStart = convert(start, from: parent!)
             let localEnd = convert(end, from: parent!)
-            let panelStart = panelNode.convert(localStart, from: self)
-            let panelEnd = panelNode.convert(localEnd, from: self)
+            let panelStart = self.panelNode.convert(localStart, from: self)
+            let panelEnd = self.panelNode.convert(localEnd, from: self)
 
             // Check if dragging on a slider row
-            let contentPoint = contentContainer.convert(panelEnd, from: panelNode)
-            let scrollPoint = CGPoint(x: contentPoint.x, y: contentPoint.y - scrollOffset)
+            let contentPoint = self.contentContainer.convert(panelEnd, from: self.panelNode)
+            let scrollPoint = CGPoint(x: contentPoint.x, y: contentPoint.y - self.scrollOffset)
 
-            for row in settingsRows {
+            for row in self.settingsRows {
                 if let sliderRow = row as? DevSettingsSliderRow {
-                    let rowPoint = row.convert(scrollPoint, from: scrollContent)
+                    let rowPoint = row.convert(scrollPoint, from: self.scrollContent)
                     if sliderRow.hitTestPoint(rowPoint) {
                         return sliderRow.handleTouch(at: rowPoint)
                     }
@@ -634,8 +643,8 @@
 
             // Otherwise handle as scroll
             let deltaY = panelEnd.y - panelStart.y
-            scrollOffset = max(0, min(maxScrollOffset, scrollOffset + deltaY))
-            scrollContent.position.y = scrollOffset
+            self.scrollOffset = max(0, min(self.maxScrollOffset, self.scrollOffset + deltaY))
+            self.scrollContent.position.y = self.scrollOffset
 
             return true
         }

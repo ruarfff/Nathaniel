@@ -168,25 +168,11 @@ class LevelManager: EnemyManagerDelegate {
     /// Delegate for events
     weak var delegate: LevelManagerDelegate?
 
-    /// Reference to the enemy manager
-    weak var enemyManager: EnemyManager?
-
-    /// Starting position for player respawn
-    var startPosition: CGPoint = .zero
-
     // MARK: - Initialization
 
     init(config: LevelConfig) {
         self.config = config
         self.lives = config.startingLives
-    }
-
-    /// Reset level state (for restart)
-    func reset() {
-        self.lives = self.config.startingLives
-        self.score = 0
-        self.elapsedTime = 0
-        self.state = .playing
     }
 
     /// Restore state from saved game

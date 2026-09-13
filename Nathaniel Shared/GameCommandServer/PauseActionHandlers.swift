@@ -30,48 +30,48 @@
         static func execute(
             name: String,
             params: [String: String]?,
-            context: GameActionContext
+            scene: GameScene
         ) -> ActionResult {
             switch name {
             case "pause":
-                context.pauseGame()
+                scene.pauseGame()
                 return .success("Game paused")
 
             case "resume":
-                context.resumeGame()
+                scene.resumeGame()
                 return .success("Game resumed")
 
             case "isPaused":
-                guard let levelManager = context.levelManager else {
+                guard let levelManager = scene.internalLevelManager else {
                     return .failure("Level manager not found")
                 }
                 return .success("isPaused: \(levelManager.isPaused)")
 
             case "showPauseMenu":
-                context.pauseGame()
+                scene.pauseGame()
                 return .success("Pause menu shown")
 
             case "hidePauseMenu":
-                context.resumeGame()
+                scene.resumeGame()
                 return .success("Pause menu hidden")
 
             case "pauseMenuIsVisible":
-                guard let pauseMenu = context.pauseMenu else {
+                guard let pauseMenu = scene.internalPauseMenu else {
                     return .failure("Pause menu not found")
                 }
                 return .success("pauseMenuIsVisible: \(pauseMenu.isVisible)")
 
             case "pauseMenuTapResume":
-                return self.tapPauseMenuButton(context: context) { $0.onResume?() }
+                return self.tapPauseMenuButton(scene: scene) { $0.onResume?() }
 
             case "pauseMenuTapSettings":
-                return self.tapPauseMenuButton(context: context) { $0.onSettings?() }
+                return self.tapPauseMenuButton(scene: scene) { $0.onSettings?() }
 
             case "pauseMenuTapSaveGame":
-                return self.tapPauseMenuButton(context: context) { $0.onSaveGame?() }
+                return self.tapPauseMenuButton(scene: scene) { $0.onSaveGame?() }
 
             case "pauseMenuTapExitToMenu":
-                guard let pauseMenu = context.pauseMenu else {
+                guard let pauseMenu = scene.internalPauseMenu else {
                     return .failure("Pause menu not found")
                 }
                 guard pauseMenu.isVisible else {
@@ -81,7 +81,7 @@
                 return .success("Tapped Exit to Menu button (showing confirmation)")
 
             case "pauseMenuConfirmExit":
-                guard let pauseMenu = context.pauseMenu else {
+                guard let pauseMenu = scene.internalPauseMenu else {
                     return .failure("Pause menu not found")
                 }
                 guard pauseMenu.isShowingConfirmation else {
@@ -91,7 +91,7 @@
                 return .success("Confirmed exit to menu")
 
             case "pauseMenuCancelExit":
-                guard let pauseMenu = context.pauseMenu else {
+                guard let pauseMenu = scene.internalPauseMenu else {
                     return .failure("Pause menu not found")
                 }
                 guard pauseMenu.isShowingConfirmation else {
@@ -101,7 +101,7 @@
                 return .success("Cancelled exit")
 
             case "exitToMenu":
-                return self.exitToMenu(params: params, context: context)
+                return self.exitToMenu(params: params, scene: scene)
 
             default:
                 return .failure("Unknown pause action: \(name)")
@@ -111,10 +111,10 @@
         // MARK: - Helpers
 
         private static func tapPauseMenuButton(
-            context: GameActionContext,
+            scene: GameScene,
             action: (PauseMenu) -> Void
         ) -> ActionResult {
-            guard let pauseMenu = context.pauseMenu else {
+            guard let pauseMenu = scene.internalPauseMenu else {
                 return .failure("Pause menu not found")
             }
             guard pauseMenu.isVisible else {
@@ -126,10 +126,10 @@
 
         private static func exitToMenu(
             params: [String: String]?,
-            context: GameActionContext
+            scene: GameScene
         ) -> ActionResult {
             let skipConfirm = params?["skipConfirm"] == "true"
-            guard let pauseMenu = context.pauseMenu else {
+            guard let pauseMenu = scene.internalPauseMenu else {
                 return .failure("Pause menu not found")
             }
 
@@ -138,7 +138,7 @@
                 return .success("Exiting to main menu")
             } else {
                 if !pauseMenu.isVisible {
-                    context.pauseGame()
+                    scene.pauseGame()
                 }
                 pauseMenu.showExitConfirmation()
                 return .success("Exit confirmation shown (tap pauseMenuConfirmExit to confirm)")

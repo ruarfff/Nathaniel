@@ -36,14 +36,6 @@ class ResourceManager {
     /// Nathaniel carries corpses; Hermes converts them into building resources.
     var collectors: [Character] = []
 
-    // MARK: - Statistics
-
-    /// Total resources spawned this session
-    private(set) var totalSpawned: Int = 0
-
-    /// Total resources that expired without collection
-    private(set) var totalExpired: Int = 0
-
     // MARK: - Initialization
 
     private init() {}
@@ -58,8 +50,6 @@ class ResourceManager {
 
         // Reset totals
         self.totalCollected = 0
-        self.totalSpawned = 0
-        self.totalExpired = 0
 
         for case let nathaniel as Nathaniel in self.collectors {
             nathaniel.hasCorpse = false
@@ -76,8 +66,6 @@ class ResourceManager {
             resource.sprite.removeFromParent()
         }
         self.resources.removeAll()
-        self.totalSpawned = 0
-        self.totalExpired = 0
     }
 
     /// Restore resource total from saved game
@@ -120,7 +108,6 @@ class ResourceManager {
 
         // Track
         self.resources.append(resource)
-        self.totalSpawned += 1
 
         // Add spawn effect
         self.addSpawnEffect(at: position)
@@ -183,9 +170,6 @@ class ResourceManager {
                 if resource.collectionState == .collected {
                     // Successfully collected
                     self.collectResource(resource)
-                } else {
-                    // Expired
-                    self.totalExpired += 1
                 }
                 indicesToRemove.append(index)
             }
@@ -251,12 +235,5 @@ class ResourceManager {
     /// Get count of active resources on battlefield
     var activeCount: Int {
         self.resources.count
-    }
-
-    /// Get resources near a point
-    func resources(near point: CGPoint, radius: CGFloat) -> [Resource] {
-        self.resources.filter { resource in
-            point.distance(to: resource.position) <= radius
-        }
     }
 }

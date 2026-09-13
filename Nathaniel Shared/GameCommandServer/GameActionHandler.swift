@@ -20,101 +20,13 @@
         /// - Parameters:
         ///   - name: The action name
         ///   - params: Optional parameters dictionary
-        ///   - context: The game scene context for accessing game objects
+        ///   - scene: The game scene that owns the action
         /// - Returns: ActionResult indicating success or failure
         static func execute(
             name: String,
             params: [String: String]?,
-            context: GameActionContext
+            scene: GameScene
         ) -> ActionResult
-    }
-
-    // MARK: - Action Context
-
-    /// Provides access to game objects needed by action handlers.
-    /// This decouples handlers from direct scene access.
-    struct GameActionContext {
-        weak var scene: GameScene?
-
-        // MARK: - Character Access
-
-        var nathaniel: Nathaniel? {
-            self.scene?.findNathanielPublic()
-        }
-
-        var hermes: Hermes? {
-            self.scene?.findHermesPublic()
-        }
-
-        // MARK: - Manager Access
-
-        var enemyManager: EnemyManager? {
-            self.scene?.findEnemyManagerPublic()
-        }
-
-        var levelManager: LevelManager? {
-            self.scene?.findLevelManagerPublic()
-        }
-
-        var structureManager: StructureManager? {
-            self.scene?.findStructureManagerPublic()
-        }
-
-        // MARK: - UI Access
-
-        var pauseMenu: PauseMenu? {
-            self.scene?.findPauseMenuPublic()
-        }
-
-        var settingsMenu: SettingsMenu? {
-            self.scene?.findSettingsMenuPublic()
-        }
-
-        var saveSlotSelector: SaveSlotSelector? {
-            self.scene?.findSaveSlotSelectorPublic()
-        }
-
-        var hud: HUD? {
-            self.scene?.findHUDPublic()
-        }
-
-        var cameraNode: SKCameraNode? {
-            self.scene?.findCameraNodePublic()
-        }
-
-        // MARK: - Scene Actions
-
-        func handleTap(at point: CGPoint) {
-            self.scene?.handleTap(at: point)
-        }
-
-        func handleMoveCommand(to point: CGPoint) {
-            self.scene?.handleMoveCommand(to: point)
-        }
-
-        func pauseGame() {
-            self.scene?.pauseGame()
-        }
-
-        func resumeGame() {
-            self.scene?.resumeGame()
-        }
-
-        func toggleBuildMenu() {
-            self.scene?.toggleBuildMenu()
-        }
-
-        var isBuildMenuVisible: Bool {
-            self.scene?.isBuildMenuVisible ?? false
-        }
-
-        func toggleSelectedCharacter() {
-            self.scene?.toggleSelectedCharacter()
-        }
-
-        func createSaveState(displayName: String) -> SavedGameState? {
-            self.scene?.createSaveState(displayName: displayName)
-        }
     }
 
     // MARK: - Action Registry
@@ -150,27 +62,17 @@
         /// - Parameters:
         ///   - name: The action name
         ///   - params: Optional parameters
-        ///   - context: The game context
+        ///   - scene: The game scene that owns the action
         /// - Returns: ActionResult or nil if action not found
         func execute(
             name: String,
             params: [String: String]?,
-            context: GameActionContext
+            scene: GameScene
         ) -> ActionResult? {
             guard let handler = handlers[name] else {
                 return nil
             }
-            return handler.execute(name: name, params: params, context: context)
-        }
-
-        /// Check if an action is registered
-        func hasAction(_ name: String) -> Bool {
-            self.handlers[name] != nil
-        }
-
-        /// Get all registered action names
-        var allActionNames: [String] {
-            Array(self.handlers.keys).sorted()
+            return handler.execute(name: name, params: params, scene: scene)
         }
 
         /// Get action info grouped by category for discoverability

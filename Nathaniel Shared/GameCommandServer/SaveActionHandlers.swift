@@ -25,11 +25,11 @@
         static func execute(
             name: String,
             params: [String: String]?,
-            context: GameActionContext
+            scene: GameScene
         ) -> ActionResult {
             switch name {
             case "saveGame":
-                return self.saveGame(params: params, context: context)
+                return self.saveGame(params: params, scene: scene)
 
             case "getSaveSlots":
                 return self.getSaveSlots()
@@ -38,21 +38,21 @@
                 return .success("hasSaves: \(SaveManager.shared.hasSaves)")
 
             case "showSaveSlotSelector":
-                guard let selector = context.saveSlotSelector else {
+                guard let selector = scene.internalSaveSlotSelector else {
                     return .failure("Save slot selector not found")
                 }
                 selector.show(mode: .save)
                 return .success("Save slot selector shown")
 
             case "hideSaveSlotSelector":
-                guard let selector = context.saveSlotSelector else {
+                guard let selector = scene.internalSaveSlotSelector else {
                     return .failure("Save slot selector not found")
                 }
                 selector.hide()
                 return .success("Save slot selector hidden")
 
             case "saveSlotSelectorIsVisible":
-                guard let selector = context.saveSlotSelector else {
+                guard let selector = scene.internalSaveSlotSelector else {
                     return .failure("Save slot selector not found")
                 }
                 return .success("saveSlotSelectorIsVisible: \(selector.isVisible)")
@@ -73,7 +73,7 @@
 
         private static func saveGame(
             params: [String: String]?,
-            context: GameActionContext
+            scene: GameScene
         ) -> ActionResult {
             guard let slotId = ActionParams.parseInt("slot", from: params) else {
                 return .failure("Missing slot parameter (1-3)")
@@ -83,8 +83,8 @@
             }
 
             // Create save state
-            let displayName = "Level \(context.levelManager?.config.levelNumber ?? 1)"
-            guard let saveState = context.createSaveState(displayName: displayName) else {
+            let displayName = "Level \(scene.internalLevelManager?.config.levelNumber ?? 1)"
+            guard let saveState = scene.createSaveState(displayName: displayName) else {
                 return .failure("Failed to create save state")
             }
 

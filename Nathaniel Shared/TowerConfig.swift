@@ -42,18 +42,6 @@ enum TowerType: String, CaseIterable {
         case .healTower: "healtower"
         }
     }
-
-    /// Factory method to create a tower of this type
-    func createTower() -> DefensiveStructure {
-        switch self {
-        case .gunTower:
-            GunTower()
-        case .laserTower:
-            LaserTower()
-        case .healTower:
-            HealTower()
-        }
-    }
 }
 
 // MARK: - Tower Configuration

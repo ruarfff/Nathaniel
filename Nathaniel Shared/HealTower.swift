@@ -11,11 +11,6 @@ import SpriteKit
 
 /// Support tower that heals nearby player characters
 class HealTower: DefensiveStructure {
-    // MARK: - Constants
-
-    /// Resource cost to build this tower
-    static let cost: Int = BuildConfig.TowerCosts.healTower
-
     // MARK: - Properties
 
     /// Heal amount per tick
@@ -30,9 +25,6 @@ class HealTower: DefensiveStructure {
     /// Characters to heal (set by GameScene)
     var healTargets: [Character] = []
 
-    /// Visual effect node
-    private var healEffectNode: SKShapeNode?
-
     // MARK: - Initialization
 
     init() {
@@ -44,20 +36,6 @@ class HealTower: DefensiveStructure {
 
         // Load tower texture
         loadTexture(named: "healtower", size: GameBalance.Towers.Visual.textureSize)
-
-        // Create heal range indicator (hidden by default)
-        self.setupHealEffect()
-    }
-
-    private func setupHealEffect() {
-        let circle = SKShapeNode(circleOfRadius: attackRange)
-        circle.strokeColor = GameBalance.Towers.Visual.healEffectStrokeColor
-        circle.fillColor = GameBalance.Towers.Visual.healEffectFillColor
-        circle.lineWidth = 2
-        circle.zPosition = -1
-        circle.isHidden = true
-        sprite.addChild(circle)
-        self.healEffectNode = circle
     }
 
     // MARK: - Update
@@ -95,11 +73,6 @@ class HealTower: DefensiveStructure {
         let flashGreen = SKAction.colorize(with: .green, colorBlendFactor: 0.5, duration: 0.1)
         let flashBack = SKAction.colorize(withColorBlendFactor: 0.0, duration: 0.2)
         target.sprite.run(SKAction.sequence([flashGreen, flashBack]))
-    }
-
-    /// Show/hide heal range indicator
-    func showHealRange(_ show: Bool) {
-        self.healEffectNode?.isHidden = !show
     }
 
     /// Override attack methods - heal tower doesn't attack

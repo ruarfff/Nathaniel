@@ -75,13 +75,13 @@ class StructureManager {
         self.setupStructure(tower, at: position)
 
         // Set up gun tower callbacks
-        tower.onFire = { [weak self] projectile in
+        tower.gun.onFire = { [weak self] projectile in
             guard let scene = self?.scene else { return }
             projectile.sprite.setScale(1.0)
             scene.addChild(projectile.sprite)
         }
 
-        tower.onCheckCollision = { [weak self] projectile in
+        tower.gun.onCheckCollision = { [weak self] projectile in
             self?.enemyManager?.checkProjectileCollision(projectile)
         }
 
@@ -283,6 +283,14 @@ class StructureManager {
         self.structures.count
     }
 
+    /// Capture active towers and their deployment ownership for a saved game.
+    func savedTowerStates() -> [SavedTowerState] {
+        let hermesOwnedSet = Set(self.hermesTowers.map { ObjectIdentifier($0) })
+        return self.structures.filter(\.isActive).compactMap {
+            $0.toSavedTowerState(isHermesOwned: hermesOwnedSet.contains(ObjectIdentifier($0)))
+        }
+    }
+
     /// Check if a position collides with any active structure
     /// - Parameters:
     ///   - position: World position to check
@@ -291,7 +299,7 @@ class StructureManager {
     func collidesWithStructure(at position: CGPoint, entityRadius: CGFloat = 0) -> Bool {
         for structure in self.structures where structure.isActive {
             // Use tower collision radius plus entity radius
-            if position.distance(to: structure.position) < BuildConfig.towerCollisionRadius + entityRadius {
+            if position.distance(to: structure.position) < GameBalance.Towers.collisionRadius + entityRadius {
                 return true
             }
         }

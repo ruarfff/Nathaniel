@@ -27,8 +27,8 @@
         /// Current slider value
         private(set) var currentValue: CGFloat {
             didSet {
-                updateUI()
-                onValueChanged?(currentValue)
+                self.updateUI()
+                self.onValueChanged?(self.currentValue)
             }
         }
 
@@ -53,12 +53,12 @@
         init(minValue: CGFloat, maxValue: CGFloat, initialValue: CGFloat, format: String = "%.0f") {
             self.minValue = minValue
             self.maxValue = maxValue
-            currentValue = initialValue
-            formatString = format
+            self.currentValue = initialValue
+            self.formatString = format
             super.init()
 
-            setupUI()
-            updateUI()
+            self.setupUI()
+            self.updateUI()
         }
 
         @available(*, unavailable)
@@ -70,65 +70,65 @@
 
         private func setupUI() {
             // Track background
-            trackNode = SKShapeNode(
-                rectOf: CGSize(width: trackWidth, height: trackHeight),
-                cornerRadius: trackHeight / 2
+            self.trackNode = SKShapeNode(
+                rectOf: CGSize(width: self.trackWidth, height: self.trackHeight),
+                cornerRadius: self.trackHeight / 2
             )
-            trackNode.fillColor = trackColor
-            trackNode.strokeColor = .clear
-            trackNode.zPosition = 0
-            addChild(trackNode)
+            self.trackNode.fillColor = self.trackColor
+            self.trackNode.strokeColor = .clear
+            self.trackNode.zPosition = 0
+            addChild(self.trackNode)
 
             // Fill (left portion showing current value)
-            fillNode = SKShapeNode()
-            fillNode.fillColor = fillColor
-            fillNode.strokeColor = .clear
-            fillNode.zPosition = 1
-            addChild(fillNode)
+            self.fillNode = SKShapeNode()
+            self.fillNode.fillColor = self.fillColor
+            self.fillNode.strokeColor = .clear
+            self.fillNode.zPosition = 1
+            addChild(self.fillNode)
 
             // Thumb
-            thumbNode = SKShapeNode(circleOfRadius: thumbRadius)
-            thumbNode.fillColor = thumbColor
-            thumbNode.strokeColor = SKColor.gray.withAlphaComponent(0.5)
-            thumbNode.lineWidth = 1
-            thumbNode.zPosition = 2
-            addChild(thumbNode)
+            self.thumbNode = SKShapeNode(circleOfRadius: self.thumbRadius)
+            self.thumbNode.fillColor = self.thumbColor
+            self.thumbNode.strokeColor = SKColor.gray.withAlphaComponent(0.5)
+            self.thumbNode.lineWidth = 1
+            self.thumbNode.zPosition = 2
+            addChild(self.thumbNode)
 
             // Value label (right of slider)
-            valueLabel = SKLabelNode(fontNamed: "Helvetica")
-            valueLabel.fontSize = 14
-            valueLabel.fontColor = SKColor(white: 0.9, alpha: 1.0)
-            valueLabel.horizontalAlignmentMode = .left
-            valueLabel.verticalAlignmentMode = .center
-            valueLabel.position = CGPoint(x: trackWidth / 2 + 15, y: 0)
-            valueLabel.zPosition = 0
-            addChild(valueLabel)
+            self.valueLabel = SKLabelNode(fontNamed: "Helvetica")
+            self.valueLabel.fontSize = 14
+            self.valueLabel.fontColor = SKColor(white: 0.9, alpha: 1.0)
+            self.valueLabel.horizontalAlignmentMode = .left
+            self.valueLabel.verticalAlignmentMode = .center
+            self.valueLabel.position = CGPoint(x: self.trackWidth / 2 + 15, y: 0)
+            self.valueLabel.zPosition = 0
+            addChild(self.valueLabel)
         }
 
         private func updateUI() {
             // Calculate normalized position (0 to 1)
-            let normalized = (currentValue - minValue) / (maxValue - minValue)
+            let normalized = (currentValue - self.minValue) / (self.maxValue - self.minValue)
             let clampedNormalized = max(0, min(1, normalized))
 
             // Update thumb position
-            let thumbX = -trackWidth / 2 + trackWidth * clampedNormalized
-            thumbNode.position = CGPoint(x: thumbX, y: 0)
+            let thumbX = -self.trackWidth / 2 + self.trackWidth * clampedNormalized
+            self.thumbNode.position = CGPoint(x: thumbX, y: 0)
 
             // Update fill
-            updateFill(normalized: clampedNormalized)
+            self.updateFill(normalized: clampedNormalized)
 
             // Update value label
-            valueLabel.text = String(format: formatString, currentValue)
+            self.valueLabel.text = String(format: self.formatString, self.currentValue)
         }
 
         private func updateFill(normalized: CGFloat) {
-            let fillWidth = trackWidth * normalized
+            let fillWidth = self.trackWidth * normalized
             if fillWidth > 0 {
                 let fillRect = CGRect(
-                    x: -trackWidth / 2,
-                    y: -trackHeight / 2,
+                    x: -self.trackWidth / 2,
+                    y: -self.trackHeight / 2,
                     width: fillWidth,
-                    height: trackHeight
+                    height: self.trackHeight
                 )
                 let path = CGPath(
                     roundedRect: fillRect,
@@ -136,26 +136,17 @@
                     cornerHeight: trackHeight / 2,
                     transform: nil
                 )
-                fillNode.path = path
+                self.fillNode.path = path
             } else {
-                fillNode.path = nil
+                self.fillNode.path = nil
             }
         }
 
         // MARK: - Value Setting
 
         /// Set the slider value programmatically
-        func setValue(_ value: CGFloat, animated: Bool = false) {
-            let clamped = max(minValue, min(maxValue, value))
-            if animated {
-                // Animate thumb movement
-                let normalized = (clamped - minValue) / (maxValue - minValue)
-                let thumbX = -trackWidth / 2 + trackWidth * normalized
-                let moveAction = SKAction.moveTo(x: thumbX, duration: 0.15)
-                moveAction.timingMode = .easeOut
-                thumbNode.run(moveAction)
-            }
-            currentValue = clamped
+        func setValue(_ value: CGFloat) {
+            self.currentValue = max(self.minValue, min(self.maxValue, value))
         }
 
         // MARK: - Touch Handling
@@ -164,10 +155,10 @@
         func hitTestPoint(_ point: CGPoint) -> Bool {
             // Expand hit area vertically for easier touch
             let hitRect = CGRect(
-                x: -trackWidth / 2 - thumbRadius,
-                y: -thumbRadius * 1.5,
-                width: trackWidth + thumbRadius * 2,
-                height: thumbRadius * 3
+                x: -self.trackWidth / 2 - self.thumbRadius,
+                y: -self.thumbRadius * 1.5,
+                width: self.trackWidth + self.thumbRadius * 2,
+                height: self.thumbRadius * 3
             )
             return hitRect.contains(point)
         }
@@ -176,20 +167,20 @@
         /// - Parameter point: Point in the slider's coordinate space
         /// - Returns: True if the touch was handled
         func handleTouch(at point: CGPoint) -> Bool {
-            guard hitTestPoint(point) else { return false }
+            guard self.hitTestPoint(point) else { return false }
 
             // Calculate value from x position
-            let clampedX = max(-trackWidth / 2, min(trackWidth / 2, point.x))
-            let normalized = (clampedX + trackWidth / 2) / trackWidth
-            let newValue = minValue + (maxValue - minValue) * normalized
+            let clampedX = max(-self.trackWidth / 2, min(self.trackWidth / 2, point.x))
+            let normalized = (clampedX + self.trackWidth / 2) / self.trackWidth
+            let newValue = self.minValue + (self.maxValue - self.minValue) * normalized
 
-            currentValue = newValue
+            self.currentValue = newValue
             return true
         }
 
         /// Get the width of the slider including value label
         var totalWidth: CGFloat {
-            trackWidth + 60 // Track + spacing + value label
+            self.trackWidth + 60 // Track + spacing + value label
         }
     }
 

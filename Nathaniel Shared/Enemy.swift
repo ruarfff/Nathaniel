@@ -209,7 +209,6 @@ class Soldier: Enemy {
 class Boss: Enemy {
     private static let idleColumns = [0, 1, 4, 2, 7, 5, 6, 3]
     private var animationElapsed: TimeInterval = 0
-    private(set) var isDefeated = false
 
     override var stoppingDistance: CGFloat {
         attackRange * GameBalance.Boss.stopDistanceRatio
@@ -244,11 +243,6 @@ class Boss: Enemy {
         if let texture = animationComponent.texture(at: row, col: col) {
             sprite.texture = texture
         }
-    }
-
-    override func onDeath() {
-        self.isDefeated = true
-        super.onDeath()
     }
 
     #if DEBUG

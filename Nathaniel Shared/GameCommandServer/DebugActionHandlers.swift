@@ -23,21 +23,21 @@
         static func execute(
             name: String,
             params: [String: String]?,
-            context: GameActionContext
+            scene: GameScene
         ) -> ActionResult {
             switch name {
             case "getCombatState":
-                self.getCombatState(context: context)
+                self.getCombatState(scene: scene)
             case "getNathanielTarget":
-                self.getNathanielTarget(context: context)
+                self.getNathanielTarget(scene: scene)
             case "getHermesTarget":
-                self.getHermesTarget(context: context)
+                self.getHermesTarget(scene: scene)
             case "getHermesCombatState":
-                self.getHermesCombatState(context: context)
+                self.getHermesCombatState(scene: scene)
             case "getTowerTargets":
-                self.getTowerTargets(context: context)
+                self.getTowerTargets(scene: scene)
             case "waitForCombat":
-                self.waitForCombat(context: context)
+                self.waitForCombat(scene: scene)
             default:
                 .failure("Unknown debug action: \(name)")
             }
@@ -45,13 +45,13 @@
 
         // MARK: - Combat State
 
-        private static func getCombatState(context: GameActionContext) -> ActionResult {
+        private static func getCombatState(scene: GameScene) -> ActionResult {
             var state: [String: String] = [:]
 
             // Nathaniel targeting
-            if let nathaniel = context.nathaniel {
+            if let nathaniel = scene.internalNathaniel {
                 if let target = nathaniel.currentTarget as? Enemy {
-                    let index = context.enemyManager?.enemies.firstIndex(where: { $0 === target }) ?? -1
+                    let index = scene.internalEnemyManager?.enemies.firstIndex(where: { $0 === target }) ?? -1
                     state["nathanielTarget"] = "enemy_\(index)"
                 } else {
                     state["nathanielTarget"] = "none"
@@ -61,9 +61,9 @@
             }
 
             // Hermes targeting
-            if let hermes = context.hermes {
+            if let hermes = scene.internalHermes {
                 if let target = hermes.currentTarget as? Enemy {
-                    let index = context.enemyManager?.enemies.firstIndex(where: { $0 === target }) ?? -1
+                    let index = scene.internalEnemyManager?.enemies.firstIndex(where: { $0 === target }) ?? -1
                     state["hermesTarget"] = "enemy_\(index)"
                 } else {
                     state["hermesTarget"] = "none"
@@ -79,11 +79,11 @@
             }
 
             // Tower targeting
-            if let structMgr = context.structureManager {
+            if let structMgr = scene.internalStructureManager {
                 var towerTargets: [String] = []
                 for (idx, tower) in structMgr.structures.enumerated() where tower.isActive {
                     if let target = tower.currentTarget {
-                        let enemyIdx = context.enemyManager?.enemies.firstIndex(where: { $0 === target }) ?? -1
+                        let enemyIdx = scene.internalEnemyManager?.enemies.firstIndex(where: { $0 === target }) ?? -1
                         towerTargets.append("tower_\(idx)->enemy_\(enemyIdx)")
                     } else {
                         towerTargets.append("tower_\(idx)->none")
@@ -99,12 +99,12 @@
 
         // MARK: - Nathaniel Target
 
-        private static func getNathanielTarget(context: GameActionContext) -> ActionResult {
-            guard let nathaniel = context.nathaniel else {
+        private static func getNathanielTarget(scene: GameScene) -> ActionResult {
+            guard let nathaniel = scene.internalNathaniel else {
                 return .failure("Nathaniel not found")
             }
             if let target = nathaniel.currentTarget as? Enemy {
-                let index = context.enemyManager?.enemies.firstIndex(where: { $0 === target }) ?? -1
+                let index = scene.internalEnemyManager?.enemies.firstIndex(where: { $0 === target }) ?? -1
                 let manual = nathaniel.targeting.manualTargetOverride != nil ? " (manual)" : " (auto)"
                 return .success("enemy_\(index)\(manual) at (\(Int(target.position.x)), \(Int(target.position.y)))")
             }
@@ -113,12 +113,12 @@
 
         // MARK: - Hermes Target
 
-        private static func getHermesTarget(context: GameActionContext) -> ActionResult {
-            guard let hermes = context.hermes else {
+        private static func getHermesTarget(scene: GameScene) -> ActionResult {
+            guard let hermes = scene.internalHermes else {
                 return .failure("Hermes not found")
             }
             if let target = hermes.currentTarget as? Enemy {
-                let index = context.enemyManager?.enemies.firstIndex(where: { $0 === target }) ?? -1
+                let index = scene.internalEnemyManager?.enemies.firstIndex(where: { $0 === target }) ?? -1
                 let manual = hermes.targeting.manualTargetOverride != nil ? " (manual)" : " (auto)"
                 return .success("enemy_\(index)\(manual) at (\(Int(target.position.x)), \(Int(target.position.y)))")
             }
@@ -127,8 +127,8 @@
 
         // MARK: - Hermes Combat State
 
-        private static func getHermesCombatState(context: GameActionContext) -> ActionResult {
-            guard let hermes = context.hermes else {
+        private static func getHermesCombatState(scene: GameScene) -> ActionResult {
+            guard let hermes = scene.internalHermes else {
                 return .failure("Hermes not found")
             }
             var state: [String] = []
@@ -140,7 +140,7 @@
             state.append("isFiring=\(hermes.isFiring)")
             state.append("behavior=\(hermes.targeting.behavior)")
             if let target = hermes.currentTarget as? Enemy {
-                let index = context.enemyManager?.enemies.firstIndex(where: { $0 === target }) ?? -1
+                let index = scene.internalEnemyManager?.enemies.firstIndex(where: { $0 === target }) ?? -1
                 state.append("target=enemy_\(index)")
             } else {
                 state.append("target=none")
@@ -151,15 +151,15 @@
 
         // MARK: - Tower Targets
 
-        private static func getTowerTargets(context: GameActionContext) -> ActionResult {
-            guard let structMgr = context.structureManager else {
+        private static func getTowerTargets(scene: GameScene) -> ActionResult {
+            guard let structMgr = scene.internalStructureManager else {
                 return .failure("StructureManager not found")
             }
             var results: [String] = []
             for (idx, tower) in structMgr.structures.enumerated() where tower.isActive {
                 let typeName = tower.name
                 if let target = tower.currentTarget {
-                    let enemyIdx = context.enemyManager?.enemies.firstIndex(where: { $0 === target }) ?? -1
+                    let enemyIdx = scene.internalEnemyManager?.enemies.firstIndex(where: { $0 === target }) ?? -1
                     results.append("\(typeName)_\(idx)->enemy_\(enemyIdx)")
                 } else {
                     results.append("\(typeName)_\(idx)->none")
@@ -173,11 +173,11 @@
 
         // MARK: - Wait for Combat
 
-        private static func waitForCombat(context: GameActionContext) -> ActionResult {
+        private static func waitForCombat(scene: GameScene) -> ActionResult {
             // Synchronous check - caller should poll if needed
-            let hasNathanielTarget = context.nathaniel?.currentTarget != nil
-            let hasHermesTarget = context.hermes?.currentTarget != nil
-            let enemyCount = context.enemyManager?.aliveCount ?? 0
+            let hasNathanielTarget = scene.internalNathaniel?.currentTarget != nil
+            let hasHermesTarget = scene.internalHermes?.currentTarget != nil
+            let enemyCount = scene.internalEnemyManager?.aliveCount ?? 0
             return .success(
                 "nathanielHasTarget=\(hasNathanielTarget); hermesHasTarget=\(hasHermesTarget); enemies=\(enemyCount)"
             )

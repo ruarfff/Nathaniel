@@ -86,9 +86,6 @@ class HUD: SKNode {
     /// Whether Hermes is currently in follow mode
     private var isHermesFollowing: Bool = false
 
-    /// Whether Hermes is currently selected (controls build button visibility)
-    private var isHermesSelected: Bool = false
-
     /// Pause button (always visible during gameplay)
     private var pauseButton: SKNode?
     private let pauseButtonName = "pauseButton"
@@ -99,13 +96,7 @@ class HUD: SKNode {
     /// Padding from screen edges
     private let padding: CGFloat = 16
 
-    /// Spacing between elements
-    private let spacing: CGFloat = 8
-
     // MARK: - Player Health Display
-
-    /// Container for player health bars (bottom-left)
-    private var playerHealthContainer: SKNode?
 
     /// Nathaniel health bar components
     private var nathanielHealthBar: SKShapeNode?
@@ -562,7 +553,6 @@ class HUD: SKNode {
         self.hermesHealthFill = hBarFill
 
         addChild(container)
-        self.playerHealthContainer = container
     }
 
     /// Get color for health bar based on health percentage
@@ -726,19 +716,6 @@ class HUD: SKNode {
             : SKColor.white.withAlphaComponent(0.9)
     }
 
-    /// Flash player health bar when taking damage
-    func flashPlayerHealth(isNathaniel: Bool) {
-        let fillNode = isNathaniel ? self.nathanielHealthFill : self.hermesHealthFill
-        guard let fill = fillNode else { return }
-
-        // Flash white then restore
-        let originalColor = fill.fillColor
-        let flashWhite = SKAction.run { fill.fillColor = .white }
-        let wait = SKAction.wait(forDuration: 0.08)
-        let restore = SKAction.run { fill.fillColor = originalColor }
-        fill.run(SKAction.sequence([flashWhite, wait, restore]))
-    }
-
     /// Update timer display
     func updateTimer(elapsedTime: TimeInterval) {
         let minutes = Int(elapsedTime) / 60
@@ -778,23 +755,6 @@ class HUD: SKNode {
         self.topLeftContainer.run(SKAction.repeat(flash, count: 3))
     }
 
-    /// Highlight score increase
-    func highlightScoreIncrease(points: Int) {
-        // Create floating "+points" text
-        let floater = SKLabelNode(fontNamed: "Helvetica-Bold")
-        floater.fontSize = 18
-        floater.fontColor = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1.0)
-        floater.text = "+\(points)"
-        floater.position = CGPoint(x: self.scoreValueLabel.position.x + 60, y: self.scoreValueLabel.position.y - 10)
-        self.topLeftContainer.addChild(floater)
-
-        // Animate up and fade out
-        let moveUp = SKAction.moveBy(x: 0, y: 30, duration: 0.8)
-        let fadeOut = SKAction.fadeOut(withDuration: 0.8)
-        let remove = SKAction.removeFromParent()
-        floater.run(SKAction.sequence([SKAction.group([moveUp, fadeOut]), remove]))
-    }
-
     /// Highlight resource collection
     func highlightResourceCollected(amount: Int) {
         // Create floating "+amount" text
@@ -820,7 +780,6 @@ class HUD: SKNode {
 
     /// Show the Build button (when Hermes is selected)
     func showBuildButton() {
-        self.isHermesSelected = true
         guard self.buildButton == nil else {
             self.buildButton?.removeAction(forKey: "hideBuildButton")
             self.buildButton?.isHidden = false
@@ -876,7 +835,6 @@ class HUD: SKNode {
 
     /// Hide the Build button
     func hideBuildButton() {
-        self.isHermesSelected = false
         guard let button = buildButton else { return }
 
         // Animate out

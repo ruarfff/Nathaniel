@@ -82,7 +82,7 @@ final class HermesParityTests: XCTestCase {
         let scene = GameScene.newGameScene()
         view.presentScene(scene)
         defer { view.presentScene(nil) }
-        let structures = try XCTUnwrap(scene.findStructureManagerPublic())
+        let structures = try XCTUnwrap(scene.internalStructureManager)
         let gun = try XCTUnwrap(structures.addHermesTower(type: .gunTower, at: CGPoint(x: 320, y: 200)) as? GunTower)
         let laser = structures.addHermesTower(type: .laserTower, at: CGPoint(x: 400, y: 200))
         let mapTower = structures.addHealTower(at: CGPoint(x: 500, y: 200))
@@ -108,7 +108,7 @@ final class HermesParityTests: XCTestCase {
         XCTAssertFalse(bullet.isActive)
         XCTAssertNil(bullet.sprite.parent)
         XCTAssertFalse(scene.isBuildMenuVisible)
-        XCTAssertEqual(scene.findHermesPublic()?.mode, .following)
+        XCTAssertEqual(scene.internalHermes?.mode, .following)
         XCTAssertEqual(ResourceManager.shared.totalCollected, wallet + refund)
         scene.setHermesMode(.following)
         XCTAssertEqual(ResourceManager.shared.totalCollected, wallet + refund)
@@ -136,7 +136,7 @@ final class HermesParityTests: XCTestCase {
         let original = GameScene.newGameScene()
         view.presentScene(original)
         defer { view.presentScene(nil) }
-        let structures = try XCTUnwrap(original.findStructureManagerPublic())
+        let structures = try XCTUnwrap(original.internalStructureManager)
         let tower = structures.addHermesTower(type: .gunTower, at: CGPoint(x: 320, y: 200))
         tower.constructionCost = 11
         let save = try XCTUnwrap(original.createSaveState(displayName: "Following deployment"))
@@ -148,7 +148,7 @@ final class HermesParityTests: XCTestCase {
         let restored = GameScene.newGameScene(fromSave: state)
         view.presentScene(restored)
 
-        XCTAssertEqual(restored.findStructureManagerPublic()?.hermesTowerCount, 0)
+        XCTAssertEqual(restored.internalStructureManager?.hermesTowerCount, 0)
         XCTAssertEqual(ResourceManager.shared.totalCollected, save.resources + 2)
         restored.setHermesMode(.following)
         XCTAssertEqual(ResourceManager.shared.totalCollected, save.resources + 2)

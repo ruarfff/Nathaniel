@@ -94,29 +94,6 @@ class DefensiveStructure: Structure {
         sprite.run(SKAction.sequence([fadeOut, remove]))
     }
 
-    /// Destroy with enhanced visual effect (used by staggered destruction)
-    /// This handles only the sprite animation, not the explosion effect
-    func destroyWithEffect() {
-        isActive = false
-
-        // Notify callback
-        self.onDestroyed?()
-
-        // Enhanced destruction animation: flash, expand slightly, then collapse
-        let flashWhite = SKAction.colorize(with: .white, colorBlendFactor: 1.0, duration: 0.05)
-        let flashBack = SKAction.colorize(withColorBlendFactor: 0, duration: 0.05)
-        let scaleUp = SKAction.scale(by: 1.3, duration: 0.1)
-        let scaleDown = SKAction.scale(to: 0.1, duration: 0.2)
-        let fadeOut = SKAction.fadeOut(withDuration: 0.2)
-        let remove = SKAction.removeFromParent()
-
-        let flashSequence = SKAction.sequence([flashWhite, flashBack])
-        let collapseGroup = SKAction.group([scaleDown, fadeOut])
-        let fullSequence = SKAction.sequence([flashSequence, scaleUp, collapseGroup, remove])
-
-        sprite.run(fullSequence)
-    }
-
     // MARK: - Texture Setup (Single Frame)
 
     /// Load a single texture for the structure

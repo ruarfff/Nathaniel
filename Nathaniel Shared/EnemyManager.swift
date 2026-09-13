@@ -51,23 +51,6 @@ class EnemyManager {
     /// Reference to structures that enemies can target
     weak var structureManager: StructureManager?
 
-    // MARK: - Statistics
-
-    /// Count of spawners
-    private(set) var numSpawners: Int = 0
-
-    /// Count of soldiers
-    private(set) var numSoldiers: Int = 0
-
-    /// Count of bosses
-    private(set) var numBosses: Int = 0
-
-    /// Total enemies spawned
-    private(set) var totalSpawned: Int = 0
-
-    /// Total enemies killed
-    private(set) var totalKilled: Int = 0
-
     // MARK: - Initialization
 
     init(scene: SKScene? = nil) {
@@ -76,18 +59,7 @@ class EnemyManager {
 
     /// Reset all state (for level restart)
     func reset() {
-        // Remove all enemy sprites
-        for enemy in self.enemies {
-            enemy.removeFromScene()
-        }
-        self.enemies.removeAll()
-
-        // Reset counts
-        self.numSpawners = 0
-        self.numSoldiers = 0
-        self.numBosses = 0
-        self.totalSpawned = 0
-        self.totalKilled = 0
+        self.removeAllEnemies()
     }
 
     /// Remove all enemies from the scene (for loading saved game)
@@ -96,9 +68,6 @@ class EnemyManager {
             enemy.removeFromScene()
         }
         self.enemies.removeAll()
-        self.numSpawners = 0
-        self.numSoldiers = 0
-        self.numBosses = 0
     }
 
     /// Add a pre-created enemy to the manager
@@ -121,17 +90,6 @@ class EnemyManager {
             }
         }
 
-        // Track type counts
-        if enemy is Soldier {
-            self.numSoldiers += 1
-        }
-        if enemy is Boss {
-            self.numBosses += 1
-        }
-        if enemy is Spawner {
-            self.numSpawners += 1
-        }
-
         // Configure pathfinding if renderer is available
         if let renderer {
             enemy.configurePathfinding(with: renderer)
@@ -143,7 +101,6 @@ class EnemyManager {
 
         // Track
         self.enemies.append(enemy)
-        self.totalSpawned += 1
     }
 
     // MARK: - Enemy Factory
@@ -252,23 +209,15 @@ class EnemyManager {
         // Remove dead enemies (in reverse order to maintain indices)
         for index in indicesToRemove.reversed() {
             let enemy = self.enemies[index]
-            self.totalKilled += 1
 
             // Notify delegate
             self.delegate?.enemyManager(self, enemyDidDie: enemy, score: enemy.killScore)
 
             // Check if this was a boss
             if enemy is Boss {
-                self.numBosses -= 1
                 self.delegate?.enemyManagerDidDefeatBoss(self)
             }
 
-            if enemy is Soldier {
-                self.numSoldiers -= 1
-            }
-            if enemy is Spawner {
-                self.numSpawners -= 1
-            }
             self.enemies.remove(at: index)
         }
     }
@@ -295,28 +244,6 @@ class EnemyManager {
     }
 
     // MARK: - Targeting
-
-    /// Find the nearest player character to a position
-    func findNearestPlayer(to position: CGPoint, withinRange range: CGFloat? = nil) -> Character? {
-        var nearestPlayer: Character?
-        var nearestDistance: CGFloat = .infinity
-
-        for player in self.playerCharacters where player.isAlive {
-            let distance = position.distance(to: player.position)
-
-            // Check range if specified
-            if let range, distance > range {
-                continue
-            }
-
-            if distance < nearestDistance {
-                nearestDistance = distance
-                nearestPlayer = player
-            }
-        }
-
-        return nearestPlayer
-    }
 
     /// Find an enemy at the given position (for tap-to-target)
     func enemy(at point: CGPoint) -> Enemy? {

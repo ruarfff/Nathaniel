@@ -1,7 +1,14 @@
-#if DEBUG
+//
+//  GameCommandProtocol.swift
+//  Nathaniel Shared
+//
+//  Defines debug game commands and scene presentation shared by all builds.
+//
 
-    import Foundation
-    import SpriteKit
+import Foundation
+import SpriteKit
+
+#if DEBUG
 
     /// Result of executing a custom game action
     public struct ActionResult {
@@ -146,7 +153,7 @@
 
                 // Draw bounding boxes
                 for node in nodes {
-                    let color = colorForNodeType(node.type, name: node.name)
+                    let color = self.colorForNodeType(node.type, name: node.name)
                     context.setStrokeColor(color.cgColor)
                     context.setLineWidth(2.0)
 
@@ -191,7 +198,7 @@
 
                 // Draw bounding boxes
                 for node in nodes {
-                    let color = colorForNodeType(node.type, name: node.name)
+                    let color = self.colorForNodeType(node.type, name: node.name)
                     color.setStroke()
 
                     // Convert scene coordinates to image coordinates
@@ -302,26 +309,11 @@
             }
             return nil
         }
-
-        /// Inject a tap at a point, using frame-based hit testing for buttons.
-        /// Falls back to tapping at button center if a button is found.
-        /// - Parameter point: The point in scene coordinates
-        /// - Returns: The button name if a button was tapped, nil if tap went to scene directly
-        public func injectTapAtButton(_ point: CGPoint) -> String? {
-            // First try to find a button at this point using expanded frame hit testing
-            if let buttonName = findButtonAtPoint(point) {
-                // Found a button - tap at its center for reliable hit
-                if let button = children.first(where: { $0.name == buttonName }) {
-                    return buttonName
-                }
-            }
-            return nil
-        }
     }
 
 #endif
 
-// Available in all builds - notification only posted in DEBUG
+/// Available in all builds - notification only posted in DEBUG
 extension SKView {
     /// Present a scene and post a notification for scene change tracking.
     /// Use this instead of presentScene() directly for proper command server integration.

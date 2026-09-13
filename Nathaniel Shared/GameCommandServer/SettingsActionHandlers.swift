@@ -31,24 +31,24 @@
         static func execute(
             name: String,
             params: [String: String]?,
-            context: GameActionContext
+            scene: GameScene
         ) -> ActionResult {
             switch name {
             case "settingsMenuIsVisible":
-                guard let settingsMenu = context.settingsMenu else {
+                guard let settingsMenu = scene.internalSettingsMenu else {
                     return .failure("Settings menu not found")
                 }
                 return .success("settingsMenuIsVisible: \(settingsMenu.isVisible)")
 
             case "openSettings", "showSettingsMenu":
-                guard let settingsMenu = context.settingsMenu else {
+                guard let settingsMenu = scene.internalSettingsMenu else {
                     return .failure("Settings menu not found")
                 }
                 settingsMenu.show()
                 return .success("Settings menu opened")
 
             case "closeSettings", "hideSettingsMenu":
-                guard let settingsMenu = context.settingsMenu else {
+                guard let settingsMenu = scene.internalSettingsMenu else {
                     return .failure("Settings menu not found")
                 }
                 settingsMenu.hide()
@@ -101,7 +101,7 @@
                 return .success("Music set to: \(enabled)")
 
             case "settingsMenuTapBack":
-                guard let settingsMenu = context.settingsMenu else {
+                guard let settingsMenu = scene.internalSettingsMenu else {
                     return .failure("Settings menu not found")
                 }
                 guard settingsMenu.isVisible else {

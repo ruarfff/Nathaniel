@@ -458,7 +458,7 @@ class Hermes: Character {
         self.targeting.clearManualTarget()
     }
 
-    /// Get current attack range (for CombatCapable)
+    /// Get current attack range.
     var attackRange: CGFloat {
         Hermes.weaponRange
     }
@@ -492,35 +492,7 @@ class Hermes: Character {
         self.onDeathCallback?()
     }
 
-    // MARK: - Respawn
-
-    /// Respawn Hermes at a given position with full health
-    func respawn(at position: CGPoint) {
-        self.position = position
-        self.currentHP = maxHP
-        self.destination = nil
-        self.facingDirection = .south
-
-        // Reset combat state
-        self.targeting.clearAll()
-        self.isFiring = false
-        self.laser.deactivate()
-        self.cooldownElapsed = 0
-        self.pendingLaserDamage = 0
-        self.animationState = .idle
-        self.isActive = true
-        self.updateTexture()
-    }
-
     // MARK: - Mode Control
-
-    func toggleMode() {
-        self.mode = self.mode == .following ? .independent : .following
-    }
-
-    func toggleBuildMode() {
-        self.toggleMode()
-    }
 
     /// Stop Hermes so the player can place towers.
     func enterBuildMode() {
@@ -528,17 +500,8 @@ class Hermes: Character {
         stop()
     }
 
-    func exitBuildMode() {
-        self.mode = .following
-    }
-
     func enterFollowMode() {
         self.mode = .following
-    }
-
-    /// Retained for saved games and command clients: independent means stationary building.
-    func enterIndependentMode() {
-        self.enterBuildMode()
     }
 
     /// Hermes moves only by following Nathaniel, never by a direct move command.

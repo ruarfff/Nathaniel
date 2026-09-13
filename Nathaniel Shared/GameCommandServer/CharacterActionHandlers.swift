@@ -22,19 +22,19 @@
         static func execute(
             name: String,
             params: [String: String]?,
-            context: GameActionContext
+            scene: GameScene
         ) -> ActionResult {
             switch name {
             case "selectNathaniel":
-                self.selectNathaniel(context: context)
+                self.selectNathaniel(scene: scene)
             case "selectHermes":
-                self.selectHermes(context: context)
+                self.selectHermes(scene: scene)
             case "moveNathaniel":
-                self.moveNathaniel(params: params, context: context)
+                self.moveNathaniel(params: params, scene: scene)
             case "targetEnemy":
-                self.targetEnemy(params: params, context: context)
+                self.targetEnemy(params: params, scene: scene)
             case "toggleCharacter":
-                self.toggleCharacter(context: context)
+                self.toggleCharacter(scene: scene)
             default:
                 .failure("Unknown character action: \(name)")
             }
@@ -42,24 +42,24 @@
 
         // MARK: - Selection Actions
 
-        private static func selectNathaniel(context: GameActionContext) -> ActionResult {
-            guard let nathaniel = context.nathaniel else {
+        private static func selectNathaniel(scene: GameScene) -> ActionResult {
+            guard let nathaniel = scene.internalNathaniel else {
                 return .failure("Nathaniel not found")
             }
-            context.handleTap(at: nathaniel.position)
+            scene.handleTap(at: nathaniel.position)
             return .success("Selected Nathaniel")
         }
 
-        private static func selectHermes(context: GameActionContext) -> ActionResult {
-            guard let hermes = context.hermes else {
+        private static func selectHermes(scene: GameScene) -> ActionResult {
+            guard let hermes = scene.internalHermes else {
                 return .failure("Hermes not found")
             }
-            context.handleTap(at: hermes.position)
+            scene.handleTap(at: hermes.position)
             return .success("Selected Hermes")
         }
 
-        private static func toggleCharacter(context: GameActionContext) -> ActionResult {
-            context.toggleSelectedCharacter()
+        private static func toggleCharacter(scene: GameScene) -> ActionResult {
+            scene.toggleSelectedCharacter()
             return .success("Toggled character selection")
         }
 
@@ -67,12 +67,12 @@
 
         private static func moveNathaniel(
             params: [String: String]?,
-            context: GameActionContext
+            scene: GameScene
         ) -> ActionResult {
             guard let point = ActionParams.parsePoint(from: params) else {
                 return .failure("Missing x,y parameters")
             }
-            context.handleMoveCommand(to: point)
+            scene.handleMoveCommand(to: point)
             return .success("Moving Nathaniel to (\(point.x), \(point.y))")
         }
 
@@ -80,12 +80,12 @@
 
         private static func targetEnemy(
             params: [String: String]?,
-            context: GameActionContext
+            scene: GameScene
         ) -> ActionResult {
             guard let index = ActionParams.parseInt("index", from: params) else {
                 return .failure("Missing index parameter")
             }
-            guard let enemyManager = context.enemyManager else {
+            guard let enemyManager = scene.internalEnemyManager else {
                 return .failure("Enemy manager not found")
             }
 
@@ -95,7 +95,7 @@
             }
 
             let enemy = aliveEnemies[index]
-            context.handleTap(at: enemy.position)
+            scene.handleTap(at: enemy.position)
             return .success("Targeted enemy \(index)")
         }
     }

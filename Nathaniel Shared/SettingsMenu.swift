@@ -60,8 +60,8 @@ class SettingsMenu: OverlayMenu {
         super.init(size: size)
 
         // Load current settings
-        soundEffectsEnabled = GameSettings.shared.soundEffectsEnabled
-        musicEnabled = GameSettings.shared.musicEnabled
+        self.soundEffectsEnabled = GameSettings.shared.soundEffectsEnabled
+        self.musicEnabled = GameSettings.shared.musicEnabled
     }
 
     // MARK: - Setup
@@ -70,27 +70,27 @@ class SettingsMenu: OverlayMenu {
         let panel = createPanelContainer(width: panelWidth, height: panelHeight)
 
         // Title
-        createTitle("SETTINGS", fontSize: 28, in: panel, panelHeight: panelHeight)
+        createTitle("SETTINGS", fontSize: 28, in: panel, panelHeight: self.panelHeight)
 
         // Setting rows (from top to bottom)
-        let rowStartY: CGFloat = panelHeight / 2 - 100
+        let rowStartY: CGFloat = self.panelHeight / 2 - 100
 
         // Sound Effects toggle
-        soundEffectsToggle = createToggleRow(
+        self.soundEffectsToggle = self.createToggleRow(
             in: panel,
             name: SettingItem.soundEffects.rawValue,
             title: "Sound Effects",
-            isOn: soundEffectsEnabled,
+            isOn: self.soundEffectsEnabled,
             yPosition: rowStartY
         )
 
         // Music toggle
-        musicToggle = createToggleRow(
+        self.musicToggle = self.createToggleRow(
             in: panel,
             name: SettingItem.music.rawValue,
             title: "Music",
-            isOn: musicEnabled,
-            yPosition: rowStartY - (rowHeight + rowSpacing)
+            isOn: self.musicEnabled,
+            yPosition: rowStartY - (self.rowHeight + self.rowSpacing)
         )
 
         #if DEBUG
@@ -99,9 +99,9 @@ class SettingsMenu: OverlayMenu {
                 in: panel,
                 name: SettingItem.devSettings.rawValue,
                 title: "Developer Settings",
-                width: buttonWidth,
-                height: buttonHeight,
-                yPosition: rowStartY - 2 * (rowHeight + rowSpacing),
+                width: self.buttonWidth,
+                height: self.buttonHeight,
+                yPosition: rowStartY - 2 * (self.rowHeight + self.rowSpacing),
                 color: SKColor(red: 0.6, green: 0.4, blue: 0.2, alpha: 1.0)
             )
         #endif
@@ -111,21 +111,17 @@ class SettingsMenu: OverlayMenu {
             in: panel,
             name: SettingItem.back.rawValue,
             title: "Back",
-            width: buttonWidth,
-            height: buttonHeight,
-            yPosition: -panelHeight / 2 + 50,
+            width: self.buttonWidth,
+            height: self.buttonHeight,
+            yPosition: -self.panelHeight / 2 + 50,
             color: SKColor(red: 0.4, green: 0.4, blue: 0.5, alpha: 1.0)
         )
 
         #if DEBUG
             // Setup DevSettingsPanel
-            devSettingsPanel = DevSettingsPanel(size: viewportSize)
-            devSettingsPanel?.zPosition = 10
-            addChild(devSettingsPanel!)
-
-            devSettingsPanel?.onBack = { [weak self] in
-                // Panel handles its own hide animation
-            }
+            self.devSettingsPanel = DevSettingsPanel(size: viewportSize)
+            self.devSettingsPanel?.zPosition = 10
+            addChild(self.devSettingsPanel!)
         #endif
     }
 
@@ -154,13 +150,13 @@ class SettingsMenu: OverlayMenu {
         titleLabel.fontColor = .white
         titleLabel.verticalAlignmentMode = .center
         titleLabel.horizontalAlignmentMode = .left
-        titleLabel.position = CGPoint(x: -rowWidth / 2 + 20, y: 0)
+        titleLabel.position = CGPoint(x: -self.rowWidth / 2 + 20, y: 0)
         titleLabel.name = name
         row.addChild(titleLabel)
 
         // Toggle switch (right aligned)
-        let toggle = createToggleSwitch(name: name, isOn: isOn)
-        toggle.position = CGPoint(x: rowWidth / 2 - 50, y: 0)
+        let toggle = self.createToggleSwitch(name: name, isOn: isOn)
+        toggle.position = CGPoint(x: self.rowWidth / 2 - 50, y: 0)
         row.addChild(toggle)
 
         parent.addChild(row)
@@ -237,12 +233,16 @@ class SettingsMenu: OverlayMenu {
 
     override func show() {
         // Refresh from current settings
-        soundEffectsEnabled = GameSettings.shared.soundEffectsEnabled
-        musicEnabled = GameSettings.shared.musicEnabled
+        self.soundEffectsEnabled = GameSettings.shared.soundEffectsEnabled
+        self.musicEnabled = GameSettings.shared.musicEnabled
 
         // Update UI to match current settings
-        updateToggle(soundEffectsToggle, isOn: soundEffectsEnabled, name: SettingItem.soundEffects.rawValue)
-        updateToggle(musicToggle, isOn: musicEnabled, name: SettingItem.music.rawValue)
+        self.updateToggle(
+            self.soundEffectsToggle,
+            isOn: self.soundEffectsEnabled,
+            name: SettingItem.soundEffects.rawValue
+        )
+        self.updateToggle(self.musicToggle, isOn: self.musicEnabled, name: SettingItem.music.rawValue)
 
         super.show()
     }
@@ -272,10 +272,14 @@ class SettingsMenu: OverlayMenu {
            nodeContainsPoint(row, point: panelPoint, fallbackSize: rowSize)
         {
             animateButtonPress(row)
-            soundEffectsEnabled = !soundEffectsEnabled
-            GameSettings.shared.soundEffectsEnabled = soundEffectsEnabled
-            updateToggle(soundEffectsToggle, isOn: soundEffectsEnabled, name: SettingItem.soundEffects.rawValue)
-            onSettingChanged?(.soundEffects, soundEffectsEnabled)
+            self.soundEffectsEnabled = !self.soundEffectsEnabled
+            GameSettings.shared.soundEffectsEnabled = self.soundEffectsEnabled
+            self.updateToggle(
+                self.soundEffectsToggle,
+                isOn: self.soundEffectsEnabled,
+                name: SettingItem.soundEffects.rawValue
+            )
+            self.onSettingChanged?(.soundEffects, self.soundEffectsEnabled)
             return true
         }
 
@@ -284,13 +288,13 @@ class SettingsMenu: OverlayMenu {
            nodeContainsPoint(row, point: panelPoint, fallbackSize: rowSize)
         {
             animateButtonPress(row)
-            musicEnabled = !musicEnabled
-            GameSettings.shared.musicEnabled = musicEnabled
-            updateToggle(musicToggle, isOn: musicEnabled, name: SettingItem.music.rawValue)
-            onSettingChanged?(.music, musicEnabled)
+            self.musicEnabled = !self.musicEnabled
+            GameSettings.shared.musicEnabled = self.musicEnabled
+            self.updateToggle(self.musicToggle, isOn: self.musicEnabled, name: SettingItem.music.rawValue)
+            self.onSettingChanged?(.music, self.musicEnabled)
 
             // Apply music setting immediately
-            if musicEnabled {
+            if self.musicEnabled {
                 AudioManager.shared.resumeMusic()
             } else {
                 AudioManager.shared.pauseMusic()
@@ -302,10 +306,14 @@ class SettingsMenu: OverlayMenu {
         #if DEBUG
             // Dev Settings button
             if let button = panel.childNode(withName: SettingItem.devSettings.rawValue),
-               nodeContainsPoint(button, point: panelPoint, fallbackSize: CGSize(width: buttonWidth, height: buttonHeight))
+               nodeContainsPoint(
+                   button,
+                   point: panelPoint,
+                   fallbackSize: CGSize(width: buttonWidth, height: buttonHeight)
+               )
             {
                 animateButtonPress(button)
-                devSettingsPanel?.show()
+                self.devSettingsPanel?.show()
                 return true
             }
         #endif

@@ -67,11 +67,6 @@ class LaserBeam {
 
 /// Armed tower that fires continuous laser beams at enemies
 class LaserTower: DefensiveStructure {
-    // MARK: - Constants
-
-    /// Resource cost to build this tower
-    static let cost: Int = BuildConfig.TowerCosts.laserTower
-
     // MARK: - Properties
 
     /// Damage per second while beam is active

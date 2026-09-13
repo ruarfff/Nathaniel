@@ -46,8 +46,13 @@ class BuildMenuItemNode: SKNode {
 
     // MARK: - Constants
 
-    static var itemWidth: CGFloat { GameBalance.UI.BuildMenu.itemWidth }
-    static var itemHeight: CGFloat { GameBalance.UI.BuildMenu.itemHeight }
+    static var itemWidth: CGFloat {
+        GameBalance.UI.BuildMenu.itemWidth
+    }
+
+    static var itemHeight: CGFloat {
+        GameBalance.UI.BuildMenu.itemHeight
+    }
 
     // MARK: - Initialization
 
@@ -182,13 +187,19 @@ class BuildMenu: SKNode {
     // MARK: - Constants
 
     /// Menu height as percentage of viewport
-    static var menuHeightRatio: CGFloat { GameBalance.UI.BuildMenu.menuHeightRatio }
+    static var menuHeightRatio: CGFloat {
+        GameBalance.UI.BuildMenu.menuHeightRatio
+    }
 
     /// Menu width as percentage of viewport
-    static var menuWidthRatio: CGFloat { GameBalance.UI.BuildMenu.menuWidthRatio }
+    static var menuWidthRatio: CGFloat {
+        GameBalance.UI.BuildMenu.menuWidthRatio
+    }
 
     /// Spacing between menu items
-    static var itemSpacing: CGFloat { GameBalance.UI.BuildMenu.itemSpacing }
+    static var itemSpacing: CGFloat {
+        GameBalance.UI.BuildMenu.itemSpacing
+    }
 
     // MARK: - Initialization
 
@@ -316,15 +327,6 @@ class BuildMenu: SKNode {
         ]))
     }
 
-    /// Toggle visibility
-    func toggle() {
-        if self.isVisible {
-            self.hide()
-        } else {
-            self.show()
-        }
-    }
-
     // MARK: - Affordability
 
     /// Update which items can be afforded
@@ -446,17 +448,5 @@ class BuildMenu: SKNode {
             self.ghostTower?.color = .red
             self.ghostTower?.colorBlendFactor = 0.7
         }
-    }
-
-    // MARK: - Queries
-
-    /// Check if currently dragging
-    var isDragging: Bool {
-        self.draggingItem != nil
-    }
-
-    /// Get currently dragging tower type
-    var draggingTowerType: TowerType? {
-        self.draggingItem?.towerType
     }
 }

@@ -1,16 +1,22 @@
-import SpriteKit
+//
+//  TMXRenderer.swift
+//  Nathaniel Shared
+//
+//  Renders Tiled maps and provides collision coordinates.
+//
+
 import CoreGraphics
+import SpriteKit
 
 #if os(iOS) || os(tvOS)
-import UIKit
+    import UIKit
 #elseif os(macOS)
-import AppKit
+    import AppKit
 #endif
 
 /// Renders a TMXMap to SpriteKit nodes
 class TMXRenderer {
     let map: TMXMap
-    private var tilesetTextures: [String: SKTexture] = [:]
 
     init(map: TMXMap) {
         self.map = map
@@ -18,7 +24,7 @@ class TMXRenderer {
 
     /// Load tileset textures from the bundle
     func loadTilesets() {
-        for tileset in map.tilesets {
+        for tileset in self.map.tilesets {
             // Remove .png extension if present for texture loading
             var textureName = tileset.imageSource
             if textureName.hasSuffix(".png") {
@@ -28,7 +34,8 @@ class TMXRenderer {
             // Load the image and process transparency if needed
             let texture: SKTexture
             if let transColor = tileset.transparencyColor,
-               let processedTexture = loadTextureWithTransparency(named: textureName, transparencyColor: transColor) {
+               let processedTexture = loadTextureWithTransparency(named: textureName, transparencyColor: transColor)
+            {
                 texture = processedTexture
                 print("TMXRenderer: Loaded tileset '\(tileset.name)' with transparency color #\(transColor)")
             } else {
@@ -42,14 +49,15 @@ class TMXRenderer {
                 print("TMXRenderer: WARNING - Failed to load tileset '\(tileset.name)' from '\(textureName)'")
                 print("TMXRenderer: Texture size is \(textureSize)")
             } else {
-                print("TMXRenderer: Loaded tileset '\(tileset.name)' from '\(textureName)' (\(Int(textureSize.width))x\(Int(textureSize.height)))")
+                print(
+                    "TMXRenderer: Loaded tileset '\(tileset.name)' from '\(textureName)' (\(Int(textureSize.width))x\(Int(textureSize.height)))"
+                )
             }
 
             // Disable texture filtering for pixel-perfect rendering
             texture.filteringMode = .nearest
 
             tileset.texture = texture
-            tilesetTextures[tileset.imageSource] = texture
         }
     }
 
@@ -62,15 +70,17 @@ class TMXRenderer {
         }
 
         #if os(iOS) || os(tvOS)
-        guard let image = UIImage(named: name),
-              let cgImage = image.cgImage else {
-            return nil
-        }
+            guard let image = UIImage(named: name),
+                  let cgImage = image.cgImage
+            else {
+                return nil
+            }
         #elseif os(macOS)
-        guard let image = NSImage(named: name),
-              let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-            return nil
-        }
+            guard let image = NSImage(named: name),
+                  let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
+            else {
+                return nil
+            }
         #endif
 
         let width = cgImage.width
@@ -100,17 +110,17 @@ class TMXRenderer {
         let pixelBuffer = data.bindMemory(to: UInt8.self, capacity: width * height * 4)
 
         // Process each pixel
-        for y in 0..<height {
-            for x in 0..<width {
+        for y in 0 ..< height {
+            for x in 0 ..< width {
                 let offset = (y * width + x) * 4
                 let r = pixelBuffer[offset]
                 let g = pixelBuffer[offset + 1]
                 let b = pixelBuffer[offset + 2]
 
                 // Check if this pixel matches the transparency color
-                if r == targetR && g == targetG && b == targetB {
+                if r == targetR, g == targetG, b == targetB {
                     // Make transparent
-                    pixelBuffer[offset + 3] = 0  // Set alpha to 0
+                    pixelBuffer[offset + 3] = 0 // Set alpha to 0
                 }
             }
         }
@@ -133,7 +143,8 @@ class TMXRenderer {
         }
 
         guard hexString.count == 6,
-              let value = UInt32(hexString, radix: 16) else {
+              let value = UInt32(hexString, radix: 16)
+        else {
             return nil
         }
 
@@ -150,8 +161,8 @@ class TMXRenderer {
         mapNode.name = "map"
 
         // Render each tile layer
-        for layer in map.layers {
-            let layerNode = createLayerNode(layer: layer)
+        for layer in self.map.layers {
+            let layerNode = self.createLayerNode(layer: layer)
             layerNode.name = layer.name
             mapNode.addChild(layerNode)
         }
@@ -163,8 +174,8 @@ class TMXRenderer {
     private func createLayerNode(layer: TMXLayer) -> SKNode {
         let layerNode = SKNode()
 
-        for y in 0..<layer.height {
-            for x in 0..<layer.width {
+        for y in 0 ..< layer.height {
+            for x in 0 ..< layer.width {
                 let gid = layer.tile(at: x, y: y)
                 guard gid > 0 else { continue } // Skip empty tiles
 
@@ -208,8 +219,8 @@ class TMXRenderer {
         // Position in SpriteKit coordinates (y inverted from Tiled)
         // Tiled: origin at top-left, y increases downward
         // SpriteKit: origin at bottom-left, y increases upward
-        let posX = CGFloat(x * map.tileWidth)
-        let posY = CGFloat(map.pixelHeight - y * map.tileHeight)
+        let posX = CGFloat(x * self.map.tileWidth)
+        let posY = CGFloat(map.pixelHeight - y * self.map.tileHeight)
         node.position = CGPoint(x: posX, y: posY)
 
         return node
@@ -219,7 +230,7 @@ class TMXRenderer {
     private func findTileset(for gid: Int) -> TMXTileset? {
         // Tilesets are ordered by firstGid, find the one with the highest firstGid <= gid
         var result: TMXTileset?
-        for tileset in map.tilesets {
+        for tileset in self.map.tilesets {
             if tileset.firstGid <= gid {
                 result = tileset
             } else {
@@ -231,7 +242,7 @@ class TMXRenderer {
 
     /// Get the collision layer for pathfinding
     func getCollisionLayer() -> TMXLayer? {
-        return map.layers.first { $0.name == "Collision" }
+        self.map.layers.first { $0.name == "Collision" }
     }
 
     /// Get spawn objects from the Objects layer
@@ -244,27 +255,27 @@ class TMXRenderer {
 
     /// Convert Tiled coordinates to SpriteKit coordinates
     func convertToSpriteKit(point: CGPoint) -> CGPoint {
-        return CGPoint(x: point.x, y: CGFloat(map.pixelHeight) - point.y)
+        CGPoint(x: point.x, y: CGFloat(self.map.pixelHeight) - point.y)
     }
 
     /// Convert SpriteKit coordinates to Tiled coordinates
     func convertToTiled(point: CGPoint) -> CGPoint {
-        return CGPoint(x: point.x, y: CGFloat(map.pixelHeight) - point.y)
+        CGPoint(x: point.x, y: CGFloat(self.map.pixelHeight) - point.y)
     }
 
     /// Convert world position to tile grid coordinates
     func worldToTile(point: CGPoint) -> (x: Int, y: Int) {
-        let tiledPoint = convertToTiled(point: point)
-        let tileX = Int(tiledPoint.x) / map.tileWidth
-        let tileY = Int(tiledPoint.y) / map.tileHeight
+        let tiledPoint = self.convertToTiled(point: point)
+        let tileX = Int(tiledPoint.x) / self.map.tileWidth
+        let tileY = Int(tiledPoint.y) / self.map.tileHeight
         return (tileX, tileY)
     }
 
     /// Convert tile grid coordinates to world position (center of tile)
     func tileToWorld(x: Int, y: Int) -> CGPoint {
-        let tiledX = CGFloat(x * map.tileWidth + map.tileWidth / 2)
-        let tiledY = CGFloat(y * map.tileHeight + map.tileHeight / 2)
-        return convertToSpriteKit(point: CGPoint(x: tiledX, y: tiledY))
+        let tiledX = CGFloat(x * self.map.tileWidth + self.map.tileWidth / 2)
+        let tiledY = CGFloat(y * self.map.tileHeight + self.map.tileHeight / 2)
+        return self.convertToSpriteKit(point: CGPoint(x: tiledX, y: tiledY))
     }
 
     /// Check if a tile position is walkable (not blocked by collision layer)
@@ -277,7 +288,7 @@ class TMXRenderer {
 
     /// Check if a world position is walkable
     func isWalkable(at point: CGPoint) -> Bool {
-        let tile = worldToTile(point: point)
-        return isWalkable(tileX: tile.x, tileY: tile.y)
+        let tile = self.worldToTile(point: point)
+        return self.isWalkable(tileX: tile.x, tileY: tile.y)
     }
 }

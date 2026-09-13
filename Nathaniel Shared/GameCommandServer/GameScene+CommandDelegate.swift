@@ -14,7 +14,7 @@
         // MARK: - State Queries
 
         public func getCurrentGameState() -> GameCommandServer.GameState {
-            let levelInfo = self.findLevelManagerPublic()
+            let levelInfo = self.internalLevelManager
             let isPaused = levelInfo?.state == .paused
             let status = switch levelInfo?.state {
             case .paused: "paused"
@@ -27,11 +27,11 @@
             var nathanielPos: GameCommandServer.PointInfo?
             var hermesPos: GameCommandServer.PointInfo?
 
-            if let nathaniel = findNathanielPublic() {
+            if let nathaniel = internalNathaniel {
                 nathanielPos = GameCommandServer.PointInfo(x: nathaniel.position.x, y: nathaniel.position.y)
             }
 
-            if let hermes = findHermesPublic() {
+            if let hermes = internalHermes {
                 hermesPos = GameCommandServer.PointInfo(x: hermes.position.x, y: hermes.position.y)
             }
 
@@ -45,7 +45,7 @@
                 isPaused: isPaused,
                 playerPosition: nathanielPos,
                 hermesPosition: hermesPos,
-                enemyCount: self.findEnemyManagerPublic()?.aliveCount ?? 0
+                enemyCount: self.internalEnemyManager?.aliveCount ?? 0
             )
         }
 
@@ -53,7 +53,7 @@
             var nodes: [GameCommandServer.NodeInfo] = []
 
             // Add player characters
-            if let nathaniel = findNathanielPublic() {
+            if let nathaniel = internalNathaniel {
                 let frame = nathaniel.sprite.frame
                 nodes.append(GameCommandServer.NodeInfo(
                     name: "nathaniel",
@@ -73,12 +73,12 @@
                 ))
             }
 
-            if let hermes = findHermesPublic() {
+            if let hermes = internalHermes {
                 let frame = hermes.sprite.frame
 
                 // Calculate distance to Nathaniel if in follow mode
                 var distanceToTarget: CGFloat = 0
-                if let nathaniel = findNathanielPublic() {
+                if let nathaniel = internalNathaniel {
                     distanceToTarget = hermes.position.distance(to: nathaniel.position)
                 }
 
@@ -110,7 +110,7 @@
             }
 
             // Add enemies
-            if let enemyManager = findEnemyManagerPublic() {
+            if let enemyManager = internalEnemyManager {
                 for (index, enemy) in enemyManager.enemies.enumerated() where enemy.isAlive {
                     let frame = enemy.sprite.frame
                     nodes.append(GameCommandServer.NodeInfo(
@@ -131,7 +131,7 @@
             }
 
             // Add HUD elements
-            if let hud = findHUDPublic() {
+            if let hud = internalHUD {
                 nodes.append(hud.toNodeInfo(interactive: true, properties: ["type": "HUD"]))
             }
 
@@ -165,60 +165,13 @@
         // MARK: - Custom Actions
 
         public func executeAction(name: String, params: [String: String]?) -> ActionResult {
-            let context = GameActionContext(scene: self)
-
             // Try the registry first
-            if let result = GameActionRegistry.shared.execute(name: name, params: params, context: context) {
+            if let result = GameActionRegistry.shared.execute(name: name, params: params, scene: self) {
                 return result
             }
 
             // Action not found
             return .failure("Unknown action: \(name)")
-        }
-
-        // MARK: - Public Accessors for Action Handlers
-
-        // These accessors use internal properties exposed by GameScene in DEBUG builds,
-        // avoiding slow and fragile Mirror reflection.
-
-        func findNathanielPublic() -> Nathaniel? {
-            internalNathaniel
-        }
-
-        func findHermesPublic() -> Hermes? {
-            internalHermes
-        }
-
-        func findEnemyManagerPublic() -> EnemyManager? {
-            internalEnemyManager
-        }
-
-        func findLevelManagerPublic() -> LevelManager? {
-            internalLevelManager
-        }
-
-        func findHUDPublic() -> HUD? {
-            internalHUD
-        }
-
-        func findPauseMenuPublic() -> PauseMenu? {
-            internalPauseMenu
-        }
-
-        func findSaveSlotSelectorPublic() -> SaveSlotSelector? {
-            internalSaveSlotSelector
-        }
-
-        func findSettingsMenuPublic() -> SettingsMenu? {
-            internalSettingsMenu
-        }
-
-        func findStructureManagerPublic() -> StructureManager? {
-            internalStructureManager
-        }
-
-        func findCameraNodePublic() -> SKCameraNode? {
-            internalCameraNode
         }
     }
 

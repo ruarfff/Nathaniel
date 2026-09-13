@@ -26,9 +26,6 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
     /// The map node containing all tile layers
     private var mapNode: SKNode?
 
-    /// Debug label for showing info
-    private var debugLabel: SKLabelNode?
-
     /// The player character - Nathaniel
     private var nathaniel: Nathaniel?
 
@@ -64,9 +61,6 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
 
     /// HUD for displaying game status
     private var hud: HUD!
-
-    /// Whether to show debug info (can be toggled)
-    private var showDebugInfo: Bool = false
 
     /// Starting spawn position for respawn
     private var startPosition: CGPoint = .zero
@@ -136,9 +130,6 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
         self.spawnCharacters()
         self.setupBuildSystem()
         self.setupHaptics()
-        if self.showDebugInfo {
-            self.setupDebugLabel()
-        }
         #if DEBUG
             self.setupPathfindingDebugOverlay()
         #endif
@@ -199,7 +190,6 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
         self.enemyManager.enemyZPosition = self.characterZPosition
         self.enemyManager.enemyScale = 1.0
         self.enemyManager.delegate = self.levelManager
-        self.levelManager.enemyManager = self.enemyManager
     }
 
     private func setupStructureManager() {
@@ -759,21 +749,6 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
             self?.structureManager.collidesWithStructure(at: position, entityRadius: radius) ?? false
         }
 
-        // Set up targeting callbacks for auto-targeting
-        character.findEnemiesInRange = { [weak self] in
-            self?.enemyManager.aliveEnemies ?? []
-        }
-        character.getAllies = { [weak self] in
-            var allies: [Character] = []
-            if let nathaniel = self?.nathaniel {
-                allies.append(nathaniel)
-            }
-            if let hermes = self?.hermes {
-                allies.append(hermes)
-            }
-            return allies
-        }
-
         // Wire up targeting component callbacks (if present)
         if let nathaniel = character as? Nathaniel {
             nathaniel.targeting.findEnemies = { [weak self] in
@@ -827,7 +802,6 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
 
             // Store start position for respawning
             self.startPosition = spawnPos
-            self.levelManager.startPosition = spawnPos
 
             nathaniel = Nathaniel()
             if let nathaniel {
@@ -957,45 +931,6 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
         logger.info("Wave spawner set up for survival-style level")
     }
 
-    /// Spawn test defensive structures for testing
-    private func spawnTestStructures() {
-        guard let nathaniel else { return }
-
-        // Spawn a gun tower near Nathaniel
-        self.structureManager.addGunTower(at: CGPoint(
-            x: nathaniel.position.x + 150,
-            y: nathaniel.position.y - 50
-        ))
-
-        // Spawn a heal tower nearby
-        self.structureManager.addHealTower(at: CGPoint(
-            x: nathaniel.position.x - 100,
-            y: nathaniel.position.y + 50
-        ))
-
-        // Spawn a laser tower
-        self.structureManager.addLaserTower(at: CGPoint(
-            x: nathaniel.position.x + 100,
-            y: nathaniel.position.y + 150
-        ))
-
-        print("GameScene: Spawned 3 test defensive structures")
-    }
-
-    private func setupDebugLabel() {
-        self.debugLabel = SKLabelNode(fontNamed: "Menlo")
-        self.debugLabel?.fontSize = 14
-        self.debugLabel?.fontColor = .white
-        self.debugLabel?.horizontalAlignmentMode = .left
-        self.debugLabel?.verticalAlignmentMode = .top
-        self.debugLabel?.position = CGPoint(x: -size.width / 2 + 10, y: size.height / 2 - 10)
-        self.debugLabel?.zPosition = 1_000
-        if let label = debugLabel {
-            self.cameraNode.addChild(label)
-        }
-        self.updateDebugLabel()
-    }
-
     private func showLoadError(_ message: String) {
         let errorLabel = SKLabelNode(fontNamed: "Helvetica")
         errorLabel.text = message
@@ -1003,51 +938,6 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
         errorLabel.fontColor = .red
         errorLabel.position = CGPoint(x: size.width / 2, y: size.height / 2)
         addChild(errorLabel)
-    }
-
-    private func updateDebugLabel() {
-        guard let renderer = mapRenderer else {
-            self.debugLabel?.text = "Map not loaded"
-            return
-        }
-
-        var debugText = ""
-
-        // Show game state
-        debugText += "Lives: \(self.levelManager.lives) | Score: \(self.levelManager.score)\n"
-
-        // Show selected character info
-        if let selected = selectedCharacter {
-            let pos = selected.position
-            let tilePos = renderer.worldToTile(point: pos)
-            let selectedMark = "[*]"
-            debugText += "\(selectedMark) \(selected.name)\n"
-            debugText += "Pos: (\(Int(pos.x)), \(Int(pos.y)))\n"
-            debugText += "Tile: (\(tilePos.x), \(tilePos.y))\n"
-            debugText += "HP: \(selected.currentHP)/\(selected.maxHP)\n"
-
-            // Show Hermes-specific info
-            if let hermes, selected === hermes {
-                debugText += "Follow: \(!hermes.isInBuildMode)\n"
-            }
-        }
-
-        // Show other character summary
-        if let nathaniel, selectedCharacter !== nathaniel {
-            debugText += "\nNathaniel: HP \(nathaniel.currentHP)/\(nathaniel.maxHP)"
-        }
-        if let hermes, selectedCharacter !== hermes {
-            debugText += "\nHermes: HP \(hermes.currentHP)/\(hermes.maxHP)"
-        }
-
-        // Show enemy count
-        let aliveEnemies = self.enemyManager.aliveCount
-        if aliveEnemies > 0 {
-            debugText += "\n\nEnemies: \(aliveEnemies)"
-        }
-
-        self.debugLabel?.text = debugText
-        self.debugLabel?.numberOfLines = 0
     }
 
     // MARK: - Update Loop
@@ -1096,11 +986,6 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
 
         // Update HUD
         self.updateHUD()
-
-        // Update debug display (if enabled)
-        if self.showDebugInfo {
-            self.updateDebugLabel()
-        }
 
         #if DEBUG
             // Update pathfinding visualization
@@ -1835,30 +1720,45 @@ extension GameScene {
             self.saveSlotSelector
         }
 
-        var internalCameraNode: SKCameraNode? {
-            self.cameraNode
-        }
-
         var internalHUD: HUD? {
             self.hud
         }
     }
 #endif
 
-// MARK: - DEBUG Touch Injection
+// MARK: - Saved Game State
 
-#if DEBUG
-    extension GameScene {
-        /// Handle a programmatic touch that goes through all menu checks
-        /// Used by TouchInjector for testing build menu and other UI
-        func handleInjectedTouchBegan(at point: CGPoint) {
-            // Dispatch to overlay menus first
-            if self.dispatchInputToOverlayMenus(at: point) {
-                return
+extension GameScene {
+    /// Capture the scene using its fields directly, including tower ownership and carried resources.
+    func createSaveState(displayName: String) -> SavedGameState? {
+        guard let nathaniel, let hermes, let levelManager else { return nil }
+
+        let enemyStates = (enemyManager?.enemies ?? []).filter(\.isAlive).compactMap { enemy in
+            let targetIndex: Int? = if enemy.target === nathaniel {
+                0
+            } else if enemy.target === hermes {
+                1
+            } else {
+                nil
             }
-
-            // Fall through to normal tap handling
-            self.handleTap(at: point)
+            return enemy.toSavedEnemyState(targetIndex: targetIndex)
         }
+
+        return SavedGameState(
+            savedAt: Date(),
+            displayName: displayName,
+            levelNumber: levelManager.config.levelNumber,
+            elapsedTime: levelManager.elapsedTime,
+            score: levelManager.score,
+            lives: levelManager.lives,
+            resources: ResourceManager.shared.totalCollected,
+            nathaniel: nathaniel.toSavedCharacterState(),
+            hermes: hermes.toSavedHermesState(),
+            enemies: enemyStates,
+            towers: self.structureManager?.savedTowerStates() ?? [],
+            currentWave: self.waveSpawner?.currentWave,
+            timeUntilNextWave: self.waveSpawner?.timeUntilNextWave,
+            battlefieldResources: ResourceManager.shared.resources.map { $0.toSavedResourceState() }
+        )
     }
-#endif
+}

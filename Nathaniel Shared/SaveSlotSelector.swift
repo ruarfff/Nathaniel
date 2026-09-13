@@ -11,31 +11,18 @@ import SpriteKit
 
 /// Mode for the save slot selector
 enum SaveSlotSelectorMode {
-    case save   // Selecting a slot to save to
-    case load   // Selecting a slot to load from
+    case save // Selecting a slot to save to
+    case load // Selecting a slot to load from
 }
 
 // MARK: - Save Slot Selector
 
 /// Overlay for selecting a save slot
-class SaveSlotSelector: SKNode {
-
+class SaveSlotSelector: OverlayMenu {
     // MARK: - Properties
-
-    /// Size of the viewport
-    private let viewportSize: CGSize
 
     /// Current mode (save or load)
     private(set) var mode: SaveSlotSelectorMode = .save
-
-    /// Dark overlay background
-    private var overlayBackground: SKShapeNode?
-
-    /// Panel container
-    private var panel: SKNode?
-
-    /// Whether the selector is currently visible
-    private(set) var isVisible: Bool = false
 
     // MARK: - Callbacks
 
@@ -51,51 +38,20 @@ class SaveSlotSelector: SKNode {
     private let panelHeight: CGFloat = 300
     private let slotHeight: CGFloat = 60
     private let slotSpacing: CGFloat = 10
-    private let animationDuration: TimeInterval = 0.2
 
     // MARK: - Initialization
 
-    init(size: CGSize) {
-        self.viewportSize = size
-        super.init()
-
-        setupOverlay()
-        setupPanel()
-
-        // Start hidden
-        isHidden = true
-        alpha = 0
-    }
-
-    required init?(coder aDecoder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
+    override init(size: CGSize) {
+        super.init(size: size)
+        animationDuration = 0.2
+        overlayBackground?.fillColor = SKColor.black.withAlphaComponent(0.8)
+        overlayBackground?.name = "slotSelectorOverlay"
     }
 
     // MARK: - Setup
 
-    private func setupOverlay() {
-        let overlay = SKShapeNode(rectOf: CGSize(width: viewportSize.width * 2, height: viewportSize.height * 2))
-        overlay.fillColor = SKColor.black.withAlphaComponent(0.8)
-        overlay.strokeColor = .clear
-        overlay.zPosition = 0
-        overlay.name = "slotSelectorOverlay"
-        addChild(overlay)
-        overlayBackground = overlay
-    }
-
-    private func setupPanel() {
-        let panelNode = SKNode()
-        panelNode.zPosition = 1
-
-        // Panel background
-        let panelBg = SKShapeNode(rectOf: CGSize(width: panelWidth, height: panelHeight), cornerRadius: 16)
-        panelBg.fillColor = SKColor(red: 0.15, green: 0.15, blue: 0.2, alpha: 0.95)
-        panelBg.strokeColor = SKColor.white.withAlphaComponent(0.3)
-        panelBg.lineWidth = 2
-        panelNode.addChild(panelBg)
-
-        addChild(panelNode)
-        panel = panelNode
+    override func setupMenuPanel() {
+        _ = createPanelContainer(width: self.panelWidth, height: self.panelHeight)
     }
 
     // MARK: - Show/Hide
@@ -105,62 +61,28 @@ class SaveSlotSelector: SKNode {
         guard !isVisible else { return }
 
         self.mode = mode
-        isVisible = true
-        isHidden = false
-
         // Rebuild content based on mode
-        rebuildContent()
-
-        // Reset scale and alpha
-        panel?.setScale(0.8)
-        alpha = 0
-
-        // Animate in
-        let fadeIn = SKAction.fadeIn(withDuration: animationDuration)
-        let scaleUp = SKAction.scale(to: 1.0, duration: animationDuration)
-        scaleUp.timingMode = .easeOut
-
-        run(fadeIn)
-        panel?.run(scaleUp)
-    }
-
-    /// Hide the slot selector
-    func hide(completion: (() -> Void)? = nil) {
-        guard isVisible else {
-            completion?()
-            return
-        }
-
-        let fadeOut = SKAction.fadeOut(withDuration: animationDuration)
-        let scaleDown = SKAction.scale(to: 0.8, duration: animationDuration)
-        scaleDown.timingMode = .easeIn
-
-        let hideAction = SKAction.run { [weak self] in
-            self?.isHidden = true
-            self?.isVisible = false
-            completion?()
-        }
-
-        run(SKAction.sequence([fadeOut, hideAction]))
-        panel?.run(scaleDown)
+        self.rebuildContent()
+        super.show()
     }
 
     // MARK: - Content Building
 
     private func rebuildContent() {
-        guard let panel = panel else { return }
+        guard let panel = menuPanel else { return }
 
         // Remove old content (except background)
-        panel.children.filter { $0.name?.hasPrefix("slot_") == true || $0.name == "title" || $0.name == "cancelButton" }.forEach { $0.removeFromParent() }
+        panel.children.filter { $0.name?.hasPrefix("slot_") == true || $0.name == "title" || $0.name == "cancelButton" }
+            .forEach { $0.removeFromParent() }
 
         // Title
         let title = SKLabelNode(fontNamed: "Helvetica-Bold")
-        title.text = mode == .save ? "SAVE GAME" : "LOAD GAME"
+        title.text = self.mode == .save ? "SAVE GAME" : "LOAD GAME"
         title.fontSize = 24
         title.fontColor = .white
         title.verticalAlignmentMode = .center
         title.horizontalAlignmentMode = .center
-        title.position = CGPoint(x: 0, y: panelHeight / 2 - 40)
+        title.position = CGPoint(x: 0, y: self.panelHeight / 2 - 40)
         title.name = "title"
         panel.addChild(title)
 
@@ -168,15 +90,15 @@ class SaveSlotSelector: SKNode {
         let slots = SaveManager.shared.getSaveSlots()
 
         // Create slot buttons
-        let startY = panelHeight / 2 - 90
+        let startY = self.panelHeight / 2 - 90
         for (index, slot) in slots.enumerated() {
-            let yPos = startY - CGFloat(index) * (slotHeight + slotSpacing)
-            createSlotButton(slot: slot, at: yPos, in: panel)
+            let yPos = startY - CGFloat(index) * (self.slotHeight + self.slotSpacing)
+            self.createSlotButton(slot: slot, at: yPos, in: panel)
         }
 
         // Cancel button
-        let cancelY = -panelHeight / 2 + 35
-        createCancelButton(at: cancelY, in: panel)
+        let cancelY = -self.panelHeight / 2 + 35
+        self.createCancelButton(at: cancelY, in: panel)
     }
 
     private func createSlotButton(slot: SaveSlot, at yPosition: CGFloat, in parent: SKNode) {
@@ -185,20 +107,21 @@ class SaveSlotSelector: SKNode {
         buttonNode.position = CGPoint(x: 0, y: yPosition)
 
         // Button background
-        let buttonWidth = panelWidth - 40
-        let bgColor: SKColor
-        if mode == .load && !slot.hasSave {
+        let buttonWidth = self.panelWidth - 40
+        let bgColor = if self.mode == .load && !slot.hasSave {
             // Empty slots are dimmed in load mode
-            bgColor = SKColor(red: 0.2, green: 0.2, blue: 0.25, alpha: 0.5)
+            SKColor(red: 0.2, green: 0.2, blue: 0.25, alpha: 0.5)
         } else if slot.hasSave {
-            bgColor = SKColor(red: 0.3, green: 0.4, blue: 0.5, alpha: 1.0)
+            SKColor(red: 0.3, green: 0.4, blue: 0.5, alpha: 1.0)
         } else {
-            bgColor = SKColor(red: 0.25, green: 0.3, blue: 0.35, alpha: 1.0)
+            SKColor(red: 0.25, green: 0.3, blue: 0.35, alpha: 1.0)
         }
 
         let buttonBg = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: slotHeight), cornerRadius: 8)
         buttonBg.fillColor = bgColor
-        buttonBg.strokeColor = slot.hasSave ? SKColor.white.withAlphaComponent(0.5) : SKColor.white.withAlphaComponent(0.2)
+        buttonBg.strokeColor = slot.hasSave
+            ? SKColor.white.withAlphaComponent(0.5)
+            : SKColor.white.withAlphaComponent(0.2)
         buttonBg.lineWidth = 1
         buttonBg.name = "slot_\(slot.id)"
         buttonNode.addChild(buttonBg)
@@ -218,7 +141,9 @@ class SaveSlotSelector: SKNode {
         let infoLabel = SKLabelNode(fontNamed: "Helvetica")
         infoLabel.text = slot.displaySummary
         infoLabel.fontSize = 12
-        infoLabel.fontColor = slot.hasSave ? SKColor.white.withAlphaComponent(0.8) : SKColor.white.withAlphaComponent(0.5)
+        infoLabel.fontColor = slot.hasSave
+            ? SKColor.white.withAlphaComponent(0.8)
+            : SKColor.white.withAlphaComponent(0.5)
         infoLabel.verticalAlignmentMode = .center
         infoLabel.horizontalAlignmentMode = .left
         infoLabel.position = CGPoint(x: -buttonWidth / 2 + 15, y: -10)
@@ -268,18 +193,23 @@ class SaveSlotSelector: SKNode {
     // MARK: - Touch Handling
 
     /// Handle touch - returns true if touch was handled
-    func handleTouch(at point: CGPoint) -> Bool {
+    override func handleTouch(at point: CGPoint) -> Bool {
         guard isVisible else { return false }
 
         let localPoint = convert(point, from: parent!)
 
         // Check panel content
-        guard let panel = panel else { return false }
+        guard let panel = menuPanel else { return false }
         let panelPoint = panel.convert(localPoint, from: self)
 
         // Check cancel button
         if let cancelButton = panel.childNode(withName: "cancelButton"),
-           nodeContainsPoint(cancelButton, point: panelPoint) {
+           nodeContainsPoint(
+               cancelButton,
+               point: panelPoint,
+               fallbackSize: CGSize(width: panelWidth - 40, height: slotHeight)
+           )
+        {
             animateButtonPress(cancelButton)
             hide {
                 self.onCancel?()
@@ -288,12 +218,16 @@ class SaveSlotSelector: SKNode {
         }
 
         // Check slot buttons
-        for slotId in 1...SaveManager.slotCount {
+        for slotId in 1 ... SaveManager.slotCount {
             if let slotButton = panel.childNode(withName: "slot_\(slotId)"),
-               nodeContainsPoint(slotButton, point: panelPoint) {
-
+               nodeContainsPoint(
+                   slotButton,
+                   point: panelPoint,
+                   fallbackSize: CGSize(width: panelWidth - 40, height: slotHeight)
+               )
+            {
                 // In load mode, check if slot has save
-                if mode == .load {
+                if self.mode == .load {
                     guard let slot = SaveManager.shared.getSlot(slotId), slot.hasSave else {
                         // Empty slot in load mode - ignore tap
                         return true
@@ -314,21 +248,5 @@ class SaveSlotSelector: SKNode {
             self.onCancel?()
         }
         return true
-    }
-
-    private func nodeContainsPoint(_ node: SKNode, point: CGPoint) -> Bool {
-        let nodePoint = node.convert(point, from: node.parent!)
-        if let shape = node.children.first as? SKShapeNode {
-            return shape.contains(nodePoint)
-        }
-        // Fallback to frame check
-        let frame = CGRect(x: -panelWidth/2 + 20, y: -slotHeight/2, width: panelWidth - 40, height: slotHeight)
-        return frame.contains(nodePoint)
-    }
-
-    private func animateButtonPress(_ button: SKNode) {
-        let scaleDown = SKAction.scale(to: 0.95, duration: 0.05)
-        let scaleUp = SKAction.scale(to: 1.0, duration: 0.1)
-        button.run(SKAction.sequence([scaleDown, scaleUp]))
     }
 }

@@ -284,10 +284,10 @@
         private init() {
             // Store baselines in app's documents directory
             let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-            baselineDirectory = paths[0].appendingPathComponent("TestBaselines", isDirectory: true)
+            self.baselineDirectory = paths[0].appendingPathComponent("TestBaselines", isDirectory: true)
 
             // Create directory if needed
-            try? FileManager.default.createDirectory(at: baselineDirectory, withIntermediateDirectories: true)
+            try? FileManager.default.createDirectory(at: self.baselineDirectory, withIntermediateDirectories: true)
         }
 
         /// Save a baseline image
@@ -297,12 +297,12 @@
         /// - Returns: Whether save was successful
         @discardableResult
         public func saveBaseline(name: String, imageData: Data) -> Bool {
-            let sanitizedName = sanitizeName(name)
-            let fileURL = baselineDirectory.appendingPathComponent("\(sanitizedName).png")
+            let sanitizedName = self.sanitizeName(name)
+            let fileURL = self.baselineDirectory.appendingPathComponent("\(sanitizedName).png")
 
             do {
                 try imageData.write(to: fileURL)
-                cache[sanitizedName] = imageData
+                self.cache[sanitizedName] = imageData
                 return true
             } catch {
                 print("[BaselineStorage] Failed to save baseline '\(name)': \(error)")
@@ -314,7 +314,7 @@
         /// - Parameter name: Name of the baseline
         /// - Returns: PNG image data, or nil if not found
         public func loadBaseline(name: String) -> Data? {
-            let sanitizedName = sanitizeName(name)
+            let sanitizedName = self.sanitizeName(name)
 
             // Check cache first
             if let cached = cache[sanitizedName] {
@@ -322,12 +322,12 @@
             }
 
             // Load from disk
-            let fileURL = baselineDirectory.appendingPathComponent("\(sanitizedName).png")
+            let fileURL = self.baselineDirectory.appendingPathComponent("\(sanitizedName).png")
             guard let data = try? Data(contentsOf: fileURL) else {
                 return nil
             }
 
-            cache[sanitizedName] = data
+            self.cache[sanitizedName] = data
             return data
         }
 
@@ -336,10 +336,10 @@
         /// - Returns: Whether deletion was successful
         @discardableResult
         public func deleteBaseline(name: String) -> Bool {
-            let sanitizedName = sanitizeName(name)
-            let fileURL = baselineDirectory.appendingPathComponent("\(sanitizedName).png")
+            let sanitizedName = self.sanitizeName(name)
+            let fileURL = self.baselineDirectory.appendingPathComponent("\(sanitizedName).png")
 
-            cache.removeValue(forKey: sanitizedName)
+            self.cache.removeValue(forKey: sanitizedName)
 
             do {
                 try FileManager.default.removeItem(at: fileURL)
@@ -362,28 +362,6 @@
             return contents
                 .filter { $0.pathExtension == "png" }
                 .map { $0.deletingPathExtension().lastPathComponent }
-        }
-
-        /// Check if a baseline exists
-        /// - Parameter name: Name of the baseline
-        /// - Returns: Whether the baseline exists
-        public func hasBaseline(name: String) -> Bool {
-            let sanitizedName = sanitizeName(name)
-            let fileURL = baselineDirectory.appendingPathComponent("\(sanitizedName).png")
-            return FileManager.default.fileExists(atPath: fileURL.path)
-        }
-
-        /// Clear all baselines
-        public func clearAll() {
-            cache.removeAll()
-            if let contents = try? FileManager.default.contentsOfDirectory(
-                at: baselineDirectory,
-                includingPropertiesForKeys: nil
-            ) {
-                for url in contents {
-                    try? FileManager.default.removeItem(at: url)
-                }
-            }
         }
 
         private func sanitizeName(_ name: String) -> String {

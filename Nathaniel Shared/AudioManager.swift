@@ -10,7 +10,6 @@ import AVFoundation
 import SpriteKit
 
 class AudioManager {
-
     // MARK: - Singleton
 
     static let shared = AudioManager()
@@ -19,14 +18,14 @@ class AudioManager {
 
     enum SoundEffect: String {
         case laser = "laserFire"
-        case explosion = "explosion"
-        case gunShot = "gunShot"
-        case rayGun = "rayGun"
-        case laserCannon = "laserCannon"
-        case evilLaugh = "evilLaugh"
-        case arrowShot = "arrowShot"
+        case explosion
+        case gunShot
+        case rayGun
+        case laserCannon
+        case evilLaugh
+        case arrowShot
         case laserBlast = "zap"
-        case collect = "collect"
+        case collect
     }
 
     // MARK: - Music Types
@@ -49,30 +48,39 @@ class AudioManager {
     // MARK: - Init
 
     private init() {
-        preloadSoundEffects()
-        configureAudioSession()
+        self.preloadSoundEffects()
+        self.configureAudioSession()
     }
 
     // MARK: - Audio Session
 
     private func configureAudioSession() {
         #if os(iOS) || os(tvOS)
-        do {
-            try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
-            try AVAudioSession.sharedInstance().setActive(true)
-        } catch {
-            print("AudioManager: Failed to configure audio session: \(error)")
-        }
+            do {
+                try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
+                try AVAudioSession.sharedInstance().setActive(true)
+            } catch {
+                print("AudioManager: Failed to configure audio session: \(error)")
+            }
         #endif
     }
 
     // MARK: - Sound Effects
 
     private func preloadSoundEffects() {
-        for effect in [SoundEffect.laser, .explosion, .gunShot, .rayGun,
-                       .laserCannon, .evilLaugh, .arrowShot, .laserBlast, .collect] {
+        for effect in [
+            SoundEffect.laser,
+            .explosion,
+            .gunShot,
+            .rayGun,
+            .laserCannon,
+            .evilLaugh,
+            .arrowShot,
+            .laserBlast,
+            .collect,
+        ] {
             let filename = "\(effect.rawValue).wav"
-            soundEffectActions[effect] = SKAction.playSoundFileNamed(filename, waitForCompletion: false)
+            self.soundEffectActions[effect] = SKAction.playSoundFileNamed(filename, waitForCompletion: false)
         }
     }
 
@@ -96,7 +104,7 @@ class AudioManager {
     /// Useful when you want to combine with other actions
     func soundEffectAction(_ effect: SoundEffect) -> SKAction? {
         guard GameSettings.shared.soundEffectsEnabled else { return nil }
-        return soundEffectActions[effect]
+        return self.soundEffectActions[effect]
     }
 
     // MARK: - Background Music
@@ -109,11 +117,11 @@ class AudioManager {
         guard GameSettings.shared.musicEnabled else { return }
 
         // Don't restart if already playing the same track
-        if currentMusic == music && musicPlayer?.isPlaying == true {
+        if self.currentMusic == music, self.musicPlayer?.isPlaying == true {
             return
         }
 
-        stopMusic()
+        self.stopMusic()
 
         guard let url = Bundle.main.url(forResource: music.rawValue, withExtension: "mp3") else {
             print("AudioManager: Could not find music file: \(music.rawValue).mp3")
@@ -121,12 +129,12 @@ class AudioManager {
         }
 
         do {
-            musicPlayer = try AVAudioPlayer(contentsOf: url)
-            musicPlayer?.numberOfLoops = loop ? -1 : 0
-            musicPlayer?.volume = 0.7
-            musicPlayer?.prepareToPlay()
-            musicPlayer?.play()
-            currentMusic = music
+            self.musicPlayer = try AVAudioPlayer(contentsOf: url)
+            self.musicPlayer?.numberOfLoops = loop ? -1 : 0
+            self.musicPlayer?.volume = 0.7
+            self.musicPlayer?.prepareToPlay()
+            self.musicPlayer?.play()
+            self.currentMusic = music
         } catch {
             print("AudioManager: Failed to play music: \(error)")
         }
@@ -134,30 +142,20 @@ class AudioManager {
 
     /// Stop the currently playing music
     func stopMusic() {
-        musicPlayer?.stop()
-        musicPlayer = nil
-        currentMusic = nil
+        self.musicPlayer?.stop()
+        self.musicPlayer = nil
+        self.currentMusic = nil
     }
 
     /// Pause the currently playing music
     func pauseMusic() {
-        musicPlayer?.pause()
+        self.musicPlayer?.pause()
     }
 
     /// Resume paused music
     func resumeMusic() {
         guard GameSettings.shared.musicEnabled else { return }
-        musicPlayer?.play()
-    }
-
-    /// Check if music is currently playing
-    var isMusicPlaying: Bool {
-        return musicPlayer?.isPlaying ?? false
-    }
-
-    /// Set music volume (0.0 to 1.0)
-    func setMusicVolume(_ volume: Float) {
-        musicPlayer?.volume = max(0, min(1, volume))
+        self.musicPlayer?.play()
     }
 
     // MARK: - Settings Integration
@@ -166,35 +164,10 @@ class AudioManager {
     func onMusicSettingChanged() {
         if GameSettings.shared.musicEnabled {
             if let music = currentMusic, musicPlayer?.isPlaying == false {
-                resumeMusic()
+                self.resumeMusic()
             }
         } else {
-            pauseMusic()
-        }
-    }
-
-    /// Fade out music over duration
-    func fadeOutMusic(duration: TimeInterval, completion: (() -> Void)? = nil) {
-        guard let player = musicPlayer else {
-            completion?()
-            return
-        }
-
-        let originalVolume = player.volume
-        let steps = 20
-        let stepDuration = duration / Double(steps)
-        let volumeStep = originalVolume / Float(steps)
-
-        var currentStep = 0
-        Timer.scheduledTimer(withTimeInterval: stepDuration, repeats: true) { timer in
-            currentStep += 1
-            player.volume = max(0, originalVolume - volumeStep * Float(currentStep))
-
-            if currentStep >= steps {
-                timer.invalidate()
-                self.stopMusic()
-                completion?()
-            }
+            self.pauseMusic()
         }
     }
 }

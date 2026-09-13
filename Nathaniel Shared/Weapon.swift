@@ -7,51 +7,6 @@
 
 import SpriteKit
 
-// MARK: - Weapon Protocol
-
-/// Protocol for all weapons (guns, lasers, melee, etc.)
-protocol Weapon: AnyObject {
-    /// The entity that owns this weapon (Character or Structure)
-    var owner: Damageable? { get set }
-
-    /// Cooldown time between attacks in seconds
-    var cooldownTime: TimeInterval { get }
-
-    /// Time elapsed since last attack
-    var cooldownElapsed: TimeInterval { get set }
-
-    /// Damage dealt per hit
-    var damage: Int { get }
-
-    /// Range in points (0 for melee weapons)
-    var range: CGFloat { get }
-
-    /// Whether the weapon is currently being used (for animation purposes)
-    var isBeingUsed: Bool { get }
-
-    /// Update the weapon each frame
-    func update(deltaTime: TimeInterval)
-
-    /// Attempt to use the weapon (attack)
-    /// - Parameter target: The target to attack (position or character)
-    /// - Returns: True if the weapon was successfully used
-    func use(target: CGPoint) -> Bool
-}
-
-// MARK: - Weapon Default Implementation
-
-extension Weapon {
-    /// Check if the weapon is ready to fire (cooldown has elapsed)
-    var isReady: Bool {
-        cooldownElapsed >= cooldownTime
-    }
-
-    /// Reset the cooldown timer
-    func resetCooldown() {
-        cooldownElapsed = 0
-    }
-}
-
 // MARK: - Projectile
 
 /// Type of projectile for applying dev settings
@@ -107,9 +62,6 @@ class Projectile: GameEntity {
     /// Direction of travel (normalized)
     private var direction: CGVector = .zero
 
-    /// Destination point (for visibility calculation)
-    private var destination: CGPoint = .zero
-
     /// Whether the projectile has hit something
     var hasCollision: Bool = false
 
@@ -153,7 +105,6 @@ class Projectile: GameEntity {
         self.hasCollision = false
         self.isActive = true
         self.startPosition = start
-        self.destination = target
         self.position = start
 
         // Calculate normalized direction
@@ -259,7 +210,7 @@ class ProjectilePool {
 // MARK: - Gun (Nathaniel's Primary Weapon)
 
 /// Standard gun weapon that fires bullets
-class Gun: Weapon {
+class Gun {
     // MARK: - Weapon Properties
 
     weak var owner: Damageable?
@@ -269,8 +220,6 @@ class Gun: Weapon {
 
     let damage: Int
     let range: CGFloat
-
-    private(set) var isBeingUsed: Bool = false
 
     // MARK: - Gun-specific Properties
 
@@ -351,11 +300,6 @@ class Gun: Weapon {
                 projectile.deactivate()
             }
         }
-
-        // Reset isBeingUsed after a short time
-        if self.isBeingUsed, self.cooldownElapsed > 0.1 {
-            self.isBeingUsed = false
-        }
     }
 
     func use(target: CGPoint) -> Bool {
@@ -373,7 +317,6 @@ class Gun: Weapon {
 
         // Reset cooldown and fire
         self.cooldownElapsed = 0
-        self.isBeingUsed = true
 
         // Get a projectile and fire it
         let bullet = self.projectilePool.acquire()

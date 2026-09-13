@@ -53,15 +53,6 @@ class WaveSpawner {
 
     init() {}
 
-    /// Reset for new level
-    func reset() {
-        self.timeSinceLastSpawn = 0
-        self.spawnInterval = 5.0
-        self.elapsedTime = 0
-        self.maxEnemyTypeIndex = 2
-        self.isActive = true
-    }
-
     /// Restore state from saved game
     func restore(elapsedTime: TimeInterval, timeUntilNext: TimeInterval) {
         self.elapsedTime = max(0, elapsedTime)

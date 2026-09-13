@@ -1,3 +1,10 @@
+//
+//  FogOfWar.swift
+//  Nathaniel Shared
+//
+//  Tracks and renders map visibility around the player characters.
+//
+
 import SpriteKit
 
 /// Represents the visibility state of a tile
@@ -217,47 +224,5 @@ class FogOfWar {
         let tile = self.worldToTile(position)
         guard self.isValidTile(x: tile.x, y: tile.y) else { return false }
         return self.fogState[tile.y][tile.x] == .visible
-    }
-
-    /// Check if a position has been explored (seen at least once)
-    /// - Parameter position: World position to check
-    /// - Returns: True if the tile has been explored or is visible
-    func isExplored(at position: CGPoint) -> Bool {
-        let tile = self.worldToTile(position)
-        guard self.isValidTile(x: tile.x, y: tile.y) else { return false }
-        return self.fogState[tile.y][tile.x] != .unexplored
-    }
-
-    /// Get the fog state at a position
-    /// - Parameter position: World position to check
-    /// - Returns: The fog state of the tile
-    func getFogState(at position: CGPoint) -> FogState {
-        let tile = self.worldToTile(position)
-        guard self.isValidTile(x: tile.x, y: tile.y) else { return .unexplored }
-        return self.fogState[tile.y][tile.x]
-    }
-
-    // MARK: - Reset
-
-    /// Reset all fog to unexplored state
-    func reset() {
-        for y in 0 ..< self.mapHeight {
-            for x in 0 ..< self.mapWidth {
-                self.fogState[y][x] = .unexplored
-                self.fogTiles[y][x].alpha = self.unexploredAlpha
-            }
-        }
-        self.dirtyTiles.removeAll()
-    }
-
-    /// Reveal the entire map (for debugging or end-game)
-    func revealAll() {
-        for y in 0 ..< self.mapHeight {
-            for x in 0 ..< self.mapWidth {
-                self.fogState[y][x] = .visible
-                self.fogTiles[y][x].alpha = self.visibleAlpha
-            }
-        }
-        self.dirtyTiles.removeAll()
     }
 }

@@ -20,15 +20,15 @@
         static func execute(
             name: String,
             params: [String: String]?,
-            context: GameActionContext
+            scene: GameScene
         ) -> ActionResult {
             switch name {
             case "toggleBuildMenu":
-                self.toggleBuildMenu(context: context)
+                self.toggleBuildMenu(scene: scene)
             case "buildTower":
-                self.buildTower(params: params, context: context)
+                self.buildTower(params: params, scene: scene)
             case "getTowerInfo":
-                self.getTowerInfo(context: context)
+                self.getTowerInfo(scene: scene)
             default:
                 .failure("Unknown building action: \(name)")
             }
@@ -36,24 +36,24 @@
 
         // MARK: - Build Menu
 
-        private static func toggleBuildMenu(context: GameActionContext) -> ActionResult {
-            context.toggleBuildMenu()
-            return .success("Build menu \(context.isBuildMenuVisible ? "opened" : "closed")")
+        private static func toggleBuildMenu(scene: GameScene) -> ActionResult {
+            scene.toggleBuildMenu()
+            return .success("Build menu \(scene.isBuildMenuVisible ? "opened" : "closed")")
         }
 
         // MARK: - Tower Building
 
         private static func buildTower(
             params: [String: String]?,
-            context: GameActionContext
+            scene: GameScene
         ) -> ActionResult {
             guard let typeStr = ActionParams.parseString("type", from: params) else {
                 return .failure("Missing type parameter (gun, laser, heal)")
             }
-            guard let hermes = context.hermes else {
+            guard let hermes = scene.internalHermes else {
                 return .failure("Hermes not found")
             }
-            guard let structMgr = context.structureManager else {
+            guard let structMgr = scene.internalStructureManager else {
                 return .failure("StructureManager not found")
             }
 
@@ -88,7 +88,7 @@
             guard hermes.isInBuildMode else {
                 return .failure("Hermes must be in build mode")
             }
-            guard context.scene?.buildTower(type: towerType, at: position) == true else {
+            guard scene.buildTower(type: towerType, at: position) == true else {
                 return .failure("Tower placement failed: position blocked or resources unavailable")
             }
 
@@ -99,8 +99,8 @@
 
         // MARK: - Tower Info
 
-        private static func getTowerInfo(context: GameActionContext) -> ActionResult {
-            guard let structMgr = context.structureManager else {
+        private static func getTowerInfo(scene: GameScene) -> ActionResult {
+            guard let structMgr = scene.internalStructureManager else {
                 return .failure("StructureManager not found")
             }
             let count = structMgr.hermesTowerCount

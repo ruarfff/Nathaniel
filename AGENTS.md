@@ -282,8 +282,7 @@ XcodeBuildMCP is fine for: building, running, booting simulators, screenshots.
 Nathaniel Shared/GameCommandServer/
 ├── GameCommandServer.swift         # HTTP server
 ├── GameCommandProtocol.swift       # Protocol definition
-├── GameScene+CommandDelegate.swift # Scene implementations
-└── TouchInjector.swift             # Touch injection
+└── GameScene+CommandDelegate.swift # Scene implementations
 ```
 
 

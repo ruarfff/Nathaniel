@@ -368,14 +368,6 @@ class Character: GameEntity, Damageable {
         set { self.movementComponent.pathfinding = newValue }
     }
 
-    // MARK: - Targeting
-
-    /// Callback to find enemies within targeting range
-    var findEnemiesInRange: (() -> [Enemy])?
-
-    /// Callback to get allied characters for group targeting
-    var getAllies: (() -> [Character])?
-
     // MARK: - Initialization
 
     init(name: String, maxHP: Int, speed: CGFloat, spriteSheetCols: Int = 8, spriteSheetRows: Int = 2) {

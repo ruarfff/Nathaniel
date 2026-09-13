@@ -29,14 +29,6 @@
         private weak var companion: Character?
         private var enemies: [Weak<Character>] = []
 
-        /// Shape nodes for paths
-        private var playerPathNode: SKShapeNode?
-        private var companionPathNode: SKShapeNode?
-        private var enemyPathNodes: [SKShapeNode] = []
-
-        /// Waypoint marker nodes
-        private var waypointNodes: [SKShapeNode] = []
-
         // MARK: - Initialization
 
         override init() {
@@ -73,11 +65,11 @@
         /// Update the visualization (call each frame when enabled)
         func update() {
             // Clear existing visualizations
-            clearVisualization()
+            self.clearVisualization()
 
             // Draw player path
             if let player, let pathfinding = player.pathfinding {
-                drawPath(
+                self.drawPath(
                     pathfinding.remainingPathWorldCoordinates,
                     color: Self.playerPathColor,
                     showWaypoints: true
@@ -86,7 +78,7 @@
 
             // Draw companion path
             if let companion, let pathfinding = companion.pathfinding {
-                drawPath(
+                self.drawPath(
                     pathfinding.remainingPathWorldCoordinates,
                     color: Self.companionPathColor,
                     showWaypoints: true
@@ -95,13 +87,12 @@
 
             // Draw enemy paths (limit to prevent performance issues)
             let maxEnemyPaths = 5
-            for (index, weakEnemy) in enemies.prefix(maxEnemyPaths).enumerated() {
+            for weakEnemy in self.enemies.prefix(maxEnemyPaths) {
                 guard let enemy = weakEnemy.value, let pathfinding = enemy.pathfinding else { continue }
-                drawPath(
+                self.drawPath(
                     pathfinding.remainingPathWorldCoordinates,
                     color: Self.enemyPathColor.withAlphaComponent(0.5),
-                    showWaypoints: false,
-                    tag: "enemy_\(index)"
+                    showWaypoints: false
                 )
             }
         }
@@ -109,7 +100,7 @@
         // MARK: - Drawing
 
         /// Draw a path with optional waypoint markers
-        private func drawPath(_ points: [CGPoint], color: SKColor, showWaypoints: Bool, tag: String? = nil) {
+        private func drawPath(_ points: [CGPoint], color: SKColor, showWaypoints: Bool) {
             guard points.count >= 2 else { return }
 
             // Create path
@@ -131,13 +122,12 @@
             // Add waypoint markers
             if showWaypoints {
                 for (index, point) in points.enumerated() {
-                    let marker = createWaypointMarker(
+                    let marker = self.createWaypointMarker(
                         at: point,
                         color: color,
                         isDestination: index == points.count - 1
                     )
                     addChild(marker)
-                    waypointNodes.append(marker)
                 }
             }
         }
@@ -175,7 +165,6 @@
         /// Clear all visualization nodes
         private func clearVisualization() {
             removeAllChildren()
-            waypointNodes.removeAll()
         }
     }
 

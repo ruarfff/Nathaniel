@@ -115,11 +115,11 @@
             self.key = key
             self.getValue = getValue
             self.setValue = setValue
-            isOn = getValue()
+            self.isOn = getValue()
             super.init()
 
             name = key
-            setupUI(label: label)
+            self.setupUI(label: label)
         }
 
         @available(*, unavailable)
@@ -150,14 +150,14 @@
             addChild(labelNode)
 
             // Toggle switch (right aligned)
-            toggleSwitch = createToggleSwitch()
-            toggleSwitch.position = CGPoint(x: rowWidth / 2 - 45, y: 0)
-            addChild(toggleSwitch)
+            self.toggleSwitch = self.createToggleSwitch()
+            self.toggleSwitch.position = CGPoint(x: rowWidth / 2 - 45, y: 0)
+            addChild(self.toggleSwitch)
         }
 
         private func createToggleSwitch() -> SKNode {
             let toggle = SKNode()
-            toggle.name = "\(key)Switch"
+            toggle.name = "\(self.key)Switch"
 
             let trackWidth = DevSettingsControls.toggleTrackWidth
             let trackHeight = DevSettingsControls.toggleTrackHeight
@@ -168,13 +168,13 @@
                 rectOf: CGSize(width: trackWidth, height: trackHeight),
                 cornerRadius: trackHeight / 2
             )
-            track.fillColor = isOn ? DevSettingsControls.toggleOnColor : DevSettingsControls.toggleOffColor
+            track.fillColor = self.isOn ? DevSettingsControls.toggleOnColor : DevSettingsControls.toggleOffColor
             track.strokeColor = .clear
             track.name = "track"
             toggle.addChild(track)
 
             // Thumb
-            let thumbX = isOn ? (trackWidth / 2 - thumbRadius - 3) : (-trackWidth / 2 + thumbRadius + 3)
+            let thumbX = self.isOn ? (trackWidth / 2 - thumbRadius - 3) : (-trackWidth / 2 + thumbRadius + 3)
             let thumb = SKShapeNode(circleOfRadius: thumbRadius)
             thumb.fillColor = .white
             thumb.strokeColor = .clear
@@ -197,15 +197,15 @@
 
         /// Handle tap on this row
         func handleTap() {
-            isOn.toggle()
-            setValue(isOn)
-            updateToggleUI(animated: true)
+            self.isOn.toggle()
+            self.setValue(self.isOn)
+            self.updateToggleUI(animated: true)
         }
 
         /// Refresh from current value
         func refresh() {
-            isOn = getValue()
-            updateToggleUI(animated: false)
+            self.isOn = self.getValue()
+            self.updateToggleUI(animated: false)
         }
 
         private func updateToggleUI(animated: Bool) {
@@ -214,8 +214,8 @@
 
             let trackWidth = DevSettingsControls.toggleTrackWidth
             let thumbRadius = DevSettingsControls.toggleThumbRadius
-            let targetX = isOn ? (trackWidth / 2 - thumbRadius - 3) : (-trackWidth / 2 + thumbRadius + 3)
-            let targetColor = isOn ? DevSettingsControls.toggleOnColor : DevSettingsControls.toggleOffColor
+            let targetX = self.isOn ? (trackWidth / 2 - thumbRadius - 3) : (-trackWidth / 2 + thumbRadius + 3)
+            let targetColor = self.isOn ? DevSettingsControls.toggleOnColor : DevSettingsControls.toggleOffColor
 
             track.fillColor = targetColor
 
@@ -257,7 +257,7 @@
             super.init()
 
             name = key
-            setupUI(label: label, minValue: minValue, maxValue: maxValue, format: format)
+            self.setupUI(label: label, minValue: minValue, maxValue: maxValue, format: format)
         }
 
         @available(*, unavailable)
@@ -288,17 +288,17 @@
             addChild(labelNode)
 
             // Slider (right aligned)
-            slider = DevSettingsSlider(
+            self.slider = DevSettingsSlider(
                 minValue: minValue,
                 maxValue: maxValue,
-                initialValue: getValue(),
+                initialValue: self.getValue(),
                 format: format
             )
-            slider.position = CGPoint(x: rowWidth / 2 - slider.totalWidth / 2 - 10, y: 0)
-            slider.onValueChanged = { [weak self] value in
+            self.slider.position = CGPoint(x: rowWidth / 2 - self.slider.totalWidth / 2 - 10, y: 0)
+            self.slider.onValueChanged = { [weak self] value in
                 self?.setValue(value)
             }
-            addChild(slider)
+            addChild(self.slider)
         }
 
         // MARK: - Touch Handling
@@ -313,13 +313,13 @@
 
         /// Handle touch/drag at point (converts to slider coordinates)
         func handleTouch(at point: CGPoint) -> Bool {
-            let sliderPoint = slider.convert(point, from: self)
-            return slider.handleTouch(at: sliderPoint)
+            let sliderPoint = self.slider.convert(point, from: self)
+            return self.slider.handleTouch(at: sliderPoint)
         }
 
         /// Refresh from current value
         func refresh() {
-            slider.setValue(getValue(), animated: false)
+            self.slider.setValue(self.getValue())
         }
     }
 

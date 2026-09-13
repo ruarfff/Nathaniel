@@ -16,7 +16,7 @@ final class HermesControlTests: XCTestCase {
         let scene = GameScene.newGameScene()
         view.presentScene(scene)
         defer { view.presentScene(nil) }
-        let hermes = try XCTUnwrap(scene.findHermesPublic())
+        let hermes = try XCTUnwrap(scene.internalHermes)
         let button = try followButton(in: scene)
 
         XCTAssertEqual(hermes.mode, .independent)
@@ -35,8 +35,8 @@ final class HermesControlTests: XCTestCase {
         let scene = GameScene.newGameScene()
         view.presentScene(scene)
         defer { view.presentScene(nil) }
-        let hermes = try XCTUnwrap(scene.findHermesPublic())
-        let nathaniel = try XCTUnwrap(scene.findNathanielPublic())
+        let hermes = try XCTUnwrap(scene.internalHermes)
+        let nathaniel = try XCTUnwrap(scene.internalNathaniel)
         scene.setHermesMode(.following)
 
         scene.handleTap(at: hermes.position)
@@ -55,7 +55,7 @@ final class HermesControlTests: XCTestCase {
         let scene = GameScene.newGameScene()
         view.presentScene(scene)
         defer { view.presentScene(nil) }
-        let hermes = try XCTUnwrap(scene.findHermesPublic())
+        let hermes = try XCTUnwrap(scene.internalHermes)
         scene.setHermesMode(.following)
         scene.handleTap(at: hermes.position)
         let button = try followButton(in: scene)
@@ -73,7 +73,7 @@ final class HermesControlTests: XCTestCase {
         let scene = GameScene.newGameScene()
         view.presentScene(scene)
         defer { view.presentScene(nil) }
-        let hermes = try XCTUnwrap(scene.findHermesPublic())
+        let hermes = try XCTUnwrap(scene.internalHermes)
         scene.handleTap(at: hermes.position)
         let button = try followButton(in: scene)
 

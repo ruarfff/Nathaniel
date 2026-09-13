@@ -25,25 +25,25 @@
         static func execute(
             name: String,
             params: [String: String]?,
-            context: GameActionContext
+            scene: GameScene
         ) -> ActionResult {
             switch name {
             case "restartLevel":
                 .failure("Restart action not yet implemented")
             case "spawnEnemy":
-                self.spawnEnemy(params: params, context: context)
+                self.spawnEnemy(params: params, scene: scene)
             case "killAllEnemies":
-                self.killAllEnemies(context: context)
+                self.killAllEnemies(scene: scene)
             case "healPlayer":
-                self.healPlayer(context: context)
+                self.healPlayer(scene: scene)
             case "addResources":
-                self.addResources(params: params, context: context)
+                self.addResources(params: params, scene: scene)
             case "setHermesMode":
-                self.setHermesMode(params: params, context: context)
+                self.setHermesMode(params: params, scene: scene)
             case "toggleHermesFollow":
-                self.toggleHermesFollow(context: context)
+                self.toggleHermesFollow(scene: scene)
             case "getHermesMode":
-                self.getHermesMode(context: context)
+                self.getHermesMode(scene: scene)
             default:
                 .failure("Unknown gameplay action: \(name)")
             }
@@ -53,7 +53,7 @@
 
         private static func spawnEnemy(
             params: [String: String]?,
-            context: GameActionContext
+            scene: GameScene
         ) -> ActionResult {
             guard let typeStr = ActionParams.parseString("type", from: params) else {
                 return .failure("Missing type parameter (grunt, soldier, boss, spawner)")
@@ -61,11 +61,11 @@
             guard let point = ActionParams.parsePoint(from: params) else {
                 return .failure("Missing x,y parameters")
             }
-            guard let enemyManager = context.enemyManager else {
+            guard let enemyManager = scene.internalEnemyManager else {
                 return .failure("Enemy manager not found")
             }
 
-            let target = context.nathaniel
+            let target = scene.internalNathaniel
 
             // Spawn the appropriate enemy type
             switch typeStr.lowercased() {
@@ -88,8 +88,8 @@
 
         // MARK: - Combat
 
-        private static func killAllEnemies(context: GameActionContext) -> ActionResult {
-            guard let enemyManager = context.enemyManager else {
+        private static func killAllEnemies(scene: GameScene) -> ActionResult {
+            guard let enemyManager = scene.internalEnemyManager else {
                 return .failure("Enemy manager not found")
             }
             let count = enemyManager.aliveCount
@@ -99,12 +99,12 @@
             return .success("Killed \(count) enemies")
         }
 
-        private static func healPlayer(context: GameActionContext) -> ActionResult {
-            if let nathaniel = context.nathaniel {
+        private static func healPlayer(scene: GameScene) -> ActionResult {
+            if let nathaniel = scene.internalNathaniel {
                 nathaniel.currentHP = nathaniel.maxHP
                 nathaniel.updateHealthBar()
             }
-            if let hermes = context.hermes {
+            if let hermes = scene.internalHermes {
                 hermes.currentHP = hermes.maxHP
                 hermes.updateHealthBar()
             }
@@ -115,7 +115,7 @@
 
         private static func addResources(
             params: [String: String]?,
-            context: GameActionContext
+            scene: GameScene
         ) -> ActionResult {
             guard let amount = ActionParams.parseInt("amount", from: params) else {
                 return .failure("Missing amount parameter")
@@ -128,15 +128,15 @@
 
         private static func setHermesMode(
             params: [String: String]?,
-            context: GameActionContext
+            scene: GameScene
         ) -> ActionResult {
             guard let modeStr = ActionParams.parseString("mode", from: params) else {
                 return .failure("Missing mode parameter (following, independent)")
             }
-            guard let scene = context.scene, let hermes = context.hermes else {
+            guard let hermes = scene.internalHermes else {
                 return .failure("Hermes not found")
             }
-            guard context.levelManager?.state == .playing, hermes.isAlive else {
+            guard scene.internalLevelManager?.state == .playing, hermes.isAlive else {
                 return .failure("Hermes can only change mode during play")
             }
 
@@ -152,20 +152,20 @@
             }
         }
 
-        private static func toggleHermesFollow(context: GameActionContext) -> ActionResult {
-            guard let hermes = context.hermes else {
+        private static func toggleHermesFollow(scene: GameScene) -> ActionResult {
+            guard let hermes = scene.internalHermes else {
                 return .failure("Hermes not found")
             }
-            guard context.levelManager?.state == .playing, hermes.isAlive else {
+            guard scene.internalLevelManager?.state == .playing, hermes.isAlive else {
                 return .failure("Hermes can only change mode during play")
             }
-            context.scene?.toggleHermesFollowMode()
+            scene.toggleHermesFollowMode()
             let newMode = hermes.mode == .following ? "following" : "independent"
             return .success("Hermes mode toggled to \(newMode)")
         }
 
-        private static func getHermesMode(context: GameActionContext) -> ActionResult {
-            guard let hermes = context.hermes else {
+        private static func getHermesMode(scene: GameScene) -> ActionResult {
+            guard let hermes = scene.internalHermes else {
                 return .failure("Hermes not found")
             }
             let modeString = switch hermes.mode {

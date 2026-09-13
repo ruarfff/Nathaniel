@@ -35,7 +35,7 @@
             super.init()
             name = "debugOverlay"
             zPosition = 10_000 // Above everything
-            addChild(highlightContainer)
+            addChild(self.highlightContainer)
         }
 
         @available(*, unavailable)
@@ -47,7 +47,7 @@
 
         /// Attach the overlay to a scene
         public func attach(to scene: SKScene) {
-            parentScene = scene
+            self.parentScene = scene
             if parent == nil {
                 scene.addChild(self)
             }
@@ -55,44 +55,37 @@
 
         /// Show the debug overlay
         public func show() {
-            guard !isVisible else { return }
-            isVisible = true
+            guard !self.isVisible else { return }
+            self.isVisible = true
             isHidden = false
-            startUpdating()
-            updateHighlights()
+            self.startUpdating()
+            self.updateHighlights()
         }
 
         /// Hide the debug overlay
         public func hide() {
-            guard isVisible else { return }
-            isVisible = false
+            guard self.isVisible else { return }
+            self.isVisible = false
             isHidden = true
-            stopUpdating()
-            clearHighlights()
+            self.stopUpdating()
+            self.clearHighlights()
         }
 
         /// Toggle the overlay visibility
         public func toggle() {
-            if isVisible {
-                hide()
+            if self.isVisible {
+                self.hide()
             } else {
-                show()
-            }
-        }
-
-        /// Manually refresh the highlights
-        public func refresh() {
-            if isVisible {
-                updateHighlights()
+                self.show()
             }
         }
 
         // MARK: - Private Methods
 
         private func startUpdating() {
-            stopUpdating()
+            self.stopUpdating()
             // Update every 0.5 seconds to catch node changes
-            updateTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            self.updateTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
                 DispatchQueue.main.async {
                     self?.updateHighlights()
                 }
@@ -100,16 +93,16 @@
         }
 
         private func stopUpdating() {
-            updateTimer?.invalidate()
-            updateTimer = nil
+            self.updateTimer?.invalidate()
+            self.updateTimer = nil
         }
 
         private func clearHighlights() {
-            highlightContainer.removeAllChildren()
+            self.highlightContainer.removeAllChildren()
         }
 
         private func updateHighlights() {
-            clearHighlights()
+            self.clearHighlights()
 
             guard let scene = parentScene,
                   let delegate = scene as? GameCommandDelegate
@@ -120,8 +113,8 @@
             let nodes = delegate.getInteractiveNodes()
 
             for node in nodes {
-                let highlight = createHighlight(for: node)
-                highlightContainer.addChild(highlight)
+                let highlight = self.createHighlight(for: node)
+                self.highlightContainer.addChild(highlight)
             }
         }
 
@@ -131,8 +124,8 @@
             // Create bounding box
             let boxSize = CGSize(width: node.frame.width, height: node.frame.height)
             let box = SKShapeNode(rectOf: boxSize)
-            box.strokeColor = colorForNode(node)
-            box.fillColor = colorForNode(node).withAlphaComponent(0.1)
+            box.strokeColor = self.colorForNode(node)
+            box.fillColor = self.colorForNode(node).withAlphaComponent(0.1)
             box.lineWidth = 2.0
             box.glowWidth = 1.0
 
@@ -146,7 +139,7 @@
             let label = SKLabelNode(fontNamed: "Menlo-Bold")
             label.text = node.name
             label.fontSize = 10
-            label.fontColor = colorForNode(node)
+            label.fontColor = self.colorForNode(node)
             label.horizontalAlignmentMode = .center
             label.verticalAlignmentMode = .bottom
             label.position = CGPoint(x: 0, y: boxSize.height / 2 + 2)
@@ -169,19 +162,19 @@
 
             // Check by name patterns
             if node.name == "nathaniel" || node.name == "hermes" {
-                return colors["Player"] ?? defaultColor
+                return self.colors["Player"] ?? defaultColor
             }
             if node.name.hasPrefix("enemy_") {
-                return colors["Enemy"] ?? defaultColor
+                return self.colors["Enemy"] ?? defaultColor
             }
             if node.name.contains("tower") || node.name.contains("Tower") {
-                return colors["Tower"] ?? defaultColor
+                return self.colors["Tower"] ?? defaultColor
             }
             if node.name.contains("Button") || node.name.contains("button") {
-                return colors["Button"] ?? defaultColor
+                return self.colors["Button"] ?? defaultColor
             }
             if node.name.contains("projectile") {
-                return colors["Projectile"] ?? defaultColor
+                return self.colors["Projectile"] ?? defaultColor
             }
 
             // Check by type
@@ -215,22 +208,22 @@
 
         /// Check if debug overlay is currently visible
         public var isDebugOverlayVisible: Bool {
-            debugOverlay.isVisible
+            self.debugOverlay.isVisible
         }
 
         /// Toggle the debug overlay
         public func toggleDebugOverlay() {
-            debugOverlay.toggle()
+            self.debugOverlay.toggle()
         }
 
         /// Show the debug overlay
         public func showDebugOverlay() {
-            debugOverlay.show()
+            self.debugOverlay.show()
         }
 
         /// Hide the debug overlay
         public func hideDebugOverlay() {
-            debugOverlay.hide()
+            self.debugOverlay.hide()
         }
     }
 

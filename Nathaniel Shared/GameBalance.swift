@@ -132,8 +132,6 @@ enum GameBalance {
         enum Visual {
             static let textureSize = CGSize(width: 48, height: 48)
             static let laserBeamThickness: CGFloat = 3
-            static let healEffectStrokeColor = SKColor(red: 0.2, green: 0.8, blue: 0.2, alpha: 0.3)
-            static let healEffectFillColor = SKColor(red: 0.2, green: 0.8, blue: 0.2, alpha: 0.1)
         }
     }
 

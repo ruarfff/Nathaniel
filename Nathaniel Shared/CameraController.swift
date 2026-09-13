@@ -51,12 +51,6 @@ class CameraController {
         self.visibleViewportSize = viewportSize
     }
 
-    /// Update the viewport size (e.g., after layout changes)
-    /// - Parameter size: New viewport size
-    func updateViewportSize(_ size: CGSize) {
-        self.visibleViewportSize = size
-    }
-
     // MARK: - Position Clamping
 
     /// Clamp a position to keep the camera within map bounds.
@@ -115,18 +109,6 @@ class CameraController {
     /// - Parameter position: Target position
     func setPosition(_ position: CGPoint) {
         self.camera.position = self.clampToMapBounds(position)
-    }
-
-    // MARK: - Camera Movement
-
-    /// Move camera by a delta amount (clamped to map bounds)
-    /// - Parameter delta: Amount to move
-    func move(by delta: CGPoint) {
-        let newPos = CGPoint(
-            x: camera.position.x + delta.x,
-            y: self.camera.position.y + delta.y
-        )
-        self.camera.position = self.clampToMapBounds(newPos)
     }
 
     // MARK: - Camera Animation
