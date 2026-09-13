@@ -396,25 +396,25 @@ class MainMenuScene: InputHandlingScene {
 
         let gameScene = GameScene.newGameScene(levelConfig: levelConfig)
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentSceneWithNotification(gameScene, transition: transition)
+        view?.presentScene(gameScene, transition: transition)
     }
 
     private func startGame() {
         let levelSelectScene = LevelSelectScene.newLevelSelectScene()
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentSceneWithNotification(levelSelectScene, transition: transition)
+        view?.presentScene(levelSelectScene, transition: transition)
     }
 
     private func showOptions() {
         let optionsScene = OptionsScene.newOptionsScene()
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentSceneWithNotification(optionsScene, transition: transition)
+        view?.presentScene(optionsScene, transition: transition)
     }
 
     private func showCredits() {
         let creditsScene = CreditsScene.newCreditsScene()
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentSceneWithNotification(creditsScene, transition: transition)
+        view?.presentScene(creditsScene, transition: transition)
     }
 
     private func showLoadGameSelector() {
@@ -431,7 +431,7 @@ class MainMenuScene: InputHandlingScene {
         let gameScene = GameScene.newGameScene(fromSave: savedState)
 
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentSceneWithNotification(gameScene, transition: transition)
+        view?.presentScene(gameScene, transition: transition)
     }
 }
 

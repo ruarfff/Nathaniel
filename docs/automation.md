@@ -45,30 +45,8 @@ Takes a screenshot at `test-artifacts/ios-sim-smoke.png`.
 - `DESTINATION`: xcodebuild destination string (default: `generic/platform=iOS Simulator`)
 - `SMOKE_WAIT_SECONDS`: how long to wait before screenshot (default: `5`)
 
-## Codex MCP Setup (Recommended)
+## Live validation
 
-If you want a coding agent to reliably build/run/screenshot without “driving” Xcode manually, configure MCP servers for:
+Use Make to build and launch, then computer use to check real input. The optional [game MCP adapter](../game-mcp-server/README.md) supplies exact state and controlled setup. No build or Simulator MCP server is required by these scripts. See [testing.md](testing.md) for the playtest workflow.
 
-- `ios-simulator-mcp` (sim install/launch/screenshot)
-- `xcodebuildmcp` (build + simulator helpers)
-
-On a machine with Xcode + Node installed:
-
-```bash
-codex mcp add ios-simulator \
-  --env IOS_SIMULATOR_MCP_DEFAULT_OUTPUT_DIR="$(pwd)/test-artifacts" \
-  --env IOS_SIMULATOR_MCP_IDB_PATH="$(command -v idb)" \
-  -- npx -y ios-simulator-mcp
-
-codex mcp add XcodeBuildMCP \
-  --env XCODEBUILDMCP_SENTRY_DISABLED=true \
-  --env INCREMENTAL_BUILDS_ENABLED=false \
-  -- npx -y xcodebuildmcp@latest
-
-codex mcp list
-```
-
-Notes:
-
-- UI automation tools may require Facebook IDB (`idb` + `idb_companion`).
-- If you run Codex with sandboxing enabled, Xcode/Simulator may need extra writable dirs (e.g. `~/Library/Developer`, `~/Library/Logs`). MCP tools can help avoid relying on sandboxed shell commands for simulator control.
+Run `npm --prefix game-mcp-server test` when changing the adapter. Its integration tests start an isolated HTTP fixture and the actual MCP stdio process; they do not change game saves.

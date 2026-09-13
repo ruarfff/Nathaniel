@@ -206,7 +206,7 @@ test-ios:
 
 test-macos:
 	@echo "Running macOS smoke tests..."
-	@DERIVED_DATA_PATH="$(DERIVED_DATA_PATH)" ./scripts/test-macos.sh
+	@DERIVED_DATA_PATH="$(DERIVED_DATA_PATH)" ./scripts/smoke_macos.sh
 
 test-unit:
 	xcodebuild -project $(PROJECT) -scheme "$(MACOS_SCHEME)" \

@@ -150,10 +150,6 @@ class InputHandlingScene: SKScene {
             self.handleSecondaryClick(at: location)
         }
 
-        override func scrollWheel(with event: NSEvent) {
-            self.handleScroll(deltaY: event.scrollingDeltaY)
-        }
-
         override func keyDown(with event: NSEvent) {
             self.handleKeyDown(keyCode: event.keyCode)
         }

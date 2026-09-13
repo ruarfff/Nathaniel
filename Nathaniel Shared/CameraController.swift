@@ -15,22 +15,17 @@ class CameraController {
 
     // MARK: - Zoom Properties
 
-    /// Current camera zoom level (1.0 = default, higher = zoomed in)
+    /// Current camera zoom level (1.0 = default, higher = zoomed out)
     private var zoom: CGFloat = 1.0
 
-    /// Minimum zoom level (zoomed out)
+    /// Minimum camera scale (zoomed in)
     private let minZoom: CGFloat = 0.5
 
-    /// Maximum zoom level (zoomed in)
+    /// Maximum camera scale (zoomed out)
     private let maxZoom: CGFloat = 2.0
 
     /// Whether camera is currently animating to a new position
     private(set) var isAnimating: Bool = false
-
-    // MARK: - UI Scale Callback
-
-    /// Callback to update UI elements when zoom changes
-    var onZoomChanged: ((CGFloat) -> Void)?
 
     // MARK: - Initialization
 
@@ -153,18 +148,12 @@ class CameraController {
         #endif
     }
 
-    /// Current zoom level (read-only)
-    var currentZoom: CGFloat {
-        self.zoom
-    }
-
     /// Update camera zoom by a scale factor
-    /// - Parameter scale: Multiplier for current zoom (>1 zooms in, <1 zooms out)
+    /// - Parameter scale: Multiplier for current zoom (>1 zooms out, <1 zooms in)
     func updateZoom(by scale: CGFloat) {
         let newZoom = self.zoom * scale
         self.zoom = max(self.effectiveMinZoom, min(self.effectiveMaxZoom, newZoom))
         self.camera.setScale(self.zoom)
-        self.onZoomChanged?(self.zoom)
     }
 
     /// Set camera zoom to an absolute value
@@ -172,7 +161,6 @@ class CameraController {
     func setZoom(_ zoomLevel: CGFloat) {
         self.zoom = max(self.effectiveMinZoom, min(self.effectiveMaxZoom, zoomLevel))
         self.camera.setScale(self.zoom)
-        self.onZoomChanged?(self.zoom)
     }
 
     /// Handle pinch gesture zoom

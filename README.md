@@ -45,7 +45,7 @@ bash scripts/smoke_ios_sim.sh
 
 `make ios` and `make macos` build and run the app from `build/DerivedData`. Set `DERIVED_DATA_PATH` to use another directory. Normal iOS installs keep saved games; `make ios-fresh` explicitly removes app data.
 
-See `docs/automation.md` for MCP setup and script options.
+See [docs/automation.md](docs/automation.md) for script options.
 
 ## Gameplay
 
@@ -71,7 +71,7 @@ make test-unit       # macOS XCTest suite
 make test-tooling    # Build-command tests with stubbed platform tools
 ```
 
-Tests cover gameplay parity, save compatibility and navigation, menu input, music settings, and the debug HTTP interface. Use the game MCP server for live gameplay interaction; see `AGENTS.md`.
+Tests cover gameplay parity, save compatibility and navigation, menu input, music settings, and the debug HTTP interface. Use computer use for real input and the small debug interface for exact state and setup; see [docs/testing.md](docs/testing.md).
 
 ## Development
 

@@ -2,7 +2,7 @@
 //  GameCommandProtocol.swift
 //  Nathaniel Shared
 //
-//  Defines debug game commands and scene presentation shared by all builds.
+//  Defines debug game commands and scene inspection helpers.
 //
 
 import Foundation
@@ -44,11 +44,6 @@ import SpriteKit
         /// Capture a screenshot of the current scene
         func captureScreenshot() -> Data?
 
-        /// Capture a screenshot with bounding boxes drawn around interactive nodes
-        /// - Parameter nodes: The nodes to annotate
-        /// - Returns: PNG image data with annotations
-        func captureAnnotatedScreenshot(nodes: [GameCommandServer.NodeInfo]) -> Data?
-
         // MARK: - Input Injection
 
         /// Inject a tap at the given scene coordinates
@@ -68,7 +63,7 @@ import SpriteKit
 
         /// Execute a named action
         /// - Parameters:
-        ///   - name: The action name (e.g., "selectCharacter", "targetEnemy")
+        ///   - name: The action name (e.g., "loadLevel", "spawnEnemy")
         ///   - params: Optional parameters for the action
         /// - Returns: The result of the action
         func executeAction(name: String, params: [String: String]?) -> ActionResult
@@ -83,18 +78,12 @@ import SpriteKit
             injectTap(at: to)
         }
 
-        /// Default action implementation - returns failure for unknown actions
+        /// Dispatch the small set of debug setup actions.
         public func executeAction(name: String, params: [String: String]?) -> ActionResult {
-            .failure("Unknown action: \(name)")
-        }
-
-        /// Default annotated screenshot - delegates to scene if available
-        public func captureAnnotatedScreenshot(nodes: [GameCommandServer.NodeInfo]) -> Data? {
-            // This will be called on the scene which can use captureAnnotatedAsPNG
-            if let scene = self as? SKScene {
-                return scene.captureAnnotatedAsPNG(nodes: nodes)
+            guard let action = GameDebugAction(rawValue: name), let scene = self as? SKScene else {
+                return .failure("Unknown action: \(name)")
             }
-            return nil
+            return action.execute(on: scene, params: params)
         }
     }
 
@@ -120,150 +109,6 @@ import SpriteKit
             #else
                 return nil
             #endif
-        }
-
-        /// Capture the scene with annotated bounding boxes around nodes
-        public func captureAnnotatedAsPNG(nodes: [GameCommandServer.NodeInfo]) -> Data? {
-            guard let view else { return nil }
-
-            let texture = view.texture(from: self)
-            guard let cgImage = texture?.cgImage() else { return nil }
-
-            let imageWidth = CGFloat(cgImage.width)
-            let imageHeight = CGFloat(cgImage.height)
-
-            #if os(iOS) || os(tvOS)
-                // Create a graphics context and draw the image
-                UIGraphicsBeginImageContextWithOptions(CGSize(width: imageWidth, height: imageHeight), false, 1.0)
-                guard let context = UIGraphicsGetCurrentContext() else {
-                    UIGraphicsEndImageContext()
-                    return nil
-                }
-
-                // Draw the original image (flipped because Core Graphics has inverted Y)
-                context.saveGState()
-                context.translateBy(x: 0, y: imageHeight)
-                context.scaleBy(x: 1, y: -1)
-                context.draw(cgImage, in: CGRect(x: 0, y: 0, width: imageWidth, height: imageHeight))
-                context.restoreGState()
-
-                // Calculate scale from scene to image
-                let scaleX = imageWidth / size.width
-                let scaleY = imageHeight / size.height
-
-                // Draw bounding boxes
-                for node in nodes {
-                    let color = self.colorForNodeType(node.type, name: node.name)
-                    context.setStrokeColor(color.cgColor)
-                    context.setLineWidth(2.0)
-
-                    // Convert scene coordinates to image coordinates
-                    // Scene origin is bottom-left, image origin is top-left
-                    let x = node.frame.x * scaleX
-                    let y = imageHeight - (node.frame.y + node.frame.height) * scaleY
-                    let width = node.frame.width * scaleX
-                    let height = node.frame.height * scaleY
-
-                    let rect = CGRect(x: x, y: y, width: width, height: height)
-                    context.stroke(rect)
-
-                    // Draw label
-                    let label = node.name
-                    let attributes: [NSAttributedString.Key: Any] = [
-                        .font: UIFont.systemFont(ofSize: 10),
-                        .foregroundColor: color,
-                        .backgroundColor: UIColor.black.withAlphaComponent(0.5),
-                    ]
-                    let labelRect = CGRect(x: x, y: y - 12, width: width, height: 12)
-                    (label as NSString).draw(in: labelRect, withAttributes: attributes)
-                }
-
-                let annotatedImage = UIGraphicsGetImageFromCurrentImageContext()
-                UIGraphicsEndImageContext()
-                return annotatedImage?.pngData()
-
-            #elseif os(macOS)
-                // Create an NSImage and draw annotations
-                let image = NSImage(cgImage: cgImage, size: CGSize(width: imageWidth, height: imageHeight))
-                let annotatedImage = NSImage(size: image.size)
-
-                annotatedImage.lockFocus()
-
-                // Draw original image
-                image.draw(at: .zero, from: NSRect(origin: .zero, size: image.size), operation: .copy, fraction: 1.0)
-
-                // Calculate scale from scene to image
-                let scaleX = imageWidth / size.width
-                let scaleY = imageHeight / size.height
-
-                // Draw bounding boxes
-                for node in nodes {
-                    let color = self.colorForNodeType(node.type, name: node.name)
-                    color.setStroke()
-
-                    // Convert scene coordinates to image coordinates
-                    // Scene origin is bottom-left, NSImage origin is also bottom-left
-                    let x = node.frame.x * scaleX
-                    let y = node.frame.y * scaleY
-                    let width = node.frame.width * scaleX
-                    let height = node.frame.height * scaleY
-
-                    let rect = NSRect(x: x, y: y, width: width, height: height)
-                    let path = NSBezierPath(rect: rect)
-                    path.lineWidth = 2.0
-                    path.stroke()
-
-                    // Draw label background and text
-                    let label = node.name
-                    let attributes: [NSAttributedString.Key: Any] = [
-                        .font: NSFont.systemFont(ofSize: 10),
-                        .foregroundColor: color,
-                        .backgroundColor: NSColor.black.withAlphaComponent(0.5),
-                    ]
-                    let labelSize = (label as NSString).size(withAttributes: attributes)
-                    let labelRect = NSRect(
-                        x: x,
-                        y: y + height + 2,
-                        width: labelSize.width + 4,
-                        height: labelSize.height
-                    )
-                    (label as NSString).draw(in: labelRect, withAttributes: attributes)
-                }
-
-                annotatedImage.unlockFocus()
-
-                guard let tiffData = annotatedImage.tiffRepresentation,
-                      let bitmap = NSBitmapImageRep(data: tiffData) else { return nil }
-                return bitmap.representation(using: .png, properties: [:])
-            #else
-                return nil
-            #endif
-        }
-
-        /// Get color for node type for annotation
-        private func colorForNodeType(_ type: String, name: String) -> SKColor {
-            // Player characters - green
-            if name == "nathaniel" || name == "hermes" || type == "Player" || type == "Companion" {
-                return SKColor.green
-            }
-            // Enemies - red
-            if name.hasPrefix("enemy_") || type == "Enemy" {
-                return SKColor.red
-            }
-            // Towers/defenses - cyan
-            if type.contains("Tower") || name.contains("tower") {
-                return SKColor.cyan
-            }
-            // UI elements - yellow
-            if name.contains("Button") || name.contains("button") || type == "SKLabelNode" {
-                return SKColor.yellow
-            }
-            // Projectiles - orange
-            if type.contains("Projectile") || name.contains("projectile") {
-                return SKColor.orange
-            }
-            // Default - white
-            return SKColor.white
         }
     }
 
@@ -345,26 +190,3 @@ import SpriteKit
     }
 
 #endif
-
-/// Available in all builds - notification only posted in DEBUG
-extension SKView {
-    /// Present a scene and post a notification for scene change tracking.
-    /// Use this instead of presentScene() directly for proper command server integration.
-    public func presentSceneWithNotification(_ scene: SKScene, transition: SKTransition? = nil) {
-        if let transition {
-            presentScene(scene, transition: transition)
-            #if DEBUG
-                // Delay notification until after transition completes so skView.scene returns new scene
-                // Use 0.6s delay which covers most common transition durations (0.3-0.5s)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                    NotificationCenter.default.post(name: .skViewDidPresentScene, object: self)
-                }
-            #endif
-        } else {
-            presentScene(scene)
-            #if DEBUG
-                NotificationCenter.default.post(name: .skViewDidPresentScene, object: self)
-            #endif
-        }
-    }
-}

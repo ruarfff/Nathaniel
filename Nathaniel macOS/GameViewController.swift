@@ -28,3 +28,13 @@ class GameViewController: NSViewController {
         skView.showsNodeCount = true
     }
 }
+
+/// SKView does not forward wheel events to its scene.
+class GameView: SKView {
+    override func scrollWheel(with event: NSEvent) {
+        if let scene = scene as? InputHandlingScene, scene.handleScroll(deltaY: event.scrollingDeltaY) {
+            return
+        }
+        super.scrollWheel(with: event)
+    }
+}

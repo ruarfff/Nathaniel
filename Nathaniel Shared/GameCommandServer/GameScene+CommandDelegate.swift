@@ -5,7 +5,6 @@
     //  Nathaniel Shared
 //
     //  GameCommandDelegate implementation for GameScene.
-    //  Uses the GameActionRegistry for action dispatch.
 //
 
     import SpriteKit
@@ -45,7 +44,11 @@
                 isPaused: isPaused,
                 playerPosition: nathanielPos,
                 hermesPosition: hermesPos,
-                enemyCount: self.internalEnemyManager?.aliveCount ?? 0
+                enemyCount: self.internalEnemyManager?.aliveCount ?? 0,
+                playerHealth: self.internalNathaniel?.currentHP,
+                hermesHealth: self.internalHermes?.currentHP,
+                hermesMode: self.internalHermes.map { $0.mode == .following ? "following" : "independent" },
+                towerCount: self.internalStructureManager?.structures.filter(\.isAlive).count
             )
         }
 
@@ -159,18 +162,6 @@
                 return true
             }
             return self.injectTap(at: to)
-        }
-
-        // MARK: - Custom Actions
-
-        public func executeAction(name: String, params: [String: String]?) -> ActionResult {
-            // Try the registry first
-            if let result = GameActionRegistry.shared.execute(name: name, params: params, scene: self) {
-                return result
-            }
-
-            // Action not found
-            return .failure("Unknown action: \(name)")
         }
     }
 

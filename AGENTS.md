@@ -73,7 +73,9 @@ xcodebuild -project Nathaniel.xcodeproj -scheme "Nathaniel macOS" -configuration
 ### Gameplay Validation
 
 After significant game changes, build and run both platforms with Make.
-Use the game MCP tools below to test gameplay and capture screenshots.
+Use computer use to test real mouse, keyboard, and touch input.
+Use XCTest for gameplay rules and the small game MCP interface for state and setup.
+Read `docs/testing.md` before a gameplay playtest or debug-interface change.
 Report the results and any limits of the checks performed.
 
 ### Smoke Tests

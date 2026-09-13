@@ -1,400 +1,51 @@
-# Testing Guide
+# Testing
 
-This guide covers how to test the Nathaniel game using the GameCommandServer API and other testing approaches.
+Use XCTest for gameplay rules, computer use for real input, and the small debug interface for exact state and test setup.
 
-## Testing Architecture
+## Automated checks
 
-```
-┌─────────────────┐     HTTP      ┌──────────────────────┐
-│  Test Client    │ ◄──────────► │  GameCommandServer   │
-│  (curl/scripts) │    :8765     │  (in-game, Swift)    │
-└─────────────────┘              └──────────────────────┘
-        │                                  │
-        │                                  │ SpriteKit
-        ▼                                  ▼
-┌─────────────────┐              ┌──────────────────────┐
-│ XcodeBuildMCP   │              │    Game Scenes       │
-│ (build/run/ss)  │              │ (MainMenu, Game, etc)│
-└─────────────────┘              └──────────────────────┘
-```
+- `make test-unit`: macOS XCTest suite, including gameplay, saves, menus, camera input, and isolated HTTP transport tests.
+- `make test-tooling`: build-command tests with stubbed platform tools.
+- `npm --prefix game-mcp-server test`: MCP stdio integration tests against an isolated HTTP fixture. No running game is required.
+- `make test`: resource/map checks on macOS, then an iOS Simulator launch and screenshot. These smoke checks do not establish gameplay correctness.
 
-## Quick Start
+See [automation.md](automation.md) for build paths and smoke-test options.
 
-### 1. Build and Run
+## Computer-use playtest
 
-```bash
-# Set up XcodeBuildMCP session
-mcp__XcodeBuildMCP__session-set-defaults \
-  projectPath=/Users/ruairi/dev/Nathaniel/Nathaniel.xcodeproj \
-  scheme="Nathaniel iOS" \
-  simulatorId=<UUID> \
-  useLatestOS=true
+Build and launch with `make macos` and `make ios`. On each platform:
 
-# Build and run
-mcp__XcodeBuildMCP__boot_sim
-mcp__XcodeBuildMCP__open_sim
-mcp__XcodeBuildMCP__build_run_sim
-```
+1. Open Level Select and start a level through the visible menus.
+2. Move Nathaniel, target an enemy, and switch camera focus to Hermes.
+3. Make Hermes stop. Open Build and drag a tower to clear ground.
+4. Make Hermes follow. Check that his towers disappear and each refunds 25% of its build cost, rounded down.
+5. Pause, open Settings, return to Pause, and resume. Inspect the save selector and cancel without replacing existing saves.
+6. Check desktop wheel zoom and iOS pinch zoom where the available input tools support the gesture. Verify HUD buttons still work after zoom.
 
-### 2. Verify Server Running
+Use screenshots to inspect the visible UI. Accessibility may expose hidden SpriteKit labels, so an accessibility match alone does not prove a control is visible. Simulator automation can take seconds while gameplay continues; pause between checks or use debug setup to prepare a repeatable situation. Report the platform and any input that could not be tested.
 
-```bash
-# Wait 2-3 seconds for app launch, then:
-curl -s http://localhost:8765/health
-# {"status":"ok","server":"GameCommandServer","version":"1.0.0"}
-```
+Known desktop limitation: the HUD assumes a landscape window and does not relayout when the window changes shape. Narrow windows and some full-screen transitions can clip controls.
 
-### 3. Navigate and Test
+## Debug inspection and setup
 
-```bash
-# Start game
-curl -s -X POST http://localhost:8765/action \
-  -H "Content-Type: application/json" \
-  -d '{"name":"startGame"}'
+The DEBUG-only `GameCommandServer` uses port 8765 on macOS and iOS Simulator. Run only one game instance when using this port. Release builds omit the interface. Configure the optional MCP adapter as described in [its README](../game-mcp-server/README.md).
 
-# Select level
-curl -s -X POST http://localhost:8765/action \
-  -H "Content-Type: application/json" \
-  -d '{"name":"level_1"}'
+Start with `game_state` and `game_list_actions`. State includes score, lives, resources, elapsed time, pause/result status, player positions and health, enemy count, Hermes mode, and tower count. Gameplay-only fields are omitted in menu scenes.
 
-# Check game state
-curl -s http://localhost:8765/state | jq .
-```
-
-## GameCommandServer API
-
-### Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Check server status |
-| `/state` | GET | Get current game state |
-| `/nodes` | GET | List interactive UI elements |
-| `/screenshot` | GET | Capture scene as base64 PNG |
-| `/screenshot/annotated` | GET | Capture screenshot with bounding boxes around nodes |
-| `/describe` | GET | Get semantic scene description for agents |
-| `/tap` | POST | Inject tap at coordinates |
-| `/swipe` | POST | Inject swipe gesture |
-| `/action` | POST | Execute named action |
-
-### GET /state
-
-Returns current game state:
+`game_action` supports `loadLevel`, `mainMenu`, `pause`, `resume`, `spawnEnemy`, `killAllEnemies`, `healPlayer`, `addResources`, and `setHermesMode`. Discovery returns the actions available in the current scene and their parameter hints. Pass parameter values as strings. For example:
 
 ```json
-{
-  "scene": "GameScene",
-  "score": 150,
-  "lives": 3,
-  "resources": 25,
-  "elapsedTime": 45.2,
-  "gameStatus": "playing",
-  "isPaused": false,
-  "playerPosition": {"x": 400, "y": 300},
-  "hermesPosition": {"x": 350, "y": 280},
-  "enemyCount": 5
-}
+{"name":"loadLevel","params":{"level":"1"}}
 ```
 
-### GET /nodes
+`loadLevel` accepts campaign levels 1–5 and survival level 0. It starts a fresh scene without changing saves. `mainMenu` discards the current unsaved session. `killAllEnemies` uses normal death handling and can record campaign completion; use survival for automated fixtures that must not change campaign progress. Setup actions bypass UI; their success does not prove the corresponding button or gesture works.
 
-Returns interactive elements with frame coordinates:
+`game_nodes` returns names and bounds in SpriteKit scene coordinates (origin at bottom-left). Covered controls are excluded while a modal menu is open. `game_tap` accepts a node name or scene x,y. `game_swipe` is a fallback for tower dragging; elsewhere it taps the endpoint. It does not simulate OS gesture recognition or elapsed drag time. Use computer use for real input validation.
 
-```json
-[
-  {
-    "name": "pauseButton",
-    "frame": {"x": 650, "y": 480, "width": 44, "height": 44},
-    "interactive": true
-  },
-  {
-    "name": "nathaniel",
-    "frame": {"x": 380, "y": 280, "width": 48, "height": 64},
-    "interactive": true
-  }
-]
-```
+`game_screenshot` captures the SpriteKit scene as a PNG. Inspect screenshots directly; this project does not maintain image baselines or pixel-diff tests.
 
-### POST /tap
+## Maintaining the interface
 
-Inject a tap at scene coordinates:
+Keep setup actions in `GameDebugAction`. Its enum is the source for both dispatch and discovery. Prefer exposing a missing value in structured state to adding another query action. Add gameplay regression tests directly in XCTest.
 
-```bash
-curl -X POST http://localhost:8765/tap \
-  -H "Content-Type: application/json" \
-  -d '{"x": 683, "y": 350}'
-```
-
-### POST /action
-
-Execute a named action:
-
-```bash
-curl -X POST http://localhost:8765/action \
-  -H "Content-Type: application/json" \
-  -d '{"name":"selectHermes"}'
-
-# With parameters
-curl -X POST http://localhost:8765/action \
-  -H "Content-Type: application/json" \
-  -d '{"name":"moveNathaniel", "params":{"x":"500","y":"400"}}'
-```
-
-## Named Controls and Actions
-
-Use `game_list_actions` for the current scene's action list. Use `game_nodes` and `game_tap(node: "pauseButton")` for pointer controls. Node frames are in scene coordinates, including camera and HUD scale. While a menu is open, discovery lists its controls instead of covered gameplay controls. Save selectors expose `slot_1` through `slot_3` and `cancelButton`.
-
-Opening Settings or the save selector pauses gameplay. Back returns to Pause; Resume clears all menus. Music toggles apply to the latest scene track, including scene changes made while muted.
-
-The debug HTTP transport accepts one request per connection, framed by `Content-Length`. It buffers fragmented requests, limits headers to 16 KiB and bodies to 16 MiB, and rejects transfer encoding. The MCP client supplies `Content-Length`.
-
-## Available Actions by Scene
-
-### MainMenuScene
-
-| Action | Description |
-|--------|-------------|
-| `startGame` | Navigate to level select |
-| `options` | Open options screen |
-| `credits` | Open credits screen |
-| `loadGame` | Open save slot selector |
-
-### LevelSelectScene
-
-| Action | Description |
-|--------|-------------|
-| `level_1` - `level_5` | Start specific level |
-| `survival` | Start survival mode |
-| `back` | Return to main menu |
-
-### GameScene
-
-| Action | Parameters | Description |
-|--------|------------|-------------|
-| `selectNathaniel` | - | Select Nathaniel |
-| `selectHermes` | - | Select Hermes |
-| `moveNathaniel` | `x`, `y` | Move Nathaniel to position |
-| `setHermesMode` | `mode=following` or `independent` | Follow Nathaniel or stop to build |
-| `targetEnemy` | `index` | Target enemy by index |
-| `pause` | - | Pause game |
-| `resume` | - | Resume game |
-
-### OptionsScene
-
-| Action | Description |
-|--------|-------------|
-| `back` | Return to previous screen |
-| `toggleSound` | Toggle sound effects |
-| `toggleMusic` | Toggle background music |
-
-## Testing Patterns
-
-### Smoke Test
-
-Verify basic functionality:
-
-```bash
-#!/bin/bash
-# smoke_test.sh
-
-# Check server
-curl -sf http://localhost:8765/health || exit 1
-
-# Navigate to gameplay
-curl -sf -X POST http://localhost:8765/action -d '{"name":"startGame"}' || exit 1
-sleep 0.5
-curl -sf -X POST http://localhost:8765/action -d '{"name":"level_1"}' || exit 1
-sleep 2
-
-# Verify game started
-STATE=$(curl -s http://localhost:8765/state)
-SCENE=$(echo $STATE | jq -r '.scene')
-if [ "$SCENE" != "GameScene" ]; then
-  echo "FAIL: Expected GameScene, got $SCENE"
-  exit 1
-fi
-
-echo "PASS: Smoke test completed"
-```
-
-### Gameplay Test
-
-Test game mechanics:
-
-```bash
-#!/bin/bash
-# gameplay_test.sh
-
-# Start level 1
-curl -X POST http://localhost:8765/action -d '{"name":"startGame"}'
-sleep 0.5
-curl -X POST http://localhost:8765/action -d '{"name":"level_1"}'
-sleep 2
-
-# Get initial state
-INITIAL=$(curl -s http://localhost:8765/state)
-INITIAL_ENEMIES=$(echo $INITIAL | jq '.enemyCount')
-
-# Move player toward enemies
-curl -X POST http://localhost:8765/action \
-  -d '{"name":"moveNathaniel", "params":{"x":"600","y":"400"}}'
-sleep 5
-
-# Check if enemies were killed (score increased)
-FINAL=$(curl -s http://localhost:8765/state)
-FINAL_SCORE=$(echo $FINAL | jq '.score')
-
-if [ "$FINAL_SCORE" -gt 0 ]; then
-  echo "PASS: Player killed enemies (score: $FINAL_SCORE)"
-else
-  echo "FAIL: No enemies killed"
-fi
-```
-
-### Visual Verification
-
-Take screenshots for visual testing:
-
-```bash
-# Via XcodeBuildMCP (recommended)
-mcp__XcodeBuildMCP__screenshot
-
-# Via GameCommandServer (base64 PNG)
-curl -s http://localhost:8765/screenshot | base64 -d > screenshot.png
-```
-
-## Adding Test Actions
-
-### Implement GameCommandDelegate
-
-In your scene, implement the protocol:
-
-```swift
-extension MyScene: GameCommandDelegate {
-    func executeAction(name: String, params: [String: String]?) -> ActionResult {
-        switch name {
-        case "myAction":
-            performMyAction()
-            return .success("Action completed")
-
-        case "myActionWithParams":
-            guard let x = params?["x"], let xVal = Double(x) else {
-                return .failure("Missing x parameter")
-            }
-            performAction(at: xVal)
-            return .success("Action with params completed")
-
-        default:
-            return .failure("Unknown action: \(name)")
-        }
-    }
-
-    func getCurrentGameState() -> GameCommandServer.GameState {
-        return GameCommandServer.GameState(
-            scene: "MyScene",
-            score: score,
-            lives: lives,
-            // ... other state
-        )
-    }
-
-    func getInteractiveNodes() -> [GameCommandServer.NodeInfo] {
-        var nodes: [GameCommandServer.NodeInfo] = []
-
-        // Add buttons
-        if let button = myButton {
-            nodes.append(button.toNodeInfo())
-        }
-
-        // Add characters
-        nodes.append(player.sprite.toNodeInfo(interactive: true))
-
-        return nodes
-    }
-}
-```
-
-### Register the Delegate
-
-In your scene's `didMove(to:)`:
-
-```swift
-override func didMove(to view: SKView) {
-    super.didMove(to: view)
-
-    #if DEBUG
-    GameCommandServer.shared.delegate = self
-    #endif
-}
-```
-
-## DevSettings for Testing
-
-In DEBUG builds, adjust settings for easier testing:
-
-```swift
-// In DevSettings.swift or via code
-DevSettings.shared.playerInvincible = true      // God mode
-DevSettings.shared.nathanielSpeed = 200         // Fast movement
-DevSettings.shared.towerCostGun = 1             // Cheap towers
-DevSettings.shared.enemyDamage = 0              // Enemies don't hurt
-DevSettings.shared.spawnInterval = 30           // Slow spawning
-```
-
-## Coordinate Systems
-
-### SpriteKit Scene Coordinates
-
-- **Origin (0, 0)**: Bottom-left of scene
-- **Scene Size**: 1366 x 1024 (design resolution)
-- **Y-axis**: Increases upward
-
-### Converting Coordinates
-
-Use `/nodes` to get exact frame coordinates for UI elements. Don't guess from screenshots.
-
-```bash
-# Get button position
-NODES=$(curl -s http://localhost:8765/nodes)
-PAUSE_X=$(echo $NODES | jq '.[] | select(.name=="pauseButton") | .frame.x')
-PAUSE_Y=$(echo $NODES | jq '.[] | select(.name=="pauseButton") | .frame.y')
-
-# Tap the button
-curl -X POST http://localhost:8765/tap \
-  -d "{\"x\": $PAUSE_X, \"y\": $PAUSE_Y}"
-```
-
-## Common Issues
-
-### Server Not Responding
-
-- Ensure DEBUG build (server only runs in debug)
-- Wait 2-3 seconds after app launch
-- Check port 8765 isn't blocked
-
-### Actions Not Working
-
-- Verify scene implements `GameCommandDelegate`
-- Check action name spelling (case-sensitive)
-- Look for errors in Xcode console
-
-### Coordinates Don't Match
-
-- Use `/nodes` for precise coordinates
-- Remember Y=0 is at bottom in SpriteKit
-- Scene coordinates differ from screen coordinates
-
-## XcodeBuildMCP vs GameCommandServer
-
-| Task | Use |
-|------|-----|
-| Building the app | XcodeBuildMCP |
-| Running the app | XcodeBuildMCP |
-| Taking screenshots | XcodeBuildMCP |
-| Booting simulators | XcodeBuildMCP |
-| Tapping UI elements | GameCommandServer |
-| Getting game state | GameCommandServer |
-| Navigating menus | GameCommandServer |
-| In-game interactions | GameCommandServer |
-
-**Important**: XcodeBuildMCP's tap/swipe tools have coordinate issues with landscape SpriteKit games. Always use GameCommandServer for in-game interaction.
+The HTTP transport accepts one request per connection, buffers fragmented requests, and uses `Content-Length`. It limits headers to 16 KiB and bodies to 16 MiB and rejects transfer encoding. The MCP client supplies the HTTP framing.

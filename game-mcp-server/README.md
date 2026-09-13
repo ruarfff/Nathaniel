@@ -1,25 +1,18 @@
-# Nathaniel MCP Server
+# Nathaniel MCP server
 
-MCP (Model Context Protocol) server for testing the Nathaniel game. This server wraps the game's embedded HTTP command server, allowing LLM agents to control and test the game programmatically.
+A small adapter for the game's DEBUG-only inspection and test setup interface. Use computer use for real mouse, keyboard, and touch validation; see [the testing guide](../docs/testing.md).
 
-## Prerequisites
+## Setup
 
-- Node.js 18+
-- The Nathaniel game running in DEBUG mode (iOS Simulator or macOS)
+Requires Node.js 18+ and a Debug game running on macOS or iOS Simulator.
 
-## Installation
-
-```bash
+```sh
 cd game-mcp-server
-npm install
+npm ci
 npm run build
 ```
 
-## Usage
-
-### MCP Client
-
-Add this server to your MCP client's configuration:
+Add the server to your MCP client's configuration, using the absolute path to the compiled entry point:
 
 ```json
 {
@@ -27,118 +20,31 @@ Add this server to your MCP client's configuration:
     "nathaniel-game": {
       "command": "node",
       "args": ["/path/to/Nathaniel/game-mcp-server/dist/index.js"],
-      "env": {
-        "GAME_SERVER_URL": "http://localhost:8765"
-      }
+      "env": {"GAME_SERVER_URL": "http://localhost:8765"}
     }
   }
 }
 ```
 
-### Standalone
+`GAME_SERVER_URL` defaults to `http://localhost:8765`. `GAME_SERVER_TIMEOUT` defaults to 5000 milliseconds. Run one Debug game at a time to avoid a port conflict. Restart the MCP client after rebuilding this adapter so it refreshes the tool list.
 
-```bash
-# Set environment variables (optional)
-export GAME_SERVER_URL=http://localhost:8765
-export GAME_SERVER_TIMEOUT=5000
+## Tools
 
-# Run the server
-npm start
+| Tool | Purpose |
+|---|---|
+| `game_health` | Check the debug server |
+| `game_state` | Read exact live game state |
+| `game_nodes` | Inspect named controls and scene-space bounds |
+| `game_screenshot` | Capture a scene PNG |
+| `game_list_actions` | Discover setup actions and parameter hints |
+| `game_action` | Execute a setup action with string parameters |
+| `game_tap` | Fallback pointer input by node name or scene x,y |
+| `game_swipe` | Fallback tower drag; otherwise tap its endpoint |
+
+Actions and pointer injection bypass OS input. Swipe duration is accepted for the pointer protocol but does not control timing. Automated tests use an isolated HTTP fixture:
+
+```sh
+npm test
 ```
 
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `GAME_SERVER_URL` | `http://localhost:8765` | URL of the game's HTTP command server |
-| `GAME_SERVER_TIMEOUT` | `5000` | Request timeout in milliseconds |
-
-## Available Tools
-
-### `game_health`
-Check if the game command server is running and healthy.
-
-### `game_get_state`
-Get the current game state:
-- Scene name
-- Score, lives, resources
-- Player/Hermes positions
-- Enemy count
-- Game status (playing, victory, gameOver)
-
-### `game_get_nodes`
-Get all interactive nodes in the current scene with their:
-- Names and types
-- Frame coordinates (x, y, width, height)
-- Interactive status
-- Custom properties
-
-### `game_screenshot`
-Capture a screenshot of the current game screen (base64-encoded PNG).
-
-### `game_tap`
-Tap at specific coordinates in the game.
-
-Parameters:
-- `x`: X coordinate (scene coordinates)
-- `y`: Y coordinate (scene coordinates)
-
-### `game_swipe`
-Perform a swipe gesture.
-
-Parameters:
-- `fromX`, `fromY`: Starting coordinates
-- `toX`, `toY`: Ending coordinates
-- `duration`: Swipe duration in seconds (default: 0.3)
-
-### `game_action`
-Execute a named game action.
-
-Parameters:
-- `name`: Action name
-- `params`: Optional parameters (key-value object)
-
-Available actions vary by scene:
-- **MainMenuScene**: `startGame`, `options`, `credits`
-- **LevelSelectScene**: `level_1`, `level_2`, ..., `back`
-- **GameScene**: `selectNathaniel`, `selectHermes`, `moveNathaniel`, `targetEnemy`
-
-## Example Workflow
-
-```typescript
-// 1. Check if game is running
-await game_health();
-
-// 2. Get current state
-const state = await game_get_state();
-console.log(`Scene: ${state.scene}, Status: ${state.gameStatus}`);
-
-// 3. Find the "Level Select" button
-const nodes = await game_get_nodes();
-const levelSelectBtn = nodes.find(n => n.name === "startButton");
-
-// 4. Tap the button
-await game_tap({ x: levelSelectBtn.frame.x, y: levelSelectBtn.frame.y });
-
-// 5. Verify navigation
-const newState = await game_get_state();
-console.log(`Now in: ${newState.scene}`);
-```
-
-## Game Server Port
-
-The game's command server runs on port **8765** by default. This is only active in DEBUG builds. Make sure the game is running before using the MCP server.
-
-### iOS Simulator
-When testing on iOS Simulator, the game server is accessible at `localhost:8765` from the host machine.
-
-### macOS
-When running the macOS version, the game server is accessible at `localhost:8765`.
-
-## Troubleshooting
-
-**"Connection refused"**: Make sure the game is running in DEBUG mode.
-
-**"Request timeout"**: The game may be busy or unresponsive. Check if the game is frozen or loading.
-
-**"No game delegate available"**: The current scene doesn't support the command server. Navigate to a supported scene (MainMenuScene, LevelSelectScene, GameScene).
+Old aliases, menu-specific actions, scene-wait commands, annotated screenshots, and visual baseline tools have been removed. Use action discovery for setup and visible controls for menu navigation.

@@ -292,20 +292,7 @@ The `PlacementValidator` handles all validation automatically.
 
 ## Testing Towers
 
-### Via GameCommandServer
-
-```bash
-# Select Hermes and enter build mode
-curl -X POST http://localhost:8765/action \
-  -d '{"name":"selectHermes"}'
-
-curl -X POST http://localhost:8765/action \
-  -d '{"name":"enterBuildMode"}'
-
-# Place tower (if action exists)
-curl -X POST http://localhost:8765/action \
-  -d '{"name":"placeTower", "params":{"type":"slowTower","x":"400","y":"300"}}'
-```
+Use computer use to stop Hermes, select him, open Build, and drag the new tower onto clear ground. Check placement rejection, resource cost, attacks, and the refund when Hermes follows again. Use XCTest for exact range, damage, and cost rules; see [testing.md](testing.md).
 
 ### Via DevSettings
 

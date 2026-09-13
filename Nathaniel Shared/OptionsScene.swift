@@ -250,7 +250,7 @@ class OptionsScene: InputHandlingScene {
     private func returnToMenu() {
         let menuScene = MainMenuScene.newMenuScene()
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentSceneWithNotification(menuScene, transition: transition)
+        view?.presentScene(menuScene, transition: transition)
     }
 }
 

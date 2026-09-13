@@ -19,7 +19,7 @@ final class MenuStateTests: XCTestCase {
         let level = try XCTUnwrap(scene.internalLevelManager)
 
         scene.pauseGame()
-        XCTAssertTrue(scene.executeAction(name: "openSettings", params: nil).success)
+        scene.showSettings()
         XCTAssertTrue(scene.handleKeyDown(keyCode: 53))
 
         XCTAssertEqual(level.state, .paused)
@@ -30,16 +30,16 @@ final class MenuStateTests: XCTestCase {
         XCTAssertFalse(try XCTUnwrap(scene.internalPauseMenu).isVisible)
     }
 
-    func testCommandsPauseForMenusAndResumeClearsEveryMenu() throws {
+    func testMenuIntentsPauseAndResumeClearsEveryMenu() throws {
         let view = SKView(frame: CGRect(x: 0, y: 0, width: 800, height: 480))
         let scene = GameScene.newGameScene()
         view.presentScene(scene)
         defer { view.presentScene(nil) }
         let level = try XCTUnwrap(scene.internalLevelManager)
 
-        for action in ["openSettings", "showSaveSlotSelector"] {
-            XCTAssertTrue(scene.executeAction(name: action, params: nil).success)
-            XCTAssertEqual(level.state, .paused, action)
+        for openMenu in [scene.showSettings, scene.showSaveSlotSelector] {
+            openMenu()
+            XCTAssertEqual(level.state, .paused)
             XCTAssertFalse(scene.handleSecondaryClick(at: CGPoint(x: 500, y: 300)))
             scene.resumeGame()
             XCTAssertEqual(level.state, .playing)
@@ -77,8 +77,8 @@ final class MenuStateTests: XCTestCase {
         let level = try XCTUnwrap(scene.internalLevelManager)
         level.triggerGameOver()
 
-        _ = scene.executeAction(name: "openSettings", params: nil)
-        _ = scene.executeAction(name: "showSaveSlotSelector", params: nil)
+        scene.showSettings()
+        scene.showSaveSlotSelector()
         scene.resumeGame()
 
         XCTAssertEqual(level.state, .gameOver)

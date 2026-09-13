@@ -100,6 +100,8 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
     private var towerPlacementController: TowerPlacementController?
 
     #if DEBUG
+        private var appliedDebugZoom = DevSettings.shared.cameraZoom
+
         /// Pathfinding debug visualization overlay
         private var pathfindingDebugOverlay: PathfindingDebugOverlay?
     #endif
@@ -446,21 +448,21 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
 
         let nextScene = GameScene.newGameScene(levelConfig: nextConfig)
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentSceneWithNotification(nextScene, transition: transition)
+        view?.presentScene(nextScene, transition: transition)
     }
 
     /// Restart the current level
     private func restartLevel() {
         let restartScene = GameScene.newGameScene(levelConfig: self.levelConfig)
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentSceneWithNotification(restartScene, transition: transition)
+        view?.presentScene(restartScene, transition: transition)
     }
 
     /// Return to the main menu
     private func returnToMainMenu() {
         let menuScene = MainMenuScene.newMenuScene()
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentSceneWithNotification(menuScene, transition: transition)
+        view?.presentScene(menuScene, transition: transition)
     }
 
     // MARK: - Pause/Resume
@@ -700,9 +702,9 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
 
         // Create camera controller
         self.cameraController = CameraController(camera: self.cameraNode)
-        self.cameraController.onZoomChanged = { [weak self] _ in
-            self?.updateUIScaleForZoom()
-        }
+        #if DEBUG
+            self.cameraController.setZoom(self.appliedDebugZoom)
+        #endif
     }
 
     private func loadMap() {
@@ -1297,9 +1299,10 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
                 return
             }
 
-            // Apply zoom from dev settings if changed
+            // Apply slider changes without resetting normal wheel or pinch input.
             let targetZoom = DevSettings.shared.cameraZoom
-            if abs(self.cameraController.currentZoom - targetZoom) > 0.01 {
+            if self.appliedDebugZoom != targetZoom {
+                self.appliedDebugZoom = targetZoom
                 self.cameraController.setZoom(targetZoom)
             }
         #endif
@@ -1333,13 +1336,6 @@ class GameScene: InputHandlingScene, LevelManagerDelegate, ResourceManagerDelega
     /// - Parameter scale: Gesture scale factor
     func handlePinchZoom(scale: CGFloat) {
         self.cameraController.handlePinchZoom(scale: scale)
-    }
-
-    /// Keep HUD and overlay at consistent screen size when zooming
-    private func updateUIScaleForZoom() {
-        let inverseScale = 1.0 / self.cameraController.currentZoom
-        self.hud?.setScale(inverseScale)
-        self.gameOverlay?.setScale(inverseScale)
     }
 }
 

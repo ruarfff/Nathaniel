@@ -265,23 +265,4 @@ Row 1: Walking frames for each direction
 
 ## Testing New Characters
 
-Use the GameCommandServer to test:
-
-```bash
-# Get game state including character positions
-curl http://localhost:8765/state
-
-# Check if new enemy appears
-curl http://localhost:8765/state | jq '.enemyCount'
-```
-
-For player characters, add a test action in `GameScene+CommandDelegate.swift`:
-
-```swift
-case "selectNewHero":
-    if let hero = newHero {
-        selectedCharacter = hero
-        return .success("Selected NewHero")
-    }
-    return .failure("NewHero not available")
-```
+Add XCTest coverage for the character's movement and combat rules. Use computer use to check selection, targeting, and animation in the game. Inspect positions, health, and enemy count through `game_state` and `game_nodes` when exact values are needed. See [testing.md](testing.md).

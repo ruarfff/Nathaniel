@@ -266,13 +266,13 @@ class LevelSelectScene: InputHandlingScene {
 
         let gameScene = GameScene.newGameScene(levelConfig: config)
         let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentSceneWithNotification(gameScene, transition: transition)
+        view?.presentScene(gameScene, transition: transition)
     }
 
     private func goBack() {
         let mainMenu = MainMenuScene.newMenuScene()
         let transition = SKTransition.fade(withDuration: 0.3)
-        view?.presentSceneWithNotification(mainMenu, transition: transition)
+        view?.presentScene(mainMenu, transition: transition)
     }
 }
 

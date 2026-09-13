@@ -79,7 +79,7 @@ final class InteractiveControlsTests: XCTestCase {
         let scene = GameScene.newGameScene()
         view.presentScene(scene)
         defer { view.presentScene(nil) }
-        _ = scene.executeAction(name: "selectHermes", params: nil)
+        _ = scene.handleKeyDown(keyCode: 49)
         try self.tap("buildButton", in: scene)
         XCTAssertTrue(scene.isBuildMenuVisible)
         for tower in TowerType.allCases {

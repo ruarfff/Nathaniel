@@ -168,35 +168,9 @@ The map size defines camera bounds. Larger maps = more scrolling area.
 
 ## Testing Levels
 
-### Quick Test with GameCommandServer
+Build and launch with `make macos` or `make ios`. Open the new level through Level Select to check its UI. For repeatable setup, add the level to `LevelConfig.level(_:)`, then use `game_action` with `name: "loadLevel"` and the level number as a string parameter. The debug action uses the same configuration lookup.
 
-```bash
-# Start the game
-mcp__XcodeBuildMCP__build_run_sim
-
-# Navigate to level select
-curl -X POST http://localhost:8765/action \
-  -H "Content-Type: application/json" \
-  -d '{"name":"startGame"}'
-
-# Start your new level
-curl -X POST http://localhost:8765/action \
-  -H "Content-Type: application/json" \
-  -d '{"name":"level_6"}'
-
-# Check game state
-curl http://localhost:8765/state | jq .
-```
-
-### Add Level Action
-
-In `LevelSelectScene+CommandDelegate.swift`, add the action:
-
-```swift
-case "level_6":
-    startLevel(6)
-    return .success("Starting Level 6")
-```
+Use `game_state` to inspect the running level. See [testing.md](testing.md) for gameplay and input checks.
 
 ### Verify Map Loading
 

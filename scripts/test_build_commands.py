@@ -107,8 +107,9 @@ class BuildCommandTests(unittest.TestCase):
     def test_macos_smoke_build_failure_does_not_launch_an_old_app(self):
         self.env["STUB_FAIL"] = "xcodebuild"
         self.env["DERIVED_DATA_PATH"] = str(self.derived)
+        self.env["LOG_DIR"] = str(self.directory / "logs")
         result = subprocess.run(
-            ["bash", str(ROOT / "scripts/test-macos.sh"), "--screenshots-dir", str(self.directory / "screenshots")],
+            ["bash", str(ROOT / "scripts/smoke_macos.sh")],
             cwd=ROOT, env=self.env, capture_output=True, text=True, timeout=20,
         )
         self.assertNotEqual(result.returncode, 0)
