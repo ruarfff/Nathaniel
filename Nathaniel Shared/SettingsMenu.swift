@@ -279,7 +279,7 @@ class SettingsMenu: OverlayMenu {
            nodeContainsPoint(row, point: panelPoint, fallbackSize: rowSize)
         {
             animateButtonPress(row)
-            self.soundEffectsEnabled = !self.soundEffectsEnabled
+            self.soundEffectsEnabled.toggle()
             GameSettings.shared.soundEffectsEnabled = self.soundEffectsEnabled
             self.updateToggle(
                 self.soundEffectsToggle,
@@ -295,7 +295,7 @@ class SettingsMenu: OverlayMenu {
            nodeContainsPoint(row, point: panelPoint, fallbackSize: rowSize)
         {
             animateButtonPress(row)
-            self.musicEnabled = !self.musicEnabled
+            self.musicEnabled.toggle()
             GameSettings.shared.musicEnabled = self.musicEnabled
             self.updateToggle(self.musicToggle, isOn: self.musicEnabled, name: SettingItem.music.rawValue)
             self.onSettingChanged?(.music, self.musicEnabled)

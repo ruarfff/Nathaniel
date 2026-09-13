@@ -107,11 +107,3 @@ swiftlint
 # Auto-fix some lint issues
 swiftlint --fix
 ```
-
-### Bypassing Hooks
-
-If you need to commit without running checks:
-
-```bash
-git commit --no-verify
-```

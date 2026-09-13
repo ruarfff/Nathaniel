@@ -75,7 +75,7 @@ class GameOverlay: SKNode {
         self.subtitleLabel = SKLabelNode(fontNamed: "Helvetica")
         self.subtitleLabel.fontSize = 24
         self.subtitleLabel.fontColor = SKColor(white: 0.9, alpha: 1.0)
-        self.subtitleLabel.position = CGPoint(x: 0, y: 0)
+        self.subtitleLabel.position = CGPoint.zero
         self.subtitleLabel.zPosition = 910
 
         // Instruction label

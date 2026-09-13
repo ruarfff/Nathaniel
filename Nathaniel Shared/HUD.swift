@@ -231,7 +231,7 @@ class HUD: SKNode {
         self.topLeftContainer.addChild(topLeftBg)
 
         // Lives display
-        self.livesLabel.position = CGPoint(x: 0, y: 0)
+        self.livesLabel.position = CGPoint.zero
         self.livesLabel.zPosition = 1
         self.topLeftContainer.addChild(self.livesLabel)
 
@@ -282,7 +282,7 @@ class HUD: SKNode {
         self.selectedLabel.zPosition = 1
         self.bottomContainer.addChild(self.selectedLabel)
 
-        self.selectedCharacterLabel.position = CGPoint(x: 0, y: 0)
+        self.selectedCharacterLabel.position = CGPoint.zero
         self.selectedCharacterLabel.zPosition = 1
         self.bottomContainer.addChild(self.selectedCharacterLabel)
 
@@ -474,7 +474,7 @@ class HUD: SKNode {
 
         // Background panel
         let panelBg = self.createBackgroundPanel(width: panelWidth, height: 65)
-        panelBg.position = CGPoint(x: 0, y: 0)
+        panelBg.position = CGPoint.zero
         container.addChild(panelBg)
 
         let healthBarFrame = CGRect(
