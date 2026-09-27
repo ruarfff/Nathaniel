@@ -18,23 +18,57 @@ anchor_right = 1.0
 offset_left = 16.0
 offset_top = 16.0
 offset_right = -16.0
-offset_bottom = 88.0
+offset_bottom = 144.0
 
 [node name="Row" type="HBoxContainer" parent="Top"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Nathaniel" type="Button" parent="Top/Row"]
+[node name="NathanielColumn" type="VBoxContainer" parent="Top/Row"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Nathaniel" type="Button" parent="Top/Row/NathanielColumn"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(170, 56)
+custom_minimum_size = Vector2(210, 56)
 layout_mode = 2
 text = "Nathaniel"
+focus_mode = 0
+toggle_mode = true
 
-[node name="Hermes" type="Button" parent="Top/Row"]
+[node name="NathanielTarget" type="Label" parent="Top/Row/NathanielColumn"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(170, 56)
 layout_mode = 2
+theme_override_colors/font_color = Color(0.7058824, 0.9019608, 0.6078432, 1)
+theme_override_font_sizes/font_size = 14
+text = "Target: None\nAutomatic targeting"
+horizontal_alignment = 1
+mouse_filter = 2
+
+[node name="HermesColumn" type="VBoxContainer" parent="Top/Row"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Hermes" type="Label" parent="Top/Row/HermesColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(210, 56)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.39607844, 0.9019608, 0.92941177, 1)
 text = "Hermes"
+horizontal_alignment = 1
+vertical_alignment = 1
+mouse_filter = 2
+
+[node name="HermesTarget" type="Label" parent="Top/Row/HermesColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.39607844, 0.9019608, 0.92941177, 1)
+theme_override_font_sizes/font_size = 14
+text = "Target: None\nAutomatic targeting"
+horizontal_alignment = 1
+mouse_filter = 2
 
 [node name="Stats" type="Label" parent="Top/Row"]
 unique_name_in_owner = true
@@ -47,7 +81,9 @@ horizontal_alignment = 1
 unique_name_in_owner = true
 custom_minimum_size = Vector2(92, 56)
 layout_mode = 2
+size_flags_vertical = 0
 text = "Pause"
+focus_mode = 0
 
 [node name="Bottom" type="PanelContainer" parent="."]
 layout_mode = 0
@@ -62,15 +98,25 @@ offset_bottom = -16.0
 
 [node name="Rows" type="VBoxContainer" parent="Bottom"]
 layout_mode = 2
+theme_override_constants/separation = 8
 
 [node name="Status" type="Label" parent="Bottom/Rows"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Click terrain to move • Click an enemy to target"
 horizontal_alignment = 1
+autowrap_mode = 2
 
 [node name="Commands" type="HFlowContainer" parent="Bottom/Rows"]
 unique_name_in_owner = true
+layout_mode = 2
+alignment = 1
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="Towers" type="HFlowContainer" parent="Bottom/Rows"]
+unique_name_in_owner = true
+visible = false
 layout_mode = 2
 alignment = 1
 theme_override_constants/h_separation = 8
@@ -81,9 +127,9 @@ unique_name_in_owner = true
 z_index = 2
 layout_mode = 0
 anchor_left = 0.2
-anchor_top = 0.13
 anchor_right = 0.8
-anchor_bottom = 0.2
+offset_top = 156.0
+offset_bottom = 212.0
 horizontal_alignment = 1
 autowrap_mode = 2
 mouse_filter = 2

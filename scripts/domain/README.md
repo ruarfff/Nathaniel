@@ -14,7 +14,7 @@ setup and tests. `take_events()` consumes presentation/audio events exactly once
 | --- | --- |
 | Move Nathaniel | `move_to(world_point)`, `stop_player()` |
 | Aim/fire Nathaniel | `target_enemy(id)`, `fire_at(world_point)` |
-| Camera selection | `focused_character = "nathaniel"` or `"hermes"` |
+| Saved camera focus | `focused_character = "nathaniel"` or `"hermes"`; presentation focuses Hermes only for Build |
 | Hermes control | `set_hermes_mode("building")` or `"following"` |
 | Build | `placement_error(point)`, `place_tower(kind, point)` |
 | Editor/map setup | `spawn_enemy(kind, point)`, `place_map_tower(kind, point)` |
@@ -35,9 +35,11 @@ is retained in Git history at `824c8f1`. Preserved rules include:
 
 - Campaign starts with three spare lives; survival ends on the first death.
   Losing Hermes ends the game. A boss death wins campaign levels, including waves.
-- Hermes starts stationary, only moves by following Nathaniel, and stops within
+- Hermes starts following Nathaniel, only moves by following him, and stops within
   100 points. Camera focus does not change ground or enemy-target commands.
-- Construction has no distance limit from Hermes. All towers have a 48-point
+- Construction has no distance limit from Hermes. Opening the build menu does
+  not change his mode. A successful placement stops following Hermes; rejected
+  placements preserve his mode and movement. All towers have a 48-point
   footprint. Costs are 5, 10, and 15. Following dismantles surviving owned towers
   and their shots, refunding `floor(paid_cost / 4)` for each tower once.
 - Enemies retain a living target outside sight. Idle acquisition visits players,

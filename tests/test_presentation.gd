@@ -6,6 +6,8 @@ var checks := 0
 
 
 func _initialize() -> void:
+	# Match the verified UI timing baseline while the audio mixer runs separately.
+	Engine.max_fps = 60
 	_run.call_deferred()
 
 
@@ -32,6 +34,7 @@ func _run() -> void:
 		app.set_physics_process(false)
 		check(app.sim.level_number == number, "Configuration matches chosen level")
 		check(app.sim.entities.size() >= 2, "Both players instantiate")
+		check(app.sim.hermes_mode == "following" and not app.ui.build_open, "Fresh level %d starts with Hermes following and Build closed" % number)
 		check(app.sim.lives == (0 if number == 0 else 3), "Level lives preserve source")
 		check(app.level.get_node("Ground") is TileMapLayer, "Native terrain remains editable")
 		check(app.views.size() >= 2, "Player scene views instantiate")
@@ -41,7 +44,7 @@ func _run() -> void:
 	await process_frame
 	app.set_physics_process(false)
 	app.command("focus", "hermes")
-	check(app.sim.focused_character == "hermes" and app.sim.hermes_mode == "building", "Focus never changes Hermes mode")
+	check(app.sim.focused_character == "nathaniel" and app.sim.hermes_mode == "following" and not app.ui.build_open, "Direct Hermes focus is ignored without changing his mode")
 	app.command("follow")
 	check(app.sim.hermes_mode == "following", "Follow button changes mode")
 	app.ui.build_kind = "gun_tower"
@@ -134,6 +137,13 @@ func _run() -> void:
 	check(app.sim.result == "victory" and app.ui.menu != "settings", "Terminal result rejects settings intent")
 	app.game_input._input(key)
 	check(app.sim.level_number == 2, "Any key advances completed campaign level")
+	await _test_controls_regressions(app)
+	_test_pointer_tracking(app)
+	_test_build_mode_commands(app)
+	_test_legacy_build_focus(app, path.path_join("legacy-build-focus"))
+	_test_delivery_feedback(app)
+	_test_target_feedback(app)
+	await _test_target_hud_input(app)
 	_test_slot_menu_paths(app, path.path_join("native-slot-menus"))
 	_test_import_composition(app, path.path_join("legacy-import"))
 	_test_modal_regressions(app)
@@ -148,6 +158,425 @@ func _run() -> void:
 	await create_timer(0.05).timeout
 	print("Presentation integration: %d checks, %d failures" % [checks, failures.size()])
 	quit(0 if failures.is_empty() else 1)
+
+
+func _mouse_button(point: Vector2, pressed: bool) -> void:
+	var motion := InputEventMouseMotion.new()
+	motion.position = point
+	motion.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
+	root.push_input(motion, true)
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
+	event.position = point
+	event.pressed = pressed
+	root.push_input(event, true)
+
+
+func _key_stroke(code: Key) -> void:
+	var event := InputEventKey.new()
+	event.keycode = code
+	event.pressed = true
+	root.push_input(event, true)
+	event.pressed = false
+	root.push_input(event, true)
+
+
+func _test_controls_regressions(app: GameApp) -> void:
+	var previous_size := root.size
+	root.size = Vector2i(1280, 800)
+	root.notify_mouse_entered()
+	app.load_level(0)
+	app.sim.configure({"number": 0, "width": 64, "height": 64, "tile_size": 32,
+		"blocked": [], "player_start": Vector2(640, 640),
+		"hermes_start": Vector2(480, 640), "enemies": [], "wave_based": false})
+	app.fog.enabled = false
+	app.camera_zoom = 1.0
+	app.camera.zoom = Vector2.ONE
+	app._update_camera(1.0, true)
+	app.ui.update_game(app.sim)
+	await process_frame
+	await process_frame
+	var hermes_readout := app.ui.get_node("%Hermes") as Label
+	_mouse_button(hermes_readout.get_global_rect().get_center(), true)
+	_mouse_button(hermes_readout.get_global_rect().get_center(), false)
+	check(app.sim.focused_character == "nathaniel" and not app.ui.build_open and app.sim.nathaniel.destination == null, "Hermes HUD reports state without selecting him or moving Nathaniel behind the HUD")
+	var build_button: Button = app.ui.buttons.build
+	_mouse_button(build_button.get_global_rect().get_center(), true)
+	_mouse_button(build_button.get_global_rect().get_center(), false)
+	check(app.ui.build_open and app.sim.focused_character == "hermes", "Build HUD opens tower choices and focuses the camera on Hermes")
+	_key_stroke(KEY_SPACE)
+	check(app.sim.focused_character == "nathaniel" and not app.ui.build_open, "Space press and release closes Build after clicking its HUD button")
+	_key_stroke(KEY_SPACE)
+	check(app.sim.focused_character == "nathaniel" and not app.ui.build_open, "Repeated Space stays with Nathaniel without a focused HUD button reopening Build")
+	_key_stroke(KEY_B)
+	app.ui.update_game(app.sim)
+	check(app.ui.build_open and build_button.button_pressed and app.sim.focused_character == "hermes", "B opens Build and its HUD selection matches the camera mode")
+	_key_stroke(KEY_B)
+	check(not app.ui.build_open and app.sim.focused_character == "nathaniel", "B closes Build and returns the camera to Nathaniel")
+	var pause_button := app.ui.get_node("%Pause") as Button
+	_mouse_button(pause_button.get_global_rect().get_center(), true)
+	_mouse_button(pause_button.get_global_rect().get_center(), false)
+	_key_stroke(KEY_ESCAPE)
+	_key_stroke(KEY_SPACE)
+	check(app.ui.menu.is_empty() and app.sim.focused_character == "nathaniel", "Space after Pause and Resume cannot reactivate Pause")
+	app.command("follow")
+	app.sim.step(0.5)
+	var following_before: Dictionary = app.sim.hermes.duplicate(true)
+	app.command("build")
+	check(app.sim.hermes_mode == "following" and app.sim.hermes == following_before and app.ui.build_open and app.sim.focused_character == "hermes", "Opening Build preserves Hermes follow movement while showing tower choices")
+	app.ui.update_game(app.sim)
+	await process_frame
+	await process_frame
+	var tower_button: Button = app.ui.buttons.gun_tower
+	var start := tower_button.get_global_rect().get_center()
+	var ground := Vector2(900, 440)
+	var wallet := app.sim.resources
+	check(not tower_button.disabled and tower_button.is_visible_in_tree(), "Tower choices are available while Hermes follows")
+	_mouse_button(start, true)
+	check(app.game_input.drag_kind == "gun_tower" and app.ui.build_kind == "gun_tower", "Tower button press immediately arms placement preview")
+	_key_stroke(KEY_ESCAPE)
+	_mouse_button(ground, false)
+	check(app.sim.resources == wallet and app.ui.build_kind.is_empty() and app.game_input.drag_kind.is_empty() and app.ui.build_open and app.sim.hermes_mode == "following", "Escape cancels a held tower before world release without stopping Hermes or closing Build")
+	_mouse_button(start, true)
+	_key_stroke(KEY_ESCAPE)
+	_mouse_button(start, false)
+	check(app.ui.build_kind.is_empty(), "Releasing on the original tower button cannot rearm canceled placement")
+	_mouse_button(start, true)
+	_mouse_button(hermes_readout.get_global_rect().get_center(), false)
+	check(app.sim.resources == wallet and app.ui.build_kind.is_empty(), "Tower drop over top HUD cannot place behind the controls")
+	_mouse_button(start, true)
+	_mouse_button(Vector2(40, 750), false)
+	check(app.sim.resources == wallet and app.ui.build_kind.is_empty(), "Tower drop over bottom HUD cancels placement")
+	var blocked_world := app.screen_to_world(ground)
+	app.sim.place_map_tower("gunTower", blocked_world)
+	_mouse_button(start, true)
+	_mouse_button(ground, false)
+	check(app.sim.resources == wallet and app.ui.build_kind == "gun_tower" and app.sim.hermes_mode == "following" and app.sim.hermes == following_before, "Rejected tower drag preserves selection and Hermes follow movement for retry")
+	var clear_ground := Vector2(1010, 470)
+	_mouse_button(clear_ground, true)
+	_mouse_button(clear_ground, false)
+	check(app.sim.resources == wallet - 5 and app.ui.build_kind.is_empty() and app.sim.hermes_mode == "building" and not app.sim.hermes.moving and app.sim.hermes.destination == null, "A clear-ground tap retries rejected placement, charges once, and stops Hermes")
+	check(app.ui.build_open and app.sim.focused_character == "hermes", "Successful placement keeps Build available for another tower")
+	app.ui.update_game(app.sim)
+	check(String(app.ui.buttons.follow.text).contains("1"), "Follow displays the rounded refund before dismantling")
+	app.command("follow")
+	check(app.sim.resources == wallet - 4 and not app.ui.build_open and app.sim.focused_character == "nathaniel" and app.sim.hermes_mode == "following", "Follow dismantles the paid tower, refunds one resource, closes Build, and returns to Nathaniel")
+	check(app.ui.get_node("%Notice").text == "Hermes following.", "Follow replaces the old tower-placement notice with Hermes current action")
+	app.command("stop")
+	_mouse_button(ground, true)
+	check(app.sim.nathaniel.destination == null, "Initial touch-compatible press does not issue a movement command")
+	var first := InputEventScreenTouch.new()
+	first.index = 0
+	first.pressed = true
+	first.position = ground
+	app.game_input._input(first)
+	var second := InputEventScreenTouch.new()
+	second.index = 1
+	second.pressed = true
+	second.position = ground + Vector2(80, 0)
+	app.game_input._input(second)
+	first.pressed = false
+	app.game_input._input(first)
+	second.pressed = false
+	app.game_input._input(second)
+	_mouse_button(ground, false)
+	check(app.sim.nathaniel.destination == null, "A two-finger gesture cannot leave a terrain movement command")
+	app.command("build")
+	var destination := app.screen_to_world(Vector2(800, 500))
+	_mouse_button(Vector2(800, 500), true)
+	_mouse_button(Vector2(800, 500), false)
+	check(app.sim.nathaniel.destination is Vector2 and Vector2(app.sim.nathaniel.destination).distance_to(destination) < 0.01 and app.sim.focused_character == "hermes", "Ground tap still moves Nathaniel while Hermes has camera focus")
+	_key_stroke(KEY_ESCAPE)
+	check(not app.ui.build_open and not app.sim.paused and app.sim.focused_character == "nathaniel", "Escape closes Build before pausing gameplay")
+	app.command("stop")
+	_mouse_button(Vector2(800, 500), true)
+	_key_stroke(KEY_ESCAPE)
+	_mouse_button(Vector2(800, 500), false)
+	check(app.sim.nathaniel.destination == null and app.sim.paused, "Pause cancels a pending ground tap")
+	app.command("resume")
+	app.command("hermes_stop")
+	app.command("build")
+	app.world_click(app.world_to_screen(app.sim.nathaniel.position) - Vector2(0, 20))
+	check(app.sim.focused_character == "nathaniel" and not app.ui.build_open, "World character selection closes the build tray like HUD selection")
+	app.command("build")
+	app.ui.update_game(app.sim)
+	await process_frame
+	await process_frame
+	var bridge := GameDebugBridge.new(app)
+	start = tower_button.get_global_rect().get_center()
+	var debug_wallet := app.sim.resources
+	check(bridge.tap(start) and app.ui.build_kind == "gun_tower" and app.game_input.drag_kind.is_empty(), "Debug tower tap arms click placement without a pointer drag")
+	check(bridge.tap(clear_ground) and app.sim.resources == debug_wallet - 5 and app.ui.build_kind.is_empty(), "Debug world tap places the selected tower and charges five resources once")
+	check(not bridge.swipe(start, hermes_readout.get_global_rect().get_center(), 0.2) and app.sim.resources == debug_wallet - 5, "Debug tower swipe rejects destinations covered by HUD controls")
+	check(bridge.swipe(start, Vector2(1060, 380), 0.2) and app.sim.resources == debug_wallet - 10, "Debug tower swipe from an enabled visible button still places once")
+	app.sim.resources = 4
+	app.ui.update_game(app.sim)
+	check(app.ui.buttons.gun_tower.disabled and app.ui.buttons.laser_tower.disabled and app.ui.buttons.heal_tower.disabled, "Unaffordable tower choices are disabled")
+	app.command("stop")
+	check(not bridge.tap(start) and app.ui.build_kind.is_empty() and app.sim.nathaniel.destination == null, "Disabled debug tower tap cannot select a tower or command movement behind the HUD")
+	check(not bridge.swipe(start, ground, 0.2) and app.sim.resources == 4 and app.sim.nathaniel.destination == null, "Disabled debug tower swipe cannot fall through to terrain movement")
+	app.sim.resources = debug_wallet
+	app.ui.update_game(app.sim)
+	app.command("build")
+	app.ui.update_game(app.sim)
+	check(not bridge.swipe(start, ground, 0.2) and app.sim.nathaniel.destination == null, "Hidden debug tower controls cannot start a placement swipe")
+	check(bridge.swipe(Vector2(800, 500), Vector2(820, 500), 0.2) and app.sim.nathaniel.destination is Vector2, "Debug swipes starting in the world retain the terrain-tap fallback")
+	app.command("pause")
+	check(not bridge.tap(start) and app.ui.build_kind.is_empty() and app.sim.resources == debug_wallet, "Paused debug taps cannot activate covered tower controls")
+	app.command("main")
+	app.fog.enabled = app.settings.fog_enabled
+	root.size = previous_size
+	root.notify_mouse_exited()
+	await process_frame
+
+
+func _test_pointer_tracking(app: GameApp) -> void:
+	app.load_level(0)
+	app.sim.configure({"number": 0, "width": 64, "height": 64, "tile_size": 32,
+		"blocked": [], "player_start": Vector2(640, 640),
+		"hermes_start": Vector2(480, 640), "enemies": [], "wave_based": false})
+	app.command("build")
+	var motion := InputEventMouseMotion.new()
+	motion.position = Vector2(900, 440)
+	app.game_input._input(motion)
+	check(app.game_input.pointer_position == motion.position, "Mouse motion updates the cached viewport pointer")
+	var mouse := InputEventMouseButton.new()
+	mouse.button_index = MOUSE_BUTTON_LEFT
+	mouse.position = Vector2(930, 470)
+	mouse.pressed = true
+	app.game_input._input(mouse)
+	check(app.game_input.pointer_position == mouse.position, "Mouse button input updates the pointer without requiring a preceding motion event")
+	app.game_input.begin_tower_drag("gun_tower")
+	check(app.game_input.drag_start == mouse.position, "Tower drag starts at the event position without querying a native mouse")
+	app.game_input.cancel_tower_drag()
+	mouse.pressed = false
+	app.game_input._input(mouse)
+	var touch := InputEventScreenTouch.new()
+	touch.index = 0
+	touch.position = Vector2(550, 350)
+	touch.pressed = true
+	app.game_input._input(touch)
+	check(app.game_input.pointer_position == touch.position, "Touch press updates the cached pointer for touch-only platforms")
+	app.game_input.begin_tower_drag("gun_tower")
+	check(app.game_input.drag_start == touch.position, "A touch-started tower drag uses the current touch position")
+	var drag := InputEventScreenDrag.new()
+	drag.index = 0
+	drag.position = Vector2(580, 370)
+	app.game_input._input(drag)
+	check(app.game_input.pointer_position == drag.position, "Touch drag updates the placement pointer")
+	app._physics_process(0)
+	check(app.effects.placement and app.effects.cursor_world.is_equal_approx(app.screen_to_world(drag.position)), "Tower preview uses the cached touch position in world coordinates")
+	app.game_input.cancel_tower_drag()
+	touch.pressed = false
+	touch.position = Vector2(590, 375)
+	app.game_input._input(touch)
+	check(app.game_input.pointer_position == touch.position and app.game_input.touches.is_empty(), "Touch release retains the final pointer position and clears the active touch")
+	app.command("main")
+
+
+func _test_build_mode_commands(app: GameApp) -> void:
+	app.load_level(0)
+	app.sim.configure({"number": 0, "width": 64, "height": 64, "tile_size": 32,
+		"blocked": [], "player_start": Vector2(640, 640),
+		"hermes_start": Vector2(480, 640), "enemies": [], "wave_based": false})
+	app.command("follow")
+	app.sim.step(0.5)
+	var before: Dictionary = app.sim.snapshot()
+	app.command("gun_tower")
+	check(app.ui.build_kind.is_empty() and not app.place_at("gun_tower", app.world_to_screen(Vector2(1000, 1000))) and app.sim.snapshot() == before, "Closed Build cannot arm or place a tower or interrupt following")
+	app.command("build")
+	app.game_input.begin_tower_drag("gun_tower")
+	check(app.game_input.drag_kind == "gun_tower", "A tower drag can start while Hermes follows")
+	app.command("hermes_stop")
+	check(app.sim.hermes_mode == "building" and not app.sim.hermes.moving and app.ui.build_open and app.sim.focused_character == "hermes" and app.game_input.drag_kind.is_empty() and app.ui.build_kind.is_empty(), "Stop cancels a held placement and stops Hermes while keeping Build open")
+	app.game_input.begin_tower_drag("gun_tower")
+	app.command("focus", "nathaniel")
+	check(not app.ui.build_open and app.sim.focused_character == "nathaniel" and app.game_input.drag_kind.is_empty() and app.ui.build_kind.is_empty(), "Returning to Nathaniel cancels held placement and closes Build")
+	app.command("toggle_hermes")
+	check(app.sim.hermes_mode == "following" and not app.ui.build_open, "Hermes toggle starts following without selecting him")
+	app.command("toggle_hermes")
+	check(app.sim.hermes_mode == "building" and app.sim.focused_character == "nathaniel", "Hermes toggle stops following without selecting him")
+	app.command("main")
+
+
+func _test_legacy_build_focus(app: GameApp, directory: String) -> void:
+	var previous_store := app.save_store
+	app.save_store = GameSaveStore.new(directory)
+	app.load_level(0)
+	app.sim.set_hermes_mode("following")
+	app.sim.focused_character = "hermes"
+	check(app.save_store.save_slot(1, app.sim.snapshot()).success, "Old Hermes-focus fixture writes only temporary storage")
+	app.command("main")
+	app.command("load_slot", 1)
+	check(app.ui.build_open and app.sim.focused_character == "hermes" and app.sim.hermes_mode == "following" and not app.sim.paused, "An old saved Hermes camera restores as Build view without stopping following")
+	app.command("focus")
+	check(not app.ui.build_open and app.sim.focused_character == "nathaniel" and app.sim.hermes_mode == "following", "Return command leaves an old Hermes-focused save in normal Nathaniel control")
+	app.command("main")
+	app.save_store = previous_store
+
+
+func _test_delivery_feedback(app: GameApp) -> void:
+	app.load_level(0)
+	app.sim.configure({"number": 0, "width": 64, "height": 64, "tile_size": 32,
+		"blocked": [], "player_start": Vector2(640, 640),
+		"hermes_start": Vector2(480, 640), "enemies": [], "wave_based": false})
+	app.fog.enabled = false
+	var hermes_click := app.world_to_screen(app.sim.hermes.position) - Vector2(0, 20 * app.camera_zoom)
+	app.world_click(hermes_click)
+	check(app.sim.focused_character == "nathaniel" and not app.ui.build_open and app.sim.nathaniel.destination == null and app.effects.delivery_pulse_time == 0, "Clicking Hermes without carried resources cannot select him, open Build, or issue movement")
+	app.command("build")
+	app.world_click(hermes_click)
+	check(app.sim.focused_character == "hermes" and app.ui.build_open and app.sim.nathaniel.destination == null and app.effects.delivery_pulse_time == 0, "Clicking Hermes without resources in Build view leaves the current mode unchanged")
+	app.command("focus", "nathaniel")
+	var wallet := app.sim.resources
+	app.sim.spawn_resource(10, app.sim.nathaniel.position)
+	app.sim.step(0)
+	check(app.sim.nathaniel.has_corpse and app.sim.resources == wallet, "Delivery feedback fixture collects a corpse without crediting the wallet")
+	app.command("pause")
+	app.world_click(hermes_click)
+	check(app.effects.delivery_pulse_time == 0 and app.sim.nathaniel.destination == null, "Paused Hermes clicks cannot start a delivery order or pulse")
+	app.command("resume")
+	app.command("hermes_stop")
+	app.sim.set_paused(true)
+	app.ui.show_notice("")
+	app.world_click(app.world_to_screen(Vector2(1000, 1000)))
+	check(app.ui.get_node("%Notice").text.is_empty() and app.sim.nathaniel.destination == null, "Paused world movement cannot acknowledge a rejected command without a modal")
+	app.world_click(hermes_click)
+	check(app.effects.delivery_pulse_time == 0 and app.ui.get_node("%Notice").text.is_empty(), "Paused delivery cannot pulse or acknowledge a rejected command without a modal")
+	app.sim.set_paused(false)
+	app.command("follow")
+	app.world_click(hermes_click)
+	check(app.sim.focused_character == "nathaniel" and not app.ui.build_open and app.effects.delivery_pulse_time == 0 and app.sim.nathaniel.destination == null, "Clicking following Hermes cannot select him or start stopped-Hermes delivery")
+	app.command("hermes_stop")
+	app.command("focus", "nathaniel")
+	app.world_click(hermes_click)
+	check(app.sim.focused_character == "nathaniel" and app.sim.nathaniel.destination == app.sim.hermes.position, "Delivery click keeps Nathaniel selected and commands movement to Hermes")
+	check(app.effects.delivery_pulse_position == app.sim.hermes.position and app.effects.delivery_pulse_time == app.effects.delivery_pulse_lifetime, "Delivery order starts a full pulse at Hermes")
+	check(app.sim.resources == wallet and app.sim.nathaniel.has_corpse and app.ui.get_node("%Notice").text == "Returning resources to Hermes.", "Delivery acknowledgement states the pending action without crediting resources early")
+	app.effects._process(app.effects.delivery_pulse_lifetime * 0.5)
+	check(app.effects.delivery_pulse_time > 0 and app.effects.delivery_pulse_time < app.effects.delivery_pulse_lifetime, "Delivery pulse fades over time")
+	app.world_click(hermes_click)
+	check(app.effects.delivery_pulse_time == app.effects.delivery_pulse_lifetime, "Repeated delivery clicks restart the pulse")
+	app.effects._process(app.effects.delivery_pulse_lifetime + 0.1)
+	check(app.effects.delivery_pulse_time == 0 and app.sim.resources == wallet, "Delivery pulse expires without changing the resource wallet")
+	app.command("build")
+	app.world_click(hermes_click)
+	check(app.sim.focused_character == "hermes" and app.ui.build_open and app.sim.nathaniel.destination == app.sim.hermes.position and app.effects.delivery_pulse_time == app.effects.delivery_pulse_lifetime, "Stopped-Hermes delivery still works in Build view without changing camera mode")
+	app.command("main")
+	app.fog.enabled = app.settings.fog_enabled
+
+
+func _test_target_feedback(app: GameApp) -> void:
+	app.load_level(0)
+	app.sim.configure({"number": 0, "width": 64, "height": 64, "tile_size": 32,
+		"blocked": [], "player_start": Vector2(640, 640),
+		"hermes_start": Vector2(480, 640), "enemies": [], "wave_based": false})
+	var soldier := app.sim.spawn_enemy("soldier", Vector2(640, 800))
+	var grunt := app.sim.spawn_enemy("grunt", Vector2(480, 800))
+	app.sim.nathaniel.target_id = grunt.id
+	app.sim.hermes.target_id = grunt.id
+	app.ui.update_game(app.sim)
+	var nathaniel_target := app.ui.get_node("%NathanielTarget") as Label
+	var hermes_target := app.ui.get_node("%HermesTarget") as Label
+	check(nathaniel_target.text.contains("Grunt") and nathaniel_target.text.contains("Auto") and hermes_target.text.contains("Grunt") and hermes_target.text.contains("Auto"), "Both target HUDs identify automatic combat targets")
+	app.command("build")
+	var soldier_click := app.world_to_screen(soldier.position) - Vector2(0, 20 * app.camera_zoom)
+	var grunt_click := app.world_to_screen(grunt.position) - Vector2(0, 20 * app.camera_zoom)
+	app.world_click(soldier_click)
+	check(app.sim.nathaniel.target_id == soldier.id and app.sim.nathaniel.manual_target_id == soldier.id and app.sim.hermes.target_id == grunt.id and app.sim.focused_character == "hermes", "Enemy click commands Nathaniel without changing Hermes target or camera focus")
+	check(app.effects.target_pulse_id == soldier.id and app.effects.target_pulse_time == app.effects.target_pulse_lifetime, "Accepted enemy click starts a target pulse")
+	app.ui.update_game(app.sim)
+	check(nathaniel_target.text.contains("Soldier") and nathaniel_target.text.contains("200 HP") and nathaniel_target.text.contains("Selected") and nathaniel_target.text.contains("In range"), "Nathaniel target HUD identifies the selected enemy, health, and weapon range")
+	check(hermes_target.text.contains("Grunt") and hermes_target.text.contains("Auto"), "Manual Nathaniel targeting leaves Hermes automatic target HUD unchanged")
+	app.effects.fog_enabled = true
+	var markers := app.effects.target_markers()
+	check(markers.size() == 2 and markers[0].target.id == soldier.id and markers[0].label == "N" and markers[1].target.id == grunt.id and markers[1].label == "H", "World markers identify each character's distinct target")
+	app.effects._process(app.effects.target_pulse_lifetime * 0.5)
+	check(app.effects.target_pulse_time > 0 and app.effects.target_pulse_time < app.effects.target_pulse_lifetime, "Target pulse fades over time")
+	app.world_click(soldier_click)
+	check(app.effects.target_pulse_time == app.effects.target_pulse_lifetime, "Repeated enemy clicks restart target acknowledgement")
+	app.effects._process(app.effects.target_pulse_lifetime + 0.1)
+	check(app.effects.target_pulse_time == 0 and app.effects.target_markers().size() == 2, "Pulse expiry retains current target markers")
+	app.command("pause")
+	app.world_click(grunt_click)
+	check(app.effects.target_pulse_time == 0 and app.sim.nathaniel.target_id == soldier.id, "Paused enemy clicks cannot change target or start a pulse")
+	app.command("resume")
+	app.sim.set_paused(true)
+	app.world_click(soldier_click)
+	check(app.effects.target_pulse_time == 0, "A rejected paused command cannot acknowledge the already selected enemy")
+	app.sim.set_paused(false)
+	var player_hp: int = app.sim.nathaniel.hp
+	app.sim.nathaniel.hp = 0
+	app.world_click(soldier_click)
+	app.ui.update_game(app.sim)
+	markers = app.effects.target_markers()
+	check(app.effects.target_pulse_time == 0 and nathaniel_target.text.contains("None") and markers.size() == 1 and markers[0].label == "H", "A down Nathaniel has no target HUD or marker and cannot acknowledge a target order")
+	app.sim.nathaniel.hp = player_hp
+	app.sim.fog.fill(1)
+	app.fog.enabled = false
+	app.world_click(grunt_click)
+	check(app.effects.target_pulse_time == 0 and app.sim.nathaniel.target_id == soldier.id, "A command rejected by domain visibility cannot show an accepted target pulse")
+	app.ui.update_game(app.sim, true)
+	check(nathaniel_target.text.contains("Out of sight") and not nathaniel_target.text.contains("HP") and hermes_target.text.contains("Out of sight") and not hermes_target.text.contains("HP") and app.effects.target_markers().is_empty(), "Fog hides target health and world markers for both characters")
+	app.ui.update_game(app.sim, false)
+	app.effects.fog_enabled = false
+	check(nathaniel_target.text.contains("200 HP") and hermes_target.text.contains("150 HP") and app.effects.target_markers().size() == 2, "Disabling fog restores target information and markers")
+	soldier.position = Vector2(1200, 640)
+	app.sim.damage_entity(soldier.id, 12)
+	app.ui.update_game(app.sim, false)
+	check(nathaniel_target.text.contains("188 HP") and nathaniel_target.text.contains("Out of range"), "Target HUD follows current health and distance instead of stale click state")
+	app.sim.hermes.target_id = soldier.id
+	markers = app.effects.target_markers()
+	check(markers.size() == 2 and markers[0].target.id == soldier.id and markers[1].target.id == soldier.id and markers[0].label == "N" and markers[1].label == "H" and markers[0].color != markers[1].color, "A shared target retains distinct Nathaniel and Hermes markers")
+	app.sim.damage_entity(soldier.id, 1000)
+	app.ui.update_game(app.sim, false)
+	check(nathaniel_target.text.contains("None") and hermes_target.text.contains("None") and app.effects.target_markers().is_empty(), "A destroyed target disappears from both HUDs and world markers immediately")
+	app.sim.damage_entity(grunt.id, 1000)
+	app.sim.step(0)
+	app.sim.nathaniel.target_id = soldier.id
+	app.sim.hermes.target_id = grunt.id
+	app.ui.update_game(app.sim, false)
+	check(app.sim.entity(soldier.id).is_empty() and app.sim.entity(grunt.id).is_empty() and nathaniel_target.text.contains("None") and hermes_target.text.contains("None") and app.effects.target_markers().is_empty(), "Removed targets cannot leave stale HUD or marker state")
+	app.command("main")
+	app.fog.enabled = app.settings.fog_enabled
+	app.effects.fog_enabled = app.settings.fog_enabled
+
+
+func _test_target_hud_input(app: GameApp) -> void:
+	var previous_size := root.size
+	var previous_scale_size := root.content_scale_size
+	root.size = Vector2i(960, 540)
+	root.content_scale_size = Vector2i(960, 540)
+	root.notify_mouse_entered()
+	app.load_level(0)
+	app.sim.configure({"number": 0, "width": 64, "height": 64, "tile_size": 32,
+		"blocked": [], "player_start": Vector2(640, 640),
+		"hermes_start": Vector2(480, 640), "enemies": [], "wave_based": false})
+	var enemy := app.sim.spawn_enemy("spawner", Vector2(640, 800))
+	app.sim.target_enemy(enemy.id)
+	app.sim.hermes.target_id = enemy.id
+	app.ui.update_game(app.sim)
+	await process_frame
+	await process_frame
+	var top: Rect2 = app.ui.get_node("Top").get_global_rect()
+	var nathaniel_target := app.ui.get_node("%NathanielTarget") as Label
+	var hermes_target := app.ui.get_node("%HermesTarget") as Label
+	check(Rect2(Vector2.ZERO, Vector2(960, 540)).encloses(top) and top.encloses(nathaniel_target.get_global_rect()) and top.encloses(hermes_target.get_global_rect()) and top.encloses(app.ui.get_node("%Pause").get_global_rect()), "Target readouts and Pause fit inside the top HUD at 960 by 540")
+	check(app.ui.get_node("%Notice").get_global_rect().position.y >= top.end.y, "Target acknowledgement remains below the top HUD at 960 by 540")
+	for readout: Label in [nathaniel_target, hermes_target]:
+		var point := readout.get_global_rect().get_center()
+		_mouse_button(point, true)
+		_mouse_button(point, false)
+	check(app.sim.nathaniel.destination == null and app.sim.nathaniel.target_id == enemy.id and app.sim.nathaniel.manual_target_id == enemy.id, "Mouse clicks on either target readout cannot move or retarget Nathaniel behind the HUD")
+	app.world_click(app.world_to_screen(Vector2(1000, 800)))
+	app.ui.update_game(app.sim)
+	check(app.sim.nathaniel.destination is Vector2 and app.sim.nathaniel.target_id == enemy.id and app.sim.nathaniel.manual_target_id == -1 and nathaniel_target.text.contains("Auto") and not nathaniel_target.text.contains("Selected"), "A ground movement order changes the retained target from Selected to Auto in the HUD")
+	app.command("main")
+	root.content_scale_size = previous_scale_size
+	root.size = previous_size
+	root.notify_mouse_exited()
+	await process_frame
 
 
 func _test_slot_menu_paths(app: GameApp, directory: String) -> void:
@@ -216,7 +645,7 @@ func _test_modal_regressions(app: GameApp) -> void:
 	app.command("settings")
 	app.command("escape")
 	check(app.ui.menu == "pause", "Escape closes Settings before clearing an old placement")
-	check(app.ui.build_kind.is_empty() and not app.ui.build_open and app.game_input.drag_kind.is_empty(), "Opening a modal cancels placement and pointer drag")
+	check(app.ui.build_kind.is_empty() and not app.ui.build_open and app.game_input.drag_kind.is_empty() and app.sim.focused_character == "nathaniel", "Opening a modal cancels placement and pointer drag and returns the camera to Nathaniel")
 	app.command("escape")
 	check(app.ui.menu.is_empty() and not app.sim.paused, "Second Escape resumes after Settings closes")
 	app.command("pause")

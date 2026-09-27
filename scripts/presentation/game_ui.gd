@@ -5,7 +5,6 @@ signal command(name: String, value: Variant)
 signal tower_drag(kind: String)
 
 var menu := "main"
-var previous_menu := "main"
 var notice_time := 0.0
 var build_kind := ""
 var build_open := false
@@ -17,18 +16,27 @@ func _ready() -> void:
 	resized.connect(_fit_menu)
 	%Content.minimum_size_changed.connect(func() -> void: _fit_menu.call_deferred())
 	%Nathaniel.pressed.connect(func() -> void: command.emit("focus", "nathaniel"))
-	%Hermes.pressed.connect(func() -> void: command.emit("focus", "hermes"))
 	%Pause.pressed.connect(func() -> void: command.emit("pause", null))
+	%Nathaniel.tooltip_text = "Return the camera to Nathaniel and close Build. Space also returns to Nathaniel."
 	%Modal.gui_input.connect(func(event: InputEvent) -> void:
 		if menu in ["victory", "gameOver"] and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			command.emit("continue_result", null)
 	)
-	for item: Array in [["Fire", "fire"], ["Stop [S]", "stop"], ["Follow [R]", "follow"], ["Hermes Stop", "hermes_stop"], ["Build", "build"], ["Gun · 5", "gun_tower"], ["Laser · 10", "laser_tower"], ["Heal · 15", "heal_tower"], ["−", "zoom_out"], ["+", "zoom_in"]]:
-		var button := _button(item[0], %Commands)
+	for item: Array in [["Fire Nathaniel", "fire"], ["Stop Nathaniel [S]", "stop"], ["Follow [R]", "follow"], ["Stop Hermes [R]", "hermes_stop"], ["Build [B]", "build"], ["Gun · 5", "gun_tower"], ["Laser · 10", "laser_tower"], ["Heal · 15", "heal_tower"], ["−", "zoom_out"], ["+", "zoom_in"]]:
+		var is_tower := String(item[1]).ends_with("_tower")
+		var button := _button(item[0], %Towers if is_tower else %Commands)
 		buttons[item[1]] = button
-		button.pressed.connect(func() -> void: command.emit(item[1], null))
-		if String(item[1]).ends_with("_tower"):
+		if is_tower:
+			button.toggle_mode = true
 			button.button_down.connect(func() -> void: tower_drag.emit(item[1]))
+		else:
+			button.pressed.connect(func() -> void: command.emit(item[1], null))
+	buttons.build.toggle_mode = true
+	buttons.fire.tooltip_text = "Nathaniel fires at his current enemy target. F fires toward the pointer."
+	buttons.stop.tooltip_text = "Stop Nathaniel's movement. Automatic combat continues."
+	buttons.hermes_stop.tooltip_text = "Stop Hermes following Nathaniel."
+	buttons.zoom_out.tooltip_text = "Zoom out"
+	buttons.zoom_in.tooltip_text = "Zoom in"
 
 
 func _process(delta: float) -> void:
@@ -38,17 +46,78 @@ func _process(delta: float) -> void:
 			%Notice.text = ""
 
 
-func update_game(sim: GameSimulation) -> void:
-	var separator := "\n" if OS.has_feature("mobile") else "  "
-	%Nathaniel.text = ("Nathaniel%s%d/%d" % [separator, sim.nathaniel.get("hp", 0), sim.nathaniel.get("max_hp", 8000)])
-	%Hermes.text = ("Hermes%s%d/%d" % [separator, sim.hermes.get("hp", 0), sim.hermes.get("max_hp", 2000)])
-	%Stats.text = "RESOURCES %d   ·   LIVES %d   ·   SCORE %d\n%s  %02d:%02d" % [sim.resources, sim.lives, sim.score, "SURVIVAL" if sim.config.get("number", 0) == 0 else "LEVEL %d" % sim.config.get("number", 1), int(sim.elapsed_time) / 60, int(sim.elapsed_time) % 60]
-	%Status.text = "Hermes: %s  ·  Focus: %s  ·  %s" % [sim.hermes_mode.capitalize(), sim.focused_character.capitalize(), "Place %s on clear ground" % build_kind.replace("_", " ") if not build_kind.is_empty() else "Click terrain to move • Select enemies to attack"]
+func update_game(sim: GameSimulation, fog_enabled: bool = true) -> void:
+	%Nathaniel.text = "Nathaniel\n%d / %d" % [sim.nathaniel.get("hp", 0), sim.nathaniel.get("max_hp", 8000)]
+	%Hermes.text = "Hermes\n%d / %d" % [sim.hermes.get("hp", 0), sim.hermes.get("max_hp", 2000)]
+	%NathanielTarget.text = _target_text(sim, sim.nathaniel, fog_enabled)
+	%HermesTarget.text = _target_text(sim, sim.hermes, fog_enabled)
+	%Nathaniel.set_pressed_no_signal(sim.focused_character == "nathaniel")
+	%Stats.text = "Resources %d · Lives %d · Score %d\n%s  %s" % [sim.resources, sim.lives, sim.score, "SURVIVAL" if sim.config.get("number", 0) == 0 else "LEVEL %d" % sim.config.get("number", 1), _time_text(sim.elapsed_time)]
+	var following := sim.hermes_mode == "following"
+	var tower_count := 0
+	var refund := 0
+	for entity: Dictionary in sim.entities:
+		if entity.tower and entity.owned and entity.hp > 0:
+			tower_count += 1
+			refund += int(entity.construction_cost) / 4
+	var instruction := "Ground moves Nathaniel. Select an enemy to attack. Space returns to Nathaniel."
+	if build_open:
+		instruction = "Choose a tower, then clear ground. Placing a tower stops Hermes."
+	if not build_kind.is_empty():
+		instruction = "Place %s on clear ground. Placement stops Hermes. Escape cancels." % build_kind.replace("_", " ")
+	if tower_count > 0:
+		var follow_instruction := "Follow removes %d tower%s; refund: %d." % [tower_count, "" if tower_count == 1 else "s", refund]
+		instruction = instruction + " " + follow_instruction if build_open else follow_instruction
+	var hermes_state := "Following" if following else ("Stopped for towers" if tower_count > 0 else "Stopped")
+	%Status.text = "Nathaniel: %s · Hermes: %s · Camera: %s\n%s" % [_nathaniel_state(sim), hermes_state, sim.focused_character.capitalize(), instruction]
+	%Towers.visible = build_open
 	for kind: String in ["gun_tower", "laser_tower", "heal_tower"]:
-		buttons[kind].disabled = sim.hermes_mode != "building"
-		buttons[kind].visible = build_open and sim.hermes_mode == "building" and sim.focused_character == "hermes"
-	buttons.build.visible = sim.hermes_mode == "building" and sim.focused_character == "hermes"
-	buttons.build.text = "Close Build" if build_open else "Build"
+		var cost := int(GameBalance.COSTS[GameBalance.canonical_kind(kind)])
+		buttons[kind].disabled = sim.resources < cost
+		buttons[kind].set_pressed_no_signal(build_kind == kind)
+		buttons[kind].tooltip_text = "Costs %d resources. %s" % [cost, "Need %d more resources." % (cost - sim.resources) if sim.resources < cost else "Drag onto clear ground, or choose this tower and then its location."]
+	buttons.follow.visible = not following
+	buttons.follow.text = "Follow · +%d [R]" % refund if tower_count > 0 else "Follow [R]"
+	buttons.follow.tooltip_text = "Hermes follows Nathaniel. " + ("Removes %d owned towers and refunds %d resources." % [tower_count, refund] if tower_count > 0 else "")
+	buttons.hermes_stop.visible = following
+	buttons.build.text = "Close Build [B]" if build_open else "Build [B]"
+	buttons.build.set_pressed_no_signal(build_open)
+	buttons.build.tooltip_text = "Close tower choices and return to Nathaniel." if build_open else "Open tower choices and move the camera to Hermes. Hermes stops when you place a tower."
+
+
+func _nathaniel_state(sim: GameSimulation) -> String:
+	var player := sim.nathaniel
+	if player.get("hp", 0) <= 0:
+		return "Down"
+	var moving: bool = player.get("moving", false)
+	var target := sim.entity(int(player.get("target_id", -1)))
+	var targeting := CombatRules.alive(target)
+	var attacking := targeting and CombatRules.distance(player, target) <= float(player.range)
+	if not moving and player.get("destination") != null:
+		return "Blocked"
+	if moving:
+		return "Moving / attacking" if attacking else ("Moving / targeting" if targeting else "Moving")
+	return "Attacking" if attacking else ("Targeting" if targeting else "Idle")
+
+
+func _target_text(sim: GameSimulation, unit: Dictionary, fog_enabled: bool) -> String:
+	if not CombatRules.alive(unit):
+		return "Target: None\nDown"
+	var target := sim.entity(int(unit.get("target_id", -1)))
+	if not CombatRules.alive(target):
+		return "Target: None\nAutomatic targeting"
+	var source := "Selected" if int(unit.get("manual_target_id", -1)) == int(target.id) else "Auto"
+	if fog_enabled and sim.visibility_at(target.position) < 2:
+		return "Target: Out of sight\n%s" % source
+	var reach := "In range" if CombatRules.distance(unit, target) <= float(unit.range) else "Out of range"
+	return "Target: %s · %d HP\n%s · %s" % [String(target.kind).capitalize(), int(target.hp), source, reach]
+
+
+func blocks_world_input(screen: Vector2) -> bool:
+	for panel: Control in [$Top, $Bottom, %Modal]:
+		if panel.is_visible_in_tree() and panel.get_global_rect().has_point(screen):
+			return true
+	return false
 
 
 func show_notice(message: String) -> void:
@@ -163,7 +232,7 @@ func _menu_button(label: String, action: String, value: Variant = null) -> Butto
 func _button(label: String, parent: Node) -> Button:
 	var button := Button.new()
 	button.text = label
-	button.custom_minimum_size = Vector2(60, 60) if OS.has_feature("mobile") else Vector2(52, 44)
+	button.custom_minimum_size = Vector2(60, 48) if _mobile_controls() else Vector2(52, 44)
 	button.focus_mode = Control.FOCUS_NONE
 	parent.add_child(button)
 	return button
@@ -171,7 +240,7 @@ func _button(label: String, parent: Node) -> Button:
 
 func _make_theme() -> Theme:
 	var result := Theme.new()
-	result.default_font_size = 20 if OS.has_feature("mobile") else 16
+	result.default_font_size = 18 if _mobile_controls() else 16
 	var panel := StyleBoxFlat.new()
 	panel.bg_color = Color("142628")
 	panel.border_color = Color("3d5750")
@@ -185,17 +254,31 @@ func _make_theme() -> Theme:
 	normal.bg_color = Color("233b37")
 	normal.content_margin_top = 8
 	normal.content_margin_bottom = 8
+	normal.content_margin_left = 12
+	normal.content_margin_right = 12
 	result.set_stylebox("normal", "Button", normal)
 	var hover := normal.duplicate() as StyleBoxFlat
 	hover.bg_color = Color("395d48")
 	result.set_stylebox("hover", "Button", hover)
-	result.set_stylebox("pressed", "Button", hover)
+	var pressed := hover.duplicate() as StyleBoxFlat
+	pressed.border_color = Color("b4e69b")
+	pressed.set_border_width_all(2)
+	result.set_stylebox("pressed", "Button", pressed)
+	result.set_stylebox("hover_pressed", "Button", pressed)
+	var disabled := normal.duplicate() as StyleBoxFlat
+	disabled.bg_color = Color("192d2a")
+	result.set_stylebox("disabled", "Button", disabled)
+	result.set_color("font_disabled_color", "Button", Color("9aaaa4"))
 	return result
+
+
+func _mobile_controls() -> bool:
+	return OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
 
 
 func _fit_menu() -> void:
 	if not is_node_ready() or size.y <= 0:
 		return
 	var panel := $Modal/Center/Panel as PanelContainer
-	panel.custom_minimum_size.x = minf(520.0 if OS.has_feature("mobile") else 480.0, size.x - 32.0)
+	panel.custom_minimum_size.x = minf(520.0 if _mobile_controls() else 480.0, size.x - 32.0)
 	%Scroll.custom_minimum_size.y = minf(%Content.get_combined_minimum_size().y, maxf(100.0, size.y - 80.0))

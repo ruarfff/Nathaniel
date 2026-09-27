@@ -27,9 +27,9 @@ Presentation tests instantiate the actual scenes and check menu paths, all three
 Use [export instructions](authoring.md#export-and-platform-checks) to build and run macOS and iOS. Launch a debug build with an explicit unused `--storage-dir` before save or progression checks. Add `--debug-port=18766` for state inspection when needed. On each platform:
 
 1. Start a campaign level and survival through visible menus.
-2. Move Nathaniel, target an enemy, and switch camera focus to Hermes.
-3. Stop Hermes, open Build, and drag a tower onto clear ground. Check placement rejection on blocked ground.
-4. Make Hermes follow. Check tower removal and the rounded 25% refund for each surviving paid tower.
+2. Move Nathaniel and target an enemy. Check target feedback and that clicking Hermes cannot select him. With Nathaniel carrying resources, click stopped Hermes and check delivery feedback.
+3. Make Hermes follow, then open Build. Check that the camera focuses Hermes and he keeps following. Reject placement on blocked ground, then place a tower on clear ground; only valid placement stops Hermes. Check that Stop leaves Build open.
+4. Make Hermes follow. Check that Build closes, the camera returns to Nathaniel, towers are removed, and each surviving paid tower refunds its cost divided by four, rounded down. Check B to toggle Build, Space to return to Nathaniel, and Escape to cancel an armed tower before closing Build or pausing.
 5. Pause, open Settings, return, and resume. Exercise save/load and replacement/cancel in the isolated slots.
 6. Check desktop keys and wheel zoom, touch zoom buttons, and two-finger pinch where the available input tool supports it. Check HUD input after zoom.
 7. Scroll long menus; test both a drag over a button and an ordinary tap. Verify the last menu item is reachable.

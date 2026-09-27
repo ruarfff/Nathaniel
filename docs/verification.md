@@ -3,6 +3,168 @@
 Test host: Apple M4 Pro (12 CPU cores), arm64 macOS, Xcode 26.6 (17F113),
 Godot 4.7.2 stable. Results are local measurements, not guarantees for other hardware.
 
+## Controls cleanup review — 2026-09-15
+
+Reviewed the pending controls, feedback, domain/save, and export/debug changes
+with the ponytail skill. Removed unused HUD state, redundant child visibility
+and placement resets, and reused the existing clock formatter. World clicks
+now share the paused/result/living-player guard. Two regression checks failed
+before this fix because paused movement and delivery still showed acceptance
+feedback without a modal; both pass after the fix.
+
+`make test` passed cleanly: 14 Python tests, 171 content checks, 272 gameplay
+assertions, 188 service checks, 231 presentation checks, six MCP adapter tests,
+and 145 live MCP checks. Formatting and diff checks passed. An earlier focused
+presentation run passed assertions but hit the previously recorded engine
+resource-cleanup error at exit; the final full run did not reproduce it.
+
+`make export-web` passed. Real browser mouse and keyboard input at 1280×720
+verified Survival, B Build, gun-tower drag, R Follow/refund (30→25→26), and
+Escape pause. No browser warnings or errors were captured. The preview server
+was restarted after confirming port 8060 was free; isolated storage was kept.
+Native exports and touch were not rerun for this presentation cleanup.
+
+One pre-existing rendering issue remains outside the pending changes:
+`WorldEffects._draw()` always checks fog visibility for corpses, projectiles,
+and laser beams, even when the fog display setting is disabled. The new target
+markers already honor that setting. This was identified by code review only.
+
+## Hermes follows on level start — 2026-09-14
+
+Fresh levels and restarts now start Hermes following Nathaniel. Saved modes
+and the legacy missing-mode fallback remain unchanged. Gameplay passed 272
+assertions, presentation passed 229 checks, and services passed 188 checks with
+temporary storage and normal system access. Coverage includes all six level
+starts, follow movement, restart, and stopped/following save restoration.
+Formatting and diff whitespace checks passed. The initial sandboxed gameplay
+run passed assertions but failed on log/certificate access; the normal-access
+rerun exited cleanly.
+
+`make export-web` passed. The refreshed browser showed Following immediately
+after real mouse starts of campaign and survival, and R changed it to Stopped.
+The existing server and isolated preview storage were reused. Native exports,
+native input, touch, and the full suite were not rerun for this default change.
+
+## Hermes Build controls — 2026-09-14
+
+Hermes is no longer selectable. Build opens the tower tray and focuses the
+camera on Hermes without changing his movement mode. A valid placement stops
+him; invalid placement preserves his mode. Build stays open for more towers.
+Space or Close Build returns to Nathaniel. Follow closes Build, removes towers,
+and applies the existing refund. Old saves retain their format and Hermes mode;
+saved Hermes camera focus reopens Build.
+
+The suites passed 171 content checks, 267 gameplay assertions, 188 service
+checks, 14 Python tests, six MCP adapter tests, and 145 live MCP checks.
+The final presentation suite passed 223 checks with temporary storage.
+An initial live check found a one-frame stale Build tray after Follow; the
+controller now refreshes it immediately. One earlier presentation run passed
+assertions but logged an engine resource-cleanup error at exit; separate
+reruns exited cleanly. Its cause remains unconfirmed.
+
+Web, macOS, and iOS exports passed with normal system access. Real browser
+mouse and keyboard input verified Build while following, blocked placement,
+click and drag placement, retained Build after placement, Space, and R Follow.
+The final web and macOS reruns both verified B, tower drag, and R with resources
+30→25→26. Both showed the updated Follow notice. The macOS app exited cleanly;
+the browser reported no warnings or errors. All playtests used isolated saves.
+The existing web server was reused and the main preview was refreshed.
+
+The ARM64 iOS Simulator Debug build ran on iPhone 17 Pro / iOS 26.5. Debug
+commands and viewport images verified Build, placement, and Follow/refund.
+Mouse polling in game scripts was replaced with cached mouse/touch event
+positions, covered by regression tests. One unsupported `mouse_get_position()`
+engine error still occurred at Simulator startup; no script errors or repeated
+engine errors appeared during the checks. The remaining caller is unknown.
+Real touch, pinch, mobile browser input, and physical devices were not tested.
+
+## Combat target feedback — 2026-09-14
+
+The native presentation suite passed 198 checks and the content suite passed
+171 checks with normal system access and temporary storage. New coverage
+includes accepted/rejected target clicks, pulse expiry, selected/automatic
+targets, range, health, fog, dead/removed targets, shared markers, HUD input
+capture, and layout at 960×540. Formatting and diff whitespace checks passed.
+
+`make export-web` passed. In the rebuilt browser at 1280×720, real mouse and
+keyboard input verified click pulses, separate and shared N/H target markers,
+live health readouts, Selected/Auto labels, and Space camera switching after
+HUD input. Clicking an enemy with Hermes focused still commanded Nathaniel
+and retained Hermes's automatic target. The browser reported no warnings or
+errors. Setup used a disposable save with stationary harmless enemies, loaded
+through the visible menu. The existing server and preview storage were reused.
+
+Native exports, physical touch, mobile browser input, and the full suite were
+not rerun for this presentation-only change. Mobile layout has automated
+coverage; this does not establish touch behavior.
+
+## Resource delivery feedback — 2026-09-14
+
+The presentation suite passed 175 checks with temporary storage and normal
+system access. Ten new checks cover delivery acknowledgement, retained focus,
+pending resource credit, pulse restart/expiry, pause, and ordinary Hermes
+selection. Formatting passed. An initial sandboxed run passed assertions but
+failed on certificate/log access and engine cleanup; the normal-access run
+exited cleanly.
+
+`make export-web` passed. A temporary save with Nathaniel carrying resources
+was loaded through the browser menu at 1280×720. A real mouse click on stopped
+Hermes showed a cyan pulse and the delivery message, kept Nathaniel selected,
+and sent him to Hermes. Resources changed from 30 to 40 on arrival. The pulse
+expired. This used a separate temporary browser filesystem; existing saves
+were preserved. Native exports, touch, and the full suite were not rerun for
+this presentation-only change.
+
+## Character controls — 2026-09-14
+
+This run used the same Apple M4 Pro host, Godot 4.7.2, and Xcode 27.0
+(27A266a). `make test` passed: 171 content checks, 237 gameplay assertions,
+188 storage/HTTP checks, 165 presentation checks, 14 Python tests, six MCP
+adapter tests, and 133 live MCP checks. Formatting and diff whitespace checks
+passed. New regressions cover small destination corrections, blocked movement,
+keyboard press/release after HUD clicks, tower cancellation/retry, HUD input
+capture, pinch-start cancellation, and debug input parity.
+
+An initial uncapped presentation run passed its assertions but failed at audio
+resource cleanup. Separate uncapped reruns did not reproduce it. The suite now
+uses the previously verified 60 FPS timing limit; the final full run exited
+cleanly. This does not establish the cause of the intermittent engine cleanup
+error or change production audio behavior.
+
+`make export-web` passed with normal macOS service access. Real mouse and
+keyboard input in the Codex browser at 1280×800 verified HUD selection, Space
+switching after a character click, terrain commands while Hermes has camera
+focus, enemy targeting with Hermes focused, valid/blocked destination feedback,
+S stop, R follow, Stop + Build,
+tower drag placement, HUD drop rejection, blocked-drop retry, and Escape
+pause/resume. Two gun towers changed resources 30→25→20; Follow removed them
+and refunded two resources, reaching 22. Wheel zoom retained usable HUD input.
+Terrain, characters, combat, placement previews, and selection states rendered.
+Saving slot 1 in the isolated browser directory, refreshing, and loading it
+restored 30 resources, Hermes camera focus, and Following mode. This checks a
+normal reload, not immediate durable writes or browser-restart persistence.
+
+The browser initially retained the old PCK despite refreshing the newly
+exported HTML. Package inspection confirmed the export contained current code.
+Web exports now give the PCK a content-hashed filename and update the shell's
+`mainPack` reference. A normal refresh then loaded the current HUD. The existing
+server on port 8060 was reused. The generated preview shell uses an isolated
+`user://playtests/controls-01a0a275` storage directory; a new export restores the
+standard shell arguments. Early checks used a disposable browser `/tmp` path.
+
+`make export-macos` and `make export-ios` passed. The macOS release ran with
+temporary storage and real mouse/keyboard input: Survival, HUD selection,
+Space, movement, S stop, R follow, Stop + Build, tower drag, refund 30→25→26,
+and Escape pause. It exited successfully. The ARM64 Simulator Debug build
+passed and ran on iPhone 17 Pro / iOS 26.5 with a fresh container temporary
+directory. Debug setup and viewport PNGs established native mobile rendering;
+they are not real touch checks. Simulator could not be selected by the
+available computer-input tool in this run.
+
+Real touch, pinch, mobile browser input, physical-device behavior, audio output,
+and performance were not verified in this run. Touch cancellation has synthetic
+event coverage only. Simulator images are in ignored `test-artifacts/controls/`.
+
 ## Desktop browser preview — 2026-09-13
 
 `make export-web` passed with the matching official single-thread release

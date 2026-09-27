@@ -8,11 +8,13 @@ var checks: int = 0
 func _initialize() -> void:
 	_test_lives_and_outcomes()
 	_test_hermes_and_towers()
+	_test_build_while_following()
 	_test_resources()
 	_test_combat()
 	_test_targeting_and_update_order()
 	_test_spawners_and_waves()
 	_test_navigation_and_restore()
+	_test_movement_commands()
 	_test_real_campaign_routes()
 	_test_encounter_parameters()
 	_test_fog()
@@ -85,16 +87,20 @@ func _test_lives_and_outcomes() -> void:
 
 func _test_hermes_and_towers() -> void:
 	var sim: GameSimulation = _game()
+	_check(sim.hermes_mode == "following", "Hermes follows by default on a fresh level")
 	sim.nathaniel.position = Vector2(1600, 242)
 	sim.step(1)
-	_check(sim.hermes.position == Vector2(600, 242) and sim.hermes_mode == "building", "Hermes starts stationary")
-	sim.set_hermes_mode("following")
-	sim.step(1)
 	_check(Vector2(sim.hermes.position).distance_to(Vector2(640, 242)) < 0.01, "Hermes follows at 40 points/second without teleporting")
+	var following_restore := GameSimulation.new()
+	_check(following_restore.restore(sim.snapshot()) and following_restore.hermes_mode == "following", "Saved follow mode restores")
+	following_restore.step(1)
+	_check(Vector2(following_restore.hermes.position).distance_to(Vector2(680, 242)) < 0.01, "Restored Hermes continues following from his saved position")
 	sim.nathaniel.position = Vector2(740, 242)
 	sim.step(1)
 	_check(sim.hermes.position == Vector2(640, 242), "Hermes stops at 100 points")
 	sim.set_hermes_mode("building")
+	sim.configure(sim.level)
+	_check(sim.hermes_mode == "following", "Restarting a level resets stopped Hermes to following")
 	_check(sim.place_tower("gun_tower", Vector2(1000, 1000)), "Tower builds without Hermes radius")
 	_check(sim.resources == 25, "Gun costs 5")
 	_check(not sim.place_tower("gunTower", Vector2(1040, 1000)), "Overlapping towers rejected")
@@ -107,7 +113,7 @@ func _test_hermes_and_towers() -> void:
 	_check(sim.entities.size() == 3 and map_tower.hp == 600, "Follow dismantles only owned towers")
 	sim.set_hermes_mode("following")
 	_check(sim.resources == 6, "Follow refunds only once")
-	_check(not sim.place_tower("gunTower", Vector2(1000, 1000)), "Follow forbids building")
+	_check(sim.place_tower("gunTower", Vector2(1000, 1000)) and sim.hermes_mode == "building", "Following can start a new deployment")
 	sim = _game()
 	_check(sim.placement_error(Vector2(24, 24)) == "valid", "Tower may touch map edge")
 	_check(sim.placement_error(Vector2(23.5, 96)) == "blockedByTerrain", "Tower footprint cannot cross map edge")
@@ -123,14 +129,60 @@ func _test_hermes_and_towers() -> void:
 	_check(sim.place_tower("gunTower", Vector2(1000, 1000)), "Owned restore setup")
 	sim.entities.back().construction_cost = 11
 	var saved: Dictionary = sim.snapshot()
+	var stopped_restore := GameSimulation.new()
+	_check(stopped_restore.restore(saved) and stopped_restore.hermes_mode == "building" and stopped_restore.resources == 25 and stopped_restore.entities.size() == 3, "Loading stopped Hermes preserves his tower and wallet despite the new-level follow default")
+	var legacy_saved: Dictionary = saved.duplicate(true)
+	legacy_saved.erase("hermes_mode")
+	_check(stopped_restore.restore(legacy_saved) and stopped_restore.hermes_mode == "building" and stopped_restore.entities.size() == 3, "Missing saved Hermes mode keeps the legacy stopped default and its tower")
 	saved.hermes_mode = "following"
 	var restored := GameSimulation.new()
 	_check(restored.restore(saved), "Following deployment restores")
 	_check(restored.resources == 27 and restored.entities.size() == 2, "Saved paid cost refund")
 	_check(restored.restore(restored.snapshot()) and restored.resources == 27, "Refund cannot duplicate on second restore")
 
+func _test_build_while_following() -> void:
+	for reason: String in ["unknown_kind", "terrain", "character", "enemy", "tower", "resource", "cost", "paused", "game_over", "victory", "dead_hermes"]:
+		var rejected: GameSimulation = _game()
+		rejected.set_hermes_mode("following")
+		rejected.step(0.5)
+		var kind := "gunTower"
+		var position := Vector2(1000, 1000)
+		match reason:
+			"unknown_kind": kind = "unknown"
+			"terrain": position = Vector2(-32, -32)
+			"character": position = rejected.nathaniel.position
+			"enemy": rejected.spawn_enemy("soldier", position)
+			"tower": rejected.place_map_tower("gunTower", position)
+			"resource": rejected.spawn_resource(10, position)
+			"cost": rejected.resources = 4
+			"paused": rejected.set_paused(true)
+			"game_over": rejected.result = "gameOver"
+			"victory": rejected.result = "victory"
+			"dead_hermes": rejected.hermes.hp = 0
+		var before: Dictionary = rejected.snapshot()
+		rejected.take_events()
+		_check(not rejected.place_tower(kind, position), "Following placement rejects %s" % reason)
+		_check(rejected.snapshot() == before and rejected.take_events().is_empty(), "Rejected %s placement preserves mode, movement, resources and entities" % reason)
+	var sim: GameSimulation = _game()
+	sim.set_hermes_mode("following")
+	sim.step(0.5)
+	var hermes_position: Vector2 = sim.hermes.position
+	_check(sim.hermes.moving and sim.hermes.destination != null, "Hermes is moving before the first placement")
+	_check(sim.place_tower("gunTower", Vector2(1000, 1000)), "First placement succeeds while Hermes follows")
+	_check(sim.hermes_mode == "building" and not sim.hermes.moving and sim.hermes.destination == null and sim.hermes.follow_destination == null, "Successful placement immediately cancels Hermes follow movement")
+	_check(sim.resources == 25 and sim.entities.size() == 3 and sim.entities.back().owned, "Successful placement charges once and owns the new tower")
+	sim.step(1.0)
+	_check(sim.hermes.position == hermes_position, "Hermes stays at his placement-time position")
+	sim.set_hermes_mode("following")
+	_check(sim.entities.size() == 2 and sim.resources == 26, "Following clears the new deployment with its existing quarter-cost refund")
+	sim.set_hermes_mode("following")
+	_check(sim.resources == 26, "Following the new deployment refunds only once")
+	sim.step(0.5)
+	_check(sim.hermes.moving and sim.hermes.position != hermes_position, "Hermes resumes following after dismantling")
+
 func _test_resources() -> void:
 	var sim: GameSimulation = _game(0)
+	sim.set_hermes_mode("building")
 	for kind: String in ["grunt", "boss", "spawner", "soldier"]:
 		var enemy: Dictionary = sim.spawn_enemy(kind, Vector2(1000, 1000))
 		sim.damage_entity(int(enemy.id), int(enemy.max_hp))
@@ -213,6 +265,7 @@ func _test_combat() -> void:
 		_check(not laser.firing, "Laser stops out of range")
 		sim = _game()
 		sim.nathaniel.delay = 100000.0
+		sim.set_hermes_mode("building")
 		sim.hermes.position = Vector2(1000, 1000)
 		sim.hermes.cooldown = 3.5
 		enemy = sim.spawn_enemy("grunt", Vector2(1200, 1000))
@@ -391,6 +444,43 @@ func _test_navigation_and_restore() -> void:
 	invalid.entities.append(invalid.entities[0].duplicate())
 	var before: Vector2 = restored.nathaniel.position
 	_check(not restored.restore(invalid) and restored.nathaniel.position == before, "Invalid duplicate-id save rejected without mutation")
+
+func _test_movement_commands() -> void:
+	var sim: GameSimulation = _game()
+	sim.move_to(Vector2(400, 400))
+	sim.move_to(Vector2(410, 400))
+	_check(sim.nathaniel.destination == Vector2(410, 400), "Explicit movement accepts a nearby replacement destination")
+	sim = _game()
+	sim.nathaniel.position = Vector2(48, 48)
+	var tower: Dictionary = sim.place_map_tower("healTower", Vector2(128, 48))
+	sim.move_to(tower.position)
+	_advance(sim, 2)
+	var blocked_position: Vector2 = sim.nathaniel.position
+	_advance(sim, 0.5)
+	_check(sim.nathaniel.position == blocked_position and not sim.nathaniel.moving, "Blocked direct movement stops the walking state")
+	_check(sim.nathaniel.destination == tower.position and sim.nathaniel.direct_movement, "Blocked movement retains its requested destination and collision fallback")
+	sim.damage_entity(int(tower.id), int(tower.max_hp))
+	_advance(sim, 2)
+	_check(sim.nathaniel.position == Vector2(128, 48) and sim.nathaniel.destination == null, "Blocked command resumes after its tower obstacle is removed")
+	var config: Dictionary = sim.level.duplicate(true)
+	config.player_start = Vector2(400, 48)
+	config.hermes_start = Vector2(48, 48)
+	for y: int in int(config.height):
+		config.blocked.append(Vector2i(3, y))
+	sim.configure(config)
+	sim.set_hermes_mode("following")
+	_advance(sim, 3)
+	blocked_position = sim.hermes.position
+	_check(not sim.hermes.moving and sim.hermes.destination == Vector2(400, 48), "Blocked Hermes retains a follow destination without walking in place")
+	sim.nathaniel.position = Vector2(420, 48)
+	sim.step(0.1)
+	_check(sim.hermes.position == blocked_position and sim.hermes.destination == Vector2(400, 48), "Blocked Hermes retains the existing route for nearby leader movement")
+	sim.nathaniel.position = Vector2(520, 48)
+	sim.step(0.1)
+	_check(sim.hermes.destination == Vector2(520, 48), "Blocked Hermes refreshes the route when Nathaniel moves beyond the follow threshold")
+	sim.set_hermes_mode("building")
+	sim.step(0.1)
+	_check(sim.hermes.position == blocked_position and sim.hermes.destination == null, "Stop cancels a blocked Hermes follow command")
 
 func _test_fog() -> void:
 	var sim: GameSimulation = _game()

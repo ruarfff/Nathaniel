@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import argparse
 import configparser
+import hashlib
+import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -86,6 +89,29 @@ def configure_unsigned_ios(path: Path) -> None:
         preset.write(stream)
 
 
+def fingerprint_web_pack(output: Path) -> None:
+    """Give each pack version its own URL so browser reloads use current content."""
+    html = output.read_text()
+    marker = "const GODOT_CONFIG = "
+    start = html.index(marker) + len(marker)
+    config, length = json.JSONDecoder().raw_decode(html[start:])
+    pack = output.with_suffix(".pck")
+    contents = pack.read_bytes()
+    digest = hashlib.sha256(contents).hexdigest()[:16]
+    fingerprinted = pack.with_name(f"{pack.stem}-{digest}.pck")
+    config["mainPack"] = fingerprinted.name
+    config["fileSizes"].pop(pack.name, None)
+    config["fileSizes"][fingerprinted.name] = len(contents)
+    updated = html[:start] + json.dumps(config, separators=(",", ":")) + html[start + length :]
+    pack.replace(fingerprinted)
+    output.write_text(updated)
+    for previous in output.parent.glob(f"{pack.stem}-*.pck"):
+        if previous != fingerprinted and re.fullmatch(
+            re.escape(pack.stem) + r"-[0-9a-f]{16}\.pck", previous.name
+        ):
+            previous.unlink()
+
+
 def export(
     platform: str,
     output: Path,
@@ -160,6 +186,8 @@ def export(
         if status:
             print(f"Export failed ({status}). See {log}.", file=sys.stderr)
         else:
+            if platform == "Web":
+                fingerprint_web_pack(output)
             artifact = output.with_suffix(".xcodeproj") if platform == "iOS" else output
             print(f"Export complete: {artifact}", flush=True)
         return status

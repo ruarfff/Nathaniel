@@ -18,7 +18,7 @@ var lives: int = 3
 var elapsed_time: float = 0.0
 var result: String = "playing"
 var paused: bool = false
-var hermes_mode: String = "building"
+var hermes_mode: String = "following"
 var focused_character: String = "nathaniel"
 var wave_elapsed: float = 0.0
 var wave_since_last_spawn: float = 0.0
@@ -61,7 +61,7 @@ func configure(config: Dictionary) -> void:
 	wave_since_last_spawn = 0.0
 	result = "playing"
 	paused = false
-	hermes_mode = "building"
+	hermes_mode = "following"
 	focused_character = "nathaniel"
 	random.seed = int(level.get("seed", 137))
 	var start: Vector2 = point(level.get("player_start", Vector2(84, 242)))
@@ -210,7 +210,7 @@ func _update_follow(robot: Dictionary) -> void:
 	if hermes_mode != "following" or not CombatRules.alive(nathaniel) or CombatRules.distance(robot, nathaniel) <= 100.0:
 		_stop(robot)
 		return
-	if not robot.moving or robot.follow_destination == null or Vector2(robot.follow_destination).distance_to(nathaniel.position) > 100.0:
+	if robot.destination == null or robot.follow_destination == null or Vector2(robot.follow_destination).distance_to(nathaniel.position) > 100.0:
 		robot.follow_destination = nathaniel.position
 		_command_move(robot, nathaniel.position)
 
@@ -219,6 +219,7 @@ func move_to(destination: Vector2) -> void:
 		return
 	# Focusing Hermes only changes the camera. All ground commands move Nathaniel.
 	nathaniel.manual_target_id = -1
+	_stop(nathaniel)
 	_command_move(nathaniel, destination)
 
 func move_player_direction(direction: Vector2, delta: float) -> void:
@@ -276,7 +277,7 @@ func _move(unit: Dictionary, delta: float) -> void:
 		unit.navigation_revision = navigation.revision
 	var budget: float = float(unit.speed) * delta
 	var route: Array = unit.path
-	unit.moving = not route.is_empty()
+	unit.moving = false
 	while budget > 0.0 and not route.is_empty():
 		var target: Vector2 = route[0]
 		var position: Vector2 = unit.position
@@ -295,9 +296,9 @@ func _move(unit: Dictionary, delta: float) -> void:
 					break
 			else:
 				unit.navigation_revision = -1
-				unit.moving = false
 				break
 		if proposed != position:
+			unit.moving = true
 			unit.facing = (proposed - position).normalized()
 		unit.position = proposed
 		budget -= step_distance
@@ -356,11 +357,12 @@ func placement_error(position: Vector2) -> String:
 
 func place_tower(kind: String, position: Vector2) -> bool:
 	kind = GameBalance.canonical_kind(kind)
-	if paused or result != "playing" or kind not in GameBalance.TOWERS or hermes_mode != "building" or not CombatRules.alive(hermes):
+	if paused or result != "playing" or kind not in GameBalance.TOWERS or not CombatRules.alive(hermes):
 		return false
 	var cost: int = int(GameBalance.COSTS[kind])
 	if resources < cost or placement_error(position) != "valid":
 		return false
+	set_hermes_mode("building")
 	resources -= cost
 	var tower: Dictionary = place_map_tower(kind, position)
 	tower.owned = true

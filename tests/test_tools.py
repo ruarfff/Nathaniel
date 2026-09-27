@@ -2,6 +2,7 @@
 
 import contextlib
 import io
+import json
 import shlex
 import subprocess
 import tempfile
@@ -176,7 +177,10 @@ class ProjectToolTests(unittest.TestCase):
                     )
                     log = Path(command[command.index("--log-file") + 1])
                     self.assertFalse(log.is_relative_to(output.parent))
-                    output.write_text("<html>export fixture</html>")
+                    output.write_text(
+                        'const GODOT_CONFIG = {"fileSizes":{"index.pck":7,"index.wasm":8},"executable":"index"};\n'
+                    )
+                    output.with_suffix(".pck").write_bytes(b"fixture")
                     stdout.write("Export fixture complete\n")
                     return subprocess.CompletedProcess(command, 0)
 
@@ -199,12 +203,85 @@ class ProjectToolTests(unittest.TestCase):
                         "Web", output, str(engine), templates, release=release
                     )
                 self.assertEqual(status, 0)
-                self.assertEqual(
-                    {path.name for path in output.parent.iterdir()}, {"index.html"}
+                config = json.loads(
+                    output.read_text().removeprefix("const GODOT_CONFIG = ").strip(";\n")
                 )
+                self.assertEqual(
+                    {path.name for path in output.parent.iterdir()},
+                    {"index.html", config["mainPack"]},
+                )
+                self.assertEqual(config["fileSizes"][config["mainPack"]], 7)
                 self.assertTrue(
                     (output.parent.parent / "web-export.stdout.log").is_file()
                 )
+
+    def test_web_pack_url_tracks_content_and_preserves_shell_without_extra_packs(self):
+        output = self.directory / "index.html"
+        prefix = '<!DOCTYPE html>\n<script src="index.js"></script>\nconst GODOT_CONFIG = '
+        suffix = ';\nconst engine = new Engine(GODOT_CONFIG);\n'
+        config = {
+            "executable": "index",
+            "fileSizes": {"index.pck": 0, "index.wasm": 123},
+            "args": ["--", "--storage-dir=/tmp/test-only"],
+            "focusCanvas": True,
+        }
+        unrelated = self.directory / "index-manual.pck"
+        unrelated.write_bytes(b"unrelated pack")
+        names = []
+        for contents in (b"first build", b"second build", b"second build"):
+            output.write_text(prefix + json.dumps(config) + suffix)
+            output.with_suffix(".pck").write_bytes(contents)
+            export_project.fingerprint_web_pack(output)
+            html = output.read_text()
+            self.assertTrue(html.startswith(prefix))
+            self.assertTrue(html.endswith(suffix))
+            updated = json.loads(html[len(prefix) : -len(suffix)])
+            name = updated["mainPack"]
+            names.append(name)
+            self.assertRegex(name, r"^index-[0-9a-f]{16}\.pck$")
+            self.assertEqual((self.directory / name).read_bytes(), contents)
+            self.assertEqual(updated["fileSizes"], {"index.wasm": 123, name: len(contents)})
+            self.assertEqual(updated["args"], config["args"])
+            self.assertTrue(updated["focusCanvas"])
+            self.assertEqual(updated["executable"], "index")
+            self.assertEqual(
+                {path.name for path in self.directory.glob("*.pck")},
+                {name, unrelated.name},
+            )
+        self.assertNotEqual(names[0], names[1])
+        self.assertEqual(names[1], names[2])
+        self.assertEqual(unrelated.read_bytes(), b"unrelated pack")
+
+    def test_web_pack_rejects_unknown_shell_before_renaming_pack(self):
+        output = self.directory / "index.html"
+        output.write_text("<html>missing Godot configuration</html>")
+        pack = output.with_suffix(".pck")
+        pack.write_bytes(b"preserve this export")
+        with self.assertRaises(ValueError):
+            export_project.fingerprint_web_pack(output)
+        self.assertEqual(pack.read_bytes(), b"preserve this export")
+
+    def test_native_exports_do_not_process_a_web_shell(self):
+        engine = self.directory / "godot"
+        engine.write_text("local engine stand-in")
+        templates = self.directory / "templates"
+        templates.mkdir()
+        for platform, template in (("macOS", "macos.zip"), ("iOS", "ios.zip")):
+            with self.subTest(platform=platform):
+                (templates / template).write_bytes(b"template stand-in")
+                with (
+                    mock.patch.object(export_project, "PROJECT", self.source),
+                    mock.patch.object(export_project.shutil, "which", return_value=str(engine)),
+                    mock.patch.object(export_project.subprocess, "check_output", return_value=export_project.VERSION),
+                    mock.patch.object(export_project.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)),
+                    mock.patch.object(export_project, "fingerprint_web_pack") as fingerprint,
+                    contextlib.redirect_stdout(io.StringIO()),
+                ):
+                    status = export_project.export(
+                        platform, self.directory / "output/Nathaniel.zip", str(engine), templates
+                    )
+                self.assertEqual(status, 0)
+                fingerprint.assert_not_called()
 
     def test_web_command_defaults_to_index_html(self):
         with (

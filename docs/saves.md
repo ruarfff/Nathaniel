@@ -18,6 +18,8 @@ destinations, health, target IDs, towers and their actual costs, weapon phase,
 projectiles, spawner production, carried/loose corpses, resource wallet, score,
 spare lives, wave phase, explored fog, focus, and random generator state. Loading
 rebuilds tower obstacles before requesting routes. A loaded session resumes play.
+Older saves with Hermes camera focus reopen the Build menu without changing his
+saved following/stopped mode. The saved focus field and format remain unchanged.
 
 ## Storage identity
 

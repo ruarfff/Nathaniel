@@ -25,8 +25,11 @@ port. Rebuild with `make export-web` after changing the game, then reload the
 page. `make clean` removes generated web exports as well as native exports.
 
 The HTML, JavaScript, WebAssembly, pack, and icons in `exports/web/` form the
-static site. Keep their names and relative paths together. Opening `index.html`
-as a local file does not work; it must be served over HTTP or HTTPS.
+static site. The pack name includes a content hash, such as
+`index-0123456789abcdef.pck`, so a changed export cannot reuse an old cached game.
+The export updates the HTML reference and removes older generated packs. Keep
+these names and relative paths together. Opening `index.html` as a local file
+does not work; it must be served over HTTP or HTTPS.
 
 ## Browser behavior
 
@@ -41,11 +44,35 @@ as a local file does not work; it must be served over HTTP or HTTPS.
 - The native debug HTTP/MCP server cannot run in a browser because it requires
   a TCP listener. Swift-save import remains a native command-line workflow;
   browser file upload and save download are not implemented.
-- Browser tabs can suspend game processing while hidden. Mobile browsers need
-  separate input and performance checks; native iOS acceptance does not prove
-  browser acceptance. The current layout checks the native `mobile` feature,
-  which is false in web exports; phone browsers currently get desktop control
-  sizes. A mobile browser pass must handle `web_ios` and `web_android` as well.
+- Browser tabs can suspend game processing while hidden. Mobile browsers use
+  the touch layout through `web_ios` and `web_android`, as native apps do through
+  `mobile`. Mobile browser input and performance still need separate checks;
+  native iOS acceptance does not prove browser acceptance.
+
+## Character controls
+
+Select Nathaniel in the HUD or on the map, or press Space, to return the camera
+to him and close Build. Hermes cannot be selected directly. Ground taps and
+enemy selections always command Nathaniel, including while Build focuses the
+camera on Hermes. S stops Nathaniel; automatic combat
+continues. Right-click or F fires toward the pointer. A destination ring marks a
+movement order; a crossed ring and notice identify a destination without a clear
+route. Nathaniel keeps moving as far as the existing collision rules allow.
+
+R switches Hermes between following and stopped. Build, or B, focuses the camera
+on Hermes and opens the tower choices without stopping him. Drag a tower onto
+clear ground, or select its button and then tap the location. A valid placement
+stops Hermes and leaves Build open. A rejected drop keeps the tower selected for
+another attempt and does not stop Hermes. HUD drops cancel placement. B closes
+Build and returns the camera to Nathaniel. Escape first cancels an armed tower,
+then closes Build, then pauses.
+
+Stop stops Hermes without closing Build. Follow closes Build, returns the camera
+to Nathaniel, removes surviving owned towers, and refunds 25% of each tower's
+paid cost, rounded down; the HUD shows the total first.
+
+Terrain commands apply on release. A pointer drag or a second touch cancels the
+pending terrain tap so camera gestures do not also issue movement orders.
 
 ## Hosting
 

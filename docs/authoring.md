@@ -92,7 +92,8 @@ Hermes has separate idle and moving sheets with its original frame mapping.
 
 Open `scenes/effects/world_effects.tscn` and select its root. The Inspector
 groups corpse size and opacity, projectile radius and colors, laser width and
-height, event-ring lifetime and expansion, and placement-preview size and colors.
+height, event-ring lifetime and expansion, delivery/target pulse timing,
+character target colors, and placement-preview size and colors.
 The application instantiates this reusable scene for its effects layer. Change
 the scene's properties and run a level with F6 to inspect the result. Duplicate
 the scene for a variant and select that scene in `GameApp`'s effects preload.

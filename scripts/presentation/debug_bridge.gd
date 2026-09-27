@@ -122,7 +122,7 @@ func action(name: String, params: Dictionary) -> Dictionary:
 					var mode: String = params.get("mode", "")
 					if mode not in ["following", "independent"] or sim.paused or sim.hermes.hp <= 0:
 						return {"success": false, "error": "Expected following or independent while Hermes is alive and playing"}
-					sim.set_hermes_mode(mode)
+					app.command("follow" if mode == "following" else "hermes_stop")
 				_:
 					return {"success": false, "error": "Unknown action"}
 	return {"success": true}
@@ -137,6 +137,10 @@ func _tap_control(node: Node, point: Vector2) -> bool:
 		if not app.ui.menu.is_empty() and not app.ui.get_node("Modal").is_ancestor_of(node):
 			return false
 		if _visible_rect(node).has_point(point):
+			for kind: String in ["gun_tower", "laser_tower", "heal_tower"]:
+				if node == app.ui.buttons[kind]:
+					app.command(kind)
+					return true
 			if node.toggle_mode:
 				node.set_pressed_no_signal(not node.button_pressed)
 				node.toggled.emit(node.button_pressed)
@@ -159,7 +163,7 @@ func _visible_rect(control: Control) -> Rect2:
 
 
 func _tap_world(point: Vector2) -> bool:
-	if app.sim == null or not app.ui.menu.is_empty():
+	if app.sim == null or not app.ui.menu.is_empty() or app.ui.blocks_world_input(point):
 		return false
 	app.world_click(point)
 	return true
@@ -167,7 +171,10 @@ func _tap_world(point: Vector2) -> bool:
 
 func swipe(from: Vector2, to: Vector2, _duration: float) -> bool:
 	for kind: String in ["gun_tower", "laser_tower", "heal_tower"]:
-		if app.ui.buttons[kind].get_global_rect().has_point(from):
+		var button: Button = app.ui.buttons[kind]
+		if button.get_global_rect().has_point(from):
+			if not button.is_visible_in_tree() or button.disabled or not app.ui.menu.is_empty() or app.ui.blocks_world_input(to):
+				return false
 			return app.place_at(kind, to)
 	return tap(to)
 

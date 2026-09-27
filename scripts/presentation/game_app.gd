@@ -25,7 +25,7 @@ var _scenery: Node2D
 
 
 func _ready() -> void:
-	if OS.has_feature("mobile"):
+	if OS.has_feature("mobile") or OS.has_feature("web_ios") or OS.has_feature("web_android"):
 		get_tree().root.content_scale_size = Vector2i(960, 540)
 	for argument: String in OS.get_cmdline_user_args():
 		if argument.begins_with("--storage-dir="):
@@ -90,11 +90,14 @@ func start_level_scene(new_level: GameLevel) -> void:
 	sim = GameSimulation.new()
 	sim.configure(level.data())
 	effects.simulation = sim
+	effects.delivery_pulse_time = 0.0
+	effects.target_pulse_time = 0.0
+	effects.target_pulse_id = -1
 	fog.simulation = sim
 	_displayed_result = "playing"
-	ui.build_kind = ""
 	ui.build_open = false
-	game_input.drag_kind = ""
+	game_input.cancel_tower_drag()
+	ui.show_notice("")
 	ui.show_menu("")
 	return_menu = "pause"
 	camera.position = IsoProjection.project(sim.nathaniel.position)
@@ -126,12 +129,13 @@ func _physics_process(delta: float) -> void:
 		elif event.get("type", "") == "respawn" and sim.result == "playing":
 			ui.show_notice("Life lost · %d spare lives remain" % sim.lives)
 	_sync_views()
-	ui.update_game(sim)
+	ui.update_game(sim, fog.enabled)
+	effects.fog_enabled = fog.enabled
 	_update_camera(delta)
-	effects.placement = not ui.build_kind.is_empty() and ui.menu.is_empty()
-	effects.cursor_world = screen_to_world(get_viewport().get_mouse_position())
+	effects.placement = not ui.build_kind.is_empty() and ui.menu.is_empty() and not ui.blocks_world_input(game_input.pointer_position)
+	effects.cursor_world = screen_to_world(game_input.pointer_position)
 	if effects.placement:
-		effects.placement_valid = sim.placement_error(effects.cursor_world) == "valid"
+		effects.placement_valid = sim.resources >= int(GameBalance.COSTS.get(GameBalance.canonical_kind(ui.build_kind), 0)) and sim.placement_error(effects.cursor_world) == "valid"
 	if sim.result != "playing" and sim.result != "paused" and _displayed_result != sim.result:
 		_displayed_result = sim.result
 		if sim.result == "victory":
@@ -158,7 +162,7 @@ func _sync_views() -> void:
 			$World/Actors.add_child(view)
 			views[id] = view
 		var actor: ActorView = views[id]
-		actor.apply_state(entity, entity.kind == sim.focused_character)
+		actor.apply_state(entity, entity.kind == "nathaniel")
 		actor.visible = entity.kind in ["nathaniel", "hermes"] or not fog.enabled or sim.visibility_at(entity.position) == 2
 	for id: int in views.keys():
 		if not live.has(id):
@@ -181,7 +185,7 @@ func world_to_screen(world: Vector2) -> Vector2:
 
 
 func world_click(screen: Vector2) -> void:
-	if sim == null or not ui.menu.is_empty():
+	if sim == null or not ui.menu.is_empty() or sim.paused or sim.result != "playing" or not CombatRules.alive(sim.nathaniel):
 		return
 	if not ui.build_kind.is_empty():
 		if place_at(ui.build_kind, screen):
@@ -199,20 +203,37 @@ func world_click(screen: Vector2) -> void:
 	if target_id >= 0:
 		var entity: Dictionary = sim.entity(target_id)
 		if entity.kind == "nathaniel":
-			sim.focused_character = "nathaniel"
+			command("focus", "nathaniel")
 		elif entity.kind == "hermes":
-			if sim.focused_character == "nathaniel" and sim.nathaniel.get("has_corpse", false) and sim.hermes_mode == "building":
-				sim.move_to(entity.position)
+			if sim.nathaniel.get("has_corpse", false) and sim.hermes_mode == "building":
+				_move_nathaniel(entity.position)
+				effects.pulse_delivery(entity.position)
+				if not sim.nathaniel.direct_movement:
+					ui.show_notice("Returning resources to Hermes.")
 			else:
-				sim.focused_character = "hermes"
+				ui.show_notice("Use Build to place towers, or Stop / Follow to direct Hermes.")
 		elif entity.kind in ["grunt", "soldier", "boss", "spawner"]:
+			if sim.visibility_at(entity.position) != 2:
+				ui.show_notice("Target is out of sight.")
+				return
 			sim.target_enemy(target_id)
+			effects.pulse_target(target_id)
+			ui.show_notice("Nathaniel targeting %s." % String(entity.kind).capitalize())
 	else:
-		sim.move_to(screen_to_world(screen))
+		_move_nathaniel(screen_to_world(screen))
+
+
+func _move_nathaniel(world: Vector2) -> void:
+	sim.move_to(world)
+	ui.show_notice("No clear route. Nathaniel will move as far as possible." if sim.nathaniel.direct_movement else "Moving Nathaniel.")
 
 
 func place_at(kind: String, screen: Vector2) -> bool:
-	if sim == null or not ui.menu.is_empty():
+	if sim == null or not ui.menu.is_empty() or not ui.build_open or sim.paused or sim.result != "playing":
+		return false
+	var cost := int(GameBalance.COSTS.get(GameBalance.canonical_kind(kind), 0))
+	if sim.resources < cost:
+		ui.show_notice("Need %d resources to build this tower; you have %d." % [cost, sim.resources])
 		return false
 	var world := screen_to_world(screen)
 	var error := sim.placement_error(world)
@@ -220,8 +241,10 @@ func place_at(kind: String, screen: Vector2) -> bool:
 		ui.show_notice({"blockedByTerrain": "Choose clear ground away from the map edge.", "overlapsStructure": "A tower is already here.", "overlapsEnemy": "An enemy blocks this location.", "overlapsCharacter": "A character blocks this location.", "overlapsResource": "Collect the corpse before building here."}.get(error, error))
 		return false
 	var placed := sim.place_tower(kind, world)
-	if not placed:
-		ui.show_notice("Not enough resources, or Hermes is not in build mode.")
+	if placed:
+		ui.show_notice("Tower placed. Hermes stopped. Follow removes built towers and refunds part of their cost.")
+	else:
+		ui.show_notice("Could not place this tower.")
 	return placed
 
 
@@ -256,9 +279,8 @@ func show_main() -> void:
 	effects.simulation = null
 	fog.simulation = null
 	effects.placement = false
-	ui.build_kind = ""
 	ui.build_open = false
-	game_input.drag_kind = ""
+	game_input.cancel_tower_drag()
 	ui.show_menu("main", {"in_game": false, "continue_level": progress.continue_level(), "has_progress": int(progress.data.highest_level_completed) > 0})
 	audio.play_music("menuMusic")
 	return_menu = "main"
@@ -268,9 +290,7 @@ func command(action: String, value: Variant = null) -> void:
 	if sim != null and sim.result in ["victory", "gameOver"] and action not in ["main", "level", "quit", "continue_result"]:
 		return
 	if action in ["pause", "settings", "credits", "save_menu", "load_menu", "resume", "exit_menu"]:
-		ui.build_kind = ""
-		ui.build_open = false
-		game_input.drag_kind = ""
+		_set_build_open(false)
 	match action:
 		"main":
 			show_main()
@@ -336,8 +356,10 @@ func command(action: String, value: Variant = null) -> void:
 		"quit":
 			get_tree().quit()
 		"escape":
-			if not ui.build_kind.is_empty():
-				ui.build_kind = ""
+			if not ui.build_kind.is_empty() or not game_input.drag_kind.is_empty():
+				game_input.cancel_tower_drag()
+			elif ui.build_open:
+				_set_build_open(false)
 			elif ui.menu.is_empty():
 				command("pause")
 			elif ui.menu == "pause":
@@ -356,45 +378,45 @@ func command(action: String, value: Variant = null) -> void:
 			_game_command(action, value)
 
 
+func _set_build_open(open: bool) -> void:
+	ui.build_open = open
+	game_input.cancel_tower_drag()
+	if sim != null:
+		sim.focused_character = "hermes" if open else "nathaniel"
+		ui.update_game(sim, fog.enabled)
+
+
 func _game_command(action: String, value: Variant) -> void:
-	if sim == null or not ui.menu.is_empty():
+	if sim == null or not ui.menu.is_empty() or sim.paused:
 		return
 	match action:
 		"focus":
-			sim.focused_character = value
-			if value == "nathaniel":
-				ui.build_kind = ""
-				ui.build_open = false
-				game_input.drag_kind = ""
-		"switch_focus":
-			sim.focused_character = "hermes" if sim.focused_character == "nathaniel" else "nathaniel"
-			ui.build_kind = ""
-			ui.build_open = false
-			game_input.drag_kind = ""
+			if value == null or value == "nathaniel":
+				_set_build_open(false)
 		"fire":
+			if int(sim.nathaniel.target_id) < 0:
+				ui.show_notice("Select an enemy for Nathaniel, or aim with right-click / F.")
 			sim.fire()
 		"fire_at_pointer":
-			sim.fire_at(screen_to_world(get_viewport().get_mouse_position()))
+			if not ui.blocks_world_input(game_input.pointer_position):
+				sim.fire_at(screen_to_world(game_input.pointer_position))
 		"stop":
 			sim.stop_player()
+			ui.show_notice("Nathaniel stopped.")
 		"follow":
 			sim.set_hermes_mode("following")
-			ui.build_kind = ""
-			ui.build_open = false
-			game_input.drag_kind = ""
+			_set_build_open(false)
+			ui.show_notice("Hermes following.")
 		"hermes_stop":
 			sim.set_hermes_mode("stopped")
+			game_input.cancel_tower_drag()
 		"build":
-			if sim.hermes_mode == "building" and sim.focused_character == "hermes":
-				ui.build_open = not ui.build_open
-				ui.build_kind = ""
+			_set_build_open(not ui.build_open)
 		"toggle_hermes":
-			sim.set_hermes_mode("stopped" if sim.hermes_mode == "following" else "following")
-			ui.build_kind = ""
-			ui.build_open = false
-			game_input.drag_kind = ""
+			command("hermes_stop" if sim.hermes_mode == "following" else "follow")
 		"gun_tower", "laser_tower", "heal_tower":
-			ui.build_kind = action
+			if ui.build_open:
+				ui.build_kind = action
 		"zoom_in":
 			change_zoom(1.15)
 		"zoom_out":
@@ -421,6 +443,7 @@ func _load(slot: int) -> void:
 	if not sim.restore(snapshot):
 		ui.show_notice("Save could not be restored")
 		return
+	_set_build_open(sim.focused_character == "hermes")
 	sim.set_paused(false)
 	ui.show_menu("")
 	_sync_views()

@@ -25,6 +25,15 @@ extends Node2D
 @export_range(0.1, 32.0) var transient_line_width: float = 2.0
 @export var transient_color := Color(1, 0.6, 0.2, 0.75)
 
+@export_group("Delivery Order Pulse")
+@export_range(0.1, 3.0, 0.05) var delivery_pulse_lifetime: float = 0.9
+@export var delivery_pulse_color := Color("65e6ed")
+
+@export_group("Combat Targets")
+@export_range(0.1, 3.0, 0.05) var target_pulse_lifetime: float = 0.75
+@export var nathaniel_target_color := Color("b4e69b")
+@export var hermes_target_color := Color("65e6ed")
+
 @export_group("Placement Preview")
 @export var placement_half_extents := Vector2(48, 24)
 @export_range(0.1, 32.0) var placement_line_width: float = 2.0
@@ -36,13 +45,68 @@ var transients: Array[Dictionary] = []
 var cursor_world := Vector2.ZERO
 var placement := false
 var placement_valid := false
+var delivery_pulse_time := 0.0
+var delivery_pulse_position := Vector2.ZERO
+var target_pulse_id := -1
+var target_pulse_time := 0.0
+var fog_enabled := true
 
 
 func _process(delta: float) -> void:
+	delivery_pulse_time = maxf(0.0, delivery_pulse_time - delta)
+	target_pulse_time = maxf(0.0, target_pulse_time - delta)
 	for effect: Dictionary in transients:
 		effect.life -= delta
 	transients = transients.filter(func(effect: Dictionary) -> bool: return effect.life > 0)
 	queue_redraw()
+
+
+func pulse_delivery(world: Vector2) -> void:
+	delivery_pulse_position = world
+	delivery_pulse_time = delivery_pulse_lifetime
+	queue_redraw()
+
+
+func pulse_target(id: int) -> void:
+	target_pulse_id = id
+	target_pulse_time = target_pulse_lifetime
+	queue_redraw()
+
+
+func target_markers() -> Array[Dictionary]:
+	var markers: Array[Dictionary] = []
+	if simulation == null:
+		return markers
+	for unit: Dictionary in [simulation.nathaniel, simulation.hermes]:
+		var target := simulation.entity(int(unit.get("target_id", -1)))
+		if not CombatRules.alive(unit) or not CombatRules.alive(target) or not target.get("enemy", false):
+			continue
+		if fog_enabled and simulation.visibility_at(target.position) != 2:
+			continue
+		var is_nathaniel: bool = unit.kind == "nathaniel"
+		markers.append({"target": target, "label": "N" if is_nathaniel else "H",
+			"color": nathaniel_target_color if is_nathaniel else hermes_target_color})
+	return markers
+
+
+func _draw_target_markers() -> void:
+	for marker: Dictionary in target_markers():
+		var target: Dictionary = marker.target
+		var point := IsoProjection.project(target.position)
+		var is_nathaniel: bool = marker.label == "N"
+		var radius := maxf(34.0, float(target.radius) + 12.0) + (0.0 if is_nathaniel else 8.0)
+		var color: Color = marker.color
+		var outline := Color("101c20")
+		draw_set_transform(point, 0.0, Vector2(1.0, 0.5))
+		draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, outline, 5.0, true)
+		draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, color, 2.5, true)
+		if is_nathaniel and int(target.id) == target_pulse_id and target_pulse_time > 0.0:
+			var remaining := target_pulse_time / target_pulse_lifetime
+			draw_arc(Vector2.ZERO, radius + 45.0 * remaining * remaining, 0.0, TAU, 64, Color(color, remaining), 4.0, true)
+		draw_set_transform(Vector2.ZERO)
+		var label_point := point + Vector2(-radius - 22.0 if is_nathaniel else radius + 5.0, 6.0)
+		draw_rect(Rect2(label_point - Vector2(3, 16), Vector2(20, 22)), outline)
+		draw_string(ThemeDB.fallback_font, label_point, marker.label, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, color)
 
 
 func add_events(events: Array) -> void:
@@ -53,6 +117,15 @@ func add_events(events: Array) -> void:
 
 func _draw() -> void:
 	if simulation != null:
+		var destination: Variant = simulation.nathaniel.get("destination")
+		if destination is Vector2:
+			var point := IsoProjection.project(destination)
+			var blocked: bool = simulation.nathaniel.direct_movement or not simulation.nathaniel.moving
+			var color := invalid_placement_color if blocked else valid_placement_color
+			draw_arc(point, 12, 0, TAU, 32, color, 2, true)
+			if blocked:
+				draw_line(point - Vector2(6, 6), point + Vector2(6, 6), color, 2, true)
+				draw_line(point - Vector2(-6, 6), point + Vector2(-6, 6), color, 2, true)
 		for corpse: Dictionary in simulation.corpses:
 			if simulation.visibility_at(corpse.position) == 2:
 				var point := IsoProjection.project(corpse.position)
@@ -66,6 +139,17 @@ func _draw() -> void:
 				var target: Dictionary = simulation.entity(unit.target_id)
 				if not target.is_empty() and target.hp > 0 and simulation.visibility_at(unit.position) == 2:
 					draw_line(IsoProjection.project(unit.position) - Vector2(0, laser_height), IsoProjection.project(target.position) - Vector2(0, laser_height), enemy_laser_color if unit.enemy else friendly_laser_color, laser_width, true)
+		if delivery_pulse_time > 0.0:
+			var elapsed := 1.0 - delivery_pulse_time / delivery_pulse_lifetime
+			draw_set_transform(IsoProjection.project(delivery_pulse_position), 0.0, Vector2(1.0, 0.5))
+			for delay: float in [0.0, 0.25]:
+				var phase := (elapsed - delay) / 0.75
+				if phase >= 0.0 and phase < 1.0:
+					var radius := lerpf(30.0, 90.0, 1.0 - pow(1.0 - phase, 2.0))
+					var color := Color(delivery_pulse_color, (1.0 - phase) * delivery_pulse_color.a)
+					draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, color, 3.0, true)
+			draw_set_transform(Vector2.ZERO)
+		_draw_target_markers()
 	for effect: Dictionary in transients:
 		if effect.position is Vector2:
 			var radius: float = transient_start_radius + (transient_lifetime - float(effect.life)) * transient_growth_speed

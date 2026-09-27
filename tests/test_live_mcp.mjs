@@ -61,6 +61,16 @@ try {
   await action('setHermesMode', { mode: 'independent' });
   check((await call('game_state')).hermesMode === 'independent', 'Hermes independent mode preserves protocol spelling');
   await action('setHermesMode', { mode: 'following' });
+  const build = (await call('game_nodes')).find(node => /^Build\b/.test(node.name));
+  check(Boolean(build) && build.interactive, 'Build is available while Hermes follows');
+  await call('game_tap', { node: build.name });
+  const building = await call('game_state');
+  check(building.selectedCharacter === 'hermes' && building.hermesMode === 'following', 'Build focuses Hermes without stopping him');
+  check((await call('game_nodes')).some(node => /^Gun ·/.test(node.name)), 'Build exposes tower choices through named controls');
+  await action('setHermesMode', { mode: 'following' });
+  const following = await call('game_state');
+  check(following.selectedCharacter === 'nathaniel' && following.hermesMode === 'following', 'External Follow returns the camera to Nathaniel');
+  check(!(await call('game_nodes')).some(node => /^(Gun|Laser|Heal) ·/.test(node.name)), 'External Follow closes the build tray');
   const worldNodes = await call('game_nodes');
   check(worldNodes.some(node => node.name === 'nathaniel'), 'World entity can be located by name');
   const player = worldNodes.find(node => node.name === 'nathaniel').frame;
