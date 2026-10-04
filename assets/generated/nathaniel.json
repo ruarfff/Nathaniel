@@ -1,0 +1,1142 @@
+{
+  "source": "art/blender/sources/nathaniel.blend",
+  "source_sha256": "9f0202b35f87ae926bcca31659b04c66ebfbec4130749ee0e36c3e3d5cf573f9",
+  "settings_sha256": "fa80b56083f8af2d5c000e7ff9dba0eac9b6a64161d5cb3f83f34023a209cdef",
+  "blender_version": "5.2.2 LTS",
+  "python_version": "3.13.15",
+  "canvas": [
+    648,
+    681
+  ],
+  "anchor": [
+    324,
+    586
+  ],
+  "trimmed": true,
+  "logical_canvas": [
+    81.0,
+    85.125
+  ],
+  "logical_anchor": [
+    40.5,
+    73.25
+  ],
+  "render_density": 8,
+  "profile": "iron_ink",
+  "world_points_per_unit": 32,
+  "blender_xy_basis_pixels": [
+    [
+      -256,
+      128
+    ],
+    [
+      256,
+      128
+    ]
+  ],
+  "logical_xy_from_blender": [
+    "32 * Y",
+    "32 * X"
+  ],
+  "dependencies": [
+    "Blender (bundled bpy and Python standard library)"
+  ],
+  "crop_origin": [
+    188,
+    182
+  ],
+  "uncropped_canvas": [
+    1024,
+    1024
+  ],
+  "uncropped_anchor": [
+    512,
+    768
+  ],
+  "animation": {
+    "directions": 8,
+    "clips": [
+      {
+        "name": "idle",
+        "frames": [
+          1
+        ],
+        "fps": 1,
+        "loop": true
+      },
+      {
+        "name": "walk",
+        "frames": [
+          10,
+          12,
+          14,
+          16
+        ],
+        "fps": 8,
+        "loop": true
+      },
+      {
+        "name": "fire",
+        "frames": [
+          30,
+          32
+        ],
+        "fps": 10,
+        "loop": false
+      }
+    ]
+  },
+  "atlas_pages": [
+    {
+      "file": "nathaniel_atlas_0.png",
+      "canvas": [
+        4029,
+        3362
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "animation": "idle_0",
+      "source_frame": 1,
+      "unique_frame": 0,
+      "page": 0,
+      "region": [
+        2299,
+        16,
+        349,
+        653
+      ],
+      "margin": [
+        192,
+        5,
+        299,
+        28
+      ]
+    },
+    {
+      "animation": "walk_0",
+      "source_frame": 10,
+      "unique_frame": 1,
+      "page": 0,
+      "region": [
+        16,
+        16,
+        351,
+        675
+      ],
+      "margin": [
+        189,
+        6,
+        297,
+        6
+      ]
+    },
+    {
+      "animation": "walk_0",
+      "source_frame": 12,
+      "unique_frame": 2,
+      "page": 0,
+      "region": [
+        2680,
+        16,
+        349,
+        653
+      ],
+      "margin": [
+        192,
+        5,
+        299,
+        28
+      ]
+    },
+    {
+      "animation": "walk_0",
+      "source_frame": 14,
+      "unique_frame": 3,
+      "page": 0,
+      "region": [
+        824,
+        723,
+        356,
+        644
+      ],
+      "margin": [
+        187,
+        3,
+        292,
+        37
+      ]
+    },
+    {
+      "animation": "walk_0",
+      "source_frame": 16,
+      "unique_frame": 4,
+      "page": 0,
+      "region": [
+        3241,
+        2069,
+        349,
+        620
+      ],
+      "margin": [
+        192,
+        5,
+        299,
+        61
+      ]
+    },
+    {
+      "animation": "fire_0",
+      "source_frame": 30,
+      "unique_frame": 5,
+      "page": 0,
+      "region": [
+        1514,
+        16,
+        340,
+        658
+      ],
+      "margin": [
+        183,
+        0,
+        308,
+        23
+      ]
+    },
+    {
+      "animation": "fire_0",
+      "source_frame": 32,
+      "unique_frame": 0,
+      "page": 0,
+      "region": [
+        2299,
+        16,
+        349,
+        653
+      ],
+      "margin": [
+        192,
+        5,
+        299,
+        28
+      ]
+    },
+    {
+      "animation": "idle_1",
+      "source_frame": 1,
+      "unique_frame": 6,
+      "page": 0,
+      "region": [
+        2963,
+        723,
+        312,
+        629
+      ],
+      "margin": [
+        168,
+        12,
+        336,
+        52
+      ]
+    },
+    {
+      "animation": "walk_1",
+      "source_frame": 10,
+      "unique_frame": 7,
+      "page": 0,
+      "region": [
+        824,
+        16,
+        313,
+        663
+      ],
+      "margin": [
+        165,
+        11,
+        335,
+        18
+      ]
+    },
+    {
+      "animation": "walk_1",
+      "source_frame": 12,
+      "unique_frame": 8,
+      "page": 0,
+      "region": [
+        3307,
+        723,
+        312,
+        629
+      ],
+      "margin": [
+        168,
+        12,
+        336,
+        52
+      ]
+    },
+    {
+      "animation": "walk_1",
+      "source_frame": 14,
+      "unique_frame": 9,
+      "page": 0,
+      "region": [
+        1169,
+        16,
+        313,
+        663
+      ],
+      "margin": [
+        171,
+        11,
+        335,
+        18
+      ]
+    },
+    {
+      "animation": "walk_1",
+      "source_frame": 16,
+      "unique_frame": 10,
+      "page": 0,
+      "region": [
+        3651,
+        723,
+        312,
+        629
+      ],
+      "margin": [
+        168,
+        12,
+        336,
+        52
+      ]
+    },
+    {
+      "animation": "fire_1",
+      "source_frame": 30,
+      "unique_frame": 11,
+      "page": 0,
+      "region": [
+        1643,
+        723,
+        312,
+        637
+      ],
+      "margin": [
+        168,
+        4,
+        336,
+        44
+      ]
+    },
+    {
+      "animation": "fire_1",
+      "source_frame": 32,
+      "unique_frame": 6,
+      "page": 0,
+      "region": [
+        2963,
+        723,
+        312,
+        629
+      ],
+      "margin": [
+        168,
+        12,
+        336,
+        52
+      ]
+    },
+    {
+      "animation": "idle_2",
+      "source_frame": 1,
+      "unique_frame": 12,
+      "page": 0,
+      "region": [
+        3061,
+        16,
+        391,
+        653
+      ],
+      "margin": [
+        63,
+        5,
+        257,
+        28
+      ]
+    },
+    {
+      "animation": "walk_2",
+      "source_frame": 10,
+      "unique_frame": 13,
+      "page": 0,
+      "region": [
+        1212,
+        723,
+        399,
+        644
+      ],
+      "margin": [
+        62,
+        3,
+        249,
+        37
+      ]
+    },
+    {
+      "animation": "walk_2",
+      "source_frame": 12,
+      "unique_frame": 14,
+      "page": 0,
+      "region": [
+        3622,
+        2069,
+        391,
+        620
+      ],
+      "margin": [
+        63,
+        5,
+        257,
+        61
+      ]
+    },
+    {
+      "animation": "walk_2",
+      "source_frame": 14,
+      "unique_frame": 15,
+      "page": 0,
+      "region": [
+        399,
+        16,
+        393,
+        675
+      ],
+      "margin": [
+        64,
+        6,
+        255,
+        6
+      ]
+    },
+    {
+      "animation": "walk_2",
+      "source_frame": 16,
+      "unique_frame": 16,
+      "page": 0,
+      "region": [
+        3484,
+        16,
+        391,
+        653
+      ],
+      "margin": [
+        63,
+        5,
+        257,
+        28
+      ]
+    },
+    {
+      "animation": "fire_2",
+      "source_frame": 30,
+      "unique_frame": 17,
+      "page": 0,
+      "region": [
+        1886,
+        16,
+        381,
+        658
+      ],
+      "margin": [
+        82,
+        0,
+        267,
+        23
+      ]
+    },
+    {
+      "animation": "fire_2",
+      "source_frame": 32,
+      "unique_frame": 12,
+      "page": 0,
+      "region": [
+        3061,
+        16,
+        391,
+        653
+      ],
+      "margin": [
+        63,
+        5,
+        257,
+        28
+      ]
+    },
+    {
+      "animation": "idle_3",
+      "source_frame": 1,
+      "unique_frame": 18,
+      "page": 0,
+      "region": [
+        3262,
+        1408,
+        456,
+        628
+      ],
+      "margin": [
+        0,
+        13,
+        192,
+        53
+      ]
+    },
+    {
+      "animation": "walk_3",
+      "source_frame": 10,
+      "unique_frame": 19,
+      "page": 0,
+      "region": [
+        1987,
+        723,
+        456,
+        631
+      ],
+      "margin": [
+        0,
+        10,
+        192,
+        50
+      ]
+    },
+    {
+      "animation": "walk_3",
+      "source_frame": 12,
+      "unique_frame": 20,
+      "page": 0,
+      "region": [
+        2671,
+        2729,
+        456,
+        595
+      ],
+      "margin": [
+        0,
+        13,
+        192,
+        86
+      ]
+    },
+    {
+      "animation": "walk_3",
+      "source_frame": 14,
+      "unique_frame": 21,
+      "page": 0,
+      "region": [
+        1480,
+        2069,
+        456,
+        626
+      ],
+      "margin": [
+        0,
+        15,
+        192,
+        55
+      ]
+    },
+    {
+      "animation": "walk_3",
+      "source_frame": 16,
+      "unique_frame": 22,
+      "page": 0,
+      "region": [
+        16,
+        2069,
+        456,
+        628
+      ],
+      "margin": [
+        0,
+        13,
+        192,
+        53
+      ]
+    },
+    {
+      "animation": "fire_3",
+      "source_frame": 30,
+      "unique_frame": 23,
+      "page": 0,
+      "region": [
+        16,
+        1408,
+        442,
+        629
+      ],
+      "margin": [
+        27,
+        12,
+        206,
+        52
+      ]
+    },
+    {
+      "animation": "fire_3",
+      "source_frame": 32,
+      "unique_frame": 18,
+      "page": 0,
+      "region": [
+        3262,
+        1408,
+        456,
+        628
+      ],
+      "margin": [
+        0,
+        13,
+        192,
+        53
+      ]
+    },
+    {
+      "animation": "idle_4",
+      "source_frame": 1,
+      "unique_frame": 24,
+      "page": 0,
+      "region": [
+        490,
+        1408,
+        349,
+        629
+      ],
+      "margin": [
+        107,
+        9,
+        299,
+        52
+      ]
+    },
+    {
+      "animation": "walk_4",
+      "source_frame": 10,
+      "unique_frame": 25,
+      "page": 0,
+      "region": [
+        16,
+        723,
+        351,
+        653
+      ],
+      "margin": [
+        108,
+        8,
+        297,
+        28
+      ]
+    },
+    {
+      "animation": "walk_4",
+      "source_frame": 12,
+      "unique_frame": 26,
+      "page": 0,
+      "region": [
+        835,
+        2729,
+        349,
+        596
+      ],
+      "margin": [
+        107,
+        9,
+        299,
+        85
+      ]
+    },
+    {
+      "animation": "walk_4",
+      "source_frame": 14,
+      "unique_frame": 27,
+      "page": 0,
+      "region": [
+        16,
+        2729,
+        356,
+        617
+      ],
+      "margin": [
+        105,
+        11,
+        292,
+        64
+      ]
+    },
+    {
+      "animation": "walk_4",
+      "source_frame": 16,
+      "unique_frame": 28,
+      "page": 0,
+      "region": [
+        871,
+        1408,
+        349,
+        629
+      ],
+      "margin": [
+        107,
+        9,
+        299,
+        52
+      ]
+    },
+    {
+      "animation": "fire_4",
+      "source_frame": 30,
+      "unique_frame": 29,
+      "page": 0,
+      "region": [
+        2456,
+        2069,
+        340,
+        622
+      ],
+      "margin": [
+        125,
+        16,
+        308,
+        59
+      ]
+    },
+    {
+      "animation": "fire_4",
+      "source_frame": 32,
+      "unique_frame": 24,
+      "page": 0,
+      "region": [
+        490,
+        1408,
+        349,
+        629
+      ],
+      "margin": [
+        107,
+        9,
+        299,
+        52
+      ]
+    },
+    {
+      "animation": "idle_5",
+      "source_frame": 1,
+      "unique_frame": 30,
+      "page": 0,
+      "region": [
+        1216,
+        2729,
+        312,
+        596
+      ],
+      "margin": [
+        168,
+        18,
+        336,
+        85
+      ]
+    },
+    {
+      "animation": "walk_5",
+      "source_frame": 10,
+      "unique_frame": 31,
+      "page": 0,
+      "region": [
+        1252,
+        1408,
+        313,
+        629
+      ],
+      "margin": [
+        170,
+        18,
+        335,
+        52
+      ]
+    },
+    {
+      "animation": "walk_5",
+      "source_frame": 12,
+      "unique_frame": 32,
+      "page": 0,
+      "region": [
+        1560,
+        2729,
+        312,
+        596
+      ],
+      "margin": [
+        168,
+        18,
+        336,
+        85
+      ]
+    },
+    {
+      "animation": "walk_5",
+      "source_frame": 14,
+      "unique_frame": 33,
+      "page": 0,
+      "region": [
+        1597,
+        1408,
+        313,
+        629
+      ],
+      "margin": [
+        164,
+        18,
+        335,
+        52
+      ]
+    },
+    {
+      "animation": "walk_5",
+      "source_frame": 16,
+      "unique_frame": 34,
+      "page": 0,
+      "region": [
+        1904,
+        2729,
+        312,
+        596
+      ],
+      "margin": [
+        168,
+        18,
+        336,
+        85
+      ]
+    },
+    {
+      "animation": "fire_5",
+      "source_frame": 30,
+      "unique_frame": 35,
+      "page": 0,
+      "region": [
+        3647,
+        2729,
+        312,
+        585
+      ],
+      "margin": [
+        168,
+        29,
+        336,
+        96
+      ]
+    },
+    {
+      "animation": "fire_5",
+      "source_frame": 32,
+      "unique_frame": 30,
+      "page": 0,
+      "region": [
+        1216,
+        2729,
+        312,
+        596
+      ],
+      "margin": [
+        168,
+        18,
+        336,
+        85
+      ]
+    },
+    {
+      "animation": "idle_6",
+      "source_frame": 1,
+      "unique_frame": 36,
+      "page": 0,
+      "region": [
+        1942,
+        1408,
+        391,
+        629
+      ],
+      "margin": [
+        194,
+        9,
+        257,
+        52
+      ]
+    },
+    {
+      "animation": "walk_6",
+      "source_frame": 10,
+      "unique_frame": 37,
+      "page": 0,
+      "region": [
+        404,
+        2729,
+        399,
+        617
+      ],
+      "margin": [
+        187,
+        11,
+        249,
+        64
+      ]
+    },
+    {
+      "animation": "walk_6",
+      "source_frame": 12,
+      "unique_frame": 38,
+      "page": 0,
+      "region": [
+        2365,
+        1408,
+        391,
+        629
+      ],
+      "margin": [
+        194,
+        9,
+        257,
+        52
+      ]
+    },
+    {
+      "animation": "walk_6",
+      "source_frame": 14,
+      "unique_frame": 39,
+      "page": 0,
+      "region": [
+        399,
+        723,
+        393,
+        653
+      ],
+      "margin": [
+        191,
+        8,
+        255,
+        28
+      ]
+    },
+    {
+      "animation": "walk_6",
+      "source_frame": 16,
+      "unique_frame": 40,
+      "page": 0,
+      "region": [
+        2248,
+        2729,
+        391,
+        596
+      ],
+      "margin": [
+        194,
+        9,
+        257,
+        85
+      ]
+    },
+    {
+      "animation": "fire_6",
+      "source_frame": 30,
+      "unique_frame": 41,
+      "page": 0,
+      "region": [
+        2828,
+        2069,
+        381,
+        622
+      ],
+      "margin": [
+        185,
+        16,
+        267,
+        59
+      ]
+    },
+    {
+      "animation": "fire_6",
+      "source_frame": 32,
+      "unique_frame": 36,
+      "page": 0,
+      "region": [
+        1942,
+        1408,
+        391,
+        629
+      ],
+      "margin": [
+        194,
+        9,
+        257,
+        52
+      ]
+    },
+    {
+      "animation": "idle_7",
+      "source_frame": 1,
+      "unique_frame": 42,
+      "page": 0,
+      "region": [
+        504,
+        2069,
+        456,
+        628
+      ],
+      "margin": [
+        192,
+        13,
+        192,
+        53
+      ]
+    },
+    {
+      "animation": "walk_7",
+      "source_frame": 10,
+      "unique_frame": 43,
+      "page": 0,
+      "region": [
+        1968,
+        2069,
+        456,
+        626
+      ],
+      "margin": [
+        192,
+        15,
+        192,
+        55
+      ]
+    },
+    {
+      "animation": "walk_7",
+      "source_frame": 12,
+      "unique_frame": 44,
+      "page": 0,
+      "region": [
+        992,
+        2069,
+        456,
+        628
+      ],
+      "margin": [
+        192,
+        13,
+        192,
+        53
+      ]
+    },
+    {
+      "animation": "walk_7",
+      "source_frame": 14,
+      "unique_frame": 45,
+      "page": 0,
+      "region": [
+        2475,
+        723,
+        456,
+        631
+      ],
+      "margin": [
+        192,
+        10,
+        192,
+        50
+      ]
+    },
+    {
+      "animation": "walk_7",
+      "source_frame": 16,
+      "unique_frame": 46,
+      "page": 0,
+      "region": [
+        3159,
+        2729,
+        456,
+        595
+      ],
+      "margin": [
+        192,
+        13,
+        192,
+        86
+      ]
+    },
+    {
+      "animation": "fire_7",
+      "source_frame": 30,
+      "unique_frame": 47,
+      "page": 0,
+      "region": [
+        2788,
+        1408,
+        442,
+        629
+      ],
+      "margin": [
+        179,
+        12,
+        206,
+        52
+      ]
+    },
+    {
+      "animation": "fire_7",
+      "source_frame": 32,
+      "unique_frame": 42,
+      "page": 0,
+      "region": [
+        504,
+        2069,
+        456,
+        628
+      ],
+      "margin": [
+        192,
+        13,
+        192,
+        53
+      ]
+    }
+  ],
+  "unique_frames": 48,
+  "model": {
+    "path": "assets/generated/nathaniel.glb",
+    "scene": "scenes/actors/generated/nathaniel_model.tscn",
+    "sha256": "edf44fece57165adbee7eeb209a0998bf811b5319f96f83a180fecbca2b99dc9",
+    "blender_to_godot": [
+      "X",
+      "Z",
+      "-Y"
+    ],
+    "logical_xy_from_godot": [
+      "-32 * Z",
+      "32 * X"
+    ],
+    "forward_axis": "+X",
+    "rig_nodes": [
+      "AssetFacing",
+      "AimPivot",
+      "LocomotionPivot",
+      "WeaponMount",
+      "WeaponHands"
+    ],
+    "role": "character",
+    "muzzle_blender": null,
+    "animations": [
+      "idle",
+      "walk"
+    ],
+    "exporter": "Khronos glTF Blender I/O v5.2.40",
+    "mesh_float_decimal_places": 6,
+    "dependencies": [
+      "Blender bundled glTF 2.0 exporter"
+    ]
+  }
+}

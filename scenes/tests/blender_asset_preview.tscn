@@ -1,0 +1,30 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/blender_asset_preview.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/scenery/generated/placeholder_prop.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/actors/nathaniel.tscn" id="3"]
+
+[node name="BlenderAssetPreview" type="Node2D"]
+script = ExtResource("1")
+
+[node name="World" type="Node2D" parent="."]
+scale = Vector2(2, 2)
+
+[node name="Actors" type="Node2D" parent="World"]
+y_sort_enabled = true
+
+[node name="Scenery" type="Node2D" parent="World/Actors"]
+y_sort_enabled = true
+
+[node name="PropOnly" parent="World/Actors/Scenery" instance=ExtResource("2")]
+position = Vector2(110, 205)
+
+[node name="PropBehind" parent="World/Actors/Scenery" instance=ExtResource("2")]
+position = Vector2(320, 205)
+
+[node name="PropInFront" parent="World/Actors/Scenery" instance=ExtResource("2")]
+position = Vector2(530, 205)
+
+[node name="Behind" parent="World/Actors" instance=ExtResource("3")]
+
+[node name="InFront" parent="World/Actors" instance=ExtResource("3")]

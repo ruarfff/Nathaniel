@@ -1,7 +1,223 @@
 # Verification record
 
+This file records completed checks by change and date. Use [testing](testing.md)
+for current commands and [authoring](authoring.md#export-and-platform-checks)
+for current platform requirements. Earlier results do not establish acceptance
+of later code or assets.
+
 Test host: Apple M4 Pro (12 CPU cores), arm64 macOS, Xcode 26.6 (17F113),
 Godot 4.7.2 stable. Results are local measurements, not guarantees for other hardware.
+
+## Repository gardening — 2026-10-03
+
+Reviewed ten recent coding sessions, including three for Nathaniel. Repeated
+broad source searches and reads of historical verification notes showed a need
+for task-specific entry points. The README now maps tasks to source files and
+focused Make checks. Authoring guides link to dated results here and state the
+current live-model and Simulator requirements. No time saving was measured.
+
+Removed unused capture scripts, the completed environment migration script,
+an unused movement helper and actor ID field, and duplicate projectile syncing.
+The rifle catalog now supplies starting weapon stats. Shared save validation
+rejects invalid or duplicate object IDs before restoration changes active state.
+Regression tests first reproduced two rifle-setting failures and 24 save-ID
+failures, then passed after the fixes.
+
+The final `make test` passed all suites, including 102 weapon-rule checks,
+323 service checks, 311 gameplay assertions, 231 presentation checks, and
+145 live MCP checks. `make format-check` and `git diff --check` passed. All
+71 local documentation links and all task-map source paths resolved. Focused
+Make recipes were checked against the same commands used by the full suite.
+
+This gardening pass did not rerun graphical playtests or platform exports.
+The preceding art and weapon verification below records those separate checks
+and their remaining platform limits.
+
+## Nathaniel's modular weapons — 2026-10-03
+
+Nathaniel now starts with the rifle and can collect a heavy rifle near the start
+of each level. Keys 1/2 and named buttons switch weapons in 0.35 seconds. The
+simulation owns aim and firing readiness. The live model uses independent leg
+motion, a stable upper-body aim, modular weapons and hand recoil. Bullets keep
+their original weapon identity across a switch and save/load.
+
+The final `make test` passed: 94 weapon-rule checks, 62 weapon-control checks,
+48 character-model checks, 311 gameplay assertions, 191 service checks,
+231 presentation checks, 145 live MCP checks, and all content, art, healing,
+Python and MCP-adapter suites. The terrain migration check was updated to keep
+its original level fingerprint separate from the newly authored pickups.
+The graphical character suite passed 58 checks; turret and animation rendering
+regressions also passed. Formatting and diff checks passed.
+
+Blender 5.2.2 LTS and bundled Python 3.13.15 passed the full asset verifier.
+The migration preserved all 67 original character mesh transforms. Saved mesh
+and walk-keyframe edits reached the exports. Repeated PNG/GLB exports were
+identical, source hashes stayed unchanged, and a second migration left existing
+character and weapon sources unchanged. Invalid animated upper-body mounts and
+weapons saved mid-recoil are rejected.
+
+Actual 3840×2160 GameApp captures and a 4K forward/strafe/backpedal sheet were
+inspected. They show both guns, barrel-tip flashes, clean transparency, ground
+alignment and stable upper-body aim. Graphical assertions also check the
+retained actor sorting, grip motion and pause/respawn behavior. Captures are
+under `test-artifacts/nathaniel-*`; regenerate with `make art-nathaniel-weapons`
+and `make test-nathaniel-weapons`.
+
+macOS release, unsigned iOS project, and web exports passed. The macOS release
+ran with isolated storage. Real mouse and keyboard input verified walking to a
+crate, collection without automatic equip, key 2, the named rifle button, and
+movement while aiming at enemies. The release exited without engine errors.
+The local web release also ran: browser input collected the pickup and equipped
+the heavy rifle; the live model and firing rendered without console errors.
+
+iOS runtime, physical touch/pinch, physical 4K display acceptance and mobile
+performance were not tested. The existing custom iOS Simulator template still
+has 3D disabled, so it must be rebuilt with 3D support before this live model can
+run there. No new full-game frame-time claim is made for this change.
+
+## Healing tower range and shared healing — 2026-10-03
+
+Each one-second healing tick now restores up to 5 HP to both Nathaniel and Hermes
+when they are alive, injured, and inside the tower's actual range. Full-health,
+dead, and out-of-range characters produce no healing event. Clicking a healing
+tower shows a cyan outline projected from that same logical radius. Selection
+does not change Nathaniel's orders or camera focus.
+
+`make test` passed, including 311 gameplay assertions, 73 weapon-effect checks,
+and 41 healing-tower checks. The graphical healing suite passed 52 checks,
+including rendered light and range boundaries. It checks selection at 0.5x, 1x,
+and 2x zoom, clearing and lifecycle cases, and both healing recipients. Formatting
+and diff checks passed. `test-artifacts/healing-range-review.png` is a scripted
+capture of the actual level with the selected tower's range.
+
+macOS release and unsigned iOS project exports passed. Real mouse and keyboard
+input in the macOS release build verified building a healing tower, selecting
+its upper panels, and clearing the range with Escape without pausing. The build
+ran with isolated storage and exited without engine errors. The iOS runtime,
+touch, and pinch were not tested; the existing custom Simulator template's
+missing 3D support remains the limitation recorded below.
+
+## Live gun turret — 2026-10-03
+
+The gun tower now uses an editable Blender model with a fixed pedestal, rotating
+turret, sliding recoil, and barrel-tip marker. Its transparent Godot image uses
+the existing 64×32 projection, ground anchor, and actor sorting. Shot events keep
+the actual firing direction; the presentation captures each muzzle offset once.
+Gameplay footprints, collision rules, and saved projectile fields stay unchanged.
+
+`make test` passed, including 171 content checks, 296 gameplay assertions,
+188 service checks, 231 presentation checks, 14 Python tests, six MCP adapter
+tests, and 145 live MCP checks. It also passed the Blender/HD/animated/static/
+terrain resource suites and the new turret and weapon-effect suites. After the
+display-density fix, `make test-gun-turret` passed again: 61 headless turret
+checks, 28 weapon-effect checks, and 73 graphical turret checks. Formatting and
+diff checks passed.
+
+`sh tools/blender.sh verify` passed with Blender 5.2.2 LTS and its bundled Python.
+It covers saved manual edits, unchanged source hashes, invalid-rig rejection,
+and identical PNG/GLB output from separate Blender processes. The source was
+opened and inspected with Computer Use. Godot captures show the gun firing in
+Level 2 and front/rear fixture views. Graphical assertions verify transparency,
+overlap sorting, camera projection, and muzzle alignment. These are scripted
+gameplay checks; real mouse/keyboard playtesting was not repeated for this change.
+
+The first 4K window capture was clamped by macOS and is not acceptance evidence.
+The final capture is an exact offscreen 3840×2160 image. A regression test checks
+that 4K at close zoom selects a 768×768 model texture, resizes down correctly,
+and keeps the same ground and muzzle anchors.
+
+`make art-gun-turret` measured 30 visible, continuously turning towers with
+staggered recoil and logical scale 2. Compatibility renderer, VSync off, no FPS
+cap, 60 warmup frames, and 120 measured frames; no terrain or other units:
+
+| Offscreen output | Median frame interval | p95 | Model render pixels |
+| --- | ---: | ---: | ---: |
+| 1280×800 | 12.82 ms | 17.50 ms | 1,966,080 |
+| 3840×2160 | 13.43 ms | 17.51 ms | 17,694,720 |
+
+The 4K renderer texture-memory monitor reported about 839 MiB for the process,
+including retained resources from the earlier gameplay capture. It is not a
+per-tower or total GPU-memory measurement. This workload does not establish
+full-game 4K performance. Raw JSON and images are in `test-artifacts/gun-turret-*`.
+
+macOS release, web, and iOS exports were not rerun. Physical 4K display acceptance,
+mobile performance, and touch remain unverified. The earlier custom iOS Simulator
+template below was built with `disable_3d=yes`; it must be replaced by a template
+with 3D support before this live model can run there. Native lighting approximates
+the Blender palette but does not match Cycles indirect light or soft shadows.
+
+## Base Blender pipeline — 2026-10-03
+
+Validated on macOS with Blender 5.2.2 LTS, its bundled Python 3.13.15, and Godot
+4.7.2. `make test`, `make test-art`, and `make format-check` passed. The Godot
+asset suite passed 25 structure/import checks and 29 checks with rendering;
+pixel comparisons confirmed both front and behind occlusion. The PNG and
+viewport capture confirmed scale, ground alignment, and transparency.
+
+Opened the source through Computer Use in Blender, renamed the mesh to
+`PlaceholderProp_HandEdited`, saved it, and re-exported it. The source hash
+remained unchanged by rendering. The temporary Blender test also saved geometry
+and material edits, then confirmed identical PNGs from two exports and retained
+source contents. The existing-source and missing-executable errors were checked.
+
+Computer Use could not attach to the unbundled Nix Godot executable. Godot visual
+checks used its rendered viewport capture; the preview's physical Space-key
+toggle was not verified. macOS/iOS application exports and device input were not
+rerun for this isolated tooling change. Blender needs normal macOS access on
+this host; command-sandbox startup crashed before the script ran.
+
+Camera API reference: [Blender Camera](https://docs.blender.org/api/4.5/bpy.types.Camera.html).
+The local projection assertions verify the installed Blender version directly.
+
+## Environment assets — 2026-10-03
+
+Verified with Blender 5.2.2 LTS, bundled Python 3.13.15, and Godot 4.7.2 on
+Apple M4 Pro macOS. The complete game regression suite passed after the final
+asset import. Environment checks passed 359 headless and 389 rendered assertions.
+They compare exact level data, all 119 original scenery origins, the 12 prop
+exports, and terrain minification from 0.5 through 5.4 screen pixels per world
+pixel, including subpixel camera movement. Rendered checks also compare colors
+at tile edges and interiors to detect dark mipmap joins.
+
+Repeated terrain exports produced identical atlas PNG bytes and left the source
+unchanged. Tests also saved material edits and viewport visibility choices,
+re-exported twice, and confirmed both remained in the source. All 13 environment
+export records match their saved Blender source hashes.
+
+The building gallery, four native-level sections, and scripted GameApp garage
+capture were inspected. The house source was opened through Computer Use in
+Blender. The GameApp capture used temporary storage and reported about 722 MiB
+of renderer texture memory; that value is not total GPU memory or a frame-rate
+measurement. Physical 4K hardware, real player input, mobile performance, and
+platform exports were not tested for this art pass.
+
+## Iron & Ink sprite batches — 2026-10-03
+
+Verified locally on 2026-10-03 with Blender 5.2.2 LTS, its bundled Python 3.13.15,
+and Godot 4.7.2 on Apple M4 Pro macOS. The full `make test` suite passed. The final
+focused runs passed `test-art`, 68 headless HD checks, 74 rendered HD checks, and
+format checks. Repeated exports at densities 1 and 8 produced identical PNG bytes
+and preserved saved source edits. Exported PNGs omit timestamps, render timings,
+and local source paths; the JSON records retain version and hash provenance.
+
+The comparison board, native 3840×2160 asset capture, and a scripted GameApp
+capture were inspected for scale, ground alignment, alpha edges, and sorting.
+These checks did not test real player input, physical 4K display performance,
+or mobile rendering. Platform exports were not rerun for this asset batch.
+
+For the animated batch, the final full `make test` passed: 171 content checks,
+25 original pipeline checks, 50 HD checks, 1,111 animation checks, 39 static-art
+checks, 272 gameplay assertions, 188 service checks, 231 presentation checks,
+14 Python tests, six MCP adapter tests, and 145 live MCP checks. Separate final
+graphical runs passed 29 original pipeline checks, 56 HD checks, 1,121 animation
+checks, and 42 static-art checks. Formatting and whitespace checks passed.
+
+The Blender checks also verify exact RGBA preservation, a shifted pose's atlas
+region and margins against its original render, repeat-export byte identity,
+saved keyframe preservation, and clear errors for unsupported clip loops or
+geometry outside the facing root. All seven new export records match their
+saved Blender source hashes. The in-game capture uses scripted placement and
+temporary storage; it does not establish real-input or platform acceptance.
 
 ## Controls cleanup review — 2026-09-15
 

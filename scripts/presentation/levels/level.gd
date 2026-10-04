@@ -28,6 +28,7 @@ func data() -> Dictionary:
 		"hermes_start": Vector2(192, 128),
 		"enemies": [],
 		"towers": [],
+		"weapon_pickups": [],
 	}
 	var collision: TileMapLayer = get_node_or_null("Collision") as TileMapLayer
 	if collision != null:
@@ -49,6 +50,8 @@ func data() -> Dictionary:
 			result["player_start"] = point
 		elif marker.kind == "hermes":
 			result["hermes_start"] = point
+		elif marker.kind == "weaponPickup":
+			result["weapon_pickups"].append({"weapon_id": marker.weapon_id, "position": point})
 		elif marker.kind in ["grunt", "soldier", "spawner", "boss", "gunTower", "laserTower", "healTower"]:
 			var encounter: Dictionary = {"kind": marker.kind, "position": point}
 			if marker.parameters != null:

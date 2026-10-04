@@ -11,6 +11,8 @@ func _initialize() -> void:
 	_test_build_while_following()
 	_test_resources()
 	_test_combat()
+	_test_healing()
+	_test_shot_emission()
 	_test_targeting_and_update_order()
 	_test_spawners_and_waves()
 	_test_navigation_and_restore()
@@ -273,17 +275,6 @@ func _test_combat() -> void:
 		enemy.delay = 100000.0
 		_advance(sim, 1.5, fps)
 		_check(absi(150 - int(enemy.hp) - 37) <= 1, "Hermes building DPS at %d FPS" % fps)
-	sim = _game()
-	sim.hermes.position = sim.nathaniel.position + Vector2(100, 0)
-	sim.place_map_tower("healTower", Vector2(100, 250))
-	sim.nathaniel.hp -= 6
-	sim.hermes.hp -= 50
-	sim.step(1)
-	_check(sim.nathaniel.hp == 7999 and sim.hermes.hp == 1950, "Heal prioritizes Nathaniel")
-	sim.step(1)
-	_check(sim.nathaniel.hp == 8000 and sim.hermes.hp == 1950, "Heal targets one player per tick")
-	sim.step(1)
-	_check(sim.hermes.hp == 1955, "Heal proceeds to Hermes")
 	# Dead enemy projectiles persist; tower projectiles are removed on destruction.
 	sim = _game()
 	soldier = sim.spawn_enemy("soldier", Vector2(1000, 1000))
@@ -298,6 +289,126 @@ func _test_combat() -> void:
 	CombatRules.shoot(sim, tower, Vector2(1500, 1000))
 	sim.damage_entity(int(tower.id), 600)
 	_check(sim.projectiles.size() == 1, "Tower death removes its shot only")
+
+func _test_healing() -> void:
+	var sim: GameSimulation = _game()
+	sim.set_hermes_mode("building")
+	sim.hermes.position = sim.nathaniel.position + Vector2(100, 0)
+	var healer: Dictionary = sim.place_map_tower("healTower", Vector2(100, 250))
+	sim.nathaniel.hp -= 6
+	sim.hermes.hp -= 50
+	sim.take_events()
+	sim.step(0.5)
+	_check(sim.nathaniel.hp == 7994 and sim.hermes.hp == 1950 and sim.take_events().is_empty(), "Healing waits for its first interval")
+	sim.step(0.5)
+	_check(sim.nathaniel.hp == 7999 and sim.hermes.hp == 1955, "One healing tick restores five HP to both injured players")
+	var healing_events: Array[Dictionary] = sim.take_events()
+	_check(healing_events.size() == 2, "Healing both players emits two recipient events")
+	_check(healing_events.has({"type": "heal", "position": sim.nathaniel.position,
+		"target_id": sim.nathaniel.id, "owner_id": healer.id}), "Successful healing identifies its tower and Nathaniel")
+	_check(healing_events.has({"type": "heal", "position": sim.hermes.position,
+		"target_id": sim.hermes.id, "owner_id": healer.id}), "Successful healing identifies its tower and Hermes")
+	sim.step(0.5)
+	_check(sim.nathaniel.hp == 7999 and sim.hermes.hp == 1955 and sim.take_events().is_empty(), "Healing waits a full interval after a successful tick")
+	sim.step(0.5)
+	_check(sim.nathaniel.hp == 8000 and sim.hermes.hp == 1960, "Healing clamps each recipient to maximum HP")
+	_check(sim.take_events().size() == 2, "Both recipients emit events when one reaches maximum HP")
+	sim.step(1)
+	_check(sim.nathaniel.hp == 8000 and sim.hermes.hp == 1965, "A full-health player does not block the injured player")
+	healing_events = sim.take_events()
+	_check(healing_events.size() == 1 and healing_events[0].target_id == sim.hermes.id, "Only the injured player emits a healing event")
+	sim.hermes.hp = sim.hermes.max_hp
+	sim.step(1)
+	_check(sim.take_events().is_empty(), "Full-health players emit no healing event")
+	sim.nathaniel.hp -= 1
+	sim.hermes.hp -= 1
+	sim.step(0)
+	_check(sim.nathaniel.hp == 8000 and sim.hermes.hp == 2000 and sim.take_events().size() == 2, "An idle ready tower heals both players immediately when injured")
+	sim.step(1)
+	sim.take_events()
+	sim.nathaniel.hp -= 10
+	sim.nathaniel.position = healer.position + Vector2(float(healer.range), 0)
+	sim.step(0)
+	_check(sim.nathaniel.hp == 7990 and sim.take_events().is_empty(), "Healing excludes the exact range boundary")
+	sim.nathaniel.position.x += 1
+	sim.step(0)
+	_check(sim.nathaniel.hp == 7990 and sim.take_events().is_empty(), "Healing excludes players outside the range")
+	sim.nathaniel.position.x -= 2
+	sim.step(0)
+	_check(sim.nathaniel.hp == 7995 and sim.take_events().size() == 1, "An idle ready tower heals immediately inside the range")
+	sim.nathaniel.hp = 0
+	sim.hermes.hp -= 10
+	sim.step(1)
+	healing_events = sim.take_events()
+	_check(sim.nathaniel.hp == 0 and sim.hermes.hp == 1995, "Healing skips a dead player and restores the living player")
+	_check(healing_events.size() == 1 and healing_events[0].target_id == sim.hermes.id, "A dead player emits no healing event")
+	sim.hermes.hp = 0
+	sim.step(1)
+	_check(sim.nathaniel.hp == 0 and sim.hermes.hp == 0 and sim.take_events().is_empty(), "Dead players remain dead without healing events")
+
+func _test_shot_emission() -> void:
+	var sim: GameSimulation = _game()
+	var origin: Vector2 = sim.nathaniel.position
+	var target_position: Vector2 = origin + Vector2(80, 60)
+	var enemy: Dictionary = sim.spawn_enemy("soldier", target_position)
+	sim.nathaniel.target_id = enemy.id
+	sim.nathaniel.facing = Vector2.LEFT
+	sim.nathaniel.aim_direction = Vector2(0.8, 0.6)
+	sim.nathaniel.cooldown = sim.nathaniel.delay
+	sim.take_events()
+	_check(sim.fire_at(target_position), "Manual fire accepts a ready weapon")
+	var shot: Dictionary = sim.projectiles.back()
+	var shot_id: int = shot.id
+	var direction: Vector2 = Vector2(0.8, 0.6)
+	_check(Vector2(sim.nathaniel.facing).is_equal_approx(direction), "Manual fire faces the actual normalized shot direction")
+	_check(shot.position == origin and Vector2(shot.direction).is_equal_approx(direction), "Shot presentation data does not move the logical projectile origin or direction")
+	# Events must describe emission even if actors change before the view consumes them.
+	sim.nathaniel.position = origin + Vector2(300, 0)
+	sim.nathaniel.facing = Vector2.UP
+	sim.nathaniel.target_id = -1
+	enemy.position = target_position + Vector2(0, 300)
+	shot.position = origin + direction * 20.0
+	var emitted: Array[Dictionary] = sim.take_events()
+	_check(emitted.size() == 1, "Successful manual fire emits exactly one event")
+	var event: Dictionary = emitted[0]
+	_check(event.type == "shot" and event.kind == "bullet" and event.owner_id == sim.nathaniel.id, "Shot event retains its existing type, kind and owner")
+	_check(event.get("shot_id", -1) == shot_id, "Shot event identifies the emitted projectile")
+	_check(event.position == origin, "Shot event preserves its emission origin after owner and projectile movement")
+	_check(Vector2(event.get("direction", Vector2.ZERO)).is_equal_approx(direction), "Shot event preserves direction after owner facing changes")
+	_check(event.get("target_position", Vector2.ZERO) == target_position, "Shot event preserves its aim point after target movement and loss")
+	_check(not sim.fire_at(Vector2(sim.nathaniel.position) + Vector2(50, 0)), "Manual fire rejects a weapon on cooldown")
+	_check(sim.take_events().is_empty() and sim.projectiles.size() == 1, "Rejected cooldown creates no shot or event")
+	_check(sim.nathaniel.facing == Vector2.UP and sim.nathaniel.cooldown == 0.0, "Rejected cooldown leaves facing and timer unchanged")
+	sim.nathaniel.cooldown = sim.nathaniel.delay
+	_check(not sim.fire_at(Vector2(sim.nathaniel.position) + Vector2(2000, 0)), "Manual fire rejects an out-of-range aim point")
+	_check(sim.take_events().is_empty() and sim.nathaniel.facing == Vector2.UP, "Rejected range creates no event or facing change")
+	sim.nathaniel.aim_direction = Vector2(0, -1)
+	_check(sim.fire_at(sim.nathaniel.position), "Coincident manual aim uses the existing nonzero fallback")
+	emitted = sim.take_events()
+	_check(sim.nathaniel.facing == Vector2(0, -1) and emitted[0].get("direction", Vector2.ZERO) == sim.nathaniel.facing, "Coincident aim aligns facing and shot direction")
+	_check(emitted[0].get("shot_id", -1) != shot_id and event.get("shot_id", -1) == shot_id, "Later shots receive a new identity without changing earlier events")
+	# Automated gun turrets keep tracking during cooldown, then hold their last aim.
+	sim = _game()
+	var tower: Dictionary = sim.place_map_tower("gunTower", Vector2(1000, 1000))
+	enemy = sim.spawn_enemy("soldier", Vector2(1100, 1050))
+	tower.cooldown = 0.0
+	sim.take_events()
+	CombatRules.update_unit(sim, tower, 0.1)
+	_check(Vector2(tower.facing).is_equal_approx(Vector2(100, 50).normalized()), "Gun tower tracks its target during cooldown")
+	enemy.position = Vector2(950, 1100)
+	CombatRules.update_unit(sim, tower, 0.1)
+	direction = Vector2(-50, 100).normalized()
+	_check(Vector2(tower.facing).is_equal_approx(direction), "Gun tower updates aim when its target changes direction")
+	_check(sim.projectiles.is_empty() and sim.take_events().is_empty(), "Cooldown tracking creates no projectile or firing event")
+	tower.cooldown = tower.delay
+	CombatRules.update_unit(sim, tower, 0.0)
+	emitted = sim.take_events()
+	_check(emitted.size() == 1 and sim.projectiles.size() == 1, "Ready gun tower emits exactly one shot")
+	_check(Vector2(emitted[0].get("direction", Vector2.ZERO)).is_equal_approx(direction) and emitted[0].get("target_position", Vector2.ZERO) == enemy.position, "Automated tower uses the same immutable shot aim contract")
+	enemy.hp = 0
+	CombatRules.update_unit(sim, tower, 0.0)
+	_check(tower.target_id == -1 and Vector2(tower.facing).is_equal_approx(direction), "Gun tower holds its last aim when its target is lost")
+	_check(sim.take_events().is_empty(), "Target loss emits no firing event")
 
 func _test_spawners_and_waves() -> void:
 	var sim: GameSimulation = _game()
@@ -351,6 +462,7 @@ func _test_targeting_and_update_order() -> void:
 	sim.target_enemy(int(distant.id))
 	_check(sim.nathaniel.manual_target_id == -1, "Cannot manually target inside unexplored fog")
 	sim.nathaniel.cooldown = 0.8
+	sim.nathaniel.aim_direction = Vector2.RIGHT
 	_check(sim.fire_at(Vector2(184, 242)), "Fire targets an arbitrary in-range logical mouse point")
 	_check(sim.projectiles.back().radius == 12.0, "Bullet radius comes from original24px texture")
 	sim.nathaniel.cooldown = 0.8
@@ -387,6 +499,7 @@ func _test_targeting_and_update_order() -> void:
 	CombatRules.shoot(sim, boss, sim.hermes.position)
 	sim.projectiles.back().position = sim.hermes.position
 	sim.nathaniel.cooldown = 0.8
+	sim.nathaniel.aim_direction = Vector2.RIGHT
 	CombatRules.shoot(sim, sim.nathaniel, boss.position)
 	sim.projectiles.back().position = boss.position
 	sim.step(0)

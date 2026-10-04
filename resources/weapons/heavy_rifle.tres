@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="WeaponVisual" format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/actors/weapon_visual.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/generated/weapon_heavy_rifle.glb" id="2"]
+
+[resource]
+script = ExtResource("1")
+weapon_id = "heavy_rifle"
+model_scene = ExtResource("2")
+recoil_distance = 0.04
+recoil_duration = 0.2

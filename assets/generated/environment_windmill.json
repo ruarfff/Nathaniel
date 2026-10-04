@@ -1,0 +1,56 @@
+{
+  "source": "art/blender/sources/environment_windmill.blend",
+  "source_sha256": "07262c1fd2196854a852e5b2192a5d3523fe03098266894dbee555ed6fc3adf6",
+  "settings_sha256": "94dc091f9d7c46911c7cd92850e254983f7c1a0f0db2774acd117bac969a279e",
+  "blender_version": "5.2.2 LTS",
+  "python_version": "3.13.15",
+  "canvas": [
+    1066,
+    1680
+  ],
+  "anchor": [
+    533,
+    1407
+  ],
+  "trimmed": true,
+  "logical_canvas": [
+    133.25,
+    210.0
+  ],
+  "logical_anchor": [
+    66.625,
+    175.875
+  ],
+  "render_density": 8,
+  "profile": "iron_ink_environment",
+  "world_points_per_unit": 32,
+  "blender_xy_basis_pixels": [
+    [
+      -256,
+      128
+    ],
+    [
+      256,
+      128
+    ]
+  ],
+  "logical_xy_from_blender": [
+    "32 * Y",
+    "32 * X"
+  ],
+  "dependencies": [
+    "Blender (bundled bpy and Python standard library)"
+  ],
+  "crop_origin": [
+    1131,
+    641
+  ],
+  "uncropped_canvas": [
+    3328,
+    3072
+  ],
+  "uncropped_anchor": [
+    1664,
+    2048
+  ]
+}

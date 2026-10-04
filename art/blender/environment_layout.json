@@ -1,0 +1,509 @@
+{
+  "projection": {
+    "logical_cell": 32,
+    "diamond": [
+      64,
+      32
+    ],
+    "tile_shape": 1,
+    "tile_layout": 5,
+    "layer_position": [
+      -32,
+      0
+    ]
+  },
+  "source_ids": {
+    "0": {
+      "0": "ground",
+      "1": "trees"
+    },
+    "1": {
+      "0": "ground",
+      "1": "trees",
+      "2": "windmill",
+      "3": "mine"
+    },
+    "2": {
+      "0": "ground",
+      "1": "trees",
+      "2": "mine",
+      "3": "windmill"
+    },
+    "3": {
+      "0": "mine",
+      "1": "ground",
+      "2": "trees",
+      "3": "windmill"
+    },
+    "4": {
+      "0": "ground",
+      "1": "trees"
+    },
+    "5": {
+      "0": "ground",
+      "1": "trees"
+    }
+  },
+  "occupied_counts_by_level": {
+    "0": {
+      "Ground": 900,
+      "NonCollision": 301,
+      "Collision": 52,
+      "Scenery": 6
+    },
+    "1": {
+      "Ground": 2702,
+      "NonCollision": 1638,
+      "Collision": 450,
+      "Scenery": 33
+    },
+    "2": {
+      "Ground": 3000,
+      "NonCollision": 24,
+      "Collision": 459,
+      "Scenery": 30
+    },
+    "3": {
+      "Ground": 3000,
+      "NonCollision": 540,
+      "Collision": 165,
+      "Scenery": 38
+    },
+    "4": {
+      "Ground": 900,
+      "NonCollision": 301,
+      "Collision": 52,
+      "Scenery": 6
+    },
+    "5": {
+      "Ground": 900,
+      "NonCollision": 301,
+      "Collision": 52,
+      "Scenery": 6
+    }
+  },
+  "ground": {
+    "grass_inclusive_atlas_rect": [
+      16,
+      16,
+      23,
+      20
+    ],
+    "earth_inclusive_atlas_rect": [
+      20,
+      12,
+      23,
+      14
+    ],
+    "other_used_coordinates": "All 98 remaining coordinates below are path or path-edge cells. Some are fully transparent padding, so do not map every occupied path cell to an opaque road.",
+    "coverage_encoding": "Each value has 16 hex digits for a 4 by 4 logical square, row-major v then u, each digit 0..15 is earth coverage. u and v increase along logical X and Y. The square maps to a diamond with screen x=32+32*(u-v), y=16*(u+v). Samples use alpha>127 and r>g and g>b*1.15. Values include old texture noise; smooth broad contours before constructing new geometry.",
+    "path_coverage_4x4": {
+      "4,0": "0000000000000000",
+      "5,0": "0001000000000000",
+      "6,0": "0000000000000000",
+      "7,0": "0000000000000000",
+      "9,0": "03b5014300220245",
+      "10,0": "a9cc65e7cffac788",
+      "11,0": "8ffecffeaffeaffe",
+      "12,0": "fffbfffafffefffe",
+      "13,0": "ed86d95af6dca8c8",
+      "14,0": "bc40d800c5005830",
+      "15,0": "0000000000000000",
+      "4,1": "9e849beb38dd4015",
+      "5,1": "b8e65bd9ba769315",
+      "6,1": "bc9aabb958883019",
+      "7,1": "8ef838c971463006",
+      "9,1": "013503540165005b",
+      "10,1": "daa9c68b9dabdf9d",
+      "11,1": "8efecffefffefffe",
+      "12,1": "fffefffefff9fff9",
+      "13,1": "f7dcb8c8ab8cb7a9",
+      "14,1": "a400551063204300",
+      "15,1": "0000000000000000",
+      "22,1": "796b3ab726981025",
+      "23,1": "6ff653b851550004",
+      "24,1": "bd6388d964ab2004",
+      "25,1": "8375495373335001",
+      "4,2": "fffefffefff89dbb",
+      "5,2": "fffefffede8be997",
+      "6,2": "fffefffeffe5aecc",
+      "7,2": "fffefffebe7d99c9",
+      "9,2": "0053004d009e04cb",
+      "10,2": "ad8cec5ea7ad68ed",
+      "11,2": "fffefffe7ffecffe",
+      "12,2": "fffbfff9fffafff7",
+      "13,2": "bb8b9ffb8d56abb8",
+      "14,2": "7430230064306a30",
+      "15,2": "0000000000000000",
+      "22,2": "dffe8ffeebb64abb",
+      "23,2": "fffefffebb8c7ac8",
+      "24,2": "fffefffefff9adb8",
+      "9,3": "0574024300220264",
+      "10,3": "b9fe78e7affbb8a8",
+      "11,3": "fffedffe8ffebffe",
+      "12,3": "fffdfffefffefffe",
+      "13,3": "8db1e87be6bde8d9",
+      "14,3": "3810da00d3005630",
+      "15,3": "0000000000000000",
+      "9,4": "0043002400110036",
+      "10,4": "74ad72742326bd8a",
+      "11,4": "dffebffedffeeffe",
+      "12,4": "fffcfffdfffcfffe",
+      "13,4": "a7ca84305369ed27",
+      "14,4": "8100110043001000",
+      "15,4": "0000000000000000",
+      "9,5": "0033004c018c0374",
+      "10,5": "8c9aeb5d939c18c7",
+      "11,5": "fffefffefffeeffe",
+      "12,5": "fff9fff9fffdfffe",
+      "13,5": "ab8c9ffa8b65fcc8",
+      "14,5": "8430120065203630",
+      "15,5": "0000000000000000",
+      "0,6": "ab99d8defffefffe",
+      "1,6": "fffefffefffefffe",
+      "2,6": "fffefffefffefffe",
+      "3,6": "fdfafffefffefffe",
+      "9,6": "0686014400220147",
+      "10,6": "6afe64e7bffba9aa",
+      "11,6": "fffedffe8efecffe",
+      "12,6": "fffefffefffefffe",
+      "13,6": "fed3f95af5bdc9ba",
+      "14,6": "b810e700c3007610",
+      "15,6": "0000000000000000",
+      "0,7": "21056526ada48fe8",
+      "1,7": "a4e476fe8bfedffe",
+      "2,7": "ad83ee99fff6fffe",
+      "3,7": "5114ee957ed845ca",
+      "4,7": "bb578de847be3014",
+      "5,7": "fffe5dfeb6de29cb",
+      "6,7": "fffbffd9ce674d49",
+      "13,7": "fffdfffefffefffe",
+      "14,7": "d990f893fdb48a80",
+      "4,8": "fffefffefffeaccd",
+      "5,8": "fffefffefffefffe",
+      "6,8": "fffefffefffefffe",
+      "13,8": "ba8d9efa8c58ffc9",
+      "14,8": "6620100057106760",
+      "2,9": "0000000000000000",
+      "3,9": "0000000000000000",
+      "4,9": "0000000000000000",
+      "5,9": "0000000000000000",
+      "2,10": "ca79b7a897672104",
+      "3,10": "8ff859d861574005",
+      "4,10": "cb759de749d93000",
+      "5,10": "b6e747b7b9224103",
+      "5,12": "0001000700130265",
+      "6,12": "3dcdbafaeffbb899",
+      "5,13": "d7d67ae9d9668215",
+      "6,13": "ab9e7cda7cb99dad"
+    }
+  },
+  "floor_patches": [
+    {
+      "level": 1,
+      "source": 3,
+      "material": "sand",
+      "atlas_rect": [
+        17,
+        27,
+        22,
+        30
+      ],
+      "cell_rect": [
+        86,
+        26,
+        91,
+        29
+      ]
+    },
+    {
+      "level": 2,
+      "source": 2,
+      "material": "sand",
+      "atlas_rect": [
+        17,
+        27,
+        22,
+        30
+      ],
+      "cell_rect": [
+        60,
+        13,
+        65,
+        16
+      ]
+    },
+    {
+      "level": 3,
+      "source": 0,
+      "material": "gravel",
+      "atlas_rect": [
+        17,
+        21,
+        22,
+        24
+      ],
+      "cell_rect": [
+        8,
+        25,
+        13,
+        28
+      ]
+    },
+    {
+      "level": 1,
+      "source": 2,
+      "material": "sand",
+      "atlas_rect": [
+        0,
+        12,
+        5,
+        16
+      ],
+      "cell_rect": [
+        11,
+        0,
+        16,
+        4
+      ]
+    },
+    {
+      "level": 3,
+      "source": 3,
+      "material": "sand",
+      "atlas_rect": [
+        0,
+        13,
+        5,
+        16
+      ],
+      "cell_rect": [
+        6,
+        9,
+        11,
+        12
+      ]
+    }
+  ],
+  "buildings": [
+    {
+      "level": 1,
+      "source": 3,
+      "dx": -6,
+      "dy": 24,
+      "atlas_rect": [
+        7,
+        0,
+        10,
+        6
+      ],
+      "blocked_rect": [
+        1,
+        19,
+        4,
+        23
+      ],
+      "ground_cells": [
+        4,
+        5
+      ],
+      "projected_center_anchor": [
+        -592,
+        392
+      ],
+      "noncollision_cells": [
+        [
+          2,
+          24
+        ],
+        [
+          3,
+          24
+        ],
+        [
+          1,
+          18
+        ],
+        [
+          2,
+          18
+        ],
+        [
+          3,
+          18
+        ],
+        [
+          4,
+          18
+        ]
+      ],
+      "missing_blocked_cells": [],
+      "asset": "environment_house"
+    },
+    {
+      "level": 1,
+      "source": 3,
+      "dx": 68,
+      "dy": 39,
+      "atlas_rect": [
+        19,
+        10,
+        23,
+        13
+      ],
+      "blocked_rect": [
+        87,
+        26,
+        91,
+        29
+      ],
+      "ground_cells": [
+        5,
+        4
+      ],
+      "projected_center_anchor": [
+        1968,
+        1880
+      ],
+      "noncollision_cells": [],
+      "missing_blocked_cells": [],
+      "asset": "environment_shop"
+    },
+    {
+      "level": 2,
+      "source": 2,
+      "dx": 54,
+      "dy": 19,
+      "atlas_rect": [
+        7,
+        0,
+        10,
+        6
+      ],
+      "blocked_rect": [
+        61,
+        13,
+        64,
+        19
+      ],
+      "ground_cells": [
+        4,
+        7
+      ],
+      "projected_center_anchor": [
+        1488,
+        1272
+      ],
+      "noncollision_cells": [],
+      "missing_blocked_cells": [],
+      "asset": "environment_garage"
+    },
+    {
+      "level": 3,
+      "source": 0,
+      "dx": -12,
+      "dy": 38,
+      "atlas_rect": [
+        12,
+        9,
+        17,
+        13
+      ],
+      "blocked_rect": [
+        0,
+        25,
+        5,
+        29
+      ],
+      "ground_cells": [
+        6,
+        5
+      ],
+      "projected_center_anchor": [
+        -784,
+        488
+      ],
+      "noncollision_cells": [],
+      "missing_blocked_cells": [
+        [
+          5,
+          25
+        ],
+        [
+          5,
+          26
+        ]
+      ],
+      "asset": "environment_warehouse_ruin"
+    },
+    {
+      "level": 3,
+      "source": 0,
+      "dx": 2,
+      "dy": 38,
+      "atlas_rect": [
+        6,
+        9,
+        11,
+        13
+      ],
+      "blocked_rect": [
+        8,
+        25,
+        13,
+        29
+      ],
+      "ground_cells": [
+        6,
+        5
+      ],
+      "projected_center_anchor": [
+        -528,
+        616
+      ],
+      "noncollision_cells": [],
+      "missing_blocked_cells": [
+        [
+          8,
+          25
+        ],
+        [
+          8,
+          26
+        ]
+      ],
+      "asset": "environment_warehouse"
+    },
+    {
+      "level": 3,
+      "source": 0,
+      "dx": 16,
+      "dy": 38,
+      "atlas_rect": [
+        1,
+        9,
+        5,
+        13
+      ],
+      "blocked_rect": [
+        17,
+        25,
+        21,
+        29
+      ],
+      "ground_cells": [
+        5,
+        5
+      ],
+      "projected_center_anchor": [
+        -256,
+        752
+      ],
+      "noncollision_cells": [],
+      "missing_blocked_cells": [],
+      "asset": "environment_shop_ruin"
+    }
+  ],
+  "building_recognizer": "For each mine cell, dx=cell.x-atlas.x and dy=cell.y+atlas.y. Match source and dx/dy from the records above. Replace visual tiles with transparent occupancy tiles and add upright sprites under Scenery. Preserve Collision cells exactly.",
+  "format_version": 1
+}

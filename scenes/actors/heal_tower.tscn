@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/presentation/actors/actor_view.gd" id="1"]
 [ext_resource type="Resource" path="res://resources/actors/heal_tower.tres" id="2"]
+[ext_resource type="Script" path="res://scripts/presentation/actors/healing_tower_pulse.gd" id="3"]
 
 [node name="HealTower" type="Node2D"]
 texture_filter = 1
@@ -9,4 +10,9 @@ script = ExtResource("1")
 kind = "heal_tower"
 visual = ExtResource("2")
 
+[node name="HealingPulse" type="Node2D" parent="."]
+script = ExtResource("3")
+light_segments = PackedVector2Array(428, 341, 428, 372, 661, 349, 661, 411, 524, 459, 524, 520)
+
 [node name="Sprite2D" type="Sprite2D" parent="."]
+texture_filter = 4

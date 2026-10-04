@@ -1,0 +1,8 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/generated/weapon_heavy_rifle.glb" id="1"]
+
+[node name="weapon_heavy_rifle" instance=ExtResource("1")]
+metadata/weapon_id = "heavy_rifle"
+metadata/recoil_distance = 0.04
+metadata/recoil_duration = 0.2

@@ -1,0 +1,56 @@
+{
+  "source": "art/blender/sources/environment_dead_tree.blend",
+  "source_sha256": "0716a2d672f38d30691712fa35dbf4ec6eff13a15302447de2b56b7c3940944d",
+  "settings_sha256": "3857baebc9f286eced59029acda804f407fd5de2f3c86a336fb81872318f1ff4",
+  "blender_version": "5.2.2 LTS",
+  "python_version": "3.13.15",
+  "canvas": [
+    778,
+    1016
+  ],
+  "anchor": [
+    400,
+    950
+  ],
+  "trimmed": true,
+  "logical_canvas": [
+    97.25,
+    127.0
+  ],
+  "logical_anchor": [
+    50.0,
+    118.75
+  ],
+  "render_density": 8,
+  "profile": "iron_ink_environment",
+  "world_points_per_unit": 32,
+  "blender_xy_basis_pixels": [
+    [
+      -256,
+      128
+    ],
+    [
+      256,
+      128
+    ]
+  ],
+  "logical_xy_from_blender": [
+    "32 * Y",
+    "32 * X"
+  ],
+  "dependencies": [
+    "Blender (bundled bpy and Python standard library)"
+  ],
+  "crop_origin": [
+    1264,
+    1098
+  ],
+  "uncropped_canvas": [
+    3328,
+    3072
+  ],
+  "uncropped_anchor": [
+    1664,
+    2048
+  ]
+}

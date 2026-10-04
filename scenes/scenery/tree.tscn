@@ -1,9 +1,5 @@
 [gd_scene format=3]
 
-[ext_resource type="Texture2D" path="res://assets/scenery/tree.png" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/scenery/generated/environment_tree.tscn" id="1"]
 
-[node name="Tree" type="Sprite2D"]
-texture_filter = 1
-texture = ExtResource("1")
-centered = false
-offset = Vector2(-64, -116)
+[node name="Tree" instance=ExtResource("1")]

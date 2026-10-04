@@ -13,9 +13,11 @@ This repository contains one Godot 4.7.2 game. `project.godot` is at the reposit
 
 ## Task-specific references
 
+- Start with the [task map](README.md#find-the-right-files) for source paths and focused checks. `make help` lists commands. Concept art describes proposals; the domain guide and current resources describe implemented behavior.
 - Before moving code across boundaries, read [architecture](docs/architecture.md).
 - Before changing gameplay state, read [the domain boundary](scripts/domain/README.md).
 - Before editing levels, actor resources, effects, or exports, read [authoring](docs/authoring.md).
+- For Blender source/export changes, read [the pipeline](docs/blender-assets.md); for live character guns, read [weapons](docs/nathaniel-weapons.md). Edit saved sources rather than generated runtime files.
 - Before changing saves or Swift import, read [save compatibility](docs/saves.md).
 - Before a gameplay playtest, read [testing](docs/testing.md). Before changing the debug protocol or MCP tools, also read [the debug interface](docs/debug-interface.md).
 - Before reporting platform acceptance or performance, check [verification](docs/verification.md) and identify which checks were rerun.

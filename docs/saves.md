@@ -21,6 +21,13 @@ rebuilds tower obstacles before requesting routes. A loaded session resumes play
 Older saves with Hermes camera focus reopen the Build menu without changing his
 saved following/stopped mode. The saved focus field and format remain unchanged.
 
+Nathaniel's owned and equipped weapons, aim, equip timer, shot recovery and
+pending manual aim are saved with his state. Remaining weapon pickups and each
+projectile's weapon ID are also saved. Older snapshots without these fields use
+the original rifle and no pending equip or manual shot. The envelope and snapshot
+schema stay at version 1. A spare-life respawn retains weapons; a fresh level
+uses its authored default loadout and pickups.
+
 ## Storage identity
 
 Keep `config/use_custom_user_dir=true`, `config/custom_user_dir_name="NathanielGodot"`, and the export bundle identifier `dev.ruarfff.nathaniel.godot`. Moving the project or renaming the displayed app does not require a new storage location. Changing the iOS bundle identifier creates a different app container. Native files retain envelope format `nathaniel-godot`, version `1`, and gameplay snapshot schema `1`. The slot filenames and settings/progress filenames are part of this compatibility contract.

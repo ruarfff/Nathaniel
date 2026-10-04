@@ -1,0 +1,1630 @@
+{
+  "source": "art/blender/sources/environment_terrain.blend",
+  "source_sha256": "d58e0d82e1c73504c70ceb10eac5294144725a8b1c93490e7b08c85dcd7d4596",
+  "settings_sha256": "3857baebc9f286eced59029acda804f407fd5de2f3c86a336fb81872318f1ff4",
+  "blender_version": "5.2.2 LTS",
+  "python_version": "3.13.15",
+  "render_density": 8,
+  "tileset": "resources/environment_tileset.tres",
+  "import_premultiplied_alpha": true,
+  "tile_size": [
+    512,
+    256
+  ],
+  "canvas": [
+    576,
+    320
+  ],
+  "gutter": 16,
+  "atlas_pages": [
+    {
+      "file": "environment_terrain_atlas_0.png",
+      "canvas": [
+        3648,
+        3872
+      ]
+    },
+    {
+      "file": "environment_terrain_atlas_1.png",
+      "canvas": [
+        3648,
+        2816
+      ]
+    }
+  ],
+  "tiles": [
+    {
+      "name": "scrub",
+      "collection": "Tile | scrub",
+      "empty": false,
+      "source_id": 0,
+      "atlas_coords": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "sand",
+      "collection": "Tile | sand",
+      "empty": false,
+      "source_id": 0,
+      "atlas_coords": [
+        1,
+        0
+      ]
+    },
+    {
+      "name": "scrub_1",
+      "collection": "Tile | scrub_1",
+      "empty": false,
+      "source_id": 0,
+      "atlas_coords": [
+        2,
+        0
+      ]
+    },
+    {
+      "name": "scrub_2",
+      "collection": "Tile | scrub_2",
+      "empty": false,
+      "source_id": 0,
+      "atlas_coords": [
+        3,
+        0
+      ]
+    },
+    {
+      "name": "scrub_3",
+      "collection": "Tile | scrub_3",
+      "empty": false,
+      "source_id": 0,
+      "atlas_coords": [
+        4,
+        0
+      ]
+    },
+    {
+      "name": "sand_1",
+      "collection": "Tile | sand_1",
+      "empty": false,
+      "source_id": 0,
+      "atlas_coords": [
+        5,
+        0
+      ]
+    },
+    {
+      "name": "sand_2",
+      "collection": "Tile | sand_2",
+      "empty": false,
+      "source_id": 0,
+      "atlas_coords": [
+        0,
+        1
+      ]
+    },
+    {
+      "name": "sand_3",
+      "collection": "Tile | sand_3",
+      "empty": false,
+      "source_id": 0,
+      "atlas_coords": [
+        1,
+        1
+      ]
+    },
+    {
+      "name": "gravel",
+      "collection": "Tile | gravel",
+      "empty": false,
+      "source_id": 0,
+      "atlas_coords": [
+        2,
+        1
+      ]
+    },
+    {
+      "name": "paving",
+      "collection": "Tile | paving",
+      "empty": false,
+      "source_id": 0,
+      "atlas_coords": [
+        3,
+        1
+      ]
+    },
+    {
+      "name": "asphalt",
+      "collection": "Tile | asphalt",
+      "empty": false,
+      "source_id": 0,
+      "atlas_coords": [
+        4,
+        1
+      ]
+    },
+    {
+      "name": "empty",
+      "collection": "Tile | empty",
+      "empty": true,
+      "source_id": 0,
+      "atlas_coords": [
+        5,
+        1
+      ]
+    },
+    {
+      "name": "path_4_0",
+      "collection": "Tile | path_4_0",
+      "empty": true,
+      "old_atlas_coordinate": [
+        4,
+        0
+      ],
+      "coverage": "0000000000000000",
+      "source_id": 0,
+      "atlas_coords": [
+        0,
+        2
+      ]
+    },
+    {
+      "name": "path_5_0",
+      "collection": "Tile | path_5_0",
+      "empty": true,
+      "old_atlas_coordinate": [
+        5,
+        0
+      ],
+      "coverage": "0001000000000000",
+      "source_id": 0,
+      "atlas_coords": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "path_6_0",
+      "collection": "Tile | path_6_0",
+      "empty": true,
+      "old_atlas_coordinate": [
+        6,
+        0
+      ],
+      "coverage": "0000000000000000",
+      "source_id": 0,
+      "atlas_coords": [
+        2,
+        2
+      ]
+    },
+    {
+      "name": "path_7_0",
+      "collection": "Tile | path_7_0",
+      "empty": true,
+      "old_atlas_coordinate": [
+        7,
+        0
+      ],
+      "coverage": "0000000000000000",
+      "source_id": 0,
+      "atlas_coords": [
+        3,
+        2
+      ]
+    },
+    {
+      "name": "path_9_0",
+      "collection": "Tile | path_9_0",
+      "empty": false,
+      "old_atlas_coordinate": [
+        9,
+        0
+      ],
+      "coverage": "03b5014300220245",
+      "source_id": 0,
+      "atlas_coords": [
+        4,
+        2
+      ]
+    },
+    {
+      "name": "path_10_0",
+      "collection": "Tile | path_10_0",
+      "empty": false,
+      "old_atlas_coordinate": [
+        10,
+        0
+      ],
+      "coverage": "a9cc65e7cffac788",
+      "source_id": 0,
+      "atlas_coords": [
+        5,
+        2
+      ]
+    },
+    {
+      "name": "path_11_0",
+      "collection": "Tile | path_11_0",
+      "empty": false,
+      "old_atlas_coordinate": [
+        11,
+        0
+      ],
+      "coverage": "8ffecffeaffeaffe",
+      "source_id": 0,
+      "atlas_coords": [
+        0,
+        3
+      ]
+    },
+    {
+      "name": "path_12_0",
+      "collection": "Tile | path_12_0",
+      "empty": false,
+      "old_atlas_coordinate": [
+        12,
+        0
+      ],
+      "coverage": "fffbfffafffefffe",
+      "source_id": 0,
+      "atlas_coords": [
+        1,
+        3
+      ]
+    },
+    {
+      "name": "path_13_0",
+      "collection": "Tile | path_13_0",
+      "empty": false,
+      "old_atlas_coordinate": [
+        13,
+        0
+      ],
+      "coverage": "ed86d95af6dca8c8",
+      "source_id": 0,
+      "atlas_coords": [
+        2,
+        3
+      ]
+    },
+    {
+      "name": "path_14_0",
+      "collection": "Tile | path_14_0",
+      "empty": false,
+      "old_atlas_coordinate": [
+        14,
+        0
+      ],
+      "coverage": "bc40d800c5005830",
+      "source_id": 0,
+      "atlas_coords": [
+        3,
+        3
+      ]
+    },
+    {
+      "name": "path_15_0",
+      "collection": "Tile | path_15_0",
+      "empty": true,
+      "old_atlas_coordinate": [
+        15,
+        0
+      ],
+      "coverage": "0000000000000000",
+      "source_id": 0,
+      "atlas_coords": [
+        4,
+        3
+      ]
+    },
+    {
+      "name": "path_4_1",
+      "collection": "Tile | path_4_1",
+      "empty": false,
+      "old_atlas_coordinate": [
+        4,
+        1
+      ],
+      "coverage": "9e849beb38dd4015",
+      "source_id": 0,
+      "atlas_coords": [
+        5,
+        3
+      ]
+    },
+    {
+      "name": "path_5_1",
+      "collection": "Tile | path_5_1",
+      "empty": false,
+      "old_atlas_coordinate": [
+        5,
+        1
+      ],
+      "coverage": "b8e65bd9ba769315",
+      "source_id": 0,
+      "atlas_coords": [
+        0,
+        4
+      ]
+    },
+    {
+      "name": "path_6_1",
+      "collection": "Tile | path_6_1",
+      "empty": false,
+      "old_atlas_coordinate": [
+        6,
+        1
+      ],
+      "coverage": "bc9aabb958883019",
+      "source_id": 0,
+      "atlas_coords": [
+        1,
+        4
+      ]
+    },
+    {
+      "name": "path_7_1",
+      "collection": "Tile | path_7_1",
+      "empty": false,
+      "old_atlas_coordinate": [
+        7,
+        1
+      ],
+      "coverage": "8ef838c971463006",
+      "source_id": 0,
+      "atlas_coords": [
+        2,
+        4
+      ]
+    },
+    {
+      "name": "path_9_1",
+      "collection": "Tile | path_9_1",
+      "empty": false,
+      "old_atlas_coordinate": [
+        9,
+        1
+      ],
+      "coverage": "013503540165005b",
+      "source_id": 0,
+      "atlas_coords": [
+        3,
+        4
+      ]
+    },
+    {
+      "name": "path_10_1",
+      "collection": "Tile | path_10_1",
+      "empty": false,
+      "old_atlas_coordinate": [
+        10,
+        1
+      ],
+      "coverage": "daa9c68b9dabdf9d",
+      "source_id": 0,
+      "atlas_coords": [
+        4,
+        4
+      ]
+    },
+    {
+      "name": "path_11_1",
+      "collection": "Tile | path_11_1",
+      "empty": false,
+      "old_atlas_coordinate": [
+        11,
+        1
+      ],
+      "coverage": "8efecffefffefffe",
+      "source_id": 0,
+      "atlas_coords": [
+        5,
+        4
+      ]
+    },
+    {
+      "name": "path_12_1",
+      "collection": "Tile | path_12_1",
+      "empty": false,
+      "old_atlas_coordinate": [
+        12,
+        1
+      ],
+      "coverage": "fffefffefff9fff9",
+      "source_id": 0,
+      "atlas_coords": [
+        0,
+        5
+      ]
+    },
+    {
+      "name": "path_13_1",
+      "collection": "Tile | path_13_1",
+      "empty": false,
+      "old_atlas_coordinate": [
+        13,
+        1
+      ],
+      "coverage": "f7dcb8c8ab8cb7a9",
+      "source_id": 0,
+      "atlas_coords": [
+        1,
+        5
+      ]
+    },
+    {
+      "name": "path_14_1",
+      "collection": "Tile | path_14_1",
+      "empty": false,
+      "old_atlas_coordinate": [
+        14,
+        1
+      ],
+      "coverage": "a400551063204300",
+      "source_id": 0,
+      "atlas_coords": [
+        2,
+        5
+      ]
+    },
+    {
+      "name": "path_15_1",
+      "collection": "Tile | path_15_1",
+      "empty": true,
+      "old_atlas_coordinate": [
+        15,
+        1
+      ],
+      "coverage": "0000000000000000",
+      "source_id": 0,
+      "atlas_coords": [
+        3,
+        5
+      ]
+    },
+    {
+      "name": "path_22_1",
+      "collection": "Tile | path_22_1",
+      "empty": false,
+      "old_atlas_coordinate": [
+        22,
+        1
+      ],
+      "coverage": "796b3ab726981025",
+      "source_id": 0,
+      "atlas_coords": [
+        4,
+        5
+      ]
+    },
+    {
+      "name": "path_23_1",
+      "collection": "Tile | path_23_1",
+      "empty": false,
+      "old_atlas_coordinate": [
+        23,
+        1
+      ],
+      "coverage": "6ff653b851550004",
+      "source_id": 0,
+      "atlas_coords": [
+        5,
+        5
+      ]
+    },
+    {
+      "name": "path_24_1",
+      "collection": "Tile | path_24_1",
+      "empty": false,
+      "old_atlas_coordinate": [
+        24,
+        1
+      ],
+      "coverage": "bd6388d964ab2004",
+      "source_id": 0,
+      "atlas_coords": [
+        0,
+        6
+      ]
+    },
+    {
+      "name": "path_25_1",
+      "collection": "Tile | path_25_1",
+      "empty": false,
+      "old_atlas_coordinate": [
+        25,
+        1
+      ],
+      "coverage": "8375495373335001",
+      "source_id": 0,
+      "atlas_coords": [
+        1,
+        6
+      ]
+    },
+    {
+      "name": "path_4_2",
+      "collection": "Tile | path_4_2",
+      "empty": false,
+      "old_atlas_coordinate": [
+        4,
+        2
+      ],
+      "coverage": "fffefffefff89dbb",
+      "source_id": 0,
+      "atlas_coords": [
+        2,
+        6
+      ]
+    },
+    {
+      "name": "path_5_2",
+      "collection": "Tile | path_5_2",
+      "empty": false,
+      "old_atlas_coordinate": [
+        5,
+        2
+      ],
+      "coverage": "fffefffede8be997",
+      "source_id": 0,
+      "atlas_coords": [
+        3,
+        6
+      ]
+    },
+    {
+      "name": "path_6_2",
+      "collection": "Tile | path_6_2",
+      "empty": false,
+      "old_atlas_coordinate": [
+        6,
+        2
+      ],
+      "coverage": "fffefffeffe5aecc",
+      "source_id": 0,
+      "atlas_coords": [
+        4,
+        6
+      ]
+    },
+    {
+      "name": "path_7_2",
+      "collection": "Tile | path_7_2",
+      "empty": false,
+      "old_atlas_coordinate": [
+        7,
+        2
+      ],
+      "coverage": "fffefffebe7d99c9",
+      "source_id": 0,
+      "atlas_coords": [
+        5,
+        6
+      ]
+    },
+    {
+      "name": "path_9_2",
+      "collection": "Tile | path_9_2",
+      "empty": false,
+      "old_atlas_coordinate": [
+        9,
+        2
+      ],
+      "coverage": "0053004d009e04cb",
+      "source_id": 0,
+      "atlas_coords": [
+        0,
+        7
+      ]
+    },
+    {
+      "name": "path_10_2",
+      "collection": "Tile | path_10_2",
+      "empty": false,
+      "old_atlas_coordinate": [
+        10,
+        2
+      ],
+      "coverage": "ad8cec5ea7ad68ed",
+      "source_id": 0,
+      "atlas_coords": [
+        1,
+        7
+      ]
+    },
+    {
+      "name": "path_11_2",
+      "collection": "Tile | path_11_2",
+      "empty": false,
+      "old_atlas_coordinate": [
+        11,
+        2
+      ],
+      "coverage": "fffefffe7ffecffe",
+      "source_id": 0,
+      "atlas_coords": [
+        2,
+        7
+      ]
+    },
+    {
+      "name": "path_12_2",
+      "collection": "Tile | path_12_2",
+      "empty": false,
+      "old_atlas_coordinate": [
+        12,
+        2
+      ],
+      "coverage": "fffbfff9fffafff7",
+      "source_id": 0,
+      "atlas_coords": [
+        3,
+        7
+      ]
+    },
+    {
+      "name": "path_13_2",
+      "collection": "Tile | path_13_2",
+      "empty": false,
+      "old_atlas_coordinate": [
+        13,
+        2
+      ],
+      "coverage": "bb8b9ffb8d56abb8",
+      "source_id": 0,
+      "atlas_coords": [
+        4,
+        7
+      ]
+    },
+    {
+      "name": "path_14_2",
+      "collection": "Tile | path_14_2",
+      "empty": false,
+      "old_atlas_coordinate": [
+        14,
+        2
+      ],
+      "coverage": "7430230064306a30",
+      "source_id": 0,
+      "atlas_coords": [
+        5,
+        7
+      ]
+    },
+    {
+      "name": "path_15_2",
+      "collection": "Tile | path_15_2",
+      "empty": true,
+      "old_atlas_coordinate": [
+        15,
+        2
+      ],
+      "coverage": "0000000000000000",
+      "source_id": 0,
+      "atlas_coords": [
+        0,
+        8
+      ]
+    },
+    {
+      "name": "path_22_2",
+      "collection": "Tile | path_22_2",
+      "empty": false,
+      "old_atlas_coordinate": [
+        22,
+        2
+      ],
+      "coverage": "dffe8ffeebb64abb",
+      "source_id": 0,
+      "atlas_coords": [
+        1,
+        8
+      ]
+    },
+    {
+      "name": "path_23_2",
+      "collection": "Tile | path_23_2",
+      "empty": false,
+      "old_atlas_coordinate": [
+        23,
+        2
+      ],
+      "coverage": "fffefffebb8c7ac8",
+      "source_id": 0,
+      "atlas_coords": [
+        2,
+        8
+      ]
+    },
+    {
+      "name": "path_24_2",
+      "collection": "Tile | path_24_2",
+      "empty": false,
+      "old_atlas_coordinate": [
+        24,
+        2
+      ],
+      "coverage": "fffefffefff9adb8",
+      "source_id": 0,
+      "atlas_coords": [
+        3,
+        8
+      ]
+    },
+    {
+      "name": "path_9_3",
+      "collection": "Tile | path_9_3",
+      "empty": false,
+      "old_atlas_coordinate": [
+        9,
+        3
+      ],
+      "coverage": "0574024300220264",
+      "source_id": 0,
+      "atlas_coords": [
+        4,
+        8
+      ]
+    },
+    {
+      "name": "path_10_3",
+      "collection": "Tile | path_10_3",
+      "empty": false,
+      "old_atlas_coordinate": [
+        10,
+        3
+      ],
+      "coverage": "b9fe78e7affbb8a8",
+      "source_id": 0,
+      "atlas_coords": [
+        5,
+        8
+      ]
+    },
+    {
+      "name": "path_11_3",
+      "collection": "Tile | path_11_3",
+      "empty": false,
+      "old_atlas_coordinate": [
+        11,
+        3
+      ],
+      "coverage": "fffedffe8ffebffe",
+      "source_id": 0,
+      "atlas_coords": [
+        0,
+        9
+      ]
+    },
+    {
+      "name": "path_12_3",
+      "collection": "Tile | path_12_3",
+      "empty": false,
+      "old_atlas_coordinate": [
+        12,
+        3
+      ],
+      "coverage": "fffdfffefffefffe",
+      "source_id": 0,
+      "atlas_coords": [
+        1,
+        9
+      ]
+    },
+    {
+      "name": "path_13_3",
+      "collection": "Tile | path_13_3",
+      "empty": false,
+      "old_atlas_coordinate": [
+        13,
+        3
+      ],
+      "coverage": "8db1e87be6bde8d9",
+      "source_id": 0,
+      "atlas_coords": [
+        2,
+        9
+      ]
+    },
+    {
+      "name": "path_14_3",
+      "collection": "Tile | path_14_3",
+      "empty": false,
+      "old_atlas_coordinate": [
+        14,
+        3
+      ],
+      "coverage": "3810da00d3005630",
+      "source_id": 0,
+      "atlas_coords": [
+        3,
+        9
+      ]
+    },
+    {
+      "name": "path_15_3",
+      "collection": "Tile | path_15_3",
+      "empty": true,
+      "old_atlas_coordinate": [
+        15,
+        3
+      ],
+      "coverage": "0000000000000000",
+      "source_id": 0,
+      "atlas_coords": [
+        4,
+        9
+      ]
+    },
+    {
+      "name": "path_9_4",
+      "collection": "Tile | path_9_4",
+      "empty": false,
+      "old_atlas_coordinate": [
+        9,
+        4
+      ],
+      "coverage": "0043002400110036",
+      "source_id": 0,
+      "atlas_coords": [
+        5,
+        9
+      ]
+    },
+    {
+      "name": "path_10_4",
+      "collection": "Tile | path_10_4",
+      "empty": false,
+      "old_atlas_coordinate": [
+        10,
+        4
+      ],
+      "coverage": "74ad72742326bd8a",
+      "source_id": 0,
+      "atlas_coords": [
+        0,
+        10
+      ]
+    },
+    {
+      "name": "path_11_4",
+      "collection": "Tile | path_11_4",
+      "empty": false,
+      "old_atlas_coordinate": [
+        11,
+        4
+      ],
+      "coverage": "dffebffedffeeffe",
+      "source_id": 0,
+      "atlas_coords": [
+        1,
+        10
+      ]
+    },
+    {
+      "name": "path_12_4",
+      "collection": "Tile | path_12_4",
+      "empty": false,
+      "old_atlas_coordinate": [
+        12,
+        4
+      ],
+      "coverage": "fffcfffdfffcfffe",
+      "source_id": 0,
+      "atlas_coords": [
+        2,
+        10
+      ]
+    },
+    {
+      "name": "path_13_4",
+      "collection": "Tile | path_13_4",
+      "empty": false,
+      "old_atlas_coordinate": [
+        13,
+        4
+      ],
+      "coverage": "a7ca84305369ed27",
+      "source_id": 0,
+      "atlas_coords": [
+        3,
+        10
+      ]
+    },
+    {
+      "name": "path_14_4",
+      "collection": "Tile | path_14_4",
+      "empty": false,
+      "old_atlas_coordinate": [
+        14,
+        4
+      ],
+      "coverage": "8100110043001000",
+      "source_id": 0,
+      "atlas_coords": [
+        4,
+        10
+      ]
+    },
+    {
+      "name": "path_15_4",
+      "collection": "Tile | path_15_4",
+      "empty": true,
+      "old_atlas_coordinate": [
+        15,
+        4
+      ],
+      "coverage": "0000000000000000",
+      "source_id": 0,
+      "atlas_coords": [
+        5,
+        10
+      ]
+    },
+    {
+      "name": "path_9_5",
+      "collection": "Tile | path_9_5",
+      "empty": false,
+      "old_atlas_coordinate": [
+        9,
+        5
+      ],
+      "coverage": "0033004c018c0374",
+      "source_id": 1,
+      "atlas_coords": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "path_10_5",
+      "collection": "Tile | path_10_5",
+      "empty": false,
+      "old_atlas_coordinate": [
+        10,
+        5
+      ],
+      "coverage": "8c9aeb5d939c18c7",
+      "source_id": 1,
+      "atlas_coords": [
+        1,
+        0
+      ]
+    },
+    {
+      "name": "path_11_5",
+      "collection": "Tile | path_11_5",
+      "empty": false,
+      "old_atlas_coordinate": [
+        11,
+        5
+      ],
+      "coverage": "fffefffefffeeffe",
+      "source_id": 1,
+      "atlas_coords": [
+        2,
+        0
+      ]
+    },
+    {
+      "name": "path_12_5",
+      "collection": "Tile | path_12_5",
+      "empty": false,
+      "old_atlas_coordinate": [
+        12,
+        5
+      ],
+      "coverage": "fff9fff9fffdfffe",
+      "source_id": 1,
+      "atlas_coords": [
+        3,
+        0
+      ]
+    },
+    {
+      "name": "path_13_5",
+      "collection": "Tile | path_13_5",
+      "empty": false,
+      "old_atlas_coordinate": [
+        13,
+        5
+      ],
+      "coverage": "ab8c9ffa8b65fcc8",
+      "source_id": 1,
+      "atlas_coords": [
+        4,
+        0
+      ]
+    },
+    {
+      "name": "path_14_5",
+      "collection": "Tile | path_14_5",
+      "empty": false,
+      "old_atlas_coordinate": [
+        14,
+        5
+      ],
+      "coverage": "8430120065203630",
+      "source_id": 1,
+      "atlas_coords": [
+        5,
+        0
+      ]
+    },
+    {
+      "name": "path_15_5",
+      "collection": "Tile | path_15_5",
+      "empty": true,
+      "old_atlas_coordinate": [
+        15,
+        5
+      ],
+      "coverage": "0000000000000000",
+      "source_id": 1,
+      "atlas_coords": [
+        0,
+        1
+      ]
+    },
+    {
+      "name": "path_0_6",
+      "collection": "Tile | path_0_6",
+      "empty": false,
+      "old_atlas_coordinate": [
+        0,
+        6
+      ],
+      "coverage": "ab99d8defffefffe",
+      "source_id": 1,
+      "atlas_coords": [
+        1,
+        1
+      ]
+    },
+    {
+      "name": "path_1_6",
+      "collection": "Tile | path_1_6",
+      "empty": false,
+      "old_atlas_coordinate": [
+        1,
+        6
+      ],
+      "coverage": "fffefffefffefffe",
+      "source_id": 1,
+      "atlas_coords": [
+        2,
+        1
+      ]
+    },
+    {
+      "name": "path_2_6",
+      "collection": "Tile | path_2_6",
+      "empty": false,
+      "old_atlas_coordinate": [
+        2,
+        6
+      ],
+      "coverage": "fffefffefffefffe",
+      "source_id": 1,
+      "atlas_coords": [
+        3,
+        1
+      ]
+    },
+    {
+      "name": "path_3_6",
+      "collection": "Tile | path_3_6",
+      "empty": false,
+      "old_atlas_coordinate": [
+        3,
+        6
+      ],
+      "coverage": "fdfafffefffefffe",
+      "source_id": 1,
+      "atlas_coords": [
+        4,
+        1
+      ]
+    },
+    {
+      "name": "path_9_6",
+      "collection": "Tile | path_9_6",
+      "empty": false,
+      "old_atlas_coordinate": [
+        9,
+        6
+      ],
+      "coverage": "0686014400220147",
+      "source_id": 1,
+      "atlas_coords": [
+        5,
+        1
+      ]
+    },
+    {
+      "name": "path_10_6",
+      "collection": "Tile | path_10_6",
+      "empty": false,
+      "old_atlas_coordinate": [
+        10,
+        6
+      ],
+      "coverage": "6afe64e7bffba9aa",
+      "source_id": 1,
+      "atlas_coords": [
+        0,
+        2
+      ]
+    },
+    {
+      "name": "path_11_6",
+      "collection": "Tile | path_11_6",
+      "empty": false,
+      "old_atlas_coordinate": [
+        11,
+        6
+      ],
+      "coverage": "fffedffe8efecffe",
+      "source_id": 1,
+      "atlas_coords": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "path_12_6",
+      "collection": "Tile | path_12_6",
+      "empty": false,
+      "old_atlas_coordinate": [
+        12,
+        6
+      ],
+      "coverage": "fffefffefffefffe",
+      "source_id": 1,
+      "atlas_coords": [
+        2,
+        2
+      ]
+    },
+    {
+      "name": "path_13_6",
+      "collection": "Tile | path_13_6",
+      "empty": false,
+      "old_atlas_coordinate": [
+        13,
+        6
+      ],
+      "coverage": "fed3f95af5bdc9ba",
+      "source_id": 1,
+      "atlas_coords": [
+        3,
+        2
+      ]
+    },
+    {
+      "name": "path_14_6",
+      "collection": "Tile | path_14_6",
+      "empty": false,
+      "old_atlas_coordinate": [
+        14,
+        6
+      ],
+      "coverage": "b810e700c3007610",
+      "source_id": 1,
+      "atlas_coords": [
+        4,
+        2
+      ]
+    },
+    {
+      "name": "path_15_6",
+      "collection": "Tile | path_15_6",
+      "empty": true,
+      "old_atlas_coordinate": [
+        15,
+        6
+      ],
+      "coverage": "0000000000000000",
+      "source_id": 1,
+      "atlas_coords": [
+        5,
+        2
+      ]
+    },
+    {
+      "name": "path_0_7",
+      "collection": "Tile | path_0_7",
+      "empty": false,
+      "old_atlas_coordinate": [
+        0,
+        7
+      ],
+      "coverage": "21056526ada48fe8",
+      "source_id": 1,
+      "atlas_coords": [
+        0,
+        3
+      ]
+    },
+    {
+      "name": "path_1_7",
+      "collection": "Tile | path_1_7",
+      "empty": false,
+      "old_atlas_coordinate": [
+        1,
+        7
+      ],
+      "coverage": "a4e476fe8bfedffe",
+      "source_id": 1,
+      "atlas_coords": [
+        1,
+        3
+      ]
+    },
+    {
+      "name": "path_2_7",
+      "collection": "Tile | path_2_7",
+      "empty": false,
+      "old_atlas_coordinate": [
+        2,
+        7
+      ],
+      "coverage": "ad83ee99fff6fffe",
+      "source_id": 1,
+      "atlas_coords": [
+        2,
+        3
+      ]
+    },
+    {
+      "name": "path_3_7",
+      "collection": "Tile | path_3_7",
+      "empty": false,
+      "old_atlas_coordinate": [
+        3,
+        7
+      ],
+      "coverage": "5114ee957ed845ca",
+      "source_id": 1,
+      "atlas_coords": [
+        3,
+        3
+      ]
+    },
+    {
+      "name": "path_4_7",
+      "collection": "Tile | path_4_7",
+      "empty": false,
+      "old_atlas_coordinate": [
+        4,
+        7
+      ],
+      "coverage": "bb578de847be3014",
+      "source_id": 1,
+      "atlas_coords": [
+        4,
+        3
+      ]
+    },
+    {
+      "name": "path_5_7",
+      "collection": "Tile | path_5_7",
+      "empty": false,
+      "old_atlas_coordinate": [
+        5,
+        7
+      ],
+      "coverage": "fffe5dfeb6de29cb",
+      "source_id": 1,
+      "atlas_coords": [
+        5,
+        3
+      ]
+    },
+    {
+      "name": "path_6_7",
+      "collection": "Tile | path_6_7",
+      "empty": false,
+      "old_atlas_coordinate": [
+        6,
+        7
+      ],
+      "coverage": "fffbffd9ce674d49",
+      "source_id": 1,
+      "atlas_coords": [
+        0,
+        4
+      ]
+    },
+    {
+      "name": "path_13_7",
+      "collection": "Tile | path_13_7",
+      "empty": false,
+      "old_atlas_coordinate": [
+        13,
+        7
+      ],
+      "coverage": "fffdfffefffefffe",
+      "source_id": 1,
+      "atlas_coords": [
+        1,
+        4
+      ]
+    },
+    {
+      "name": "path_14_7",
+      "collection": "Tile | path_14_7",
+      "empty": false,
+      "old_atlas_coordinate": [
+        14,
+        7
+      ],
+      "coverage": "d990f893fdb48a80",
+      "source_id": 1,
+      "atlas_coords": [
+        2,
+        4
+      ]
+    },
+    {
+      "name": "path_4_8",
+      "collection": "Tile | path_4_8",
+      "empty": false,
+      "old_atlas_coordinate": [
+        4,
+        8
+      ],
+      "coverage": "fffefffefffeaccd",
+      "source_id": 1,
+      "atlas_coords": [
+        3,
+        4
+      ]
+    },
+    {
+      "name": "path_5_8",
+      "collection": "Tile | path_5_8",
+      "empty": false,
+      "old_atlas_coordinate": [
+        5,
+        8
+      ],
+      "coverage": "fffefffefffefffe",
+      "source_id": 1,
+      "atlas_coords": [
+        4,
+        4
+      ]
+    },
+    {
+      "name": "path_6_8",
+      "collection": "Tile | path_6_8",
+      "empty": false,
+      "old_atlas_coordinate": [
+        6,
+        8
+      ],
+      "coverage": "fffefffefffefffe",
+      "source_id": 1,
+      "atlas_coords": [
+        5,
+        4
+      ]
+    },
+    {
+      "name": "path_13_8",
+      "collection": "Tile | path_13_8",
+      "empty": false,
+      "old_atlas_coordinate": [
+        13,
+        8
+      ],
+      "coverage": "ba8d9efa8c58ffc9",
+      "source_id": 1,
+      "atlas_coords": [
+        0,
+        5
+      ]
+    },
+    {
+      "name": "path_14_8",
+      "collection": "Tile | path_14_8",
+      "empty": false,
+      "old_atlas_coordinate": [
+        14,
+        8
+      ],
+      "coverage": "6620100057106760",
+      "source_id": 1,
+      "atlas_coords": [
+        1,
+        5
+      ]
+    },
+    {
+      "name": "path_2_9",
+      "collection": "Tile | path_2_9",
+      "empty": true,
+      "old_atlas_coordinate": [
+        2,
+        9
+      ],
+      "coverage": "0000000000000000",
+      "source_id": 1,
+      "atlas_coords": [
+        2,
+        5
+      ]
+    },
+    {
+      "name": "path_3_9",
+      "collection": "Tile | path_3_9",
+      "empty": true,
+      "old_atlas_coordinate": [
+        3,
+        9
+      ],
+      "coverage": "0000000000000000",
+      "source_id": 1,
+      "atlas_coords": [
+        3,
+        5
+      ]
+    },
+    {
+      "name": "path_4_9",
+      "collection": "Tile | path_4_9",
+      "empty": true,
+      "old_atlas_coordinate": [
+        4,
+        9
+      ],
+      "coverage": "0000000000000000",
+      "source_id": 1,
+      "atlas_coords": [
+        4,
+        5
+      ]
+    },
+    {
+      "name": "path_5_9",
+      "collection": "Tile | path_5_9",
+      "empty": true,
+      "old_atlas_coordinate": [
+        5,
+        9
+      ],
+      "coverage": "0000000000000000",
+      "source_id": 1,
+      "atlas_coords": [
+        5,
+        5
+      ]
+    },
+    {
+      "name": "path_2_10",
+      "collection": "Tile | path_2_10",
+      "empty": false,
+      "old_atlas_coordinate": [
+        2,
+        10
+      ],
+      "coverage": "ca79b7a897672104",
+      "source_id": 1,
+      "atlas_coords": [
+        0,
+        6
+      ]
+    },
+    {
+      "name": "path_3_10",
+      "collection": "Tile | path_3_10",
+      "empty": false,
+      "old_atlas_coordinate": [
+        3,
+        10
+      ],
+      "coverage": "8ff859d861574005",
+      "source_id": 1,
+      "atlas_coords": [
+        1,
+        6
+      ]
+    },
+    {
+      "name": "path_4_10",
+      "collection": "Tile | path_4_10",
+      "empty": false,
+      "old_atlas_coordinate": [
+        4,
+        10
+      ],
+      "coverage": "cb759de749d93000",
+      "source_id": 1,
+      "atlas_coords": [
+        2,
+        6
+      ]
+    },
+    {
+      "name": "path_5_10",
+      "collection": "Tile | path_5_10",
+      "empty": false,
+      "old_atlas_coordinate": [
+        5,
+        10
+      ],
+      "coverage": "b6e747b7b9224103",
+      "source_id": 1,
+      "atlas_coords": [
+        3,
+        6
+      ]
+    },
+    {
+      "name": "path_5_12",
+      "collection": "Tile | path_5_12",
+      "empty": false,
+      "old_atlas_coordinate": [
+        5,
+        12
+      ],
+      "coverage": "0001000700130265",
+      "source_id": 1,
+      "atlas_coords": [
+        4,
+        6
+      ]
+    },
+    {
+      "name": "path_6_12",
+      "collection": "Tile | path_6_12",
+      "empty": false,
+      "old_atlas_coordinate": [
+        6,
+        12
+      ],
+      "coverage": "3dcdbafaeffbb899",
+      "source_id": 1,
+      "atlas_coords": [
+        5,
+        6
+      ]
+    },
+    {
+      "name": "path_5_13",
+      "collection": "Tile | path_5_13",
+      "empty": false,
+      "old_atlas_coordinate": [
+        5,
+        13
+      ],
+      "coverage": "d7d67ae9d9668215",
+      "source_id": 1,
+      "atlas_coords": [
+        0,
+        7
+      ]
+    },
+    {
+      "name": "path_6_13",
+      "collection": "Tile | path_6_13",
+      "empty": false,
+      "old_atlas_coordinate": [
+        6,
+        13
+      ],
+      "coverage": "ab9e7cda7cb99dad",
+      "source_id": 1,
+      "atlas_coords": [
+        1,
+        7
+      ]
+    }
+  ],
+  "dependencies": [
+    "Blender (bundled bpy and Python standard library)"
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "source": "art/blender/sources/gun_tower.blend",
+  "source_sha256": "74f5516a2b16eedb14da2d50aa3bdd1bf19a5eeb185493da5506a2dedf7d67bb",
+  "settings_sha256": "fa80b56083f8af2d5c000e7ff9dba0eac9b6a64161d5cb3f83f34023a209cdef",
+  "blender_version": "5.2.2 LTS",
+  "python_version": "3.13.15",
+  "canvas": [
+    1024,
+    1024
+  ],
+  "anchor": [
+    512,
+    768
+  ],
+  "trimmed": false,
+  "logical_canvas": [
+    128,
+    128
+  ],
+  "logical_anchor": [
+    64,
+    96
+  ],
+  "render_density": 8,
+  "profile": "iron_ink",
+  "world_points_per_unit": 32,
+  "blender_xy_basis_pixels": [
+    [
+      -256,
+      128
+    ],
+    [
+      256,
+      128
+    ]
+  ],
+  "logical_xy_from_blender": [
+    "32 * Y",
+    "32 * X"
+  ],
+  "dependencies": [
+    "Blender (bundled bpy and Python standard library)"
+  ],
+  "model": {
+    "path": "assets/generated/gun_tower.glb",
+    "scene": "scenes/actors/generated/gun_tower_model.tscn",
+    "sha256": "f810a8191833b945ee0713f2f1060d4ccfb3357fd9b13afab5abbb7f04830f2b",
+    "blender_to_godot": [
+      "X",
+      "Z",
+      "-Y"
+    ],
+    "logical_xy_from_godot": [
+      "-32 * Z",
+      "32 * X"
+    ],
+    "forward_axis": "+X",
+    "rig_nodes": [
+      "AimPivot",
+      "Recoil",
+      "Muzzle"
+    ],
+    "muzzle_blender": [
+      0.9599999785423279,
+      -4.656612873077393e-10,
+      1.0900001525878906
+    ],
+    "exporter": "Khronos glTF Blender I/O v5.2.40",
+    "mesh_float_decimal_places": 6,
+    "dependencies": [
+      "Blender bundled glTF 2.0 exporter"
+    ]
+  }
+}

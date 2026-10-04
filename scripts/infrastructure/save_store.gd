@@ -97,6 +97,9 @@ static func validate_state(state: Dictionary) -> String:
 		return "State contains an unsupported or non-finite value"
 	if state.get("schema") != 1 or not state.get("level") is Dictionary:
 		return "Unsupported gameplay state schema"
+	var identity_issue: String = GameSimulation.state_id_error(state)
+	if not identity_issue.is_empty():
+		return identity_issue
 	var level: Dictionary = state.level
 	if not AtomicJSON.is_integer(level.get("number")) or int(level.number) not in [0, 1, 2, 3, 4, 5]:
 		return "Invalid level number"
@@ -134,14 +137,10 @@ static func validate_state(state: Dictionary) -> String:
 		return "Invalid random generator state"
 	if not state.get("entities") is Array:
 		return "Missing entities"
-	var ids: Dictionary = {}
 	var players: Dictionary = {}
 	for entity: Variant in state.entities:
-		if not entity is Dictionary or not AtomicJSON.is_integer(entity.get("id")) or int(entity.id) < 1 or not AtomicJSON.is_point(entity.get("position")):
+		if not AtomicJSON.is_point(entity.get("position")):
 			return "Invalid entity"
-		if ids.has(entity.id):
-			return "Duplicate entity ID"
-		ids[entity.id] = true
 		if entity.get("kind") not in ["nathaniel", "hermes", "grunt", "soldier", "boss", "spawner", "gunTower", "laserTower", "healTower"]:
 			return "Unknown entity kind"
 		for key: String in ["hp", "max_hp"]:
@@ -180,7 +179,7 @@ static func validate_state(state: Dictionary) -> String:
 	for visibility: Variant in state.get("fog", []):
 		if not AtomicJSON.is_integer(visibility) or int(visibility) not in [0, 1, 2]:
 			return "Invalid fog state"
-	return ""
+	return GameSimulation.weapon_state_error(state)
 
 
 static func _valid_slot(slot: int) -> bool:

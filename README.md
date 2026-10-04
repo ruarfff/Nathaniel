@@ -31,6 +31,7 @@ The [browser version](docs/web.md) uses the same game and runs from a static web
 ## Play
 
 - Click or tap the ground to move Nathaniel; select an enemy to target it.
+- Walk over a weapon crate to unlock the heavy rifle. Use **1 / 2** or the named weapon buttons to switch; movement and aiming continue during the 0.35-second switch.
 - Use Stop/Follow to direct Hermes. He starts following Nathaniel and cannot be selected directly.
 - Select Build to focus the camera on Hermes and open the tower choices. Hermes keeps following until a tower is placed. Drag a tower onto clear ground, or select a tower and then its location. Gun, laser, and heal towers cost 5, 10, and 15 resources.
 - Make Hermes follow to close Build, return the camera to Nathaniel, remove his surviving towers, and refund 25% of each paid cost, rounded down. Enemy destruction gives no refund.
@@ -40,6 +41,22 @@ The [browser version](docs/web.md) uses the same game and runs from a static web
 Desktop controls: **B** opens or closes Build, **Space** returns the camera to Nathaniel and closes Build, **R** switches Hermes between Stop and Follow, and **S** stops Nathaniel. **Escape** cancels an armed tower first, then closes Build, then pauses; it also closes the top menu. The mouse wheel zooms. **F** or right-click fires at the pointer; the HUD Fire button uses the current target. Touch uses the HUD and world controls, with zoom buttons and a two-finger camera gesture.
 
 Pause to save into one of three slots. Settings and campaign records are stored separately. Existing Swift saves can be imported from an explicit exported file into an empty slot; see [saves and compatibility](docs/saves.md).
+
+## Find the right files
+
+Start with the row for the change, then use `make help` for the command list.
+Search source directories first; `assets/generated/` contains export output.
+
+| Change | Start here | Guide / focused check |
+| --- | --- | --- |
+| Combat, weapons, movement or balance | `scripts/domain/game_simulation.gd`, `combat_rules.gd`, `game_balance.gd`, `world_navigation.gd` | [Domain APIs](scripts/domain/README.md); `make test-gameplay` |
+| Input, HUD or camera | `scripts/presentation/game_input.gd`, `game_ui.gd`, `game_app.gd` | [Controls](docs/web.md#character-controls); `make test-presentation` |
+| Aiming, recoil or healing visuals | `scripts/presentation/actors/`, `world_effects.gd`, `resources/actors/`, `resources/weapons/` | [Weapons](docs/nathaniel-weapons.md), [tower art](docs/iron-and-ink-assets.md); `make test-nathaniel-weapons` / `make test-healing-tower` |
+| Levels, encounters or blocking cells | `levels/`, `scripts/presentation/levels/level.gd`, `spawn_marker.gd` | [Level authoring](docs/authoring.md); `make test-content` |
+| Blender sources or exports | `art/blender/sources/`, `tools/blender/`, `art/blender/settings.json` | [Pipeline](docs/blender-assets.md), [terrain/buildings](docs/environment-assets.md); `make test-art` |
+| Saves or Swift compatibility | `scripts/infrastructure/save_store.gd`, `swift_save_import.gd` | [Save contract](docs/saves.md); `make test-services` |
+| Debug state or MCP | `scripts/presentation/debug_bridge.gd`, `scripts/infrastructure/debug_server.gd`, `game-mcp-server/` | [Debug protocol](docs/debug-interface.md); `make test-mcp` |
+| Platform export or playtest | `tools/export_project.py`, `export_presets.cfg` | [Exports](docs/authoring.md#export-and-platform-checks), [testing](docs/testing.md), [dated verification](docs/verification.md) |
 
 ## Code and content
 
@@ -52,6 +69,9 @@ Pause to save into one of three slots. Settings and campaign records are stored 
 | `scripts/presentation/levels/` | Native level resources and encounter markers |
 | `scripts/infrastructure/` | Atomic files, save/settings/progress stores, Swift-save conversion and debug HTTP |
 | `levels/`, `scenes/`, `resources/`, `assets/` | Editable native content and artwork |
+| `art/blender/sources/`, `tools/blender/` | Saved editable models, generators and exporters; excluded from runtime import |
+| `assets/generated/`, `scenes/*/generated/` | Committed runtime exports; regenerate from saved sources |
+| `concept-art/` | Design references and proposals; not a record of implemented mechanics |
 | `tests/`, `tools/`, `game-mcp-server/` | Automated checks, local developer tools and MCP adapter |
 
 `GameSimulation` owns gameplay use cases and uses logical world coordinates with positive Y up. It has no scene-tree, rendering, input, or disk dependency. Presentation converts between that world and the isometric viewport. Infrastructure owns persistence and external protocols. There is no separate application wrapper around the simulation. See [architecture](docs/architecture.md) for dependencies. Read the [domain boundary](scripts/domain/README.md) before changing simulation state directly.

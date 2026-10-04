@@ -1,0 +1,37 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/generated/gun_tower.glb" id="1"]
+
+[sub_resource type="Environment" id="Environment_shared"]
+ambient_light_source = 2
+ambient_light_color = Color(1, 1, 1, 1)
+ambient_light_energy = 0.35
+reflected_light_source = 1
+tonemap_mode = 0
+
+[node name="GunTowerModel" type="Node3D"]
+metadata/logical_canvas = Vector2i(128, 128)
+metadata/logical_ground_anchor = Vector2(64, 96)
+metadata/max_pixel_density = 8.0
+metadata/world_points_per_unit = 32
+
+[node name="Geometry" parent="." instance=ExtResource("1")]
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(-0.707106769, -0.353553444, 0.612372398, -1.95993852e-08, 0.866025388, 0.50000006, -0.707106769, 0.353553444, -0.612372398, 11.9974489, 10.6123724, -11.9974489)
+projection = 1
+current = true
+size = 2.82842712
+near = 0.01
+far = 100.0
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.784885585, 0.191511109, -0.589303136, 0.5, 0.365998149, 0.784885585, 0.365998149, -0.910696924, 0.191511109, 0, 0, 0)
+light_energy = 0.2
+light_angular_distance = 10
+shadow_enabled = true
+directional_shadow_mode = 0
+directional_shadow_max_distance = 24.0
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_shared")

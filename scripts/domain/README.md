@@ -5,7 +5,7 @@ projection, or disk dependencies. `step(delta)` uses logical seconds and y-up
 world points. Level dimensions are cells; `tile_size` converts them to points.
 
 Call `configure(level_scene.data())` to begin a fresh level. Render `entities`,
-`corpses`, and `projectiles`; use the simulation methods to add or remove them.
+`corpses`, `projectiles`, and `weapon_pickups`; use simulation methods to add or remove them.
 Do not append to or erase the public arrays. Combat keeps private indexes of
 the same dictionary objects. Individual state values can be changed by debug
 setup and tests. `take_events()` consumes presentation/audio events exactly once.
@@ -14,10 +14,12 @@ setup and tests. `take_events()` consumes presentation/audio events exactly once
 | --- | --- |
 | Move Nathaniel | `move_to(world_point)`, `stop_player()` |
 | Aim/fire Nathaniel | `target_enemy(id)`, `fire_at(world_point)` |
+| Equip Nathaniel | `equip_weapon("rifle")` or `equip_weapon("heavy_rifle")`; returns whether the request was accepted |
 | Saved camera focus | `focused_character = "nathaniel"` or `"hermes"`; presentation focuses Hermes only for Build |
 | Hermes control | `set_hermes_mode("building")` or `"following"` |
 | Build | `placement_error(point)`, `place_tower(kind, point)` |
 | Editor/map setup | `spawn_enemy(kind, point)`, `place_map_tower(kind, point)` |
+| Weapon pickup setup | `spawn_weapon_pickup(weapon_id, point)`; level data accepts `weapon_pickups: [{weapon_id, position}]` |
 | Damage/setup | `damage_entity(id, amount, attacker_id)`, `spawn_resource(...)` |
 | Pause | `set_paused(bool)` |
 | Save state | `snapshot()` returns JSON primitives; `restore(state)` rebuilds routes |
@@ -30,8 +32,30 @@ weapon state, shots, corpse delivery state, exploration, random state, and each
 requested destination. Routes are rebuilt after restoring all tower obstacles.
 Legacy save conversion and file validation are in `scripts/infrastructure`.
 
+Nathaniel's `aim_direction` is independent of movement `facing`. His gun turns
+at 360 degrees per second and fires within one degree of the requested direction.
+`fire_at` returns true for a ready, in-range request, including one that still
+needs to turn. It stores one pending point; a later valid request replaces it.
+Movement commands, enemy selection, an equipment change, or death cancel that
+point. Cooldown and equip time reject manual fire; automatic targeting waits.
+
+Weapon identity is `equipped_weapon_id`; the existing `weapon` field still names
+the firing mechanism. Both rifles use bullets. Rifle damage/delay are 25/0.8;
+heavy rifle damage/delay are 50/1.6. Changing guns takes 0.35 seconds and preserves
+elapsed cooldown. Fire also waits for the last shot's `recovery_delay`, so changing
+to a faster gun cannot shorten recovery. The `shot` event and projectile capture
+their own `weapon_id`; presentation must use that ID for an existing bullet.
+
+Only Nathaniel collects guns, within 32 logical points. Collection adds the ID
+to `owned_weapon_ids` without equipping it. Duplicate pickups give no reward.
+Each pickup has a stable entity-allocator ID and produces one `weapon_collected`
+event with `pickup_id`, `weapon_id`, `position`, and `newly_owned`. Save/load and
+spare-life respawn keep the loadout. A fresh level starts with the rifle only.
+Snapshots preserve pickups, pending aim, equip time, and recovery; old saves
+receive the rifle defaults without spawning new pickups.
+
 `GameBalance` contains the shipped release constants. The legacy implementation
-is retained in Git history at `824c8f1`. Preserved rules include:
+is retained in Git history at `824c8f1`. Current rules include:
 
 - Campaign starts with three spare lives; survival ends on the first death.
   Losing Hermes ends the game. A boss death wins campaign levels, including waves.
@@ -48,7 +72,9 @@ is retained in Git history at `824c8f1`. Preserved rules include:
 - Player shots update before enemy shots. Death rewards are immediate, and enemy
   shots continue after death. Victory cannot be replaced by a later lethal hit.
 - Hermes and tower lasers carry fractional damage. The spawner beam pays whole
-  seconds of damage. Healing selects Nathaniel before Hermes, one target per tick.
+  seconds of damage. Each healing tick restores up to five HP to both Nathaniel
+  and Hermes if they are alive, injured, and strictly inside the tower's range.
+  Healing ticks have a one-second interval; an idle tower stays ready to heal.
 - Only Soldiers leave corpses, worth ten resources. Loose corpses expire after
   ten seconds. Carried corpses do not expire; Hermes contact credits them once.
 - Spawners produce at 30, 60, and 90 seconds, then every 120 seconds. Their child

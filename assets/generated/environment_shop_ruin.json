@@ -1,0 +1,56 @@
+{
+  "source": "art/blender/sources/environment_shop_ruin.blend",
+  "source_sha256": "3fa54a10d2960475b91a27c608ce536882f9b577be69f263ec67d639c0533e32",
+  "settings_sha256": "3857baebc9f286eced59029acda804f407fd5de2f3c86a336fb81872318f1ff4",
+  "blender_version": "5.2.2 LTS",
+  "python_version": "3.13.15",
+  "canvas": [
+    2448,
+    2055
+  ],
+  "anchor": [
+    1210,
+    1450
+  ],
+  "trimmed": true,
+  "logical_canvas": [
+    306.0,
+    256.875
+  ],
+  "logical_anchor": [
+    151.25,
+    181.25
+  ],
+  "render_density": 8,
+  "profile": "iron_ink_environment",
+  "world_points_per_unit": 32,
+  "blender_xy_basis_pixels": [
+    [
+      -256,
+      128
+    ],
+    [
+      256,
+      128
+    ]
+  ],
+  "logical_xy_from_blender": [
+    "32 * Y",
+    "32 * X"
+  ],
+  "dependencies": [
+    "Blender (bundled bpy and Python standard library)"
+  ],
+  "crop_origin": [
+    454,
+    598
+  ],
+  "uncropped_canvas": [
+    3328,
+    3072
+  ],
+  "uncropped_anchor": [
+    1664,
+    2048
+  ]
+}

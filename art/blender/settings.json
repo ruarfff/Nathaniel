@@ -1,0 +1,48 @@
+{
+  "blender_version": [5, 2, 2],
+  "canvas": [128, 128],
+  "anchor": [64, 96],
+  "render_density": 1,
+  "profiles": {
+    "iron_ink": {
+      "render_density": 8,
+      "samples": 64
+    },
+    "iron_ink_structure": {
+      "canvas": [320, 288],
+      "anchor": [160, 224],
+      "render_density": 8,
+      "samples": 64
+    },
+    "iron_ink_environment": {
+      "canvas": [416, 384],
+      "anchor": [208, 256],
+      "render_density": 8,
+      "samples": 64,
+      "trim": true
+    },
+    "iron_ink_terrain": {
+      "canvas": [72, 40],
+      "anchor": [36, 20],
+      "render_density": 8,
+      "samples": 32
+    }
+  },
+  "world_points_per_unit": 32,
+  "camera_azimuth_degrees": 45,
+  "camera_elevation_degrees": 30,
+  "engine": "CYCLES",
+  "samples": 32,
+  "seed": 0,
+  "pixel_filter": "BOX",
+  "filter_width": 1.0,
+  "world_strength": 0.35,
+  "sun_energy": 2.0,
+  "model_sun_energy_scale": 0.1,
+  "sun_rotation_degrees": [25, -30, -25],
+  "sun_angle_degrees": 10,
+  "view_transform": "Standard",
+  "look": "None",
+  "exposure": 0,
+  "gamma": 1
+}

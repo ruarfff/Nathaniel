@@ -20,3 +20,6 @@ __pycache__/
 # Local workspaces and operating system files
 .workspaces/
 .DS_Store
+
+# Blender keeps editable sources; local save backups do not belong in Git.
+*.blend[0-9]*

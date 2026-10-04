@@ -11,6 +11,7 @@ var level_number: int = 1
 var entities: Array[Dictionary] = []
 var projectiles: Array[Dictionary] = []
 var corpses: Array[Dictionary] = []
+var weapon_pickups: Array[Dictionary] = []
 var events: Array[Dictionary] = []
 var resources: int = 30
 var score: int = 0
@@ -51,6 +52,7 @@ func configure(config: Dictionary) -> void:
 	_shots_by_owner.clear()
 	projectiles.clear()
 	corpses.clear()
+	weapon_pickups.clear()
 	events.clear()
 	_next_id = 1
 	resources = int(level.get("starting_resources", 0 if level_number >= 4 else 30))
@@ -75,6 +77,8 @@ func configure(config: Dictionary) -> void:
 		var tower: Dictionary = place_map_tower(item.kind, point(item.position))
 		if not tower.is_empty():
 			apply_design_parameters(tower, item)
+	for item: Dictionary in level.get("weapon_pickups", []):
+		spawn_weapon_pickup(str(item.get("weapon_id", "")), point(item.get("position")))
 	fog.clear()
 	fog.resize(navigation.width * navigation.height)
 	fog.fill(0)
@@ -164,6 +168,37 @@ func spawn_resource(amount: int, position: Vector2, expiration: float = 10.0, ca
 func set_paused(value: bool) -> void:
 	paused = value
 
+func spawn_weapon_pickup(weapon_id: String, position: Vector2) -> Dictionary:
+	if not GameBalance.WEAPONS.has(weapon_id) or not position.is_finite():
+		return {}
+	var pickup: Dictionary = {"id": allocate_id(), "weapon_id": weapon_id, "position": position}
+	weapon_pickups.append(pickup)
+	return pickup
+
+func equip_weapon(weapon_id: String) -> bool:
+	if paused or result != "playing" or not CombatRules.alive(nathaniel) or not GameBalance.WEAPONS.has(weapon_id) or weapon_id not in nathaniel.owned_weapon_ids:
+		return false
+	if nathaniel.equipped_weapon_id == weapon_id:
+		return true
+	nathaniel.merge(GameBalance.WEAPONS[weapon_id], true)
+	nathaniel.equipped_weapon_id = weapon_id
+	nathaniel.equip_ready_remaining = GameBalance.WEAPON_EQUIP_SECONDS
+	nathaniel.manual_fire_target = null
+	return true
+
+func _collect_weapon_pickups() -> void:
+	if not CombatRules.alive(nathaniel):
+		return
+	for pickup: Dictionary in weapon_pickups.duplicate():
+		if Vector2(nathaniel.position).distance_to(pickup.position) > GameBalance.WEAPON_PICKUP_RADIUS:
+			continue
+		var newly_owned: bool = pickup.weapon_id not in nathaniel.owned_weapon_ids
+		if newly_owned:
+			nathaniel.owned_weapon_ids.append(pickup.weapon_id)
+		weapon_pickups.erase(pickup)
+		emit_event("weapon_collected", {"pickup_id": pickup.id, "weapon_id": pickup.weapon_id,
+			"position": pickup.position, "newly_owned": newly_owned})
+
 func step(delta: float) -> void:
 	if paused or result != "playing" or not is_finite(delta) or delta < 0:
 		return
@@ -171,6 +206,7 @@ func step(delta: float) -> void:
 	# Preserve GameScene's player -> waves -> enemy -> corpse -> tower order.
 	if CombatRules.alive(nathaniel):
 		_move(nathaniel, delta)
+	_collect_weapon_pickups()
 	CombatRules.update_unit(self, nathaniel, delta)
 	if CombatRules.alive(hermes):
 		_update_follow(hermes)
@@ -219,20 +255,9 @@ func move_to(destination: Vector2) -> void:
 		return
 	# Focusing Hermes only changes the camera. All ground commands move Nathaniel.
 	nathaniel.manual_target_id = -1
+	nathaniel.manual_fire_target = null
 	_stop(nathaniel)
 	_command_move(nathaniel, destination)
-
-func move_player_direction(direction: Vector2, delta: float) -> void:
-	if paused or result != "playing" or not CombatRules.alive(nathaniel):
-		return
-	_stop(nathaniel)
-	if direction.length_squared() > 0:
-		var position: Vector2 = nathaniel.position
-		var destination: Vector2 = position + direction.normalized() * float(nathaniel.speed) * delta
-		if navigation.segment_clear(position, destination, float(nathaniel.radius)):
-			nathaniel.position = destination
-			nathaniel.facing = direction.normalized()
-			nathaniel.moving = true
 
 func stop_player() -> void:
 	if not nathaniel.is_empty():
@@ -318,17 +343,23 @@ func target_enemy(id: int) -> void:
 		return
 	unit.target_id = id
 	unit.manual_target_id = id
+	unit.manual_fire_target = null
 
 func fire() -> bool:
 	var target: Dictionary = entity(int(nathaniel.get("target_id", -1)))
 	if paused or result != "playing" or not CombatRules.alive(target):
 		return false
-	return CombatRules.shoot(self, nathaniel, target.position)
+	return fire_at(target.position)
 
 func fire_at(position: Vector2) -> bool:
-	if paused or result != "playing" or not CombatRules.alive(nathaniel):
+	if paused or result != "playing" or not CombatRules.alive(nathaniel) or not position.is_finite():
 		return false
-	return CombatRules.shoot(self, nathaniel, position)
+	if not CombatRules.ready_to_shoot(nathaniel) or Vector2(nathaniel.position).distance_to(position) > float(nathaniel.range):
+		return false
+	nathaniel.manual_fire_target = position
+	if CombatRules.shoot(self, nathaniel, position):
+		nathaniel.manual_fire_target = null
+	return true
 
 func set_hermes_mode(mode: String) -> void:
 	mode = "building" if mode in ["independent", "locked", "stopped"] else mode
@@ -397,6 +428,7 @@ func damage_entity(id: int, amount: int, attacker_id: int = -1) -> void:
 		if result == "playing":
 			result = "gameOver"
 	elif unit.kind == "nathaniel":
+		unit.manual_fire_target = null
 		for corpse: Dictionary in corpses:
 			if corpse.carried:
 				corpse.carried = false
@@ -414,6 +446,8 @@ func _respawn_player() -> void:
 	nathaniel.active = true
 	nathaniel.position = point(level.get("player_start", Vector2(84, 242)))
 	nathaniel.facing = Vector2(0, -1)
+	nathaniel.aim_direction = Vector2(0, -1)
+	nathaniel.manual_fire_target = null
 	nathaniel.target_id = -1
 	nathaniel.manual_target_id = -1
 	_stop(nathaniel)
@@ -462,7 +496,7 @@ func take_events() -> Array[Dictionary]:
 
 func snapshot() -> Dictionary:
 	return encode({"schema": 1, "level": level, "entities": entities,
-		"projectiles": projectiles, "corpses": corpses, "resources": resources,
+		"projectiles": projectiles, "corpses": corpses, "weapon_pickups": weapon_pickups, "resources": resources,
 		"score": score, "lives": lives, "elapsed_time": elapsed_time, "result": result,
 		"hermes_mode": hermes_mode, "focused_character": focused_character,
 		"wave_elapsed": wave_elapsed, "wave_since_last_spawn": wave_since_last_spawn,
@@ -471,14 +505,16 @@ func snapshot() -> Dictionary:
 func restore(saved: Dictionary) -> bool:
 	if int(saved.get("schema", 0)) != 1 or not saved.get("level") is Dictionary or not saved.get("entities") is Array:
 		return false
-	var seen: Dictionary = {}
+	if not state_id_error(saved).is_empty():
+		return false
 	var players: Dictionary = {}
-	for item: Variant in saved.entities:
-		if not item is Dictionary or not GameBalance.STATS.has(item.get("kind", "")) or seen.has(int(item.get("id", -1))):
+	for item: Dictionary in saved.entities:
+		if not GameBalance.STATS.has(item.get("kind", "")):
 			return false
-		seen[int(item.id)] = true
 		players[item.kind] = true
 	if not players.has("nathaniel") or not players.has("hermes"):
+		return false
+	if not weapon_state_error(saved).is_empty():
 		return false
 	configure(saved.level)
 	entities.clear()
@@ -488,6 +524,7 @@ func restore(saved: Dictionary) -> bool:
 	_shots_by_owner.clear()
 	projectiles.clear()
 	corpses.clear()
+	weapon_pickups.clear()
 	_next_id = int(saved.get("next_id", 1))
 	for data: Dictionary in saved.entities:
 		var unit: Dictionary = GameBalance.create(data.kind, int(data.id), point(data.position))
@@ -497,6 +534,14 @@ func restore(saved: Dictionary) -> bool:
 		for key: String in ["destination", "follow_destination"]:
 			if unit[key] != null:
 				unit[key] = point(unit[key])
+		if unit.kind == "nathaniel":
+			unit.owned_weapon_ids = unit.owned_weapon_ids.duplicate()
+			unit.aim_direction = point(data.get("aim_direction", unit.facing)).normalized()
+			if unit.aim_direction == Vector2.ZERO:
+				unit.aim_direction = Vector2(0, -1)
+			unit.recovery_delay = float(data.get("recovery_delay", unit.delay))
+			if unit.manual_fire_target != null:
+				unit.manual_fire_target = point(unit.manual_fire_target)
 		unit.path = []
 		unit.navigation_revision = -1
 		entities.append(unit)
@@ -511,6 +556,8 @@ func restore(saved: Dictionary) -> bool:
 		var shot: Dictionary = data.duplicate(true)
 		shot.position = point(shot.position)
 		shot.direction = point(shot.direction)
+		if not shot.has("weapon_id"):
+			shot.weapon_id = "rifle" if int(shot.owner_id) == _nathaniel_id else ("bow" if shot.get("kind") == "arrow" else ("blaster" if shot.get("kind") == "redbullet" else "gun"))
 		add_projectile(shot)
 		_next_id = maxi(_next_id, int(shot.id) + 1)
 	for data: Dictionary in saved.get("corpses", []):
@@ -518,6 +565,11 @@ func restore(saved: Dictionary) -> bool:
 		corpse.position = point(corpse.position)
 		corpses.append(corpse)
 		_next_id = maxi(_next_id, int(corpse.id) + 1)
+	for data: Dictionary in saved.get("weapon_pickups", []):
+		var pickup: Dictionary = data.duplicate(true)
+		pickup.position = point(pickup.position)
+		weapon_pickups.append(pickup)
+		_next_id = maxi(_next_id, int(pickup.id) + 1)
 	resources = int(saved.get("resources", resources))
 	score = int(saved.get("score", 0))
 	lives = int(saved.get("lives", lives))
@@ -551,6 +603,74 @@ func restore(saved: Dictionary) -> bool:
 	BattlefieldRules.update_fog(self)
 	events.clear()
 	return true
+
+static func state_id_error(state: Dictionary) -> String:
+	var used_ids: Dictionary = {}
+	for collection: String in ["entities", "projectiles", "corpses", "weapon_pickups"]:
+		if not state.get(collection, []) is Array:
+			return "Invalid state collection: " + collection
+		for item: Variant in state.get(collection, []):
+			if not item is Dictionary or not _finite_number(item.get("id")):
+				return "Missing or invalid object ID: " + collection
+			var id: int = int(item.id)
+			if id < 1 or id == 9223372036854775807 or float(id) != float(item.id):
+				return "Object ID must be a positive allocator integer: " + collection
+			if used_ids.has(id):
+				return "Duplicate object ID: " + collection
+			used_ids[id] = true
+	return ""
+
+static func weapon_state_error(state: Dictionary) -> String:
+	for collection: String in ["entities", "projectiles", "corpses"]:
+		if not state.get(collection, []) is Array:
+			return "Invalid weapon state collection"
+		for item: Variant in state.get(collection, []):
+			if not item is Dictionary:
+				return "Invalid weapon state item"
+			if collection == "projectiles" and item.has("weapon_id") and item.weapon_id not in GameBalance.WEAPONS and item.weapon_id not in ["gun", "blaster", "bow"]:
+				return "Unknown projectile weapon"
+			if collection != "entities" or item.get("kind") != "nathaniel":
+				continue
+			var owned: Variant = item.get("owned_weapon_ids", ["rifle"])
+			if not owned is Array or owned.is_empty() or owned.size() > GameBalance.WEAPONS.size() or "rifle" not in owned:
+				return "Invalid owned weapons"
+			var seen_weapons: Dictionary = {}
+			for weapon_id: Variant in owned:
+				if not weapon_id is String or not GameBalance.WEAPONS.has(weapon_id) or seen_weapons.has(weapon_id):
+					return "Invalid owned weapon"
+				seen_weapons[weapon_id] = true
+			if item.get("equipped_weapon_id", "rifle") not in owned:
+				return "Equipped weapon is not owned"
+			for key: String in ["equip_ready_remaining", "recovery_delay"]:
+				if item.has(key) and (not _finite_number(item[key]) or float(item[key]) < 0):
+					return "Invalid weapon timer: " + key
+			if item.has("aim_direction") and (not _weapon_point_valid(item.aim_direction) or not is_equal_approx(point(item.aim_direction).length(), 1.0)):
+				return "Invalid weapon aim direction"
+			if item.get("manual_fire_target") != null and not _weapon_point_valid(item.manual_fire_target):
+				return "Invalid manual fire target"
+	var level_data: Variant = state.get("level", {})
+	if not level_data is Dictionary:
+		return "Invalid weapon pickup level"
+	for source: Dictionary in [level_data, state]:
+		var pickups: Variant = source.get("weapon_pickups", [])
+		if not pickups is Array:
+			return "Invalid weapon pickups"
+		for pickup: Variant in pickups:
+			if not pickup is Dictionary or not pickup.get("weapon_id") is String or not GameBalance.WEAPONS.has(pickup.weapon_id) or not _weapon_point_valid(pickup.get("position")):
+				return "Invalid weapon pickup"
+	return ""
+
+static func _finite_number(value: Variant) -> bool:
+	return (value is int or value is float) and is_finite(float(value))
+
+static func _weapon_point_valid(value: Variant) -> bool:
+	if value is Vector2 or value is Vector2i:
+		return Vector2(value).is_finite()
+	if value is Dictionary:
+		return _finite_number(value.get("x")) and _finite_number(value.get("y"))
+	if value is Array and value.size() == 2:
+		return _finite_number(value[0]) and _finite_number(value[1])
+	return false
 
 static func point(value: Variant) -> Vector2:
 	if value is Vector2 or value is Vector2i:

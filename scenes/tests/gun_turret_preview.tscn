@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/gun_turret_preview.gd" id="1"]
+
+[node name="GunTurretPreview" type="Node2D"]
+script = ExtResource("1")

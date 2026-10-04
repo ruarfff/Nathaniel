@@ -5,9 +5,16 @@ extends RefCounted
 const ENEMIES: Array[String] = ["grunt", "soldier", "boss", "spawner"]
 const TOWERS: Array[String] = ["gunTower", "laserTower", "healTower"]
 const COSTS: Dictionary = {"gunTower": 5, "laserTower": 10, "healTower": 15}
+const WEAPON_EQUIP_SECONDS: float = 0.35
+const WEAPON_PICKUP_RADIUS: float = 32.0
+const WEAPON_AIM_SPEED: float = TAU
+const WEAPON_AIM_TOLERANCE: float = PI / 180.0
+const WEAPONS: Dictionary = {
+	"rifle": {"weapon": "gun", "damage": 25, "delay": 0.8, "range": 450.0, "shot_speed": 450.0},
+	"heavy_rifle": {"weapon": "gun", "damage": 50, "delay": 1.6, "range": 450.0, "shot_speed": 450.0},
+}
 const STATS: Dictionary = {
-	"nathaniel": {"max_hp": 8000, "speed": 70.0, "range": 450.0, "vision": 500.0,
-		"weapon": "gun", "delay": 0.8, "damage": 25, "shot_speed": 450.0,
+	"nathaniel": {"max_hp": 8000, "speed": 70.0, "vision": 500.0,
 		"size": Vector2(48, 72), "radius": 19.2, "score": 0},
 	"hermes": {"max_hp": 2000, "speed": 40.0, "range": 450.0, "vision": 500.0,
 		"weapon": "laser", "delay": 3.5, "damage": 25, "size": Vector2(80, 72),
@@ -46,6 +53,8 @@ static func create(kind: String, id: int, position: Vector2) -> Dictionary:
 	if not STATS.has(kind):
 		return {}
 	var value: Dictionary = STATS[kind].duplicate(true)
+	if kind == "nathaniel":
+		value.merge(WEAPONS.rifle, true)
 	value.merge({"id": id, "kind": kind, "position": position, "hp": value.max_hp,
 		"destination": null, "path": [], "moving": false, "facing": Vector2(0, -1),
 		"arrival_range": 0.0,
@@ -55,4 +64,8 @@ static func create(kind: String, id: int, position: Vector2) -> Dictionary:
 		"construction_cost": COSTS.get(kind, 0), "spawn_countdown": 30.0,
 		"initial_spawns_remaining": 3, "has_corpse": false, "navigation_revision": -1,
 		"follow_destination": null, "enemy": kind in ENEMIES, "tower": kind in TOWERS})
+	if kind == "nathaniel":
+		value.merge({"equipped_weapon_id": "rifle", "owned_weapon_ids": ["rifle"],
+			"aim_direction": Vector2(0, -1), "manual_fire_target": null,
+			"equip_ready_remaining": 0.0, "recovery_delay": value.delay})
 	return value

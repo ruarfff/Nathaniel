@@ -4,12 +4,25 @@ Open `project.godot` with **Godot 4.7.2 stable**, or run `make editor`. Native
 `.tscn` levels are authoritative. Normal startup and resource import preserve
 the authored scenes; no source-map conversion runs.
 
+| Task | Guide |
+| --- | --- |
+| Edit levels, encounters, footprints or effects | Sections below |
+| Create a Blender source or export a saved edit | [Blender pipeline](blender-assets.md) |
+| Edit tower models, healing lights or sprite clips | [Iron & Ink assets](iron-and-ink-assets.md) |
+| Edit Nathaniel's live rig, guns or pickups | [Nathaniel's weapons](nathaniel-weapons.md) |
+| Edit terrain, buildings or scenery | [Environment assets](environment-assets.md) |
+
+`art-generate` creates a new source. `art-render` exports a saved source without
+overwriting it. Godot capture commands write review images under `test-artifacts/`;
+they do not author assets. Dated test results are evidence for the named revision
+and workload, not setup instructions.
+
 ## Edit and run a level
 
 1. Open `levels/level_1.tscn` in the 2D editor. The other campaign scenes
    are `level_2.tscn` through `level_5.tscn`; `level_0.tscn` is survival.
 2. Select `Ground` or `NonCollision` and use the native TileMap paint tools.
-   The TileSet atlas contains projected copies of the original terrain tiles.
+   The shared environment TileSet contains high-resolution ground and path tiles.
 3. Paint or erase cells on `Collision` to block or open the logical grid.
    Every occupied cell blocks navigation, regardless of its texture. Physics
    collision polygons and tile custom properties are not used for this rule.
@@ -38,8 +51,9 @@ The marker is an editor annotation, not an arbitrary trigger system.
 Levels use logical points with positive Y up. Rendering uses
 `(x - y, (x + y) / 2)`. A logical 32×32 cell is a 64×32 diamond. Native TileMap
 cells use the same logical Y-up grid and an isometric Diamond Down layout.
-The layer offset `(-32, 0)` makes native tile centers match the projected
-logical centers. Keep that offset and tile layout when editing. Spawn marker
+The high-resolution TileSet uses 512×256 cells with TileMapLayer scale `(0.125, 0.125)`.
+The layer offset `(-32, 0)` makes the transformed tile centers match the projected
+logical centers. Keep that scale, offset, and tile layout when editing. Spawn marker
 positions are screen-projected points; the runtime applies the inverse
 projection. Movement speed, attack ranges, footprints, and pathfinding do
 not use the stretched screen distances.
@@ -82,11 +96,22 @@ original collision occupancy while the upright sprite supplies the image.
 Alternative 0 remains available for ground-plane tile painting. Do not paint
 a second visible tree mosaic under an existing scenery sprite.
 
-Actor scene origins are feet positions. Their Sprite2D bottoms sit at the
-origin, and the gameplay actor container uses Y sorting. Sprite facing is
-selected from projected motion because the old sprite columns depict screen
-directions. Nathaniel and Soldier use two sheet rows, Grunt four, Boss eight;
-Hermes has separate idle and moving sheets with its original frame mapping.
+Actor scene origins are ground-contact positions, and the gameplay actor
+container uses Y sorting. Generated art uses explicit pixel density and anchors.
+Sprite-based actors use native SpriteFrames with eight logical headings;
+generated metadata preserves anchors after crops change. Nathaniel uses a live
+character model with a separate gun and independent leg movement. His PNG clips
+remain a tested fallback. Animation playback stays in presentation.
+
+The gun tower uses a live Blender-authored model through `ActorVisual.model_scene`.
+Its turret turns continuously and its barrel marker supplies shot and muzzle-flash
+positions. It still joins the same 2D ground-anchor Y-sort layer. Use the
+[live gun tower guide](iron-and-ink-assets.md#live-gun-tower) to edit or export it.
+Model bounds and barrel position do not define movement or collision footprints.
+
+Legacy PNG sheets keep their display-size and bottom-center convention. Their
+fallback renderer selects columns from projected motion and retains the original
+row and Hermes moving-sheet mappings. Reusing old PNGs does not require Blender.
 
 ## Edit effects
 
@@ -103,12 +128,20 @@ preserve the existing visual output.
 
 ## Artwork and provenance
 
-The native assets reuse the original character, tower, and audio content. Ground
-atlases were projected into diamonds. Upright tree and windmill textures preserve
-107 original placements, feet anchors, transparency, and actor depth sorting.
-Their blocked cells remain part of the native Collision layer. These derivatives
-and the original wall/cliff and character viewing angles are temporary until a
-purpose-made isometric art pass replaces them.
+For new Blender-authored assets, use the [Blender sprite pipeline](blender-assets.md).
+It keeps editable sources separate from runtime PNGs and preserves the existing
+64×32 projection, ground anchors, and scenery sorting.
+
+The [Iron & Ink assets](iron-and-ink-assets.md) replace the three human towers,
+Nathaniel, Hermes, the enemies, spawner, and spent soldier body with editable
+Blender models and high-resolution exports. The [environment set](environment-assets.md)
+replaces the ground, paths, buildings, trees, rocks, and windmills.
+
+The native levels preserve 107 distinct original scenery placements (119 across
+the six scenes) and their blocked cells on the separate Collision layer.
+Six former building mosaics now use upright scenery instances with shared actor
+depth sorting. Original PNG-only art remains as provenance and legacy fallback;
+the new Blender sources are authored models. Audio content is unchanged.
 
 Projectiles use colored circles; beams and event cues use procedural lines and
 rings in the effects scene. The original bullet and arrow images remain in
@@ -153,8 +186,11 @@ for templates, persistence, and static hosting.
 The official template used during local verification lacked its advertised ARM64
 Simulator library. A separate template copy adds a debug Simulator library built
 from the matching 4.7.2 source. Device and release libraries remain unchanged.
-Use that corrected template for the ARM64 Simulator on the tested host; the
-[verification record](verification.md) contains provenance and limits.
+That earlier custom Simulator library was built with `disable_3d=yes`. It cannot
+run the current live Nathaniel and gun-tower models. Use or rebuild a matching
+template with **3D enabled** before running the current game in the Simulator.
+The [verification record](verification.md) contains its provenance and limits;
+an earlier successful Simulator run does not validate today's live models.
 
 Build the exported Simulator project with the installed Xcode tools:
 

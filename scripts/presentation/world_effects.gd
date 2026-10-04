@@ -2,7 +2,10 @@ class_name WorldEffects
 extends Node2D
 ## Scene-owned presentation parameters never change logical combat or placement.
 
+const HEALING_RANGE_SEGMENTS: int = 96
+
 @export_group("Corpses")
+@export var corpse_visual: ActorVisual
 @export var corpse_texture: Texture2D = preload("res://assets/Sprites/Objects/corpse.png")
 @export var corpse_size := Vector2(30, 16)
 @export_range(0.0, 1.0) var carried_corpse_alpha: float = 0.65
@@ -11,6 +14,7 @@ extends Node2D
 @export_range(0.1, 32.0) var projectile_radius: float = 3.0
 @export var friendly_projectile_color := Color("ffd878")
 @export var enemy_projectile_color := Color("ff7657")
+@export_range(0.01, 0.5) var muzzle_flash_lifetime: float = 0.07
 
 @export_group("Laser Beams")
 @export_range(0.0, 128.0) var laser_height: float = 20.0
@@ -24,6 +28,11 @@ extends Node2D
 @export_range(0.0, 500.0) var transient_growth_speed: float = 90.0
 @export_range(0.1, 32.0) var transient_line_width: float = 2.0
 @export var transient_color := Color(1, 0.6, 0.2, 0.75)
+
+@export_group("Healing Recipients")
+@export_range(0.1, 2.0, 0.05) var healing_flash_lifetime: float = 0.45
+@export_range(0.0, 128.0) var healing_flash_height: float = 24.0
+@export var healing_flash_color := Color("65e6ed")
 
 @export_group("Delivery Order Pulse")
 @export_range(0.1, 3.0, 0.05) var delivery_pulse_lifetime: float = 0.9
@@ -40,8 +49,20 @@ extends Node2D
 @export var valid_placement_color := Color(0.55, 1, 0.45, 0.8)
 @export var invalid_placement_color := Color(1, 0.3, 0.25, 0.8)
 
-var simulation: GameSimulation
+var simulation: GameSimulation:
+	set(value):
+		if simulation != value:
+			_projectile_offsets.clear()
+			muzzle_flashes.clear()
+			transients.clear()
+			healing_flashes.clear()
+			selected_healing_tower_id = -1
+		simulation = value
 var transients: Array[Dictionary] = []
+var muzzle_flashes: Array[Dictionary] = []
+var healing_flashes: Array[Dictionary] = []
+var selected_healing_tower_id: int = -1
+var _projectile_offsets: Dictionary = {}
 var cursor_world := Vector2.ZERO
 var placement := false
 var placement_valid := false
@@ -58,6 +79,13 @@ func _process(delta: float) -> void:
 	for effect: Dictionary in transients:
 		effect.life -= delta
 	transients = transients.filter(func(effect: Dictionary) -> bool: return effect.life > 0)
+	if simulation != null and not simulation.paused and simulation.result == "playing":
+		for flash: Dictionary in muzzle_flashes:
+			flash.life -= delta
+		muzzle_flashes = muzzle_flashes.filter(func(flash: Dictionary) -> bool: return flash.life > 0)
+		for flash: Dictionary in healing_flashes:
+			flash.life -= delta
+		healing_flashes = healing_flashes.filter(func(flash: Dictionary) -> bool: return flash.life > 0 and CombatRules.alive(simulation.entity(int(flash.target_id))))
 	queue_redraw()
 
 
@@ -109,14 +137,117 @@ func _draw_target_markers() -> void:
 		draw_string(ThemeDB.fallback_font, label_point, marker.label, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, color)
 
 
-func add_events(events: Array) -> void:
+func add_events(events: Array, actors: Dictionary = {}) -> void:
 	for event: Dictionary in events:
+		if event.get("type", "") == "weapon_collected":
+			continue
+		if event.get("type", "") == "heal":
+			var target_id: int = int(event.get("target_id", -1))
+			if simulation != null and CombatRules.alive(simulation.entity(target_id)):
+				healing_flashes.append({"target_id": target_id, "life": healing_flash_lifetime})
+			continue
+		if event.get("type", "") == "shot" and event.has("shot_id") and event.get("direction") is Vector2:
+			var actor: ActorView = actors.get(int(event.get("owner_id", -1))) as ActorView
+			if actor != null:
+				var muzzle: Vector2 = actor.weapon_muzzle(event.direction, event.get("weapon_id", ""))
+				if muzzle.is_finite():
+					# Capture the launch pose once. Turning the owner cannot steer an old shot.
+					_projectile_offsets[int(event.shot_id)] = muzzle
+					muzzle_flashes.append({"position": IsoProjection.project(event.position) + muzzle,
+						"ground_position": event.position, "direction": IsoProjection.project(event.direction).normalized(),
+						"life": muzzle_flash_lifetime})
+					continue
 		if event.has("position"):
 			transients.append({"position": event.position, "life": transient_lifetime, "kind": event.get("type", "hit")})
+	queue_redraw()
+
+
+func healing_markers() -> Array[Dictionary]:
+	var markers: Array[Dictionary] = []
+	if simulation == null:
+		return markers
+	for flash: Dictionary in healing_flashes:
+		var target: Dictionary = simulation.entity(int(flash.target_id))
+		if not CombatRules.alive(target) or (fog_enabled and simulation.visibility_at(target.position) != 2):
+			continue
+		var remaining: float = clampf(float(flash.life) / healing_flash_lifetime, 0.0, 1.0)
+		markers.append({"position": IsoProjection.project(target.position) - Vector2(0, healing_flash_height),
+			"strength": remaining * remaining * (3.0 - 2.0 * remaining)})
+	return markers
+
+
+func healing_range_points() -> PackedVector2Array:
+	var points := PackedVector2Array()
+	if simulation == null:
+		return points
+	var tower: Dictionary = simulation.entity(selected_healing_tower_id)
+	if not CombatRules.alive(tower) or tower.get("kind", "") != "healTower":
+		return points
+	if fog_enabled and simulation.visibility_at(tower.position) != 2:
+		return points
+	var radius: float = float(tower.range)
+	for index: int in range(HEALING_RANGE_SEGMENTS):
+		var angle: float = TAU * float(index) / float(HEALING_RANGE_SEGMENTS)
+		points.append(IsoProjection.project(Vector2(tower.position) + Vector2.from_angle(angle) * radius))
+	points.append(points[0])
+	return points
+
+
+func _draw_healing_markers() -> void:
+	for marker: Dictionary in healing_markers():
+		var point: Vector2 = marker.position
+		var strength: float = marker.strength
+		var radius: float = 5.0 + 3.0 * strength
+		draw_circle(point, radius * 1.6, Color(healing_flash_color, 0.12 * strength))
+		draw_colored_polygon(PackedVector2Array([point - Vector2(0, radius), point + Vector2(radius * 0.4, 0),
+			point + Vector2(0, radius), point - Vector2(radius * 0.4, 0)]), Color(healing_flash_color, 0.85 * strength))
+		draw_line(point - Vector2(radius, 0), point + Vector2(radius, 0), Color(healing_flash_color, strength), 1.5, true)
+		draw_circle(point, 1.8 * strength, Color("e7ffff", strength))
+
+
+func sync_projectiles(actors: Dictionary) -> void:
+	var live: Dictionary = {}
+	if simulation != null:
+		for shot: Dictionary in simulation.projectiles:
+			var id: int = int(shot.id)
+			live[id] = true
+			if _projectile_offsets.has(id):
+				continue
+			# Saves contain logical shots, not presentation state. Rebuild from each
+			# shot's direction, never the owner's current target or recoil pose.
+			var actor: ActorView = actors.get(int(shot.owner_id)) as ActorView
+			var muzzle: Vector2 = actor.weapon_muzzle(shot.direction, shot.get("weapon_id", "")) if actor != null else Vector2.INF
+			_projectile_offsets[id] = muzzle if muzzle.is_finite() else Vector2.ZERO
+	for id: int in _projectile_offsets.keys():
+		if not live.has(id):
+			_projectile_offsets.erase(id)
+	queue_redraw()
+
+
+func projectile_position(shot: Dictionary) -> Vector2:
+	return IsoProjection.project(shot.position) + Vector2(_projectile_offsets.get(int(shot.id), Vector2.ZERO))
+
+
+func corpse_rect(point: Vector2) -> Rect2:
+	if corpse_visual != null and corpse_visual.texture != null:
+		var density: float = corpse_visual.frame_pixel_density()
+		if density > 0.0:
+			return Rect2(point + corpse_visual.feet_offset - corpse_visual.frame_ground_anchor() / density, corpse_visual.texture.get_size() / density)
+		return Rect2(point + corpse_visual.feet_offset - Vector2(corpse_visual.display_size.x * 0.5, corpse_visual.display_size.y), corpse_visual.display_size)
+	return Rect2(point - corpse_size * 0.5, corpse_size)
+
+
+func corpse_color(carried: bool) -> Color:
+	var color: Color = corpse_visual.tint if corpse_visual != null and corpse_visual.texture != null else Color.WHITE
+	color.a *= carried_corpse_alpha if carried else 1.0
+	return color
 
 
 func _draw() -> void:
 	if simulation != null:
+		var healing_range: PackedVector2Array = healing_range_points()
+		if not healing_range.is_empty():
+			draw_polyline(healing_range, Color(healing_flash_color, healing_flash_color.a * 0.75), 1.5, true)
 		var destination: Variant = simulation.nathaniel.get("destination")
 		if destination is Vector2:
 			var point := IsoProjection.project(destination)
@@ -129,11 +260,19 @@ func _draw() -> void:
 		for corpse: Dictionary in simulation.corpses:
 			if simulation.visibility_at(corpse.position) == 2:
 				var point := IsoProjection.project(corpse.position)
-				draw_texture_rect(corpse_texture, Rect2(point - corpse_size * 0.5, corpse_size), false, Color(1, 1, 1, carried_corpse_alpha if corpse.carried else 1))
+				var texture: Texture2D = corpse_visual.texture if corpse_visual != null and corpse_visual.texture != null else corpse_texture
+				draw_texture_rect(texture, corpse_rect(point), false, corpse_color(corpse.carried))
 		for shot: Dictionary in simulation.projectiles:
-			if simulation.visibility_at(shot.position) == 2:
-				var point := IsoProjection.project(shot.position)
+			if not fog_enabled or simulation.visibility_at(shot.position) == 2:
+				var point := projectile_position(shot)
 				draw_circle(point, projectile_radius, enemy_projectile_color if shot.enemy else friendly_projectile_color)
+		for flash: Dictionary in muzzle_flashes:
+			if not fog_enabled or simulation.visibility_at(flash.ground_position) == 2:
+				var remaining: float = clampf(float(flash.life) / muzzle_flash_lifetime, 0.0, 1.0)
+				var point: Vector2 = flash.position
+				var direction: Vector2 = flash.direction
+				var side: Vector2 = direction.orthogonal() * 2.5 * remaining
+				draw_colored_polygon(PackedVector2Array([point - side, point + direction * (5.0 + 4.0 * remaining), point + side]), Color(friendly_projectile_color, remaining))
 		for unit: Dictionary in simulation.entities:
 			if unit.get("firing", false) and unit.hp > 0:
 				var target: Dictionary = simulation.entity(unit.target_id)
@@ -150,6 +289,7 @@ func _draw() -> void:
 					draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, color, 3.0, true)
 			draw_set_transform(Vector2.ZERO)
 		_draw_target_markers()
+		_draw_healing_markers()
 	for effect: Dictionary in transients:
 		if effect.position is Vector2:
 			var radius: float = transient_start_radius + (transient_lifetime - float(effect.life)) * transient_growth_speed

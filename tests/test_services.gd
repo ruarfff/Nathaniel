@@ -20,6 +20,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_test_legacy()
+	_test_state_ids()
 	_test_slots()
 	_test_simulation_restoration()
 	_test_settings_progress()
@@ -55,6 +56,10 @@ func _test_legacy() -> void:
 	_check(state.corpses[0].carried and state.corpses[0].expiration == 18.5 and state.corpses[0].amount == 10, "Carried corpse timer and amount survive without wallet credit")
 	_check(state.wave_since_last_spawn == 2.75, "Survival wave phase uses elapsed difficulty and remaining countdown")
 	_check(SaveStore.validate_state(state).is_empty(), "Imported state passes native validation")
+	var restored_weapons := GameSimulation.new()
+	_check(restored_weapons.restore(state), "Swift state restores through current weapon defaults")
+	_check(restored_weapons.nathaniel.equipped_weapon_id == "rifle" and restored_weapons.nathaniel.owned_weapon_ids == ["rifle"], "Swift import starts with the original rifle only")
+	_check(restored_weapons.nathaniel.equip_ready_remaining == 0.0 and restored_weapons.nathaniel.aim_direction == restored_weapons.nathaniel.facing and restored_weapons.weapon_pickups.is_empty(), "Swift import defaults aim and equip state without adding pickups")
 	for patch: Dictionary in [{"projectiles": ["bad"]}, {"fog": [3]}, {"entities": [{"id": 1}]}, {"resources": 0.5}, {"rng_state": {}}]:
 		var invalid := state.duplicate(true)
 		invalid.merge(patch, true)
@@ -83,6 +88,47 @@ func _test_legacy() -> void:
 	source.enemies[0].targetIndex = 8
 	_check(not LegacyImport.convert(source, _level()).success, "Invalid target reference is rejected")
 	_check(not LegacyImport.convert(_swift_fixture(), {"number": 2}).success, "Wrong level is rejected")
+
+
+func _test_state_ids() -> void:
+	var sim := GameSimulation.new()
+	sim.configure(_level())
+	sim.nathaniel.cooldown = sim.nathaniel.delay
+	sim.nathaniel.aim_direction = Vector2.RIGHT
+	CombatRules.shoot(sim, sim.nathaniel, Vector2(sim.nathaniel.position) + Vector2(100, 0))
+	sim.spawn_resource(10, Vector2(500, 500))
+	sim.spawn_weapon_pickup("heavy_rifle", Vector2(700, 500))
+	var baseline: Dictionary = sim.snapshot()
+	var collections: Array[String] = ["entities", "projectiles", "corpses", "weapon_pickups"]
+	for collection: String in collections:
+		for invalid_id: Variant in [null, 0, -1, 2.5, "3", true, INF, NAN, 1e30]:
+			var invalid: Dictionary = baseline.duplicate(true)
+			if invalid_id == null:
+				invalid[collection][0].erase("id")
+			else:
+				invalid[collection][0].id = invalid_id
+			_check(not SaveStore.validate_state(invalid).is_empty(), "%s rejects missing or invalid allocator ID %s" % [collection, str(invalid_id)])
+			_check(not sim.restore(invalid), "Direct restoration rejects the invalid %s ID" % collection)
+			_check(sim.snapshot() == baseline, "Rejected %s ID preserves the active session" % collection)
+		var duplicated: Dictionary = baseline.duplicate(true)
+		duplicated[collection].append(duplicated[collection][0].duplicate(true))
+		_check(not SaveStore.validate_state(duplicated).is_empty(), "%s rejects duplicate allocator IDs" % collection)
+		_check(not sim.restore(duplicated) and sim.snapshot() == baseline, "Duplicate %s IDs cannot replace the active session" % collection)
+	for first: int in collections.size():
+		for second: int in range(first + 1, collections.size()):
+			var collision: Dictionary = baseline.duplicate(true)
+			collision[collections[second]][0].id = float(collision[collections[first]][0].id)
+			_check(not SaveStore.validate_state(collision).is_empty(), "%s and %s share one allocator namespace" % [collections[first], collections[second]])
+			_check(not sim.restore(collision) and sim.snapshot() == baseline, "Cross-collection collision is rejected before restoration")
+	var native: Dictionary = JSON.parse_string(JSON.stringify(baseline))
+	var restored := GameSimulation.new()
+	_check(SaveStore.validate_state(native).is_empty() and restored.restore(native), "JSON numeric IDs remain valid for every collection")
+	_check(int(restored.spawn_resource(1, Vector2.ZERO).id) > int(baseline.weapon_pickups[0].id), "Restoration advances allocation beyond all restored objects")
+	var store := SaveStore.new(directory.path_join("state_ids"))
+	_check(store.save_slot(1, baseline).success, "Valid object identities save normally")
+	var invalid: Dictionary = baseline.duplicate(true)
+	invalid.corpses[0].erase("id")
+	_check(not store.save_slot(1, invalid).success and store.load_slot(1).state == native, "Malformed corpse identity cannot replace an existing valid slot")
 
 
 func _test_slots() -> void:

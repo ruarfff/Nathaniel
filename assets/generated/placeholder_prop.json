@@ -1,0 +1,44 @@
+{
+  "source": "art/blender/sources/placeholder_prop.blend",
+  "source_sha256": "48b05de9a1ac767f158349bf5261ee5db7d09f0568243fdf6520077c60f82083",
+  "settings_sha256": "7e915fd50d24148e966dc58b97aeda700751228c8328432ee57d44ee56c1aba4",
+  "blender_version": "5.2.2 LTS",
+  "python_version": "3.13.15",
+  "canvas": [
+    128,
+    128
+  ],
+  "anchor": [
+    64,
+    96
+  ],
+  "trimmed": false,
+  "logical_canvas": [
+    128,
+    128
+  ],
+  "logical_anchor": [
+    64,
+    96
+  ],
+  "render_density": 1,
+  "profile": "default",
+  "world_points_per_unit": 32,
+  "blender_xy_basis_pixels": [
+    [
+      -32,
+      16
+    ],
+    [
+      32,
+      16
+    ]
+  ],
+  "logical_xy_from_blender": [
+    "32 * Y",
+    "32 * X"
+  ],
+  "dependencies": [
+    "Blender (bundled bpy and Python standard library)"
+  ]
+}

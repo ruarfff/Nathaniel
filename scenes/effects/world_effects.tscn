@@ -1,6 +1,9 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/presentation/world_effects.gd" id="1"]
+[ext_resource type="Resource" path="res://resources/actors/corpse.tres" id="2"]
 
 [node name="WorldEffects" type="Node2D"]
+texture_filter = 4
 script = ExtResource("1")
+corpse_visual = ExtResource("2")

@@ -1,0 +1,44 @@
+{
+  "source": "art/blender/sources/laser_tower.blend",
+  "source_sha256": "5eb0954b83348fc8cb97ba0840a12361630a82cbed47a45ab5600a1a70f71ecd",
+  "settings_sha256": "7e915fd50d24148e966dc58b97aeda700751228c8328432ee57d44ee56c1aba4",
+  "blender_version": "5.2.2 LTS",
+  "python_version": "3.13.15",
+  "canvas": [
+    1024,
+    1024
+  ],
+  "anchor": [
+    512,
+    768
+  ],
+  "trimmed": false,
+  "logical_canvas": [
+    128,
+    128
+  ],
+  "logical_anchor": [
+    64,
+    96
+  ],
+  "render_density": 8,
+  "profile": "iron_ink",
+  "world_points_per_unit": 32,
+  "blender_xy_basis_pixels": [
+    [
+      -256,
+      128
+    ],
+    [
+      256,
+      128
+    ]
+  ],
+  "logical_xy_from_blender": [
+    "32 * Y",
+    "32 * X"
+  ],
+  "dependencies": [
+    "Blender (bundled bpy and Python standard library)"
+  ]
+}

@@ -30,6 +30,11 @@ func _input(event: InputEvent) -> void:
 					return
 			app.command("level", level)
 			return
+		if event.keycode in [KEY_1, KEY_2] and app.sim != null and app.ui.menu.is_empty():
+			get_viewport().set_input_as_handled()
+			if event.pressed and not event.echo:
+				app.command("equip_weapon", "rifle" if event.keycode == KEY_1 else "heavy_rifle")
+			return
 		var shortcuts := {KEY_ESCAPE: "escape", KEY_SPACE: "focus", KEY_B: "build", KEY_R: "toggle_hermes", KEY_S: "stop", KEY_F: "fire_at_pointer"}
 		if shortcuts.has(event.keycode) and (event.keycode == KEY_ESCAPE or (app.sim != null and app.ui.menu.is_empty())):
 			get_viewport().set_input_as_handled()

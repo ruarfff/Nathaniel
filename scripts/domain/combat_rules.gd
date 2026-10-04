@@ -65,31 +65,71 @@ static func update_unit(sim: GameSimulation, unit: Dictionary, delta: float) -> 
 		_laser(sim, unit, target, delta)
 		return
 	unit.cooldown = float(unit.cooldown) + delta
+	if unit.kind == "nathaniel":
+		_update_player_weapon(sim, unit, target, delta)
+		return
 	if alive(target) and distance(unit, target) <= float(unit.range):
 		unit.facing = (Vector2(target.position) - Vector2(unit.position)).normalized()
 		shoot(sim, unit, target.position)
 
-static func shoot(sim: GameSimulation, unit: Dictionary, target: Vector2) -> bool:
+static func ready_to_shoot(unit: Dictionary) -> bool:
 	if not alive(unit) or unit.weapon not in ["gun", "blaster", "bow"]:
 		return false
-	if float(unit.cooldown) + 0.00000001 < float(unit.delay) or Vector2(unit.position).distance_to(target) > float(unit.range):
+	var delay: float = float(unit.delay)
+	if unit.kind == "nathaniel":
+		if float(unit.equip_ready_remaining) > 0.00000001:
+			return false
+		delay = maxf(delay, float(unit.recovery_delay))
+	return float(unit.cooldown) + 0.00000001 >= delay
+
+static func _update_player_weapon(sim: GameSimulation, unit: Dictionary, target: Dictionary, delta: float) -> void:
+	unit.equip_ready_remaining = maxf(0.0, float(unit.equip_ready_remaining) - delta)
+	var aim_point: Variant = unit.manual_fire_target
+	if aim_point != null and Vector2(unit.position).distance_to(aim_point) > float(unit.range):
+		unit.manual_fire_target = null
+		aim_point = null
+	if aim_point == null and alive(target) and distance(unit, target) <= float(unit.range):
+		aim_point = target.position
+	var desired: Vector2 = unit.aim_direction
+	if aim_point != null:
+		desired = (Vector2(aim_point) - Vector2(unit.position)).normalized()
+		if desired == Vector2.ZERO:
+			desired = Vector2(0, -1)
+	elif unit.moving:
+		desired = unit.facing
+	var current: Vector2 = unit.aim_direction
+	unit.aim_direction = current.rotated(clampf(current.angle_to(desired), -GameBalance.WEAPON_AIM_SPEED * delta, GameBalance.WEAPON_AIM_SPEED * delta)).normalized()
+	if aim_point != null and shoot(sim, unit, aim_point):
+		unit.manual_fire_target = null
+
+static func shoot(sim: GameSimulation, unit: Dictionary, target: Vector2) -> bool:
+	if not target.is_finite() or not ready_to_shoot(unit) or Vector2(unit.position).distance_to(target) > float(unit.range):
 		return false
-	unit.cooldown = 0.0
 	var direction: Vector2 = (target - Vector2(unit.position)).normalized()
 	if direction == Vector2.ZERO:
 		direction = Vector2(0, -1)
+	if unit.kind == "nathaniel":
+		if absf(Vector2(unit.aim_direction).angle_to(direction)) > GameBalance.WEAPON_AIM_TOLERANCE:
+			return false
+		unit.aim_direction = direction
+		unit.recovery_delay = unit.delay
+	unit.cooldown = 0.0
+	if unit.kind != "nathaniel" or not unit.moving:
+		unit.facing = direction
+	var weapon_id: String = unit.get("equipped_weapon_id", unit.weapon)
 	var texture: String = "arrow" if unit.weapon == "bow" else ("redbullet" if unit.weapon == "blaster" else "bullet")
 	var projectile: Dictionary = {"id": sim.allocate_id(), "owner_id": unit.id,
 		"position": unit.position, "direction": direction, "damage": unit.damage,
 		"speed": unit.shot_speed, "remaining": 500.0 if unit.weapon == "bow" else 600.0,
-		"enemy": unit.enemy, "kind": texture,
+		"enemy": unit.enemy, "kind": texture, "weapon_id": weapon_id,
 		"radius": 15.0 if texture == "arrow" else (10.0 if texture == "redbullet" else 12.0)}
 	# Swift pool keeps at most twenty active shots for each owner.
 	var owned: Array[Dictionary] = sim.shots_for_owner(int(unit.id))
 	if owned.size() >= 20:
 		sim.remove_projectile(owned[0])
 	sim.add_projectile(projectile)
-	sim.emit_event("shot", {"position": unit.position, "kind": texture, "owner_id": unit.id})
+	sim.emit_event("shot", {"position": unit.position, "kind": texture, "owner_id": unit.id,
+		"shot_id": projectile.id, "direction": direction, "target_position": target, "weapon_id": weapon_id})
 	return true
 
 static func _update_projectiles(sim: GameSimulation, delta: float, owner_id: int) -> void:
@@ -140,12 +180,14 @@ static func _heal(sim: GameSimulation, unit: Dictionary, delta: float) -> void:
 	unit.cooldown = float(unit.cooldown) + delta
 	if float(unit.cooldown) + 0.00000001 < 1.0:
 		return
+	var healed: bool = false
 	for target: Dictionary in [sim.nathaniel, sim.hermes]:
 		if alive(target) and int(target.hp) < int(target.max_hp) and distance(unit, target) < float(unit.range):
 			target.hp = mini(int(target.max_hp), int(target.hp) + 5)
-			unit.cooldown = 0.0
-			sim.emit_event("heal", {"position": target.position, "target_id": target.id})
-			return
+			healed = true
+			sim.emit_event("heal", {"position": target.position, "target_id": target.id, "owner_id": unit.id})
+	if healed:
+		unit.cooldown = 0.0
 
 static func alive(unit: Dictionary) -> bool:
 	return not unit.is_empty() and int(unit.get("hp", 0)) > 0 and unit.get("active", true)

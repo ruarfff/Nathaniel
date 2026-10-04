@@ -41,7 +41,7 @@ func _run() -> void:
 		var ground: TileMapLayer = level.get_node("Ground") as TileMapLayer
 		for cell: Vector2i in [Vector2i(0, 0), Vector2i(7, 12), Vector2i(widths[number] - 1, 29)]:
 			var logical: Vector2 = (Vector2(cell) + Vector2(0.5, 0.5)) * 32.0
-			expect((ground.map_to_local(cell) + ground.position).is_equal_approx(IsoProjection.project(logical)),
+			expect((ground.transform * ground.map_to_local(cell)).is_equal_approx(IsoProjection.project(logical)),
 				"Native isometric tile center equals projected gameplay cell center")
 		var collision: TileMapLayer = level.get_node("Collision") as TileMapLayer
 		var removed: Vector2i = data.blocked[0]
@@ -83,30 +83,36 @@ func _run() -> void:
 		root.add_child(actor)
 		actor.apply_state({"id": 1, "position": Vector2(100, 80), "hp": 50, "max_hp": 100}, true)
 		expect(actor.position == Vector2(20, 90), "Actor projects logical position")
-		expect(actor.sprite.texture != null, "Actor displays its configured texture")
-		var foot: Vector2 = actor.sprite.position + Vector2(0, actor.visual.display_size.y / 2)
-		expect(foot.is_equal_approx(actor.visual.feet_offset), "Actor bottom-center anchor is its world point")
+		if actor.model_view != null and actor.model_view.visible:
+			var model: ActorModelView = actor.model_view
+			expect(model.display.texture != null and model.model_root != null, "Actor displays its configured model")
+			var origin: Vector2 = model.camera.unproject_position(Vector3.ZERO)
+			var contact: Vector2 = model.position + model.display.position + (origin - Vector2(model.viewport.size) / 2.0) * model.display.scale
+			expect(contact.distance_to(actor.visual.feet_offset) < 0.001, "Model ground contact is its world point")
+			actor.free()
+			continue
+		var display: Node2D = actor.animation_sprite if actor.animation_sprite != null and actor.animation_sprite.visible else actor.sprite
+		var texture: Texture2D = actor.animation_sprite.sprite_frames.get_frame_texture(actor.animation_sprite.animation, actor.animation_sprite.frame) if display == actor.animation_sprite else actor.sprite.texture
+		expect(texture != null, "Actor displays its configured texture")
+		var frame_size: Vector2 = texture.get_size() if display == actor.animation_sprite else actor.sprite.region_rect.size
+		var anchor: Vector2 = actor.visual.frame_ground_anchor() if actor.visual.frame_pixel_density() > 0.0 else Vector2(frame_size.x / 2.0, frame_size.y)
+		var foot: Vector2 = display.position + (anchor - frame_size / 2.0) * display.scale
+		expect(foot.is_equal_approx(actor.visual.feet_offset), "Actor ground contact is its world point")
 		actor.free()
 	print("Content checks: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
 
 
 func _check_atlas() -> void:
-	var texture: Texture2D = load("res://assets/terrain/treestileset_iso.png") as Texture2D
+	var texture: Texture2D = load("res://assets/generated/environment_terrain_atlas_0.png") as Texture2D
 	expect(texture != null, "Native terrain atlas loads")
 	if texture == null:
 		return
 	var image: Image = texture.get_image()
-	expect(image.get_size() == Vector2i(1024, 1024), "Terrain atlas dimensions are preserved")
+	var metadata: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/generated/environment_terrain.json"))
+	var canvas: Array = metadata.atlas_pages[0].canvas
+	expect(image.get_size() == Vector2i(canvas[0], canvas[1]), "Terrain atlas dimensions match the export metadata")
 	expect(image.get_pixel(0, 0).a == 0.0, "Diamond padding is transparent")
-	image.convert(Image.FORMAT_RGBA8)
-	var pixels: PackedByteArray = image.get_data()
-	var has_opaque: bool = false
-	var has_color_key: bool = false
-	for offset: int in range(0, pixels.size(), 4):
-		if pixels[offset + 3] == 255:
-			has_opaque = true
-			if pixels[offset] == 191 and pixels[offset + 1] == 123 and pixels[offset + 2] == 199:
-				has_color_key = true
-	expect(has_opaque, "Terrain artwork contains visible pixels")
-	expect(not has_color_key, "Terrain transparency does not retain opaque color-key pixels")
+	var middle := Vector2i(int(metadata.gutter) + int(metadata.canvas[0]) / 2, int(metadata.gutter) + int(metadata.canvas[1]) / 2)
+	expect(image.get_pixelv(middle).a == 1.0, "Ground tile interiors are opaque")
+	expect(image.has_mipmaps(), "Terrain imports mipmaps for high-resolution art")

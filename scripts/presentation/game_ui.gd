@@ -14,6 +14,8 @@ var buttons: Dictionary = {}
 func _ready() -> void:
 	theme = _make_theme()
 	resized.connect(_fit_menu)
+	$Bottom.minimum_size_changed.connect(func() -> void: _fit_hud.call_deferred())
+	resized.connect(func() -> void: _fit_hud.call_deferred())
 	%Content.minimum_size_changed.connect(func() -> void: _fit_menu.call_deferred())
 	%Nathaniel.pressed.connect(func() -> void: command.emit("focus", "nathaniel"))
 	%Pause.pressed.connect(func() -> void: command.emit("pause", null))
@@ -37,6 +39,12 @@ func _ready() -> void:
 	buttons.hermes_stop.tooltip_text = "Stop Hermes following Nathaniel."
 	buttons.zoom_out.tooltip_text = "Zoom out"
 	buttons.zoom_in.tooltip_text = "Zoom in"
+	for weapon_id: String in ["rifle", "heavy_rifle"]:
+		var button := _button("Rifle [1]" if weapon_id == "rifle" else "Heavy rifle [2]", %Weapons)
+		button.toggle_mode = true
+		button.pressed.connect(func() -> void: command.emit("equip_weapon", weapon_id))
+		buttons[weapon_id] = button
+	_fit_hud.call_deferred()
 
 
 func _process(delta: float) -> void:
@@ -83,6 +91,28 @@ func update_game(sim: GameSimulation, fog_enabled: bool = true) -> void:
 	buttons.build.text = "Close Build [B]" if build_open else "Build [B]"
 	buttons.build.set_pressed_no_signal(build_open)
 	buttons.build.tooltip_text = "Close tower choices and return to Nathaniel." if build_open else "Open tower choices and move the camera to Hermes. Hermes stops when you place a tower."
+	var equipped: String = sim.nathaniel.get("equipped_weapon_id", "rifle")
+	var switching: float = sim.nathaniel.get("equip_ready_remaining", 0.0)
+	for weapon_id: String in ["rifle", "heavy_rifle"]:
+		var owned: bool = weapon_id in sim.nathaniel.get("owned_weapon_ids", ["rifle"])
+		var button: Button = buttons[weapon_id]
+		button.disabled = not owned or not CombatRules.alive(sim.nathaniel)
+		button.set_pressed_no_signal(weapon_id == equipped)
+		button.tooltip_text = "Switch in 0.35 seconds. Movement and targeting continue." if owned else "Walk over a heavy rifle crate to unlock this gun."
+	var weapon_name := "Heavy rifle" if equipped == "heavy_rifle" else "Rifle"
+	var weapon_state := "Ready"
+	if not CombatRules.ready_to_shoot(sim.nathaniel):
+		weapon_state = "Recovering"
+	if switching > 0.0:
+		weapon_state = "Equipping…"
+	%WeaponStatus.text = "%s · %s" % [weapon_name, weapon_state]
+
+
+func _fit_hud() -> void:
+	if not is_node_ready():
+		return
+	var bottom := $Bottom as PanelContainer
+	bottom.offset_top = -16.0 - bottom.get_combined_minimum_size().y
 
 
 func _nathaniel_state(sim: GameSimulation) -> String:

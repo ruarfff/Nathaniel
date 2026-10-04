@@ -1,12 +1,19 @@
 [gd_resource type="Resource" script_class="ActorVisual" format=3]
 
 [ext_resource type="Script" path="res://scripts/presentation/actors/actor_visual.gd" id="1"]
-[ext_resource type="Texture2D" path="res://assets/Sprites/Characters/nathanielspritesheet.png" id="2"]
+[ext_resource type="SpriteFrames" path="res://assets/generated/nathaniel_frames.tres" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/actors/generated/nathaniel_model.tscn" id="3"]
+[ext_resource type="Resource" path="res://resources/weapons/rifle.tres" id="4"]
+[ext_resource type="Resource" path="res://resources/weapons/heavy_rifle.tres" id="5"]
+[ext_resource type="Script" path="res://scripts/presentation/actors/weapon_visual.gd" id="6"]
 
 [resource]
 script = ExtResource("1")
-texture = ExtResource("2")
-columns = 8
-rows = 2
-display_size = Vector2(48, 72)
+display_size = Vector2(48, 74)
+pixels_per_world_pixel = 8.0
+ground_anchor = Vector2(324, 586)
 shadow_radius = 20.0
+animations = ExtResource("2")
+model_scene = ExtResource("3")
+weapons = Array[ExtResource("6")]([ExtResource("4"), ExtResource("5")])
+default_weapon_id = "rifle"

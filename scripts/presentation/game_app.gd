@@ -5,6 +5,7 @@ extends Node2D
 var sim: GameSimulation
 var level: GameLevel
 var views: Dictionary = {}
+var pickup_views: Dictionary = {}
 var save_store: GameSaveStore
 var settings: GameSettingsStore
 var progress: GameProgressStore
@@ -116,7 +117,6 @@ func _physics_process(delta: float) -> void:
 		return
 	sim.step(delta)
 	var events := sim.take_events()
-	effects.add_events(events)
 	for event: Dictionary in events:
 		if event.get("type", "") == "sound":
 			audio.play_effect(event.get("name", "gunShot"))
@@ -126,9 +126,26 @@ func _physics_process(delta: float) -> void:
 			audio.play_effect("laserFire")
 		elif event.get("type", "") == "death":
 			audio.play_effect("explosion")
+		elif event.get("type", "") == "weapon_collected":
+			var weapon_name := "Heavy rifle" if event.weapon_id == "heavy_rifle" else "Rifle"
+			ui.show_notice("%s collected · choose its weapon button to equip." % weapon_name)
 		elif event.get("type", "") == "respawn" and sim.result == "playing":
 			ui.show_notice("Life lost · %d spare lives remain" % sim.lives)
 	_sync_views()
+	var pulsed_healers: Dictionary = {}
+	for event: Dictionary in events:
+		if event.get("type", "") == "respawn" and views.has(int(sim.nathaniel.id)):
+			(views[int(sim.nathaniel.id)] as ActorView).notify_respawn()
+		elif event.get("type", "") in ["shot", "laser"]:
+			var owner_id: int = int(event.get("owner_id", -1))
+			if views.has(owner_id):
+				(views[owner_id] as ActorView).notify_attack(event.get("direction", Vector2.ZERO), event.get("weapon_id", ""))
+		elif event.get("type", "") == "heal":
+			var owner_id: int = int(event.get("owner_id", -1))
+			if views.has(owner_id) and not pulsed_healers.has(owner_id):
+				(views[owner_id] as ActorView).notify_heal()
+				pulsed_healers[owner_id] = true
+	effects.add_events(events, views)
 	ui.update_game(sim, fog.enabled)
 	effects.fog_enabled = fog.enabled
 	_update_camera(delta)
@@ -145,6 +162,9 @@ func _physics_process(delta: float) -> void:
 
 
 func _sync_views() -> void:
+	var selected_tower: Dictionary = sim.entity(effects.selected_healing_tower_id)
+	if not CombatRules.alive(selected_tower) or selected_tower.get("kind") != "healTower" or (fog.enabled and sim.visibility_at(selected_tower.position) != 2):
+		effects.selected_healing_tower_id = -1
 	var live: Dictionary = {}
 	for entity: Dictionary in sim.entities:
 		if float(entity.get("hp", 0)) <= 0:
@@ -162,18 +182,42 @@ func _sync_views() -> void:
 			$World/Actors.add_child(view)
 			views[id] = view
 		var actor: ActorView = views[id]
-		actor.apply_state(entity, entity.kind == "nathaniel")
+		actor.apply_state(entity, entity.kind == "nathaniel" or id == effects.selected_healing_tower_id, sim.result == "playing" and not sim.paused)
 		actor.visible = entity.kind in ["nathaniel", "hermes"] or not fog.enabled or sim.visibility_at(entity.position) == 2
 	for id: int in views.keys():
 		if not live.has(id):
 			views[id].queue_free()
 			views.erase(id)
+	_sync_pickup_views()
+	effects.sync_projectiles(views)
+
+
+func _sync_pickup_views() -> void:
+	var live: Dictionary = {}
+	for pickup: Dictionary in sim.weapon_pickups:
+		var id: int = pickup.id
+		live[id] = true
+		if not pickup_views.has(id):
+			var view := WeaponPickupView.new()
+			$World/Actors.add_child(view)
+			pickup_views[id] = view
+		var view: WeaponPickupView = pickup_views[id]
+		view.position = IsoProjection.project(pickup.position)
+		view.visible = not fog.enabled or sim.visibility_at(pickup.position) == 2
+	for id: int in pickup_views.keys():
+		if not live.has(id):
+			pickup_views[id].queue_free()
+			pickup_views.erase(id)
 
 
 func _clear_views() -> void:
+	effects.selected_healing_tower_id = -1
 	for view: Node in views.values():
 		view.queue_free()
 	views.clear()
+	for view: Node in pickup_views.values():
+		view.queue_free()
+	pickup_views.clear()
 
 
 func screen_to_world(screen: Vector2) -> Vector2:
@@ -193,13 +237,27 @@ func world_click(screen: Vector2) -> void:
 		return
 	var target_id := -1
 	var nearest := 42.0
+	var tower_hit_id: int = -1
+	var tower_hit_y: float = -INF
 	for entity: Dictionary in sim.entities:
-		if entity.get("hp", 0) <= 0 or (sim.visibility_at(entity.position) != 2 and fog.enabled):
+		if not CombatRules.alive(entity) or (sim.visibility_at(entity.position) != 2 and fog.enabled):
 			continue
+		if entity.kind == "healTower" and views.has(int(entity.id)):
+			var actor: ActorView = views[int(entity.id)]
+			var depth: float = IsoProjection.project(entity.position).y
+			if depth >= tower_hit_y and actor.sprite_contains_screen_point(screen):
+				tower_hit_id = int(entity.id)
+				tower_hit_y = depth
 		var distance := (world_to_screen(entity.position) - Vector2(0, 20 * camera_zoom)).distance_to(screen)
 		if distance < nearest:
 			target_id = entity.id
 			nearest = distance
+	if tower_hit_id >= 0:
+		var nearby: Dictionary = sim.entity(target_id)
+		if nearby.is_empty() or nearby.kind == "healTower" or IsoProjection.project(nearby.position).y <= tower_hit_y:
+			target_id = tower_hit_id
+	var selected: Dictionary = sim.entity(target_id)
+	_select_healing_tower(target_id if selected.get("kind") == "healTower" else -1)
 	if target_id >= 0:
 		var entity: Dictionary = sim.entity(target_id)
 		if entity.kind == "nathaniel":
@@ -212,6 +270,8 @@ func world_click(screen: Vector2) -> void:
 					ui.show_notice("Returning resources to Hermes.")
 			else:
 				ui.show_notice("Use Build to place towers, or Stop / Follow to direct Hermes.")
+		elif entity.kind == "healTower":
+			ui.show_notice("Healing range shown. Heals injured Nathaniel and Hermes.")
 		elif entity.kind in ["grunt", "soldier", "boss", "spawner"]:
 			if sim.visibility_at(entity.position) != 2:
 				ui.show_notice("Target is out of sight.")
@@ -221,6 +281,15 @@ func world_click(screen: Vector2) -> void:
 			ui.show_notice("Nathaniel targeting %s." % String(entity.kind).capitalize())
 	else:
 		_move_nathaniel(screen_to_world(screen))
+
+
+func _select_healing_tower(id: int) -> void:
+	if effects.selected_healing_tower_id == id:
+		return
+	effects.selected_healing_tower_id = id
+	effects.queue_redraw()
+	if sim != null:
+		_sync_views()
 
 
 func _move_nathaniel(world: Vector2) -> void:
@@ -360,6 +429,8 @@ func command(action: String, value: Variant = null) -> void:
 				game_input.cancel_tower_drag()
 			elif ui.build_open:
 				_set_build_open(false)
+			elif ui.menu.is_empty() and effects.selected_healing_tower_id >= 0:
+				_select_healing_tower(-1)
 			elif ui.menu.is_empty():
 				command("pause")
 			elif ui.menu == "pause":
@@ -379,6 +450,8 @@ func command(action: String, value: Variant = null) -> void:
 
 
 func _set_build_open(open: bool) -> void:
+	if open:
+		_select_healing_tower(-1)
 	ui.build_open = open
 	game_input.cancel_tower_drag()
 	if sim != null:
@@ -390,8 +463,14 @@ func _game_command(action: String, value: Variant) -> void:
 	if sim == null or not ui.menu.is_empty() or sim.paused:
 		return
 	match action:
+		"equip_weapon":
+			if sim.equip_weapon(String(value)):
+				ui.update_game(sim, fog.enabled)
+			elif String(value) not in sim.nathaniel.get("owned_weapon_ids", []):
+				ui.show_notice("Find the heavy rifle crate, then walk over it to collect it.")
 		"focus":
 			if value == null or value == "nathaniel":
+				_select_healing_tower(-1)
 				_set_build_open(false)
 		"fire":
 			if int(sim.nathaniel.target_id) < 0:

@@ -114,6 +114,20 @@ alignment = 1
 theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 8
 
+[node name="Weapons" type="HFlowContainer" parent="Bottom/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 1
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="WeaponStatus" type="Label" parent="Bottom/Rows/Weapons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+text = "Rifle · Ready"
+mouse_filter = 2
+
 [node name="Towers" type="HFlowContainer" parent="Bottom/Rows"]
 unique_name_in_owner = true
 visible = false

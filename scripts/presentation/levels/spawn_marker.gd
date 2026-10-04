@@ -4,7 +4,7 @@ extends Marker2D
 ## Move this marker in the 2D editor. Its position is projected presentation space.
 ## Gameplay reads the inverse projection, preserving original Swift coordinates.
 
-@export_enum("nathaniel", "hermes", "grunt", "soldier", "boss", "spawner", "gunTower", "laserTower", "healTower", "objective") var kind: String = "soldier":
+@export_enum("nathaniel", "hermes", "grunt", "soldier", "boss", "spawner", "gunTower", "laserTower", "healTower", "objective", "weaponPickup") var kind: String = "soldier":
 	set(value):
 		kind = value
 		queue_redraw()
@@ -19,6 +19,7 @@ extends Marker2D
 
 ## Leave empty to preserve shared gameplay balance.
 @export var parameters: EncounterParameters
+@export_enum("rifle", "heavy_rifle") var weapon_id: String = "heavy_rifle"
 
 
 func _draw() -> void:
@@ -33,6 +34,8 @@ func _draw() -> void:
 		tint = Color("92d589")
 	elif kind == "objective":
 		tint = Color("bd9df5")
+	elif kind == "weaponPickup":
+		tint = Color("f2cd70")
 	if not enabled:
 		tint.a = 0.3
 	var outline: PackedVector2Array = PackedVector2Array([

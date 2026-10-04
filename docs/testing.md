@@ -12,6 +12,13 @@ make format-check
 
 `make test` imports the root project, checks source formatting, runs Python tooling tests and native content/gameplay/persistence/presentation suites, and exercises the MCP adapter against a separate headless game. `make test-mcp` runs the adapter checks. The runners treat engine/script errors as failures even when Godot returns exit code zero. These checks do not read live saves.
 
+Use `make test-content`, `make test-gameplay`, `make test-services`, or
+`make test-presentation` for a focused headless check while editing. The
+[task map](../README.md#find-the-right-files) links source paths to these checks.
+`make test` is the final regression check. Asset-specific Make targets also run
+graphical assertions; `make test-art` additionally starts Blender and checks
+source preservation. Capture targets produce review images rather than test results.
+
 Run a native suite directly when investigating a failure:
 
 ```sh
@@ -33,6 +40,21 @@ Use [export instructions](authoring.md#export-and-platform-checks) to build and 
 5. Pause, open Settings, return, and resume. Exercise save/load and replacement/cancel in the isolated slots.
 6. Check desktop keys and wheel zoom, touch zoom buttons, and two-finger pinch where the available input tool supports it. Check HUD input after zoom.
 7. Scroll long menus; test both a drag over a button and an ordinary tap. Verify the last menu item is reachable.
+8. Collect a weapon crate. Confirm that collection keeps the rifle equipped,
+   then use 1/2 and the named buttons to switch. Move while aiming at enemies,
+   check muzzle flashes and recoil, and save/load with the heavy rifle equipped.
+
+Launch an exported macOS app directly, without the editor's `--path` argument:
+
+```sh
+exports/macos/Nathaniel.app/Contents/MacOS/Nathaniel -- \
+  --storage-dir=/tmp/nathaniel-playtest --level=0
+```
+
+Use a fresh temporary storage directory for each test. Select this running
+window in Computer Use; opening the app again can create a second instance
+without the isolated-storage arguments. Current live models require a Godot
+template with 3D enabled; see [Simulator limits](authoring.md#export-and-platform-checks).
 
 Inspect rendered screenshots; an accessibility match alone does not establish visibility. Simulator automation can take time while gameplay continues, so pause between checks or prepare a repeatable scenario through debug setup. Report the platform, input method, outcome, and gestures that could not be tested.
 

@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="Texture2D" path="res://assets/generated/placeholder_prop.png" id="1"]
+
+[node name="placeholder_prop" type="Sprite2D"]
+texture_filter = 1
+scale = Vector2(1, 1)
+texture = ExtResource("1")
+centered = false
+offset = Vector2(-64, -96)

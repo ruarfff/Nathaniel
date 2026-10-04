@@ -10,3 +10,4 @@ kind = "corpse"
 visual = ExtResource("2")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
+texture_filter = 4

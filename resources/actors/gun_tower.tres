@@ -1,7 +1,8 @@
 [gd_resource type="Resource" script_class="ActorVisual" format=3]
 
 [ext_resource type="Script" path="res://scripts/presentation/actors/actor_visual.gd" id="1"]
-[ext_resource type="Texture2D" path="res://assets/Sprites/Structures/guntower.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/generated/gun_tower.png" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/actors/generated/gun_tower_model.tscn" id="3"]
 
 [resource]
 script = ExtResource("1")
@@ -9,4 +10,7 @@ texture = ExtResource("2")
 columns = 1
 rows = 1
 display_size = Vector2(48, 66)
+pixels_per_world_pixel = 8.0
+ground_anchor = Vector2(512, 768)
 shadow_radius = 22.0
+model_scene = ExtResource("3")
