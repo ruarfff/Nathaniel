@@ -59,17 +59,19 @@ continues. Right-click or F fires toward the pointer. A destination ring marks a
 movement order; a crossed ring and notice identify a destination without a clear
 route. Nathaniel keeps moving as far as the existing collision rules allow.
 
-R switches Hermes between following and stopped. Build, or B, focuses the camera
+R switches Hermes between following and deployed. Build, or B, focuses the camera
 on Hermes and opens the tower choices without stopping him. Drag a tower onto
-clear ground, or select its button and then tap the location. A valid placement
-stops Hermes and leaves Build open. A rejected drop keeps the tower selected for
-another attempt and does not stop Hermes. HUD drops cancel placement. B closes
+clear ground inside his amber range ring, or select its button and then tap the
+location. A valid placement anchors Hermes as a cannon base and leaves Build
+open. A rejected drop keeps the tower selected for another attempt and does not
+stop Hermes. HUD drops cancel placement. B closes
 Build and returns the camera to Nathaniel. Escape first cancels an armed tower,
 then closes Build, then pauses.
 
-Stop stops Hermes without closing Build. Follow closes Build, returns the camera
-to Nathaniel, removes surviving owned towers, and refunds 25% of each tower's
-paid cost, rounded down; the HUD shows the total first.
+Deploy anchors Hermes without closing Build. Follow closes Build, returns the
+camera to Nathaniel, reclaims all surviving connected towers, and refunds 25%
+of each owned tower's paid cost, rounded down; the HUD shows the total first.
+Towers disappear without a refund if Hermes is destroyed.
 
 Terrain commands apply on release. A pointer drag or a second touch cancels the
 pending terrain tap so camera gestures do not also issue movement orders.

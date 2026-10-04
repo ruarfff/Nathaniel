@@ -152,8 +152,9 @@ func apply_design_parameters(unit: Dictionary, parameters: Dictionary) -> void:
 
 func place_map_tower(kind: String, position: Vector2) -> Dictionary:
 	kind = GameBalance.canonical_kind(kind)
-	if kind not in GameBalance.TOWERS:
+	if kind not in GameBalance.TOWERS or not CombatRules.alive(hermes):
 		return {}
+	set_hermes_mode("building")
 	var tower: Dictionary = _add(kind, position)
 	tower.construction_cost = 0
 	navigation.update_towers(entities)
@@ -368,14 +369,46 @@ func set_hermes_mode(mode: String) -> void:
 	if mode != hermes_mode:
 		_stop(hermes)
 		hermes.follow_destination = null
-	hermes_mode = mode
+		hermes_mode = mode
+		_apply_hermes_weapon(true)
+		emit_event("hermes_mode", {"mode": mode, "position": hermes.position, "anchored": hermes.anchored})
 	if mode == "following":
-		for tower: Dictionary in entities.duplicate():
-			if tower.tower and tower.owned and CombatRules.alive(tower):
-				resources += int(tower.construction_cost) / 4
-				_destroy_tower(tower)
+		_dismantle_towers(CombatRules.alive(hermes))
+
+func _apply_hermes_weapon(reset_phase: bool) -> void:
+	hermes.anchored = hermes_mode == "building" and CombatRules.alive(hermes)
+	var profile: Dictionary = GameBalance.HERMES_ANCHORED_WEAPON if hermes.anchored else GameBalance.STATS.hermes
+	reset_phase = reset_phase or hermes.weapon != profile.weapon
+	for key: String in ["weapon", "damage", "delay", "range", "shot_speed"]:
+		if profile.has(key):
+			hermes[key] = profile[key]
+		else:
+			hermes.erase(key)
+	if reset_phase:
+		hermes.cooldown = 0.0
+		hermes.burst = 0.0
+		hermes.pending_damage = 0.0
+		hermes.firing = false
+
+func _dismantle_towers(refund_paid: bool) -> void:
+	for tower: Dictionary in entities.duplicate():
+		if not tower.tower:
+			continue
+		var refund: int = int(tower.construction_cost) / 4 if refund_paid and tower.owned and CombatRules.alive(tower) else 0
+		resources += refund
+		emit_event("recycle", {"owner_id": tower.id, "kind": tower.kind, "position": tower.position, "refund": refund})
+		_destroy_tower(tower)
+
+func hermes_build_range() -> float:
+	return GameBalance.HERMES_BUILD_RANGE
 
 func placement_error(position: Vector2) -> String:
+	if not CombatRules.alive(hermes):
+		return "noHermes"
+	if not position.is_finite():
+		return "blockedByTerrain"
+	if Vector2(hermes.position).distance_to(position) > hermes_build_range():
+		return "outOfBuildRange"
 	if not navigation.footprint_clear(position):
 		return "blockedByTerrain"
 	for unit: Dictionary in entities:
@@ -425,6 +458,8 @@ func damage_entity(id: int, amount: int, attacker_id: int = -1) -> void:
 	elif unit.tower:
 		_destroy_tower(unit)
 	elif unit.kind == "hermes":
+		unit.anchored = false
+		_dismantle_towers(false)
 		if result == "playing":
 			result = "gameOver"
 	elif unit.kind == "nathaniel":
@@ -504,6 +539,8 @@ func snapshot() -> Dictionary:
 
 func restore(saved: Dictionary) -> bool:
 	if int(saved.get("schema", 0)) != 1 or not saved.get("level") is Dictionary or not saved.get("entities") is Array:
+		return false
+	if saved.get("hermes_mode", "building") not in ["following", "building", "independent", "locked", "stopped"]:
 		return false
 	if not state_id_error(saved).is_empty():
 		return false
@@ -585,7 +622,15 @@ func restore(saved: Dictionary) -> bool:
 		for index: int in fog.size():
 			fog[index] = clampi(int(stored_fog[index]), 0, 2)
 	navigation.update_towers(entities)
-	set_hermes_mode(str(saved.get("hermes_mode", "building")))
+	hermes_mode = str(saved.get("hermes_mode", "building"))
+	if hermes_mode in ["independent", "locked", "stopped"]:
+		hermes_mode = "building"
+	_apply_hermes_weapon(false)
+	if hermes_mode == "following" or not CombatRules.alive(hermes):
+		_dismantle_towers(hermes_mode == "following" and CombatRules.alive(hermes))
+	else:
+		_stop(hermes)
+		hermes.follow_destination = null
 	for unit: Dictionary in entities:
 		if unit.destination != null and CombatRules.alive(unit):
 			unit.path = _plan_route(unit)

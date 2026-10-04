@@ -5,8 +5,32 @@ short stabilizers lock against the ground. His square head and chest intake
 remain visible. A short cannon unfolds above the body and can turn while the
 base stays still.
 
-This is a visual proposal for the requested build mode, not a gameplay
-implementation or a mechanically validated transformation.
+The game now implements the anchor-base rule, an initial folding transition,
+an aimed cannon, connected towers, and a visible build radius. The storyboard
+below remains the art target for more detailed tower assembly and reclamation.
+
+## Current implementation
+
+A valid tower placement deploys Hermes. Build itself only opens the choices
+and shows the range. Deploy also lets the player plant Hermes without a tower.
+The starting build radius is 240 logical points (7½ tiles); the same domain
+value sets placement eligibility and the projected amber ring. The cannon has
+a 300-point range and fires an 80-damage round every 0.8 seconds.
+
+All towers require Hermes. Follow removes the towers and restores his mobile
+weapon; paid towers return one quarter of their cost, rounded down. Losing
+Hermes removes the towers without a refund. The gameplay change is immediate.
+Presentation blends the folded base over 0.45 seconds and shows a short matter
+transfer along each ground cable. It does not delay orders for a construction
+timer or animate each tower's pedestal and head folding yet.
+
+The editable deployed source is `art/blender/sources/hermes_anchor.blend`.
+`HermesView` retains the mobile sprite clips and animates the deployed model's
+body, limbs and stabilizers. The cannon turns separately and supplies its
+barrel position for recoil and muzzle effects. `WorldEffects` draws narrow
+segmented cables below actors, with a quiet range outline outside Build.
+Use `make test-hermes-base` for focused checks and `make art-hermes-base` for
+captures of the three states in the actual game.
 
 ![Deployed Hermes with three connected towers](iron-and-ink/05-hermes-anchor-base.png)
 
@@ -78,5 +102,6 @@ mechanisms. Keep terrain detail lower than in the scene illustration.
 Test the wider base and links at actual game size, including towers behind
 Hermes and units walking across a link. The current 128 by 128 prop canvas
 may need a separate framing choice for deployed Hermes; preserve the ground
-anchor and world scale rather than shrinking him to fit. No sprite, animation,
-or in-game readability test has been completed for this proposal.
+anchor and world scale rather than shrinking him to fit. Current checks cover
+the initial deployed model, projected range, ground depth, and return to mobile
+form. The full tower-folding storyboard still needs its own animation work.

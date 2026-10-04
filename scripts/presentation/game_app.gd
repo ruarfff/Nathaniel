@@ -97,6 +97,7 @@ func start_level_scene(new_level: GameLevel) -> void:
 	fog.simulation = sim
 	_displayed_result = "playing"
 	ui.build_open = false
+	effects.build_open = false
 	game_input.cancel_tower_drag()
 	ui.show_notice("")
 	ui.show_menu("")
@@ -148,6 +149,7 @@ func _physics_process(delta: float) -> void:
 	effects.add_events(events, views)
 	ui.update_game(sim, fog.enabled)
 	effects.fog_enabled = fog.enabled
+	effects.build_open = ui.build_open and ui.menu.is_empty()
 	_update_camera(delta)
 	effects.placement = not ui.build_kind.is_empty() and ui.menu.is_empty() and not ui.blocks_world_input(game_input.pointer_position)
 	effects.cursor_world = screen_to_world(game_input.pointer_position)
@@ -307,11 +309,11 @@ func place_at(kind: String, screen: Vector2) -> bool:
 	var world := screen_to_world(screen)
 	var error := sim.placement_error(world)
 	if error != "valid":
-		ui.show_notice({"blockedByTerrain": "Choose clear ground away from the map edge.", "overlapsStructure": "A tower is already here.", "overlapsEnemy": "An enemy blocks this location.", "overlapsCharacter": "A character blocks this location.", "overlapsResource": "Collect the corpse before building here."}.get(error, error))
+		ui.show_notice({"outOfBuildRange": "Outside Hermes's build range. Choose ground inside the amber ring.", "noHermes": "Hermes must be alive to support a tower.", "blockedByTerrain": "Choose clear ground away from the map edge.", "overlapsStructure": "A tower is already here.", "overlapsEnemy": "An enemy blocks this location.", "overlapsCharacter": "A character blocks this location.", "overlapsResource": "Collect the corpse before building here."}.get(error, error))
 		return false
 	var placed := sim.place_tower(kind, world)
 	if placed:
-		ui.show_notice("Tower placed. Hermes stopped. Follow removes built towers and refunds part of their cost.")
+		ui.show_notice("Tower linked. Hermes anchored and cannon active. Follow reclaims the base.")
 	else:
 		ui.show_notice("Could not place this tower.")
 	return placed
@@ -453,6 +455,7 @@ func _set_build_open(open: bool) -> void:
 	if open:
 		_select_healing_tower(-1)
 	ui.build_open = open
+	effects.build_open = open
 	game_input.cancel_tower_drag()
 	if sim != null:
 		sim.focused_character = "hermes" if open else "nathaniel"
@@ -489,6 +492,7 @@ func _game_command(action: String, value: Variant) -> void:
 		"hermes_stop":
 			sim.set_hermes_mode("stopped")
 			game_input.cancel_tower_drag()
+			ui.show_notice("Hermes anchored. Cannon active; build inside his range.")
 		"build":
 			_set_build_open(not ui.build_open)
 		"toggle_hermes":

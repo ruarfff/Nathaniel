@@ -9,6 +9,7 @@ func _initialize() -> void:
 	_test_lives_and_outcomes()
 	_test_hermes_and_towers()
 	_test_build_while_following()
+	_test_hermes_base()
 	_test_resources()
 	_test_combat()
 	_test_healing()
@@ -103,32 +104,35 @@ func _test_hermes_and_towers() -> void:
 	sim.set_hermes_mode("building")
 	sim.configure(sim.level)
 	_check(sim.hermes_mode == "following", "Restarting a level resets stopped Hermes to following")
-	_check(sim.place_tower("gun_tower", Vector2(1000, 1000)), "Tower builds without Hermes radius")
+	_check(sim.place_tower("gun_tower", Vector2(700, 242)), "Tower builds inside Hermes range")
 	_check(sim.resources == 25, "Gun costs 5")
-	_check(not sim.place_tower("gunTower", Vector2(1040, 1000)), "Overlapping towers rejected")
-	_check(sim.place_tower("laserTower", Vector2(1100, 1000)), "Laser builds")
-	_check(sim.place_tower("healTower", Vector2(1200, 1000)), "Heal builds")
+	_check(not sim.place_tower("gunTower", Vector2(740, 242)), "Overlapping towers rejected")
+	_check(sim.place_tower("laserTower", Vector2(600, 392)), "Laser builds")
+	_check(sim.place_tower("healTower", Vector2(780, 392)), "Heal builds")
 	_check(sim.resources == 0, "All three original costs total 30")
 	var map_tower: Dictionary = sim.place_map_tower("healTower", Vector2(1500, 1000))
 	sim.set_hermes_mode("following")
 	_check(sim.resources == 6, "Refund floors each 5/4 + 10/4 + 15/4")
-	_check(sim.entities.size() == 3 and map_tower.hp == 600, "Follow dismantles only owned towers")
+	_check(sim.entities.size() == 2 and map_tower.hp == 0, "Follow dismantles owned and map towers")
 	sim.set_hermes_mode("following")
 	_check(sim.resources == 6, "Follow refunds only once")
-	_check(sim.place_tower("gunTower", Vector2(1000, 1000)) and sim.hermes_mode == "building", "Following can start a new deployment")
+	_check(sim.place_tower("gunTower", Vector2(700, 242)) and sim.hermes_mode == "building", "Following can start a new deployment")
 	sim = _game()
+	sim.hermes.position = Vector2(160, 160)
 	_check(sim.placement_error(Vector2(24, 24)) == "valid", "Tower may touch map edge")
 	_check(sim.placement_error(Vector2(23.5, 96)) == "blockedByTerrain", "Tower footprint cannot cross map edge")
 	sim.spawn_resource(10, Vector2(500, 500))
+	sim.hermes.position = Vector2(650, 500)
 	_check(sim.placement_error(Vector2(500, 500)) == "overlapsResource", "Corpse blocks placement")
 	var config: Dictionary = sim.level.duplicate(true)
 	config.blocked = [Vector2i(1, 1)]
 	sim.configure(config)
+	sim.hermes.position = Vector2(200, 100)
 	_check(sim.placement_error(Vector2(88, 48)) == "valid", "Tower footprint may touch solid terrain")
 	_check(sim.placement_error(Vector2(87.5, 48)) == "blockedByTerrain", "Half-point terrain overlap rejected")
 	# Restoring an impossible old following deployment dismantles once at paid cost.
 	sim = _game()
-	_check(sim.place_tower("gunTower", Vector2(1000, 1000)), "Owned restore setup")
+	_check(sim.place_tower("gunTower", Vector2(700, 242)), "Owned restore setup")
 	sim.entities.back().construction_cost = 11
 	var saved: Dictionary = sim.snapshot()
 	var stopped_restore := GameSimulation.new()
@@ -143,16 +147,17 @@ func _test_hermes_and_towers() -> void:
 	_check(restored.restore(restored.snapshot()) and restored.resources == 27, "Refund cannot duplicate on second restore")
 
 func _test_build_while_following() -> void:
-	for reason: String in ["unknown_kind", "terrain", "character", "enemy", "tower", "resource", "cost", "paused", "game_over", "victory", "dead_hermes"]:
+	for reason: String in ["unknown_kind", "range", "terrain", "character", "enemy", "tower", "resource", "cost", "paused", "game_over", "victory", "dead_hermes"]:
 		var rejected: GameSimulation = _game()
 		rejected.set_hermes_mode("following")
 		rejected.step(0.5)
 		var kind := "gunTower"
-		var position := Vector2(1000, 1000)
+		var position: Vector2 = rejected.hermes.position + Vector2(100, 100)
 		match reason:
 			"unknown_kind": kind = "unknown"
+			"range": position = Vector2(1000, 1000)
 			"terrain": position = Vector2(-32, -32)
-			"character": position = rejected.nathaniel.position
+			"character": position = rejected.hermes.position
 			"enemy": rejected.spawn_enemy("soldier", position)
 			"tower": rejected.place_map_tower("gunTower", position)
 			"resource": rejected.spawn_resource(10, position)
@@ -170,7 +175,7 @@ func _test_build_while_following() -> void:
 	sim.step(0.5)
 	var hermes_position: Vector2 = sim.hermes.position
 	_check(sim.hermes.moving and sim.hermes.destination != null, "Hermes is moving before the first placement")
-	_check(sim.place_tower("gunTower", Vector2(1000, 1000)), "First placement succeeds while Hermes follows")
+	_check(sim.place_tower("gunTower", hermes_position + Vector2(100, 100)), "First placement succeeds while Hermes follows")
 	_check(sim.hermes_mode == "building" and not sim.hermes.moving and sim.hermes.destination == null and sim.hermes.follow_destination == null, "Successful placement immediately cancels Hermes follow movement")
 	_check(sim.resources == 25 and sim.entities.size() == 3 and sim.entities.back().owned, "Successful placement charges once and owns the new tower")
 	sim.step(1.0)
@@ -181,6 +186,58 @@ func _test_build_while_following() -> void:
 	_check(sim.resources == 26, "Following the new deployment refunds only once")
 	sim.step(0.5)
 	_check(sim.hermes.moving and sim.hermes.position != hermes_position, "Hermes resumes following after dismantling")
+
+func _test_hermes_base() -> void:
+	var sim: GameSimulation = _game()
+	var edge: Vector2 = sim.hermes.position + Vector2(sim.hermes_build_range(), 0)
+	_check(sim.hermes_build_range() == 240.0 and not sim.hermes.anchored, "Fresh Hermes is mobile with a modest build range")
+	_check(sim.placement_error(edge) == "valid", "A tower center on the build boundary is valid")
+	_check(sim.placement_error(edge + Vector2(0.01, 0)) == "outOfBuildRange", "A tower center outside the build boundary is rejected")
+	_check(sim.place_tower("gunTower", edge), "A valid boundary build anchors Hermes")
+	_check(sim.hermes.anchored and sim.hermes.weapon == "gun" and sim.hermes.damage == 80 and sim.hermes.range == 300.0, "Anchored Hermes carries the stronger short-range cannon")
+	var tower: Dictionary = sim.entities.back()
+	tower.cooldown = tower.delay
+	_check(CombatRules.shoot(sim, tower, tower.position + Vector2(100, 0)), "Connected tower fires before recycling")
+	var map_tower: Dictionary = sim.place_map_tower("gunTower", Vector2(1000, 1000))
+	map_tower.cooldown = map_tower.delay
+	_check(CombatRules.shoot(sim, map_tower, map_tower.position + Vector2(100, 0)), "Connected map tower fires before recycling")
+	var map_id: int = int(map_tower.id)
+	sim.hermes.cooldown = 0.35
+	var restored := GameSimulation.new()
+	_check(restored.restore(sim.snapshot()), "Anchored base restores")
+	_check(restored.hermes.anchored and restored.hermes.weapon == "gun" and restored.hermes.cooldown == 0.35, "Restore derives anchored cannon and preserves its cooldown")
+	var invalid_mode: Dictionary = sim.snapshot()
+	invalid_mode.hermes_mode = "unsupported"
+	_check(not restored.restore(invalid_mode) and restored.hermes.anchored and restored.entities.size() == 4, "Unknown saved Hermes modes cannot leave disconnected towers")
+	var legacy: Dictionary = sim.snapshot()
+	legacy.entities[1].erase("anchored")
+	legacy.entities[1].weapon = "laser"
+	legacy.entities[1].damage = 25
+	legacy.entities[1].firing = true
+	legacy.entities[1].pending_damage = 0.75
+	_check(restored.restore(legacy) and restored.hermes.anchored and restored.hermes.weapon == "gun", "Legacy stopped Hermes upgrades to the anchored cannon")
+	_check(not restored.hermes.firing and restored.hermes.pending_damage == 0.0, "Legacy beam phase cannot leak into the cannon")
+	var wallet: int = sim.resources
+	sim.damage_entity(int(sim.hermes.id), int(sim.hermes.hp))
+	_check(sim.result == "gameOver" and not sim.hermes.anchored and sim.resources == wallet, "Hermes death removes the base without a refund")
+	_check(sim.entities.size() == 2 and sim.projectiles.is_empty() and sim.navigation.towers.is_empty(), "Hermes death removes every tower, shot and navigation obstacle")
+	_check(sim.entity(map_id).is_empty() and sim.opponents(true).size() == 2, "Hermes death clears tower lookup and combat indexes")
+	_check(sim.placement_error(edge) == "noHermes" and sim.place_map_tower("gunTower", edge).is_empty(), "No tower can be placed without living Hermes")
+	legacy.entities[1].hp = 0
+	legacy.entities[1].active = false
+	_check(restored.restore(legacy) and restored.entities.size() == 2 and restored.projectiles.is_empty() and restored.resources == wallet, "Loading dead Hermes removes orphan towers without a refund")
+	sim = _game()
+	sim.place_map_tower("gunTower", Vector2(1000, 1000))
+	_check(sim.hermes.anchored and sim.hermes_mode == "building", "Authored tower setup anchors Hermes")
+	sim.set_hermes_mode("following")
+	_check(not sim.hermes.anchored and sim.hermes.weapon == "laser" and sim.hermes.damage == 25, "Follow restores Hermes mobile weapon")
+	_check(sim.entities.size() == 2 and sim.resources == 30, "Map towers recycle without granting unspent resources")
+	sim.set_hermes_mode("building")
+	var outside: Dictionary = sim.spawn_enemy("soldier", sim.hermes.position + Vector2(301, 0))
+	var inside: Dictionary = sim.spawn_enemy("soldier", sim.hermes.position + Vector2(200, 0))
+	sim.hermes.target_id = outside.id
+	CombatRules.acquire(sim, sim.hermes)
+	_check(sim.hermes.target_id == inside.id, "Anchored cannon replaces an unreachable target with one inside its range")
 
 func _test_resources() -> void:
 	var sim: GameSimulation = _game(0)
@@ -271,10 +328,12 @@ func _test_combat() -> void:
 		sim.hermes.position = Vector2(1000, 1000)
 		sim.hermes.cooldown = 3.5
 		enemy = sim.spawn_enemy("grunt", Vector2(1200, 1000))
+		enemy.max_hp = 1000
+		enemy.hp = 1000
 		enemy.speed = 0.0
 		enemy.delay = 100000.0
 		_advance(sim, 1.5, fps)
-		_check(absi(150 - int(enemy.hp) - 37) <= 1, "Hermes building DPS at %d FPS" % fps)
+		_check(enemy.hp == 840, "Anchored Hermes cannon delivers two 80-damage hits at %d FPS" % fps)
 	# Dead enemy projectiles persist; tower projectiles are removed on destruction.
 	sim = _game()
 	soldier = sim.spawn_enemy("soldier", Vector2(1000, 1000))
@@ -507,10 +566,10 @@ func _test_targeting_and_update_order() -> void:
 	_check(sim.score == 100 and sim.projectiles.is_empty(), "Simultaneous shots resolve once")
 	# Refund cancelled tower shots must never hit later.
 	sim = _game()
-	sim.place_tower("gunTower", Vector2(1000, 1000))
+	sim.place_tower("gunTower", Vector2(700, 242))
 	tower = sim.entities.back()
 	tower.cooldown = 0.8
-	CombatRules.shoot(sim, tower, Vector2(1200, 1000))
+	CombatRules.shoot(sim, tower, tower.position + Vector2(200, 0))
 	sim.set_hermes_mode("following")
 	_check(sim.projectiles.is_empty() and sim.resources == 26, "Dismantle removes owned shots and refunds one")
 

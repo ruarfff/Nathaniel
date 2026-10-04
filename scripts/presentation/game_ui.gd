@@ -36,7 +36,7 @@ func _ready() -> void:
 	buttons.build.toggle_mode = true
 	buttons.fire.tooltip_text = "Nathaniel fires at his current enemy target. F fires toward the pointer."
 	buttons.stop.tooltip_text = "Stop Nathaniel's movement. Automatic combat continues."
-	buttons.hermes_stop.tooltip_text = "Stop Hermes following Nathaniel."
+	buttons.hermes_stop.tooltip_text = "Deploy Hermes as a stationary cannon base. Follow packs the base away."
 	buttons.zoom_out.tooltip_text = "Zoom out"
 	buttons.zoom_in.tooltip_text = "Zoom in"
 	for weapon_id: String in ["rifle", "heavy_rifle"]:
@@ -65,32 +65,36 @@ func update_game(sim: GameSimulation, fog_enabled: bool = true) -> void:
 	var tower_count := 0
 	var refund := 0
 	for entity: Dictionary in sim.entities:
-		if entity.tower and entity.owned and entity.hp > 0:
+		if entity.tower and entity.hp > 0:
 			tower_count += 1
-			refund += int(entity.construction_cost) / 4
+			if entity.owned:
+				refund += int(entity.construction_cost) / 4
 	var instruction := "Ground moves Nathaniel. Select an enemy to attack. Space returns to Nathaniel."
 	if build_open:
-		instruction = "Choose a tower, then clear ground. Placing a tower stops Hermes."
+		instruction = "Build inside the amber ring. " + ("The first tower deploys Hermes." if following else "Towers need Hermes's base.")
 	if not build_kind.is_empty():
-		instruction = "Place %s on clear ground. Placement stops Hermes. Escape cancels." % build_kind.replace("_", " ")
+		instruction = "Place %s inside the amber ring. Escape cancels." % build_kind.replace("_", " ")
 	if tower_count > 0:
-		var follow_instruction := "Follow removes %d tower%s; refund: %d." % [tower_count, "" if tower_count == 1 else "s", refund]
+		var follow_instruction := "Follow reclaims %d linked tower%s; refund: %d." % [tower_count, "" if tower_count == 1 else "s", refund]
 		instruction = instruction + " " + follow_instruction if build_open else follow_instruction
-	var hermes_state := "Following" if following else ("Stopped for towers" if tower_count > 0 else "Stopped")
+	var hermes_state := "Following" if following else "Anchored · Cannon active"
+	if not CombatRules.alive(sim.hermes):
+		hermes_state = "Destroyed"
 	%Status.text = "Nathaniel: %s · Hermes: %s · Camera: %s\n%s" % [_nathaniel_state(sim), hermes_state, sim.focused_character.capitalize(), instruction]
 	%Towers.visible = build_open
 	for kind: String in ["gun_tower", "laser_tower", "heal_tower"]:
 		var cost := int(GameBalance.COSTS[GameBalance.canonical_kind(kind)])
-		buttons[kind].disabled = sim.resources < cost
+		buttons[kind].disabled = sim.resources < cost or not CombatRules.alive(sim.hermes)
 		buttons[kind].set_pressed_no_signal(build_kind == kind)
-		buttons[kind].tooltip_text = "Costs %d resources. %s" % [cost, "Need %d more resources." % (cost - sim.resources) if sim.resources < cost else "Drag onto clear ground, or choose this tower and then its location."]
+		buttons[kind].tooltip_text = "Costs %d resources. %s" % [cost, "Need %d more resources." % (cost - sim.resources) if sim.resources < cost else "Place inside Hermes's amber build ring. Towers need his base to survive."]
 	buttons.follow.visible = not following
 	buttons.follow.text = "Follow · +%d [R]" % refund if tower_count > 0 else "Follow [R]"
-	buttons.follow.tooltip_text = "Hermes follows Nathaniel. " + ("Removes %d owned towers and refunds %d resources." % [tower_count, refund] if tower_count > 0 else "")
+	buttons.follow.tooltip_text = "Pack the base and follow Nathaniel. " + ("Reclaims %d linked towers and refunds %d resources." % [tower_count, refund] if tower_count > 0 else "")
 	buttons.hermes_stop.visible = following
+	buttons.hermes_stop.text = "Deploy Hermes [R]"
 	buttons.build.text = "Close Build [B]" if build_open else "Build [B]"
 	buttons.build.set_pressed_no_signal(build_open)
-	buttons.build.tooltip_text = "Close tower choices and return to Nathaniel." if build_open else "Open tower choices and move the camera to Hermes. Hermes stops when you place a tower."
+	buttons.build.tooltip_text = "Close tower choices and return to Nathaniel." if build_open else "Show Hermes's build range and tower choices. A valid build deploys his cannon base."
 	var equipped: String = sim.nathaniel.get("equipped_weapon_id", "rifle")
 	var switching: float = sim.nathaniel.get("equip_ready_remaining", 0.0)
 	for weapon_id: String in ["rifle", "heavy_rifle"]:

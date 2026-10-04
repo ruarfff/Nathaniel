@@ -223,6 +223,10 @@ func reset_pose(reset_movement: bool = false) -> void:
 		_update_locomotion(0.0)
 
 
+func refresh_pose() -> void:
+	_dirty = true
+
+
 func weapon_muzzle(direction: Vector2, fired_weapon_id: String = "") -> Vector2:
 	if camera == null or muzzle == null or aim_pivot == null:
 		return Vector2.INF

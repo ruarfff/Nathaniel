@@ -1,0 +1,76 @@
+{
+  "source": "art/blender/sources/hermes_anchor.blend",
+  "source_sha256": "007491631333ff99453c656e192152ff09ba0228ea50a8951e35570e3aaaa590",
+  "settings_sha256": "fa80b56083f8af2d5c000e7ff9dba0eac9b6a64161d5cb3f83f34023a209cdef",
+  "blender_version": "5.2.2 LTS",
+  "python_version": "3.13.15",
+  "canvas": [
+    1024,
+    1024
+  ],
+  "anchor": [
+    512,
+    768
+  ],
+  "trimmed": false,
+  "logical_canvas": [
+    128,
+    128
+  ],
+  "logical_anchor": [
+    64,
+    96
+  ],
+  "render_density": 8,
+  "profile": "iron_ink",
+  "world_points_per_unit": 32,
+  "blender_xy_basis_pixels": [
+    [
+      -256,
+      128
+    ],
+    [
+      256,
+      128
+    ]
+  ],
+  "logical_xy_from_blender": [
+    "32 * Y",
+    "32 * X"
+  ],
+  "dependencies": [
+    "Blender (bundled bpy and Python standard library)"
+  ],
+  "model": {
+    "path": "assets/generated/hermes_anchor.glb",
+    "scene": "scenes/actors/generated/hermes_anchor_model.tscn",
+    "sha256": "81978c59adab2f1059fae181417739f917469fd820dbeb9a518515d46b55ad15",
+    "blender_to_godot": [
+      "X",
+      "Z",
+      "-Y"
+    ],
+    "logical_xy_from_godot": [
+      "-32 * Z",
+      "32 * X"
+    ],
+    "forward_axis": "+X",
+    "rig_nodes": [
+      "AimPivot",
+      "Recoil",
+      "Muzzle"
+    ],
+    "role": "tower",
+    "muzzle_blender": [
+      0.9739999771118164,
+      -0.2199999988079071,
+      1.5299999713897705
+    ],
+    "animations": [],
+    "exporter": "Khronos glTF Blender I/O v5.2.40",
+    "mesh_float_decimal_places": 6,
+    "dependencies": [
+      "Blender bundled glTF 2.0 exporter"
+    ]
+  }
+}

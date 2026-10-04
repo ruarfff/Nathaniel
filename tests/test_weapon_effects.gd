@@ -278,7 +278,8 @@ func _check_application() -> void:
 	app.sim.nathaniel.delay = 100000.0
 	app.sim.hermes.delay = 100000.0
 	var resources_before: int = app.sim.resources
-	var built: bool = app.sim.place_tower("gun_tower", Vector2(800, 800))
+	var build_point: Vector2 = app.sim.hermes.position + Vector2(160, 0)
+	var built: bool = app.sim.place_tower("gun_tower", build_point)
 	expect(built, "Hermes builds a gun tower through the normal paid placement API")
 	if not built:
 		app.queue_free()

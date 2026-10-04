@@ -109,6 +109,16 @@ positions. It still joins the same 2D ground-anchor Y-sort layer. Use the
 [live gun tower guide](iron-and-ink-assets.md#live-gun-tower) to edit or export it.
 Model bounds and barrel position do not define movement or collision footprints.
 
+Hermes uses his mobile SpriteFrames and a separate live deployed model. Edit
+`art/blender/sources/hermes_anchor.blend`, then run
+`rtk make art-render ASSET=hermes_anchor`. Keep `DeployBody`, the named limb
+pivots, the four `Anchor` pivots, and `AimPivot/Recoil/Muzzle` intact:
+`HermesView` uses those saved parts for the folding transition and cannon.
+`make test-hermes-base` checks the pose, pause, range, cables, and rendering;
+`make art-hermes-base` captures mobile, deployed, and reclaimed gameplay.
+The [design reference](../concept-art/hermes-build-mode.md) separates current
+behavior from the remaining tower assembly animation target.
+
 Legacy PNG sheets keep their display-size and bottom-center convention. Their
 fallback renderer selects columns from projected motion and retains the original
 row and Hermes moving-sheet mappings. Reusing old PNGs does not require Blender.

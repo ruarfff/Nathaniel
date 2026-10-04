@@ -29,6 +29,7 @@ func _game() -> GameSimulation:
 		"blocked": [], "player_start": Vector2(500, 500), "hermes_start": Vector2(1600, 1600),
 		"enemies": [], "wave_based": false})
 	sim.set_hermes_mode("building")
+	sim.take_events()
 	return sim
 
 func _ready(sim: GameSimulation, direction: Vector2 = Vector2.RIGHT) -> void:

@@ -228,7 +228,7 @@ func _test_simulation_restoration() -> void:
 	_check(restored.random.state == sim.random.state, "Native random sequence survives disk round trip")
 	_check(restored.navigation.towers.size() == 2 and restored.nathaniel.destination == Vector2(900, 700), "Disk reload rebuilds towers before routes")
 	restored.set_hermes_mode("following")
-	_check(restored.resources == 34 and restored.navigation.towers.size() == 1, "Imported 19-resource tower refunds floor 25 percent and keeps map tower")
+	_check(restored.resources == 34 and restored.navigation.towers.is_empty(), "Follow reclaims imported and map towers but refunds only the paid tower")
 
 
 func _test_http_framing() -> void:

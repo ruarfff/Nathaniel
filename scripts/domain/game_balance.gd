@@ -5,6 +5,10 @@ extends RefCounted
 const ENEMIES: Array[String] = ["grunt", "soldier", "boss", "spawner"]
 const TOWERS: Array[String] = ["gunTower", "laserTower", "healTower"]
 const COSTS: Dictionary = {"gunTower": 5, "laserTower": 10, "healTower": 15}
+const HERMES_BUILD_RANGE: float = 240.0
+const HERMES_ANCHORED_WEAPON: Dictionary = {
+	"weapon": "gun", "damage": 80, "delay": 0.8, "range": 300.0, "shot_speed": 650.0,
+}
 const WEAPON_EQUIP_SECONDS: float = 0.35
 const WEAPON_PICKUP_RADIUS: float = 32.0
 const WEAPON_AIM_SPEED: float = TAU
@@ -68,4 +72,6 @@ static func create(kind: String, id: int, position: Vector2) -> Dictionary:
 		value.merge({"equipped_weapon_id": "rifle", "owned_weapon_ids": ["rifle"],
 			"aim_direction": Vector2(0, -1), "manual_fire_target": null,
 			"equip_ready_remaining": 0.0, "recovery_delay": value.delay})
+	elif kind == "hermes":
+		value.anchored = false
 	return value

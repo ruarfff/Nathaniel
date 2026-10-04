@@ -8,6 +8,46 @@ of later code or assets.
 Test host: Apple M4 Pro (12 CPU cores), arm64 macOS, Xcode 26.6 (17F113),
 Godot 4.7.2 stable. Results are local measurements, not guarantees for other hardware.
 
+## Hermes anchor base — 2026-10-03
+
+Hermes now deploys as a stationary cannon when a tower is placed. New builds
+must be inside his 240-point range. All towers depend on Hermes; Follow reclaims
+them and refunds only paid owned costs, while his death removes them without a
+refund. His live base retains the mobile model's head, intake and armour, with
+folding limbs, four stabilizers and an independently aimed cannon. Ground cables
+and the amber range use the same simulation state as construction.
+
+`make test` passed, including 334 gameplay assertions, 102 weapon checks,
+236 presentation checks, the save and live MCP suites, and the new Hermes
+checks. The separate graphical suites passed 21 actor checks and 32 ground-effect
+checks. These cover pose transitions, pause, saved deployed state, cannon aim,
+muzzle/recoil, exact range projection, actor occlusion and cable cleanup.
+Formatting and diff whitespace checks passed. Blender 5.2.2 LTS generated and
+exported the saved `hermes_anchor.blend`; the existing mobile source was unchanged.
+
+`make art-hermes-base` produced inspected mobile, deployed and reclaimed captures
+in the actual Survival level. The deployed capture shows three linked towers and
+Hermes firing from his barrel. These are scripted setups in isolated storage,
+not real-input evidence. Images are under `test-artifacts/hermes-*-gameplay.png`.
+
+macOS release, unsigned iOS project, and Web exports passed. The macOS release
+opened, but native mouse control repeatedly failed with `noWindowsAvailable`;
+a later native capture was blank. Native input acceptance is therefore unverified.
+The isolated native test processes were closed after inspection.
+
+Real mouse and keyboard input in the local browser verified Survival start,
+B opening Build while Hermes followed, out-of-range rejection without charging,
+valid placement and deployment, a visible ground link, Nathaniel movement while
+Hermes stayed anchored, Space closing Build without reclaiming, and R reclaiming
+the tower and restoring the mobile form. Resources changed 30 → 25 → 26.
+The cable and range disappeared after Follow. Browser logs had no warnings or
+errors. The test used port 18917 and a separate `user://playtests/` directory.
+
+iOS runtime, physical touch/pinch, and performance were not tested. The available
+custom Simulator template still has 3D disabled. Tower pedestal/head assembly
+animation remains a visual follow-up; the current transition is Hermes's fold
+plus brief transfer pulses, with immediate gameplay placement and reclamation.
+
 ## Repository gardening — 2026-10-03
 
 Reviewed ten recent coding sessions, including three for Nathaniel. Repeated

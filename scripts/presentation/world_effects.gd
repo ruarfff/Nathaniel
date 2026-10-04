@@ -3,6 +3,7 @@ extends Node2D
 ## Scene-owned presentation parameters never change logical combat or placement.
 
 const HEALING_RANGE_SEGMENTS: int = 96
+const HERMES_RANGE_SEGMENTS: int = 96
 
 @export_group("Corpses")
 @export var corpse_visual: ActorVisual
@@ -49,6 +50,13 @@ const HEALING_RANGE_SEGMENTS: int = 96
 @export var valid_placement_color := Color(0.55, 1, 0.45, 0.8)
 @export var invalid_placement_color := Color(1, 0.3, 0.25, 0.8)
 
+@export_group("Hermes Base")
+@export var hermes_range_color := Color("d9ad54")
+@export var hermes_cable_color := Color("39444a")
+@export var hermes_cable_band_color := Color("ba8d3e")
+@export_range(2.0, 12.0, 0.5) var hermes_cable_width: float = 6.0
+@export_range(0.1, 2.0, 0.05) var hermes_transfer_lifetime: float = 0.55
+
 var simulation: GameSimulation:
 	set(value):
 		if simulation != value:
@@ -56,6 +64,7 @@ var simulation: GameSimulation:
 			muzzle_flashes.clear()
 			transients.clear()
 			healing_flashes.clear()
+			hermes_transfers.clear()
 			selected_healing_tower_id = -1
 		simulation = value
 var transients: Array[Dictionary] = []
@@ -66,11 +75,22 @@ var _projectile_offsets: Dictionary = {}
 var cursor_world := Vector2.ZERO
 var placement := false
 var placement_valid := false
+var build_open := false
+var hermes_transfers: Array[Dictionary] = []
+var _hermes_ground: Node2D
 var delivery_pulse_time := 0.0
 var delivery_pulse_position := Vector2.ZERO
 var target_pulse_id := -1
 var target_pulse_time := 0.0
 var fog_enabled := true
+
+
+func _ready() -> void:
+	_hermes_ground = Node2D.new()
+	_hermes_ground.name = "HermesGroundEffects"
+	_hermes_ground.z_index = -5
+	_hermes_ground.draw.connect(_draw_hermes_ground)
+	add_child(_hermes_ground)
 
 
 func _process(delta: float) -> void:
@@ -80,12 +100,19 @@ func _process(delta: float) -> void:
 		effect.life -= delta
 	transients = transients.filter(func(effect: Dictionary) -> bool: return effect.life > 0)
 	if simulation != null and not simulation.paused and simulation.result == "playing":
+		for transfer: Dictionary in hermes_transfers:
+			transfer.life -= delta
+		hermes_transfers = hermes_transfers.filter(func(transfer: Dictionary) -> bool: return transfer.life > 0)
 		for flash: Dictionary in muzzle_flashes:
 			flash.life -= delta
 		muzzle_flashes = muzzle_flashes.filter(func(flash: Dictionary) -> bool: return flash.life > 0)
 		for flash: Dictionary in healing_flashes:
 			flash.life -= delta
 		healing_flashes = healing_flashes.filter(func(flash: Dictionary) -> bool: return flash.life > 0 and CombatRules.alive(simulation.entity(int(flash.target_id))))
+	if simulation == null or not CombatRules.alive(simulation.hermes):
+		hermes_transfers.clear()
+	if _hermes_ground != null:
+		_hermes_ground.queue_redraw()
 	queue_redraw()
 
 
@@ -139,6 +166,12 @@ func _draw_target_markers() -> void:
 
 func add_events(events: Array, actors: Dictionary = {}) -> void:
 	for event: Dictionary in events:
+		if event.get("type", "") in ["build", "recycle"] and event.get("position") is Vector2:
+			hermes_transfers.append({"position": event.position, "life": hermes_transfer_lifetime,
+				"returning": event.type == "recycle"})
+			continue
+		if event.get("type", "") == "hermes_mode":
+			continue
 		if event.get("type", "") == "weapon_collected":
 			continue
 		if event.get("type", "") == "heal":
@@ -160,6 +193,121 @@ func add_events(events: Array, actors: Dictionary = {}) -> void:
 		if event.has("position"):
 			transients.append({"position": event.position, "life": transient_lifetime, "kind": event.get("type", "hit")})
 	queue_redraw()
+
+
+func hermes_range_points() -> PackedVector2Array:
+	var points := PackedVector2Array()
+	if simulation == null or not CombatRules.alive(simulation.hermes):
+		return points
+	if not build_open and not simulation.hermes.get("anchored", false):
+		return points
+	var center: Vector2 = simulation.hermes.position
+	var radius: float = simulation.hermes_build_range()
+	for index: int in range(HERMES_RANGE_SEGMENTS):
+		points.append(IsoProjection.project(center + Vector2.from_angle(TAU * index / HERMES_RANGE_SEGMENTS) * radius))
+	points.append(points[0])
+	return points
+
+
+func hermes_link_paths() -> Array[PackedVector2Array]:
+	var paths: Array[PackedVector2Array] = []
+	if simulation == null or not CombatRules.alive(simulation.hermes) or not simulation.hermes.get("anchored", false):
+		return paths
+	for tower: Dictionary in simulation.entities:
+		if not tower.get("tower", false) or not CombatRules.alive(tower):
+			continue
+		if fog_enabled and simulation.visibility_at(tower.position) != 2:
+			continue
+		paths.append(_hermes_cable_path(tower.position))
+	return paths
+
+
+func hermes_preview_path() -> PackedVector2Array:
+	if not placement or not build_open or simulation == null or not CombatRules.alive(simulation.hermes) or not cursor_world.is_finite():
+		return PackedVector2Array()
+	return _hermes_cable_path(cursor_world)
+
+
+func _hermes_cable_path(target: Vector2) -> PackedVector2Array:
+	var origin: Vector2 = simulation.hermes.position
+	var heading: Vector2 = origin.direction_to(target)
+	var distance: float = origin.distance_to(target)
+	var start: Vector2 = origin + heading * minf(25.0, distance * 0.2)
+	var finish: Vector2 = target - heading * minf(18.0, distance * 0.2)
+	var length: float = start.distance_to(finish)
+	var bend: Vector2 = heading.orthogonal() * minf(14.0, length * 0.1)
+	var count: int = maxi(2, ceili(length / 11.0))
+	var points := PackedVector2Array()
+	for index: int in range(count + 1):
+		var fraction: float = float(index) / count
+		points.append(IsoProjection.project(start.lerp(finish, fraction) + bend * sin(fraction * PI)))
+	return points
+
+
+func _draw_hermes_ground() -> void:
+	var ring: PackedVector2Array = hermes_range_points()
+	if not ring.is_empty():
+		var opacity: float = 0.72 if build_open else 0.22
+		_hermes_ground.draw_polyline(ring, Color("171d20", opacity * 0.7), 4.0 if build_open else 2.5, true)
+		_hermes_ground.draw_polyline(ring, Color(hermes_range_color, opacity), 1.5 if build_open else 1.0, true)
+		if build_open:
+			for index: int in range(0, HERMES_RANGE_SEGMENTS, 8):
+				var point: Vector2 = IsoProjection.unproject(ring[index])
+				var direction: Vector2 = Vector2(simulation.hermes.position).direction_to(point)
+				_hermes_ground.draw_line(IsoProjection.project(point - direction * 5.0), IsoProjection.project(point + direction * 5.0), Color(hermes_range_color, opacity), 2.0, true)
+	for path: PackedVector2Array in hermes_link_paths():
+		_draw_hermes_cable(path)
+	var preview: PackedVector2Array = hermes_preview_path()
+	if not preview.is_empty():
+		var color: Color = valid_placement_color if placement_valid else invalid_placement_color
+		for index: int in range(0, preview.size() - 1, 2):
+			_hermes_ground.draw_line(preview[index], preview[index + 1], Color("171d20", 0.7), 4.0, true)
+			_hermes_ground.draw_line(preview[index], preview[index + 1], color, 1.5, true)
+		_draw_hermes_socket(preview[preview.size() - 1], color)
+	if simulation == null or not CombatRules.alive(simulation.hermes):
+		return
+	for transfer: Dictionary in hermes_transfers:
+		if fog_enabled and simulation.visibility_at(transfer.position) != 2:
+			continue
+		if not transfer.returning and not simulation.hermes.get("anchored", false):
+			continue
+		var path: PackedVector2Array = _hermes_cable_path(transfer.position)
+		var fraction: float = clampf(1.0 - float(transfer.life) / hermes_transfer_lifetime, 0.0, 1.0)
+		var offset: float = (1.0 - fraction if transfer.returning else fraction) * (path.size() - 1)
+		var index: int = mini(floori(offset), path.size() - 2)
+		var point: Vector2 = path[index].lerp(path[index + 1], offset - index)
+		if transfer.returning:
+			var remaining: PackedVector2Array = path.slice(0, index + 1)
+			remaining.append(point)
+			_draw_hermes_cable(remaining)
+		var strength: float = sin(fraction * PI)
+		_hermes_ground.draw_circle(point, 5.0, Color(hermes_cable_band_color, strength * 0.35))
+		_hermes_ground.draw_circle(point, 2.2, Color("ffe6a0", strength))
+
+
+func _draw_hermes_cable(path: PackedVector2Array) -> void:
+	if path.size() < 2:
+		return
+	var shadow := PackedVector2Array()
+	for point: Vector2 in path:
+		shadow.append(point + Vector2(1.5, 2.5))
+	_hermes_ground.draw_polyline(shadow, Color("101617", 0.4), hermes_cable_width + 2.0, true)
+	_hermes_ground.draw_polyline(path, Color("151d21"), hermes_cable_width + 2.0, true)
+	for index: int in range(path.size() - 1):
+		var start: Vector2 = path[index].lerp(path[index + 1], 0.06)
+		var finish: Vector2 = path[index].lerp(path[index + 1], 0.94)
+		var color: Color = hermes_cable_band_color if index % 4 == 1 else hermes_cable_color
+		_hermes_ground.draw_line(start, finish, color, hermes_cable_width, true)
+		_hermes_ground.draw_line(start - Vector2(0, 1.5), finish - Vector2(0, 1.5), color.lightened(0.18), 1.0, true)
+	_draw_hermes_socket(path[0], hermes_cable_band_color)
+	_draw_hermes_socket(path[path.size() - 1], hermes_cable_band_color)
+
+
+func _draw_hermes_socket(point: Vector2, color: Color) -> void:
+	var socket := PackedVector2Array([point + Vector2(-6, 0), point + Vector2(0, -3.5), point + Vector2(6, 0), point + Vector2(0, 3.5)])
+	_hermes_ground.draw_colored_polygon(socket, Color("1b252a"))
+	socket.append(socket[0])
+	_hermes_ground.draw_polyline(socket, color, 1.5, true)
 
 
 func healing_markers() -> Array[Dictionary]:

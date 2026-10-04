@@ -1,13 +1,15 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://scripts/presentation/actors/actor_view.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/presentation/actors/hermes_view.gd" id="1"]
 [ext_resource type="Resource" path="res://resources/actors/hermes.tres" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/actors/generated/hermes_anchor_model.tscn" id="3"]
 
 [node name="Hermes" type="Node2D"]
 texture_filter = 1
 script = ExtResource("1")
 kind = "hermes"
 visual = ExtResource("2")
+anchored_model_scene = ExtResource("3")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture_filter = 4

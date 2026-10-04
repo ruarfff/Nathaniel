@@ -17,6 +17,7 @@ PROFILE ?= default
 .PHONY: test-nathaniel-weapons
 .PHONY: art-nathaniel-weapons
 .PHONY: test-content test-gameplay test-services test-presentation
+.PHONY: test-hermes-base art-hermes-base
 
 help:
 	@echo "Development and platform exports"
@@ -57,6 +58,7 @@ help:
 	@echo "make art-gun-turret   Capture the live turret and measure a 30-tower view"
 	@echo "make art-gun-turret-preview Open the isolated live turret test scene"
 	@echo "make art-nathaniel-weapons Capture both guns in the normal game at 4K"
+	@echo "make art-hermes-base Capture Hermes mobile, base, and reclaimed states"
 	@echo ""
 	@echo "Asset checks (these include graphical checks; make test stays headless)"
 	@echo "make test-environment-art Check terrain seams, grid, scenery, and unchanged level data"
@@ -67,6 +69,7 @@ help:
 	@echo "make test-gun-turret  Check continuous aim, muzzle effects, and rendered sorting"
 	@echo "make test-healing-tower Check healing pulses, event routing, and rendered lights"
 	@echo "make test-nathaniel-weapons Check loadout, controls, aiming, recoil, and saves"
+	@echo "make test-hermes-base Check Hermes transformation, build range, and cables"
 	@echo "Override GODOT, LEVEL, DEBUG_PORT, WEB_PORT, or GODOT_TEMPLATE_DIR as needed."
 
 version:
@@ -97,6 +100,8 @@ test: import format-check test-tooling
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_weapon_controls.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_nathaniel_weapons.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_healing_tower.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_hermes_actor.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_hermes_base_effects.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_animated_art.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_static_art.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_environment_art.gd
@@ -130,6 +135,15 @@ test-nathaniel-weapons: import
 
 art-nathaniel-weapons: import
 	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tools/render_nathaniel_weapons.gd
+
+test-hermes-base: import
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_hermes_actor.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_hermes_base_effects.gd
+	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tests/test_hermes_actor.gd -- --render
+	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tests/test_hermes_base_effects.gd -- --render
+
+art-hermes-base: import
+	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tools/render_hermes_base.gd
 
 test-mcp: import
 	npm --prefix game-mcp-server test

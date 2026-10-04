@@ -21,6 +21,13 @@ rebuilds tower obstacles before requesting routes. A loaded session resumes play
 Older saves with Hermes camera focus reopen the Build menu without changing his
 saved following/stopped mode. The saved focus field and format remain unchanged.
 
+Hermes's saved mode also restores his deployed cannon or mobile laser profile.
+Older stopped saves receive the cannon and discard incompatible laser-burst
+state. Deployed cannon cooldown survives a current save/load round trip. The
+derived `anchored` flag does not change the schema. Following reclaims all
+towers, including unowned map towers; only paid owned towers refund resources.
+Restoring a dead Hermes removes the dependent towers without a refund.
+
 Nathaniel's owned and equipped weapons, aim, equip timer, shot recovery and
 pending manual aim are saved with his state. Remaining weapon pickups and each
 projectile's weapon ID are also saved. Older snapshots without these fields use

@@ -35,8 +35,8 @@ Use [export instructions](authoring.md#export-and-platform-checks) to build and 
 
 1. Start a campaign level and survival through visible menus.
 2. Move Nathaniel and target an enemy. Check target feedback and that clicking Hermes cannot select him. With Nathaniel carrying resources, click stopped Hermes and check delivery feedback.
-3. Make Hermes follow, then open Build. Check that the camera focuses Hermes and he keeps following. Reject placement on blocked ground, then place a tower on clear ground; only valid placement stops Hermes. Check that Stop leaves Build open.
-4. Make Hermes follow. Check that Build closes, the camera returns to Nathaniel, towers are removed, and each surviving paid tower refunds its cost divided by four, rounded down. Check B to toggle Build, Space to return to Nathaniel, and Escape to cancel an armed tower before closing Build or pausing.
+3. Make Hermes follow, then open Build. Check that the camera focuses Hermes, the amber range appears, and he keeps following. Reject placement outside the ring and on blocked ground, then place a tower on clear ground inside the ring. Only valid placement deploys Hermes. Check the low base, raised cannon, ground cable, and stationary combat. Check that Deploy leaves Build open.
+4. Make Hermes follow. Check that Build closes, the camera returns to Nathaniel, all towers and links are removed, and each surviving paid tower refunds its cost divided by four, rounded down. Hermes returns to his walking form. Check B to toggle Build, Space to return to Nathaniel without packing the base, and Escape to cancel an armed tower before closing Build or pausing.
 5. Pause, open Settings, return, and resume. Exercise save/load and replacement/cancel in the isolated slots.
 6. Check desktop keys and wheel zoom, touch zoom buttons, and two-finger pinch where the available input tool supports it. Check HUD input after zoom.
 7. Scroll long menus; test both a drag over a button and an ordinary tap. Verify the last menu item is reachable.

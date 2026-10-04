@@ -32,13 +32,14 @@ The [browser version](docs/web.md) uses the same game and runs from a static web
 
 - Click or tap the ground to move Nathaniel; select an enemy to target it.
 - Walk over a weapon crate to unlock the heavy rifle. Use **1 / 2** or the named weapon buttons to switch; movement and aiming continue during the 0.35-second switch.
-- Use Stop/Follow to direct Hermes. He starts following Nathaniel and cannot be selected directly.
-- Select Build to focus the camera on Hermes and open the tower choices. Hermes keeps following until a tower is placed. Drag a tower onto clear ground, or select a tower and then its location. Gun, laser, and heal towers cost 5, 10, and 15 resources.
-- Make Hermes follow to close Build, return the camera to Nathaniel, remove his surviving towers, and refund 25% of each paid cost, rounded down. Enemy destruction gives no refund.
+- Use Deploy/Follow to direct Hermes. He starts following Nathaniel and cannot be selected directly. Deploy plants him as a stationary cannon base.
+- Select Build to focus the camera on Hermes and show his amber build range. Hermes keeps following until a tower is placed. Drag a tower onto clear ground inside the ring, or select a tower and then its location. The starting radius is 240 logical points (7½ tiles). Gun, laser, and heal towers cost 5, 10, and 15 resources.
+- A valid build deploys Hermes and connects the tower to his base. His cannon fires while he stays anchored. Towers need Hermes to survive.
+- Make Hermes follow to close Build, return the camera to Nathaniel, reclaim all surviving connected towers, and refund 25% of each paid cost, rounded down. Map towers have no paid cost. Losing Hermes removes the base and its towers without a refund; enemy destruction also gives no refund.
 - Collect Soldier corpses with Nathaniel, then contact stationary Hermes to deliver them. Each is worth 10 resources. Loose corpses expire after 10 seconds; carried corpses do not.
 - Campaign levels start with three spare lives. Nathaniel respawns at the level start; losing Hermes ends the game. Defeat a boss to advance. Survival has no spare lives.
 
-Desktop controls: **B** opens or closes Build, **Space** returns the camera to Nathaniel and closes Build, **R** switches Hermes between Stop and Follow, and **S** stops Nathaniel. **Escape** cancels an armed tower first, then closes Build, then pauses; it also closes the top menu. The mouse wheel zooms. **F** or right-click fires at the pointer; the HUD Fire button uses the current target. Touch uses the HUD and world controls, with zoom buttons and a two-finger camera gesture.
+Desktop controls: **B** opens or closes Build, **Space** returns the camera to Nathaniel and closes Build, **R** switches Hermes between Deploy and Follow, and **S** stops Nathaniel. **Escape** cancels an armed tower first, then closes Build, then pauses; it also closes the top menu. The mouse wheel zooms. **F** or right-click fires at the pointer; the HUD Fire button uses the current target. Touch uses the HUD and world controls, with zoom buttons and a two-finger camera gesture.
 
 Pause to save into one of three slots. Settings and campaign records are stored separately. Existing Swift saves can be imported from an explicit exported file into an empty slot; see [saves and compatibility](docs/saves.md).
 

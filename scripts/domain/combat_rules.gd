@@ -26,11 +26,12 @@ static func acquire(sim: GameSimulation, unit: Dictionary) -> void:
 		unit.target_id = manual.id
 		return
 	unit.manual_target_id = -1
-	if alive(current) and distance(unit, current) <= float(unit.vision):
+	var anchored: bool = unit.kind == "hermes" and unit.get("anchored", false)
+	var search_range: float = float(unit.range) if unit.tower or anchored else float(unit.vision)
+	if alive(current) and distance(unit, current) <= (search_range if anchored else float(unit.vision)):
 		return
 	unit.target_id = -1
 	var best_score: float = -INF
-	var search_range: float = float(unit.range) if unit.tower else float(unit.vision)
 	for enemy: Dictionary in sim.opponents(false):
 		if not alive(enemy):
 			continue

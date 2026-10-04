@@ -17,7 +17,7 @@ setup and tests. `take_events()` consumes presentation/audio events exactly once
 | Equip Nathaniel | `equip_weapon("rifle")` or `equip_weapon("heavy_rifle")`; returns whether the request was accepted |
 | Saved camera focus | `focused_character = "nathaniel"` or `"hermes"`; presentation focuses Hermes only for Build |
 | Hermes control | `set_hermes_mode("building")` or `"following"` |
-| Build | `placement_error(point)`, `place_tower(kind, point)` |
+| Build | `hermes_build_range()`, `placement_error(point)`, `place_tower(kind, point)` |
 | Editor/map setup | `spawn_enemy(kind, point)`, `place_map_tower(kind, point)` |
 | Weapon pickup setup | `spawn_weapon_pickup(weapon_id, point)`; level data accepts `weapon_pickups: [{weapon_id, position}]` |
 | Damage/setup | `damage_entity(id, amount, attacker_id)`, `spawn_resource(...)` |
@@ -61,11 +61,19 @@ is retained in Git history at `824c8f1`. Current rules include:
   Losing Hermes ends the game. A boss death wins campaign levels, including waves.
 - Hermes starts following Nathaniel, only moves by following him, and stops within
   100 points. Camera focus does not change ground or enemy-target commands.
-- Construction has no distance limit from Hermes. Opening the build menu does
-  not change his mode. A successful placement stops following Hermes; rejected
-  placements preserve his mode and movement. All towers have a 48-point
-  footprint. Costs are 5, 10, and 15. Following dismantles surviving owned towers
-  and their shots, refunding `floor(paid_cost / 4)` for each tower once.
+- Construction is limited to a 240-point radius from living Hermes. Presentation
+  draws the ring from `hermes_build_range()`; `GameBalance.HERMES_BUILD_RANGE`
+  owns the starting radius. Opening Build does not change his mode. A successful
+  placement anchors Hermes; rejected placements preserve his mode and movement.
+  All towers have a 48-point footprint. Costs are 5, 10, and 15.
+- Building mode deploys Hermes as a stationary cannon: 80 damage per shot,
+  0.8-second delay and 300-point attack range. Following restores his mobile
+  weapon. The derived `anchored` entity flag drives the visual pose; the saved
+  mode identifiers remain `following` and `building`.
+- All towers depend on living, anchored Hermes, including authored map towers.
+  Map setup anchors him without charging resources. Following dismantles the
+  surviving towers and their shots, refunding `floor(paid_cost / 4)` for each
+  paid owned tower once. Hermes's death removes all towers without a refund.
 - Enemies retain a living target outside sight. Idle acquisition visits players,
   then towers, retaining the last eligible object. Friendlies use the original
   distance, low-health, and threat scores, then retain their target within sight.
