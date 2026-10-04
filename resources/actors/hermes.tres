@@ -2,11 +2,14 @@
 
 [ext_resource type="Script" path="res://scripts/presentation/actors/actor_visual.gd" id="1"]
 [ext_resource type="SpriteFrames" path="res://assets/generated/hermes_frames.tres" id="2"]
+[ext_resource type="Resource" path="res://resources/weapons/hermes_laser.tres" id="3"]
 
 [resource]
 script = ExtResource("1")
-display_size = Vector2(80, 81)
+display_size = Vector2(80, 104)
 pixels_per_world_pixel = 8.0
 ground_anchor = Vector2(276, 644)
 shadow_radius = 30.0
 animations = ExtResource("2")
+laser = ExtResource("3")
+contact_height = 32.0

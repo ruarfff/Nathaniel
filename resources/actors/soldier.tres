@@ -9,4 +9,5 @@ display_size = Vector2(60, 80)
 pixels_per_world_pixel = 8.0
 ground_anchor = Vector2(282, 635)
 shadow_radius = 22.0
+contact_height = 40.0
 animations = ExtResource("2")

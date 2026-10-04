@@ -83,8 +83,8 @@ func _run() -> void:
 		root.add_child(actor)
 		actor.apply_state({"id": 1, "position": Vector2(100, 80), "hp": 50, "max_hp": 100}, true)
 		expect(actor.position == Vector2(20, 90), "Actor projects logical position")
-		if actor.model_view != null and actor.model_view.visible:
-			var model: ActorModelView = actor.model_view
+		var model: ActorModelView = actor.mobile_model_view if actor is HermesView else actor.model_view
+		if model != null and model.visible:
 			expect(model.display.texture != null and model.model_root != null, "Actor displays its configured model")
 			var origin: Vector2 = model.camera.unproject_position(Vector3.ZERO)
 			var contact: Vector2 = model.position + model.display.position + (origin - Vector2(model.viewport.size) / 2.0) * model.display.scale

@@ -53,6 +53,7 @@ Search source directories first; `assets/generated/` contains export output.
 | Combat, weapons, movement or balance | `scripts/domain/game_simulation.gd`, `combat_rules.gd`, `game_balance.gd`, `world_navigation.gd` | [Domain APIs](scripts/domain/README.md); `make test-gameplay` |
 | Input, HUD or camera | `scripts/presentation/game_input.gd`, `game_ui.gd`, `game_app.gd` | [Controls](docs/web.md#character-controls); `make test-presentation` |
 | Aiming, recoil or healing visuals | `scripts/presentation/actors/`, `world_effects.gd`, `resources/actors/`, `resources/weapons/` | [Weapons](docs/nathaniel-weapons.md), [tower art](docs/iron-and-ink-assets.md); `make test-nathaniel-weapons` / `make test-healing-tower` |
+| Hermes shoulder laser | `scripts/presentation/actors/hermes_view.gd`, `world_effects.gd`, `resources/actors/hermes.tres`, `art/blender/sources/` | [Selected design and implementation brief](concept-art/hermes-lasers.md); `make test-hermes-base` |
 | Levels, encounters or blocking cells | `levels/`, `scripts/presentation/levels/level.gd`, `spawn_marker.gd` | [Level authoring](docs/authoring.md); `make test-content` |
 | Blender sources or exports | `art/blender/sources/`, `tools/blender/`, `art/blender/settings.json` | [Pipeline](docs/blender-assets.md), [terrain/buildings](docs/environment-assets.md); `make test-art` |
 | Saves or Swift compatibility | `scripts/infrastructure/save_store.gd`, `swift_save_import.gd` | [Save contract](docs/saves.md); `make test-services` |

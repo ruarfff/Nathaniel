@@ -123,6 +123,25 @@ func weapon_muzzle(direction: Vector2, weapon_id: String = "") -> Vector2:
 	return model_view.weapon_muzzle(direction, weapon_id) + visual.feet_offset
 
 
+func aim_laser(target_offset: Vector2, target_height: float) -> void:
+	if model_view != null and model_view.visible:
+		model_view.aim_laser(target_offset, target_height)
+
+
+func laser_muzzle() -> Vector2:
+	if model_view == null or not model_view.visible or model_view.muzzle == null or model_view.camera == null:
+		return Vector2.INF
+	return model_view.live_weapon_muzzle() + visual.feet_offset
+
+
+func laser_visual() -> LaserVisual:
+	return visual.laser if visual != null else null
+
+
+func laser_contact_height() -> float:
+	return visual.contact_height if visual != null else 24.0
+
+
 func notify_respawn() -> void:
 	_attack_active = false
 	_firing = false

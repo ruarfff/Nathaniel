@@ -10,6 +10,12 @@ Do not append to or erase the public arrays. Combat keeps private indexes of
 the same dictionary objects. Individual state values can be changed by debug
 setup and tests. `take_events()` consumes presentation/audio events exactly once.
 
+Accepted positive damage emits a `hit` event before any `death` event. It carries
+`target_id`, `attacker_id`, logical `position`, actual damage `amount`,
+`target_kind`, and `target_enemy`. Presentation uses this record for contact
+effects, including lethal hits after a view is removed. Effects never apply
+damage. These events are transient and are not added to snapshots.
+
 | Intent | API |
 | --- | --- |
 | Move Nathaniel | `move_to(world_point)`, `stop_player()` |

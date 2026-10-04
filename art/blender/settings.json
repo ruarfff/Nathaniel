@@ -8,6 +8,12 @@
       "render_density": 8,
       "samples": 64
     },
+    "iron_ink_mounted": {
+      "canvas": [128, 160],
+      "anchor": [64, 128],
+      "render_density": 8,
+      "samples": 64
+    },
     "iron_ink_structure": {
       "canvas": [320, 288],
       "anchor": [160, 224],

@@ -109,7 +109,18 @@ positions. It still joins the same 2D ground-anchor Y-sort layer. Use the
 [live gun tower guide](iron-and-ink-assets.md#live-gun-tower) to edit or export it.
 Model bounds and barrel position do not define movement or collision footprints.
 
-Hermes uses his mobile SpriteFrames and a separate live deployed model. Edit
+Hermes uses a live mobile model with an independent shoulder laser and a separate
+live deployed model. The mobile source is `art/blender/sources/hermes.blend`;
+export saved edits with `rtk make art-render ASSET=hermes`. Keep the shoulder's
+`AimPivot/PitchPivot/Recoil/Muzzle` controls and its `LocomotionPivot` hierarchy.
+The complete body and pod share one viewport, so the shoulder keeps its physical
+side through turns and walking. The original SpriteFrames remain the fallback.
+For an older unmodified Hermes source, `rtk sh tools/blender.sh rig-hermes hermes`
+adds the shoulder controls and geometry once. It preserves saved body meshes and
+walk actions, and does nothing when the complete rig already exists. Rendering
+never runs this migration.
+
+For the deployed model, edit
 `art/blender/sources/hermes_anchor.blend`, then run
 `rtk make art-render ASSET=hermes_anchor`. Keep `DeployBody`, the named limb
 pivots, the four `Anchor` pivots, and `AimPivot/Recoil/Muzzle` intact:
@@ -122,6 +133,45 @@ behavior from the remaining tower assembly animation target.
 Legacy PNG sheets keep their display-size and bottom-center convention. Their
 fallback renderer selects columns from projected motion and retains the original
 row and Hermes moving-sheet mappings. Reusing old PNGs does not require Blender.
+
+### Laser appearance and contacts
+
+`ActorVisual.laser` selects a `LaserVisual` resource. Hermes uses
+`resources/weapons/hermes_laser.tres`: a narrow amber edge, ivory core, brief
+aperture flash, and three short contact sparks. Duplicate this resource to make
+another straight laser style, then assign it to the actor's Visual resource.
+The existing tower and spawner beams retain their original appearance when no
+laser resource is assigned. A resource changes presentation only; combat damage,
+range and firing duration stay in the domain.
+
+For another moving emitter, reuse the mobile source's `mounted_character` rig
+and assign its exported scene to `ActorVisual.model_scene`. The body follows
+`LocomotionPivot`; the shoulder uses `ShoulderMount > AimPivot > PitchPivot >
+Recoil > Muzzle`. Keep the muzzle centered on local +X and the pitch joint
+directly above the yaw joint. The exporter rejects offsets that would make the
+aperture disagree with the aiming calculation. Body clips must not animate the
+weapon aim controls. `rtk sh tools/blender.sh verify-hermes` checks the saved
+Hermes source and exporter without changing production art.
+
+`ActorVisual.contact_height` is the contact height above the target's ground
+origin, in logical world points. `WorldEffects` converts it to the isometric
+view. `ActorView` supplies `aim_laser(target_offset, target_height)` and
+`laser_muzzle()` for live models. The first receives a logical offset from the firing actor to
+the target; the second returns the current projected muzzle offset from the
+actor's ground point. It must include the current walk and tilt pose. Keep
+`weapon_muzzle(direction, weapon_id)` for projectile launches: that method uses
+the saved weapon's rest pose so later turns cannot steer an existing bullet.
+
+The beam follows current `firing` and target state. Contact effects add no damage.
+A `hit` event retains the target's contact position for a lethal impact after
+the actor is removed. Pause freezes the beam cues. Deploying Hermes selects the
+cannon and ends the mobile beam; opening Build alone does not change weapons.
+
+Run `rtk make test-lasers` and `rtk make test-hermes-base` after rig or effects
+changes. `rtk make art-hermes-laser` captures the shoulder beam at normal zoom,
+in detail, and while walking. `rtk make art-hermes-base` captures the cannon and
+mode transitions. These commands use scripted setups; real input and platform
+acceptance are recorded separately in [verification](verification.md).
 
 ## Edit effects
 

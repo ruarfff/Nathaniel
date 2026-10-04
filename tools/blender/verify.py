@@ -140,3 +140,6 @@ def verify(pipeline, settings):
         from verify_character_model import verify_character_model
 
         verify_character_model(pipeline, settings)
+        from verify_hermes_model import verify_hermes_model
+
+        verify_hermes_model(pipeline, settings)

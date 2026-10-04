@@ -148,21 +148,27 @@ func _check_playback() -> void:
 	actor.free()
 
 
-func _actor(kind: String, parent: Node) -> ActorView:
-	var actor: ActorView = load("res://scenes/actors/%s.tscn" % kind).instantiate() as ActorView
+func _actor(kind: String, parent: Node, sprite_fallback: bool = false) -> ActorView:
+	var actor: ActorView
+	if sprite_fallback:
+		actor = ActorView.new()
+		actor.kind = kind
+		actor.visual = load("res://resources/actors/%s.tres" % kind).duplicate() as ActorVisual
+		actor.visual.model_scene = null
+		var sprite := Sprite2D.new()
+		sprite.name = "Sprite2D"
+		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		actor.add_child(sprite)
+	else:
+		actor = load("res://scenes/actors/%s.tscn" % kind).instantiate() as ActorView
 	parent.add_child(actor)
 	actor.apply_state({"moving": false}, false, false)
 	return actor
 
 
 func _check_resource(kind: String) -> void:
-	var actor: ActorView = _actor(kind, root)
-	if actor.visual != null and actor.visual.model_scene != null:
-		# Keep checking the retained PNG clips as an explicit fallback. Live model
-		# aiming and gait have their own checks in test_nathaniel_weapons.gd.
-		var fallback: ActorVisual = actor.visual.duplicate() as ActorVisual
-		fallback.model_scene = null
-		actor.visual = fallback
+	# Live rigs have separate aiming and walking checks; retain every PNG clip's contract.
+	var actor: ActorView = _actor(kind, root, true)
 	expect(actor.visual != null, kind + " visual resource loads")
 	if actor.visual == null:
 		actor.free()

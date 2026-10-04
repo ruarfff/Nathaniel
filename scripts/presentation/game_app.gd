@@ -192,6 +192,7 @@ func _sync_views() -> void:
 			views.erase(id)
 	_sync_pickup_views()
 	effects.sync_projectiles(views)
+	effects.sync_lasers(views)
 
 
 func _sync_pickup_views() -> void:

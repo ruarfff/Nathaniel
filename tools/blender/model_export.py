@@ -16,6 +16,39 @@ BLENDER_TO_GODOT = Matrix(((1, 0, 0), (0, 0, 1), (0, -1, 0)))
 
 def validate_rig(scene):
     role = scene.get("asset_model")
+    if role == "mounted_character":
+        from model_animation import animation_spec
+
+        names = ("AssetFacing", "LocomotionPivot", "ShoulderMount", "AimPivot", "PitchPivot", "Recoil", "Muzzle")
+        nodes = {}
+        for name in names:
+            node = scene.objects.get(name)
+            if node is None or node.type != "EMPTY":
+                raise ValueError(f"Mounted character requires an Empty named {name}.")
+            nodes[name] = node
+        if nodes["LocomotionPivot"].parent != nodes["AssetFacing"]:
+            raise ValueError("Mounted character locomotion must be under AssetFacing.")
+        if nodes["ShoulderMount"] not in nodes["LocomotionPivot"].children_recursive:
+            raise ValueError("ShoulderMount must follow the walking body below LocomotionPivot.")
+        for parent, child in zip(names[2:], names[3:]):
+            if nodes[child].parent != nodes[parent]:
+                raise ValueError("Mounted weapon hierarchy must be ShoulderMount > AimPivot > PitchPivot > Recoil > Muzzle.")
+        for name in names[3:]:
+            node = nodes[name]
+            if max(abs(component - 1) for component in node.scale) > 0.0001:
+                raise ValueError(f"Apply scale on mounted weapon control {name} before export.")
+            if node.rotation_euler.to_matrix() != Matrix.Identity(3):
+                raise ValueError(f"Save {name} at zero rotation; runtime controls mounted aim.")
+        if scene.get("weapon_forward_axis") != "+X" or nodes["Muzzle"].location.x <= 0:
+            raise ValueError("Mounted weapon muzzle must be forward along local +X.")
+        if abs(nodes["Muzzle"].location.y) > 0.0001 or abs(nodes["Muzzle"].location.z) > 0.0001:
+            raise ValueError("Mounted muzzle must lie on the local +X pitch axis.")
+        if abs(nodes["PitchPivot"].location.x) > 0.0001 or abs(nodes["PitchPivot"].location.y) > 0.0001:
+            raise ValueError("PitchPivot must lie directly above the mounted yaw axis.")
+        if nodes["Recoil"].location.length > 0.0001:
+            raise ValueError("Save mounted Recoil at its rest position (location zero).")
+        animation_spec(scene)
+        return nodes
     if role in {"character", "weapon"}:
         names = (("AssetFacing", "AimPivot", "LocomotionPivot", "WeaponMount", "WeaponHands")
                  if role == "character" else ("WeaponRoot", "Recoil", "Muzzle", "PrimaryGrip", "SupportGrip"))
@@ -100,11 +133,13 @@ def _scene_text(asset, scene, settings):
         f'ambient_light_energy = {settings["world_strength"]:g}\n'
         'reflected_light_source = 1\n'
         'tonemap_mode = 0\n\n'
-        f'[node name="{"NathanielModel" if role == "character" else "GunTowerModel"}" type="Node3D"]\n'
+        f'[node name="{asset.title() + "Model" if role == "mounted_character" else "NathanielModel" if role == "character" else "GunTowerModel"}" type="Node3D"]\n'
         f'metadata/logical_canvas = Vector2i({settings["canvas"][0]}, {settings["canvas"][1]})\n'
         f'metadata/logical_ground_anchor = Vector2({settings["anchor"][0]}, {settings["anchor"][1]})\n'
         f'metadata/max_pixel_density = {settings["render_density"]}.0\n'
-        'metadata/world_points_per_unit = 32\n\n'
+        'metadata/world_points_per_unit = 32\n'
+        + ('metadata/model_role = "mounted_character"\n' if role == "mounted_character" else '')
+        + '\n'
         '[node name="Geometry" parent="." instance=ExtResource("1")]\n\n'
         '[node name="Camera3D" type="Camera3D" parent="."]\n'
         f'transform = {_transform(scene.camera)}\n'
@@ -180,7 +215,7 @@ def export_model(pipeline, asset, scene, settings, source, before):
     rig = validate_rig(scene)
     role = scene.get("asset_model")
     scene.frame_set(1)
-    if role == "character":
+    if role in {"character", "mounted_character"}:
         # Source sprites face +Y; normalize the live model to the shared +X contract.
         scene.objects["AssetFacing"].rotation_euler.z = -math.pi / 2
         bpy.context.view_layer.update()
@@ -232,7 +267,7 @@ def export_model(pipeline, asset, scene, settings, source, before):
         except (AttributeError, RuntimeError) as error:
             raise ValueError("Blender's bundled glTF exporter is unavailable or failed; use the pinned Blender build.") from error
         data = output.read_bytes()
-        if role == "character":
+        if role in {"character", "mounted_character"}:
             from model_animation import add_animations
 
             data = add_animations(data, scene)

@@ -438,7 +438,11 @@ func damage_entity(id: int, amount: int, attacker_id: int = -1) -> void:
 	var unit: Dictionary = entity(id)
 	if not CombatRules.alive(unit) or amount <= 0:
 		return
+	var applied_damage: int = mini(int(unit.hp), amount)
 	unit.hp = maxi(0, int(unit.hp) - amount)
+	emit_event("hit", {"target_id": id, "attacker_id": attacker_id,
+		"position": unit.position, "amount": applied_damage,
+		"target_kind": unit.kind, "target_enemy": unit.enemy})
 	if int(unit.hp) > 0:
 		if unit.enemy and not CombatRules.alive(entity(int(unit.target_id))) and CombatRules.alive(entity(attacker_id)):
 			unit.target_id = attacker_id

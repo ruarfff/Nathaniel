@@ -12,3 +12,4 @@ display_size = Vector2(240, 168)
 pixels_per_world_pixel = 8.0
 ground_anchor = Vector2(1280, 1792)
 shadow_radius = 70.0
+contact_height = 60.0

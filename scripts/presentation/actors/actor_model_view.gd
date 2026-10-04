@@ -11,6 +11,7 @@ var display: Sprite2D
 var model_root: Node3D
 var camera: Camera3D
 var aim_pivot: Node3D
+var pitch_pivot: Node3D
 var recoil: Node3D
 var muzzle: Node3D
 var locomotion_pivot: Node3D
@@ -43,6 +44,9 @@ var _speed: float = 0.0
 var _walk_time: float = 0.0
 var _walk_clip: StringName = &""
 var _idle_clip: StringName = &""
+var _mounted_character: bool = false
+var _pitch_rest: Transform3D
+var _laser_target: Vector3 = Vector3.INF
 
 
 func configure(scene: PackedScene, tint: Color, weapons: Array[WeaponVisual] = []) -> bool:
@@ -75,6 +79,8 @@ func configure(scene: PackedScene, tint: Color, weapons: Array[WeaponVisual] = [
 	viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	add_child(viewport)
 	model_root = scene.instantiate() as Node3D
+	_mounted_character = model_root.get_meta("model_role", "") == "mounted_character"
+	_laser_target = Vector3.INF
 	_canvas = model_root.get_meta("logical_canvas", _canvas)
 	_anchor = model_root.get_meta("logical_ground_anchor", _anchor)
 	_max_density = float(model_root.get_meta("max_pixel_density", _max_density))
@@ -82,10 +88,16 @@ func configure(scene: PackedScene, tint: Color, weapons: Array[WeaponVisual] = [
 	viewport.add_child(model_root)
 	camera = model_root.find_child("Camera3D", true, false) as Camera3D
 	aim_pivot = model_root.find_child("AimPivot", true, false) as Node3D
+	pitch_pivot = model_root.find_child("PitchPivot", true, false) as Node3D
 	if camera == null or aim_pivot == null:
 		push_error("Actor model needs Camera3D and AimPivot nodes: " + scene.resource_path)
 		return false
 	_pivot_rest = aim_pivot.transform
+	if _mounted_character:
+		if pitch_pivot == null:
+			push_error("Mounted actor model needs a PitchPivot: " + scene.resource_path)
+			return false
+		_pitch_rest = pitch_pivot.transform
 	if not _attach_weapons():
 		return false
 	recoil = model_root.find_child("Recoil", true, false) as Node3D
@@ -186,9 +198,10 @@ func _setup_locomotion() -> void:
 
 
 func set_movement(direction: Vector2, speed: float) -> void:
-	if direction.is_finite() and not direction.is_zero_approx():
-		_movement = direction.normalized()
 	var changed: bool = not is_equal_approx(_speed, speed)
+	if direction.is_finite() and not direction.is_zero_approx():
+		changed = changed or not _movement.is_equal_approx(direction.normalized())
+		_movement = direction.normalized()
 	_speed = maxf(0.0, speed)
 	if changed:
 		_update_locomotion(0.0)
@@ -198,6 +211,10 @@ func set_aim(direction: Vector2) -> void:
 	if direction.is_zero_approx() or not direction.is_finite() or aim_pivot == null:
 		return
 	var normalized: Vector2 = direction.normalized()
+	if _mounted_character:
+		_aim = normalized
+		_apply_mounted_aim()
+		return
 	var pose: Transform3D = _aim_transform(normalized)
 	if not aim_pivot.transform.is_equal_approx(pose):
 		aim_pivot.transform = pose
@@ -244,6 +261,47 @@ func weapon_muzzle(direction: Vector2, fired_weapon_id: String = "") -> Vector2:
 		marker = _weapon_markers[id]
 	var point: Vector3 = (pose * marker).origin
 	return camera.unproject_position(point) / _density - _anchor
+
+
+func aim_laser(target_offset: Vector2, target_height: float) -> void:
+	if not _mounted_character or not target_offset.is_finite() or not is_finite(target_height):
+		return
+	_laser_target = Vector3(target_offset.y, target_height, -target_offset.x) / 32.0
+	_apply_mounted_aim()
+
+
+func live_weapon_muzzle() -> Vector2:
+	if camera == null or muzzle == null:
+		return Vector2.INF
+	return camera.unproject_position(muzzle.global_position) / _density - _anchor
+
+
+func _apply_mounted_aim() -> void:
+	if aim_pivot == null or pitch_pivot == null:
+		return
+	var direction := Vector3(_aim.y, 0.0, -_aim.x)
+	var target: Vector3 = model_root.to_global(_laser_target) if _laser_target.is_finite() else Vector3.INF
+	if target.is_finite():
+		direction = model_root.global_basis.inverse() * (target - aim_pivot.global_position)
+	if Vector2(direction.x, direction.z).is_zero_approx():
+		return
+	# Cancel the walking body's rotation at the shoulder so the turntable keeps
+	# a vertical world axis, including the authored torso sway.
+	var parent: Node3D = aim_pivot.get_parent() as Node3D
+	var yaw: float = atan2(-direction.z, direction.x)
+	var basis: Basis = parent.global_basis.inverse() * model_root.global_basis * Basis(Vector3.UP, yaw)
+	var pose := Transform3D(basis, _pivot_rest.origin)
+	if not aim_pivot.transform.is_equal_approx(pose):
+		aim_pivot.transform = pose
+		_dirty = true
+	var pitch: float = 0.0
+	if target.is_finite():
+		var local_target: Vector3 = aim_pivot.global_basis.inverse() * (target - pitch_pivot.global_position)
+		pitch = atan2(local_target.y, Vector2(local_target.x, local_target.z).length())
+	pose = Transform3D(_pitch_rest.basis * Basis(Vector3.BACK, pitch), _pitch_rest.origin)
+	if not pitch_pivot.transform.is_equal_approx(pose):
+		pitch_pivot.transform = pose
+		_dirty = true
 
 
 func _aim_transform(direction: Vector2) -> Transform3D:
@@ -300,7 +358,7 @@ func _update_locomotion(delta: float) -> void:
 	var body_offset: float = wrapf(travel_yaw - aim_yaw, -PI, PI)
 	if absf(body_offset) > PI / 2.0:
 		body_offset = wrapf(body_offset + PI, -PI, PI)
-	var body_yaw: float = aim_yaw + clampf(body_offset, -PI / 3.0, PI / 3.0) if _speed > 0.01 else aim_yaw
+	var body_yaw: float = travel_yaw if _mounted_character else (aim_yaw + clampf(body_offset, -PI / 3.0, PI / 3.0) if _speed > 0.01 else aim_yaw)
 	var body: Transform3D = Transform3D(_locomotion_rest.basis * Basis(Vector3.UP, body_yaw), _locomotion_rest.origin)
 	if not locomotion_pivot.transform.is_equal_approx(body):
 		locomotion_pivot.transform = body
@@ -316,12 +374,14 @@ func _update_locomotion(delta: float) -> void:
 	# Rotate the authored forward stride toward actual travel while keeping the
 	# hips within sixty degrees of the gun, including strafe and backpedal steps.
 	var stride: Basis = Basis(Vector3.UP, travel_yaw - body_yaw)
-	if _speed > 0.01:
+	if _speed > 0.01 and not _mounted_character:
 		for index: int in _hip_nodes.size():
 			var rest: Transform3D = _hip_rests[index]
 			var hip: Node3D = _hip_nodes[index]
 			var relative: Basis = rest.basis.inverse() * hip.basis
 			hip.basis = rest.basis * stride * relative * stride.inverse()
+	if _mounted_character:
+		_apply_mounted_aim()
 	_dirty = true
 
 

@@ -4,6 +4,9 @@ extends Node2D
 
 const HEALING_RANGE_SEGMENTS: int = 96
 const HERMES_RANGE_SEGMENTS: int = 96
+## The 45-degree azimuth and 30-degree elevation project vertical distance by sqrt(2) * cos(30).
+const HEIGHT_PROJECTION: float = 1.22474487139
+const IMPACT_LIFETIME: float = 0.18
 
 @export_group("Corpses")
 @export var corpse_visual: ActorVisual
@@ -65,6 +68,9 @@ var simulation: GameSimulation:
 			transients.clear()
 			healing_flashes.clear()
 			hermes_transfers.clear()
+			_laser_actors.clear()
+			_laser_states.clear()
+			impact_flashes.clear()
 			selected_healing_tower_id = -1
 		simulation = value
 var transients: Array[Dictionary] = []
@@ -72,6 +78,10 @@ var muzzle_flashes: Array[Dictionary] = []
 var healing_flashes: Array[Dictionary] = []
 var selected_healing_tower_id: int = -1
 var _projectile_offsets: Dictionary = {}
+var _laser_actors: Dictionary = {}
+var _laser_states: Dictionary = {}
+var _impact_visuals: Dictionary = {}
+var impact_flashes: Array[Dictionary] = []
 var cursor_world := Vector2.ZERO
 var placement := false
 var placement_valid := false
@@ -100,6 +110,11 @@ func _process(delta: float) -> void:
 		effect.life -= delta
 	transients = transients.filter(func(effect: Dictionary) -> bool: return effect.life > 0)
 	if simulation != null and not simulation.paused and simulation.result == "playing":
+		for id: int in _laser_states:
+			_laser_states[id].age = float(_laser_states[id].age) + delta
+		for impact: Dictionary in impact_flashes:
+			impact.life -= delta
+		impact_flashes = impact_flashes.filter(func(impact: Dictionary) -> bool: return impact.life > 0.0)
 		for transfer: Dictionary in hermes_transfers:
 			transfer.life -= delta
 		hermes_transfers = hermes_transfers.filter(func(transfer: Dictionary) -> bool: return transfer.life > 0)
@@ -166,6 +181,13 @@ func _draw_target_markers() -> void:
 
 func add_events(events: Array, actors: Dictionary = {}) -> void:
 	for event: Dictionary in events:
+		if event.get("type", "") == "hit":
+			_add_impact(event, actors)
+			continue
+		if event.get("type", "") == "laser":
+			var owner: ActorView = actors.get(int(event.get("owner_id", -1))) as ActorView
+			if is_instance_valid(owner) and owner.laser_visual() != null:
+				continue
 		if event.get("type", "") in ["build", "recycle"] and event.get("position") is Vector2:
 			hermes_transfers.append({"position": event.position, "life": hermes_transfer_lifetime,
 				"returning": event.type == "recycle"})
@@ -376,6 +398,143 @@ func projectile_position(shot: Dictionary) -> Vector2:
 	return IsoProjection.project(shot.position) + Vector2(_projectile_offsets.get(int(shot.id), Vector2.ZERO))
 
 
+func sync_lasers(actors: Dictionary) -> void:
+	_laser_actors = actors.duplicate()
+	laser_beams()
+	queue_redraw()
+
+
+func laser_beams() -> Array[Dictionary]:
+	var beams: Array[Dictionary] = []
+	var active: Dictionary = {}
+	if simulation == null:
+		return beams
+	for unit: Dictionary in simulation.entities:
+		if not CombatRules.alive(unit) or unit.get("weapon", "") not in ["laser", "spawner_laser"]:
+			continue
+		var target: Dictionary = simulation.entity(int(unit.get("target_id", -1)))
+		if not CombatRules.alive(target):
+			continue
+		var actor: ActorView = _laser_actors.get(int(unit.id)) as ActorView
+		var style: LaserVisual = actor.laser_visual() if is_instance_valid(actor) else null
+		var height: float = _contact_height(int(target.id), str(target.kind), _laser_actors)
+		if style != null:
+			actor.aim_laser(Vector2(target.position) - Vector2(unit.position), height)
+		if not unit.get("firing", false):
+			continue
+		if simulation.visibility_at(unit.position) != 2 and (fog_enabled or style == null):
+			continue
+		var start: Vector2 = IsoProjection.project(unit.position) - Vector2(0, laser_height)
+		var finish: Vector2 = IsoProjection.project(target.position) - Vector2(0, laser_height)
+		if style != null:
+			if unit.get("anchored", false) or (fog_enabled and simulation.visibility_at(target.position) != 2):
+				continue
+			var muzzle: Vector2 = actor.laser_muzzle()
+			if not muzzle.is_finite():
+				continue
+			start = IsoProjection.project(unit.position) + muzzle
+			finish = IsoProjection.project(target.position) - Vector2(0, height * HEIGHT_PROJECTION)
+		active[int(unit.id)] = true
+		if not _laser_states.has(int(unit.id)):
+			_laser_states[int(unit.id)] = {"target_id": int(target.id), "age": float(unit.get("burst", 0.0))}
+		elif int(_laser_states[int(unit.id)].target_id) != int(target.id):
+			_laser_states[int(unit.id)] = {"target_id": int(target.id), "age": 0.0}
+		beams.append({"owner_id": int(unit.id), "target_id": int(target.id), "start": start, "finish": finish,
+			"style": style, "enemy": bool(unit.enemy), "age": float(_laser_states[int(unit.id)].age)})
+	for id: int in _laser_states.keys():
+		if not active.has(id):
+			_laser_states.erase(id)
+	return beams
+
+
+func _contact_height(id: int, kind: String, actors: Dictionary) -> float:
+	var actor: ActorView = actors.get(id) as ActorView
+	if is_instance_valid(actor):
+		return actor.laser_contact_height()
+	if not _impact_visuals.has(kind):
+		var resource_kind: String = {"gunTower": "gun_tower", "laserTower": "laser_tower", "healTower": "heal_tower"}.get(kind, kind)
+		var path: String = "res://resources/actors/%s.tres" % resource_kind
+		_impact_visuals[kind] = load(path) if ResourceLoader.exists(path) else null
+	var visual: ActorVisual = _impact_visuals[kind] as ActorVisual
+	return visual.contact_height if visual != null else 24.0
+
+
+func _add_impact(event: Dictionary, actors: Dictionary) -> void:
+	if simulation == null or not event.get("target_enemy", false) or not event.get("position") is Vector2:
+		return
+	var target_id: int = int(event.get("target_id", -1))
+	var attacker_id: int = int(event.get("attacker_id", -1))
+	var target: Dictionary = simulation.entity(target_id)
+	var alive: bool = CombatRules.alive(target)
+	for beam: Dictionary in laser_beams():
+		if beam.owner_id == attacker_id and beam.target_id == target_id and beam.style != null:
+			return
+	var ground: Vector2 = target.position if alive else event.position
+	var point: Vector2 = IsoProjection.project(ground) - Vector2(0, _contact_height(target_id, str(event.get("target_kind", "")), actors) * HEIGHT_PROJECTION)
+	for impact: Dictionary in impact_flashes:
+		if impact.target_id == target_id and impact.attacker_id == attacker_id:
+			if not alive:
+				impact.position = point
+				impact.ground_position = ground
+				impact.life = IMPACT_LIFETIME
+			return
+	impact_flashes.append({"target_id": target_id, "attacker_id": attacker_id, "position": point,
+		"ground_position": ground, "life": IMPACT_LIFETIME})
+
+
+func _draw_lasers() -> void:
+	# Read the marker after the model's render-frame walk pose, not its last physics pose.
+	for beam: Dictionary in laser_beams():
+		var start: Vector2 = beam.start
+		var finish: Vector2 = beam.finish
+		var style: LaserVisual = beam.style
+		if style == null:
+			draw_line(start, finish, enemy_laser_color if beam.enemy else friendly_laser_color, laser_width, true)
+			continue
+		draw_line(start, finish, style.edge_color, style.edge_width, true)
+		draw_line(start, finish, style.core_color, minf(style.core_width, style.edge_width), true)
+		draw_circle(finish, style.contact_radius, style.edge_color)
+		draw_circle(finish, style.contact_radius * 0.48, style.core_color)
+		var age: float = beam.age
+		if age < style.muzzle_flash_duration:
+			var strength: float = 1.0 - age / maxf(0.001, style.muzzle_flash_duration)
+			draw_circle(start, style.contact_radius * (0.6 + strength * 0.3), Color(style.core_color, strength))
+		var phase: float = fmod(age, maxf(style.spark_interval, style.spark_duration))
+		if phase < style.spark_duration:
+			_draw_sparks(finish, start.direction_to(finish), phase / maxf(0.001, style.spark_duration), style.spark_length, style.edge_color, style.core_color)
+
+
+func _draw_sparks(point: Vector2, direction: Vector2, elapsed: float, length: float, edge: Color, core: Color) -> void:
+	var opacity: float = 1.0 - elapsed
+	for angle: float in [-0.9, 0.3, 1.5]:
+		var heading: Vector2 = direction.rotated(angle)
+		var start: Vector2 = point + heading * (1.0 + elapsed * length * 0.7)
+		var finish: Vector2 = start + heading * length * opacity
+		draw_line(start, finish, Color(edge, opacity), 1.4, true)
+		draw_line(start, start.lerp(finish, 0.45), Color(core, opacity), 0.6, true)
+
+
+func impact_markers() -> Array[Dictionary]:
+	var markers: Array[Dictionary] = []
+	if simulation == null:
+		return markers
+	for impact: Dictionary in impact_flashes:
+		if fog_enabled:
+			var target: Dictionary = simulation.entity(int(impact.target_id))
+			if simulation.visibility_at(impact.ground_position) != 2 or simulation.visibility_at(target.get("position", impact.ground_position)) != 2:
+				continue
+		markers.append(impact)
+	return markers
+
+
+func _draw_impacts() -> void:
+	for impact: Dictionary in impact_markers():
+		var strength: float = clampf(float(impact.life) / IMPACT_LIFETIME, 0.0, 1.0)
+		var point: Vector2 = impact.position
+		draw_circle(point, 3.2 * strength, Color("fff4cd", strength))
+		_draw_sparks(point, Vector2.UP, 1.0 - strength, 7.0, Color("e6ac4f"), Color("fff4cd"))
+
+
 func corpse_rect(point: Vector2) -> Rect2:
 	if corpse_visual != null and corpse_visual.texture != null:
 		var density: float = corpse_visual.frame_pixel_density()
@@ -421,11 +580,8 @@ func _draw() -> void:
 				var direction: Vector2 = flash.direction
 				var side: Vector2 = direction.orthogonal() * 2.5 * remaining
 				draw_colored_polygon(PackedVector2Array([point - side, point + direction * (5.0 + 4.0 * remaining), point + side]), Color(friendly_projectile_color, remaining))
-		for unit: Dictionary in simulation.entities:
-			if unit.get("firing", false) and unit.hp > 0:
-				var target: Dictionary = simulation.entity(unit.target_id)
-				if not target.is_empty() and target.hp > 0 and simulation.visibility_at(unit.position) == 2:
-					draw_line(IsoProjection.project(unit.position) - Vector2(0, laser_height), IsoProjection.project(target.position) - Vector2(0, laser_height), enemy_laser_color if unit.enemy else friendly_laser_color, laser_width, true)
+		_draw_lasers()
+		_draw_impacts()
 		if delivery_pulse_time > 0.0:
 			var elapsed := 1.0 - delivery_pulse_time / delivery_pulse_lifetime
 			draw_set_transform(IsoProjection.project(delivery_pulse_position), 0.0, Vector2(1.0, 0.5))

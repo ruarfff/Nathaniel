@@ -322,7 +322,7 @@ def write_import_settings(asset, density, *, premultiplied=False):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["doctor", "generate", "render", "regenerate", "verify", "rig-gun", "rig-character"])
+    parser.add_argument("command", choices=["doctor", "generate", "render", "regenerate", "verify", "verify-hermes", "rig-gun", "rig-character", "rig-hermes"])
     parser.add_argument("asset", nargs="?", default="placeholder_prop")
     parser.add_argument("--generator", type=Path, default=ROOT / "tools/blender/generate_placeholder.py")
     parser.add_argument("--profile", default="default", help="Shared profile saved in a new source; rendering uses its saved profile")
@@ -339,6 +339,11 @@ def main():
         from verify import verify
 
         verify(sys.modules[__name__], settings)
+    elif args.command == "verify-hermes":
+        sys.path.insert(0, str(Path(__file__).parent))
+        from verify_hermes_model import verify_hermes_model
+
+        verify_hermes_model(sys.modules[__name__], settings)
     elif args.command == "generate":
         generate(args.asset, args.generator.resolve(), settings, args.profile)
     elif args.command == "render":
@@ -353,6 +358,11 @@ def main():
         from rig_nathaniel import migrate
 
         migrate(sys.modules[__name__], args.asset, settings)
+    elif args.command == "rig-hermes":
+        sys.path.insert(0, str(Path(__file__).parent))
+        from rig_hermes import migrate
+
+        migrate(sys.modules[__name__], args.asset)
     else:
         if args.prefix and not re.fullmatch(r"[a-z][a-z0-9_]*", args.prefix):
             raise ValueError("Source prefix must use lowercase letters, digits and underscores.")

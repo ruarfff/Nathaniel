@@ -20,6 +20,10 @@ extends Resource
 ## Optional weapon models attached to the live character's WeaponMount.
 @export var weapons: Array[WeaponVisual] = []
 @export var default_weapon_id: String = ""
+## Optional continuous-beam appearance; absent keeps the existing beam treatment.
+@export var laser: LaserVisual
+## Contact height above the ground in logical world points (32 points per model unit).
+@export_range(0.0, 128.0) var contact_height: float = 24.0
 @export_group("Animation")
 ## Directional clips use logical headings: 0 is +X, then 45-degree steps.
 @export var animations: SpriteFrames

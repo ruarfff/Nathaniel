@@ -17,10 +17,23 @@ sheets, Blender models, or implemented gameplay changes.
 | [Earth homes and shops](iron-and-ink/07-earth-homes-shops.png) | Weathered and destroyed versions of an ordinary house and corner shop. |
 | [Earth garages and warehouses](iron-and-ink/08-earth-garages-warehouses.png) | Weathered and destroyed versions of a repair garage and warehouse. |
 | [Sandy street](iron-and-ink/09-sandy-street.png) | The four civilian buildings together, with standing and ruined structures around open streets. |
+| [Face laser](iron-and-ink/10-hermes-face-laser.png) | A face aperture fires while Hermes's head turns to aim. |
+| [Shoulder laser (selected)](iron-and-ink/11-hermes-shoulder-laser.png) | Selected mobile laser: a compact independent shoulder turret tracks and fires. |
+| [Forearm laser](iron-and-ink/12-hermes-forearm-laser.png) | A folding clamp reveals an integrated tool emitter. |
+| [Spawner crown laser](iron-and-ink/13-spawner-crown-laser.png) | A visible aiming crown refines the existing enemy beam role. |
+| [Soldier lance laser](iron-and-ink/14-soldier-lance-laser.png) | Proposed laser variant with an integrated triangular forearm lens. |
+| [Boss siege laser](iron-and-ink/15-boss-siege-laser.png) | Proposed laser variant with a protected emitter beneath an opening crest. |
 
 [Hermes build-mode notes](hermes-build-mode.md) describe the transformation,
 connections, and teardown sequence. In this proposal, Hermes himself is the
 fabrication hub; the earlier separate reclamation pod is not needed.
+
+[Hermes shoulder-laser implementation brief](hermes-lasers.md) records the
+user's selection on 2026-10-04, the required aiming and firing effects, and
+acceptance checks. The face and forearm sheets remain alternatives only.
+
+[Enemy laser notes](enemy-lasers.md) separate the spawner's existing beam role
+from proposed soldier and boss variants, with shared aiming and contact cues.
 
 ![Selected scene](iron-and-ink/01-scene.png)
 
@@ -39,6 +52,18 @@ fabrication hub; the earlier separate reclamation pod is not needed.
 ![Weathered and destroyed garages and warehouses](iron-and-ink/08-earth-garages-warehouses.png)
 
 ![Sandy street environment](iron-and-ink/09-sandy-street.png)
+
+![Hermes face laser](iron-and-ink/10-hermes-face-laser.png)
+
+![Hermes shoulder laser](iron-and-ink/11-hermes-shoulder-laser.png)
+
+![Hermes forearm laser](iron-and-ink/12-hermes-forearm-laser.png)
+
+![Spawner crown laser](iron-and-ink/13-spawner-crown-laser.png)
+
+![Proposed soldier lance laser](iron-and-ink/14-soldier-lance-laser.png)
+
+![Proposed boss siege laser](iron-and-ink/15-boss-siege-laser.png)
 
 ## Sandy Earth buildings
 
@@ -112,7 +137,7 @@ been tested in game or across animation directions.
 
 ## Source and reuse
 
-Created with the Codex built-in imagegen tool on 2026-10-03. The original
+Created with the Codex built-in imagegen tool on 2026-10-03 and 2026-10-04. The original
 scene established direction A; later sheets use that scene and related
 concept sheets as references. [prompts.json](prompts.json) stores the exact
 prompts, refinement steps, and reference relationships for further iteration.

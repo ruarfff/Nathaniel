@@ -18,6 +18,7 @@ PROFILE ?= default
 .PHONY: art-nathaniel-weapons
 .PHONY: test-content test-gameplay test-services test-presentation
 .PHONY: test-hermes-base art-hermes-base
+.PHONY: test-lasers art-hermes-laser
 
 help:
 	@echo "Development and platform exports"
@@ -70,6 +71,8 @@ help:
 	@echo "make test-healing-tower Check healing pulses, event routing, and rendered lights"
 	@echo "make test-nathaniel-weapons Check loadout, controls, aiming, recoil, and saves"
 	@echo "make test-hermes-base Check Hermes transformation, build range, and cables"
+	@echo "make test-lasers      Check mounted aim, connected beams, and combat impacts"
+	@echo "make art-hermes-laser Capture Hermes's shoulder laser in the running game"
 	@echo "Override GODOT, LEVEL, DEBUG_PORT, WEB_PORT, or GODOT_TEMPLATE_DIR as needed."
 
 version:
@@ -96,6 +99,8 @@ test: import format-check test-tooling
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_hd_art.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_gun_turret.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_weapon_effects.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_laser_effects.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_combat_impacts.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_weapons.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_weapon_controls.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_nathaniel_weapons.gd
@@ -119,6 +124,7 @@ test-content: import
 test-gameplay: import
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_gameplay.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_weapons.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_combat_impacts.gd
 
 test-services: import
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_services.gd
@@ -144,6 +150,15 @@ test-hermes-base: import
 
 art-hermes-base: import
 	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tools/render_hermes_base.gd
+
+test-lasers: import
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_combat_impacts.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_laser_effects.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_hermes_actor.gd
+	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tests/test_hermes_actor.gd -- --render
+
+art-hermes-laser: import
+	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tools/render_hermes_laser.gd
 
 test-mcp: import
 	npm --prefix game-mcp-server test

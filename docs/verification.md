@@ -8,6 +8,53 @@ of later code or assets.
 Test host: Apple M4 Pro (12 CPU cores), arm64 macOS, Xcode 26.6 (17F113),
 Godot 4.7.2 stable. Results are local measurements, not guarantees for other hardware.
 
+## Hermes shoulder laser — 2026-10-04
+
+Mobile Hermes uses a live shoulder pod with independent yaw and tilt. The amber
+beam starts at its current muzzle and ends at the target's authored contact
+height. A shared laser resource controls the beam and brief contact sparks.
+Positive damage also emits a transient hit record, so bullets and lethal hits
+can show compact impacts after an enemy view disappears. Damage, targeting,
+range, cadence and saved state retain their existing rules.
+
+The first tall support was rejected after visual inspection. The final angled
+bracket sits on the reference shoulder and moves the upper pivot inward. The
+saved mobile source retains its body geometry and walk actions. Blender checks
+cover migration idempotence, preservation of an edited mesh, invalid rigs,
+repeatable GLB output, and 10,368 padded head-clearance segments through walking
+poses and close targets. The original deployed cannon source is unchanged.
+
+`make test` passed the complete headless regression suite, Python tooling and
+live MCP checks. Focused checks passed 45 laser assertions, 10 impact assertions,
+1,035 headless Hermes assertions and 1,055 rendered Hermes assertions. Existing
+weapon effects passed 73 checks, and healing passed 41 headless and 52 rendered
+checks. The Hermes checks include eight body and aim directions, target distances
+of 60, 90 and 180 world points, walking, pause, loading, deployment, death, and
+projection at densities from 1 to 8.
+
+Scripted captures of the actual Survival level were inspected at normal zoom
+and in detail. They show a connected mobile beam, a close shot across the body,
+walking fire, and the deployed cannon with its existing base and cables.
+Regenerate them with `make art-hermes-laser` and `make art-hermes-base`.
+The eight-direction model sheet is `test-artifacts/hermes-shoulder-angles.png`.
+All capture scenes use isolated storage. These captures establish rendered
+behavior, not real mouse or touch input.
+
+After the final source export and import, `make test-hermes-base` passed again:
+1,035 headless and 1,055 rendered actor checks, plus 28 headless and 32 rendered
+base-effect checks. Animated art passed 1,111 checks. Formatting and diff
+whitespace checks passed.
+
+macOS release and unsigned iOS project exports passed. Real mouse and keyboard
+input in the macOS release verified Nathaniel movement, Hermes following,
+B opening Build, R deploying the cannon, R restoring the mobile form and closing
+Build, and Escape opening Pause. A native screenshot showed the shoulder beam
+connected to an enemy after the return to mobile form. This run used a separate
+temporary storage directory and exited without engine or script errors.
+
+iOS runtime and physical touch/pinch remain unverified. The available custom
+Simulator template has 3D disabled. No performance measurements were taken.
+
 ## Hermes anchor base — 2026-10-03
 
 Hermes now deploys as a stationary cannon when a tower is placed. New builds

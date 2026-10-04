@@ -11,12 +11,17 @@ def animation_spec(scene):
     if {clip["name"] for clip in spec["clips"]} != {"idle", "walk"}:
         raise ValueError("Live character requires authored idle and walk clips.")
     if not spec["controls"] or len(spec["controls"]) != len(set(spec["controls"])):
-        raise ValueError("Live animation requires unique lower-body controls.")
+        raise ValueError("Live animation requires unique locomotion controls.")
     locomotion = scene.objects.get("LocomotionPivot")
     descendants = set(locomotion.children_recursive) if locomotion else set()
     for name in spec["controls"]:
         if scene.objects.get(name) not in descendants:
             raise ValueError(f"Live animation control {name} must be below LocomotionPivot; upper-body aim stays stable.")
+    if scene.get("asset_model") == "mounted_character":
+        aim = scene.objects.get("AimPivot")
+        aimed = {aim, *aim.children_recursive} if aim else set()
+        if any(scene.objects.get(name) in aimed for name in spec["controls"]):
+            raise ValueError("Mounted weapon aim controls must not have locomotion animation tracks.")
     for clip in spec["clips"]:
         if not 1 <= clip["fps"] <= 60 or clip["start"] > clip["end"] or clip["end"] - clip["start"] > 240:
             raise ValueError("Live animation needs ordered frames and 1–60 samples per second.")

@@ -209,8 +209,8 @@ func _check_healing_recipients() -> void:
 	expect(effects.healing_flashes.is_empty(), "Removed recipients release pending healing feedback")
 	effects.add_events([{"type": "heal", "target_id": -1, "position": Vector2.ZERO}])
 	expect(effects.healing_flashes.is_empty() and effects.transients.is_empty(), "An invalid recipient cannot fall back to a misleading event ring")
-	effects.add_events([{"type": "hit", "position": Vector2.ZERO}])
-	expect(effects.transients.size() == 1, "Non-healing events retain their existing ring")
+	effects.add_events([{"type": "death", "position": Vector2.ZERO}])
+	expect(effects.transients.size() == 1, "Death events retain their existing ring")
 	effects.free()
 
 
