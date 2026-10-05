@@ -8,6 +8,104 @@ of later code or assets.
 Test host: Apple M4 Pro (12 CPU cores), arm64 macOS, Xcode 26.6 (17F113),
 Godot 4.7.2 stable. Results are local measurements, not guarantees for other hardware.
 
+## Default demo development — 2026-10-04
+
+The default Make goal is now `demo`. `make -n` selected the import commands
+and `godot --path . -- --demo`. `make run` retains the full game. The local
+`make format-check test-tooling test-demo` passed: 16 Python tests and 26 demo
+integration checks with isolated storage. No gameplay rules changed for this
+default-command update.
+
+Railway's production source is connected to `ruarfff/Nathaniel` on `main`.
+The trigger API confirmed `checkSuites: true` for **Wait for CI**. Connecting
+GitHub first triggered a build of the older remote revision, which lacked
+the Dockerfile. It failed without replacing the successful CLI release.
+
+## Railway public demo — 2026-10-04
+
+The Railway CLI created the `Nathaniel` project and `nathaniel-demo` service
+in `production`, applied the healthcheck and restart settings, and uploaded
+the local checkout. Deployment `265ad2f6-c96d-4a47-ba6c-30f0054edf9b` completed
+with status `SUCCESS`. The Linux AMD64 Docker build passed the full
+`make test` suite and exported the `Web Demo` release. Railway's `/healthz`
+check passed on its first attempt.
+
+`tools/check_web.py` passed against
+`https://nathaniel-demo-production.up.railway.app/`, including HTTPS health,
+HTML, fingerprinted pack, asset MIME types, cache revalidation, gzip for
+WebAssembly and the pack, and 404 responses for missing assets and source files.
+Real mouse and keyboard input in the Codex in-app browser verified the demo
+menu, Survival startup, a ground movement order, and Escape pause. The captured
+console reported no warnings or errors. The inspected screenshot is
+`test-artifacts/railway-demo-public.jpg`.
+
+The first API settings request used an unsupported `DOCKERFILE` builder enum.
+Removing that field allowed the request to pass; Railway detected the root
+Dockerfile during the successful build. This initial release used uncommitted
+local files. GitHub autodeploy was not connected at that point. Mobile browsers,
+touch, audible output, and public load
+performance remain unverified.
+
+## Railway demo container — 2026-10-04
+
+`make image-demo` passed on Linux ARM64 through the local Docker engine. The
+image build verified the Godot editor and template archive checksums, ran the
+full `make test` suite, and exported the Survival-only `Web Demo` release.
+Python tooling passed 16 tests, the demo suite passed 26 checks, and the live
+MCP suite passed 148 checks. The runtime contains Caddy and the web export.
+
+`tools/check_web.py` passed against the running image at
+`http://127.0.0.1:18090/`. It checked the health endpoint, HTML, fingerprinted
+pack name, asset MIME types, cache revalidation, gzip responses for WebAssembly
+and the pack, and 404 responses for missing assets and source files. The first
+server start found an invalid Caddy header matcher. The corrected configuration
+passed; the Docker build now validates it before completing the image.
+
+In the Codex in-app browser, the running image loaded the demo menu. A real
+mouse click started Survival, and Escape opened the demo pause menu. The
+captured console reported no warnings or errors. The inspected screenshot is
+`test-artifacts/railway-demo-browser.jpg`.
+
+The first Railway attempt rejected project creation with
+`Free plan resource provision limit exceeded`. A later CLI retry created the
+deployment; its public checks are recorded above. The prepared GitHub workflow
+has not run remotely.
+
+## Survival web demo — 2026-10-04
+
+The separate `Web Demo` preset supplies the `demo` feature tag and excludes
+campaign level scenes. Local `--demo` startup uses the same access rules.
+The main menu, gameplay HUD, and pause menu identify demo mode. Survival
+save/load and retry use separate demo storage.
+
+`make test` and `make format-check` passed, including all 16 Python tooling
+tests, the existing native suites, the new 26-check demo suite, and MCP checks.
+The demo suite covers campaign startup arguments, direct level commands and
+scene startup, campaign save rejection, Survival save/load, defeat retry,
+settings navigation, and the demo storage path. These are headless checks.
+
+`make export-web-demo` passed with the matching single-thread release template.
+A native resource check from `/private/tmp` opened only the exported pack and
+confirmed the `demo` feature, Survival scene, and absence of all five campaign
+scenes. Running that check from the source directory first found loose campaign
+source files through Godot's filesystem fallback; the isolated check passed.
+The initial sandboxed import could not access macOS certificates or save editor
+settings. Import, tests, and export passed with normal system access.
+
+In the Codex in-app desktop browser at `http://127.0.0.1:8167/`, real mouse and
+keyboard input verified the demo menu, Survival start, a ground movement order,
+Escape pause, slot 1 save, page reload, and restoration of Survival with 30
+resources and its saved movement order. The gameplay HUD and pause menu showed
+demo mode. Returning to the main menu kept the Survival-only options. The
+captured browser console reported no warnings or errors.
+
+Local export files are in ignored `exports/web-demo/`; export logs are
+`exports/web-demo-export.log` and `exports/web-demo-export.stdout.log`.
+Browser screenshots are `test-artifacts/demo-browser-menu.jpg` and
+`test-artifacts/demo-browser-pause.jpg`. Public deployment, other browsers,
+mobile browser touch, audible output, and performance were not tested.
+Native macOS and iOS exports were not rerun for this mode and web export change.
+
 ## Corpse self-destruct — 2026-10-04
 
 Soldier and Gun Soldier bodies warn during the final three seconds of their

@@ -119,7 +119,11 @@ def export(
     templates: Path | None,
     unsigned_ios: bool = False,
     release: bool = False,
+    demo: bool = False,
 ) -> int:
+    if demo and platform != "Web":
+        raise ValueError("Demo export requires the Web platform.")
+    preset_name = "Web Demo" if demo else platform
     executable = shutil.which(godot)
     if executable is None:
         raise ValueError(f"Godot executable not found: {godot}")
@@ -160,9 +164,9 @@ def export(
         if platform == "iOS" and unsigned_ios:
             configure_unsigned_ios(project / "export_presets.cfg")
         log_directory = output.parent.parent if platform == "Web" else output.parent
-        log = log_directory / f"{platform.lower()}-export.log"
+        log = log_directory / f"{preset_name.lower().replace(' ', '-')}-export.log"
         print(
-            f"Exporting {platform} with Godot {version}; isolated project and editor cache.",
+            f"Exporting {preset_name} with Godot {version}; isolated project and editor cache.",
             flush=True,
         )
         command = [
@@ -171,7 +175,7 @@ def export(
             "--path",
             str(project),
             "--export-release" if release else "--export-debug",
-            platform,
+            preset_name,
             str(output),
             "--log-file",
             str(log),
@@ -211,11 +215,15 @@ def main() -> None:
         help="Export a local test Xcode project with a fake team; never sign",
     )
     parser.add_argument("--release", action="store_true")
+    parser.add_argument("--demo", action="store_true", help="Export the Survival-only Web Demo preset")
     args = parser.parse_args()
+    if args.demo and args.platform != "Web":
+        parser.error("--demo requires the Web platform")
     filename = {"macOS": "Nathaniel.app", "iOS": "Nathaniel.zip", "Web": "index.html"}[
         args.platform
     ]
-    output = args.output or PROJECT / "exports" / args.platform.lower() / filename
+    directory = "web-demo" if args.demo else args.platform.lower()
+    output = args.output or PROJECT / "exports" / directory / filename
     try:
         status = export(
             args.platform,
@@ -224,6 +232,7 @@ def main() -> None:
             args.templates,
             args.unsigned_ios,
             args.release,
+            args.demo,
         )
     except (ValueError, OSError) as error:
         parser.error(str(error))

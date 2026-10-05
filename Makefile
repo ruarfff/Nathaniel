@@ -1,5 +1,5 @@
 # Nathaniel development commands. Open project.godot or use make editor.
-.DEFAULT_GOAL := run
+.DEFAULT_GOAL := demo
 GODOT ?= godot
 LEVEL ?= 1
 DEBUG_PORT ?= 8766
@@ -22,12 +22,15 @@ PROFILE ?= default
 .PHONY: art-enemy-lasers test-soldiers art-soldiers
 .PHONY: test-laser-tower art-laser-tower
 .PHONY: test-resource-gathering art-resource-gathering
+.PHONY: demo test-demo export-web-demo serve-web-demo
+.PHONY: image-demo
 
 help:
 	@echo "make test-resource-gathering Check backpack rules, controls, saves and live models"
 	@echo "make art-resource-gathering Capture collection, cargo and both furnace poses"
 	@echo "Development and platform exports"
-	@echo "make / make run       Run Nathaniel"
+	@echo "make / make demo      Run the Survival-only demo locally"
+	@echo "make run              Run the full game"
 	@echo "make editor           Open the project in Godot"
 	@echo "make level LEVEL=1    Run campaign 1–5 or survival 0"
 	@echo "make debug            Run with the local debug interface"
@@ -38,6 +41,7 @@ help:
 	@echo "make test-gameplay    Check simulation and weapon rules"
 	@echo "make test-services    Check storage and save compatibility"
 	@echo "make test-presentation Check input, HUD, and weapon controls"
+	@echo "make test-demo        Check demo menus, access rules, and saves"
 	@echo "make format           Normalize project source whitespace"
 	@echo "make format-check     Check project source whitespace"
 	@echo "make profile          Measure simulation performance"
@@ -46,6 +50,9 @@ help:
 	@echo "make export-ios       Export an unsigned iOS Xcode project"
 	@echo "make export-web       Export the browser release build"
 	@echo "make serve-web        Serve exports/web on http://127.0.0.1:$(WEB_PORT)"
+	@echo "make export-web-demo  Export the Survival-only browser demo"
+	@echo "make serve-web-demo   Serve exports/web-demo on http://127.0.0.1:$(WEB_PORT)"
+	@echo "make image-demo       Build the tested Railway web demo image"
 	@echo "make health           Check the running debug interface"
 	@echo "make clean            Remove generated imports and exports"
 	@echo ""
@@ -91,6 +98,9 @@ version:
 run: import
 	"$(GODOT)" --path .
 
+demo: import
+	"$(GODOT)" --path . -- --demo
+
 editor: version
 	"$(GODOT)" --editor --path .
 
@@ -129,6 +139,7 @@ test: import format-check test-tooling
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_gameplay.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_services.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_presentation.gd -- --storage-dir="$(TEST_STORAGE)"
+	$(MAKE) test-demo
 	$(MAKE) test-mcp
 
 test-tooling:
@@ -157,6 +168,9 @@ test-presentation: import
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_resource_gathering_controls.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_presentation.gd -- --storage-dir="$(TEST_STORAGE)"
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_weapon_controls.gd
+
+test-demo: import
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_demo.gd -- --demo --level=1 --storage-dir="$(TEST_STORAGE)/demo-mode"
 
 test-nathaniel-weapons: import
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_weapons.gd
@@ -296,12 +310,22 @@ export-ios: version
 export-web: version
 	python3 tools/export_project.py Web --godot "$(GODOT)" --release
 
+export-web-demo: version
+	python3 tools/export_project.py Web --godot "$(GODOT)" --release --demo
+
+image-demo:
+	docker build -t nathaniel-demo:local .
+
 serve-web:
 	test -f exports/web/index.html
 	python3 -m http.server "$(WEB_PORT)" --bind 127.0.0.1 --directory exports/web
+
+serve-web-demo:
+	test -f exports/web-demo/index.html
+	python3 -m http.server "$(WEB_PORT)" --bind 127.0.0.1 --directory exports/web-demo
 
 health:
 	curl --fail --silent --show-error http://127.0.0.1:$(DEBUG_PORT)/health
 
 clean:
-	rm -rf .godot exports/macos exports/ios exports/web exports/web-export.log exports/web-export.stdout.log
+	rm -rf .godot exports/macos exports/ios exports/web exports/web-demo exports/web-export.log exports/web-export.stdout.log exports/web-demo-export.log exports/web-demo-export.stdout.log

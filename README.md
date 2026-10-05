@@ -8,7 +8,8 @@ Use **Godot 4.7.2 stable**. Python 3 and Node.js 18+ with npm are used by the ch
 
 ```sh
 npm --prefix game-mcp-server ci  # Install the test adapter dependencies once
-make                      # Run the game
+make                      # Run the Survival-only demo
+make run                  # Run the full game
 make editor               # Open the visual editor
 make level LEVEL=1        # Start a campaign level; 0 is survival
 make test                 # Native content, gameplay, saves, UI, tooling and MCP
@@ -19,6 +20,9 @@ make export-macos         # Local release app
 make export-ios           # Unsigned Xcode project
 make export-web           # Browser release in exports/web/
 make serve-web            # Preview at http://127.0.0.1:8060/
+make demo                 # Run the Survival-only demo locally
+make export-web-demo      # Browser demo in exports/web-demo/
+make serve-web-demo       # Preview the browser demo
 make help                 # Commands and options
 ```
 
@@ -27,6 +31,14 @@ Open `project.godot` directly in the editor if preferred. Native scenes in `leve
 Exports go to `exports/macos/Nathaniel.app` and `exports/ios/Nathaniel.xcodeproj`. [Authoring and exports](docs/authoring.md) covers scene editing, templates, and iOS setup. [Verification](docs/verification.md) records the tested platforms and remaining device checks.
 
 The [browser version](docs/web.md) uses the same game and runs from a static web server. Export it, run `make serve-web`, then open <http://127.0.0.1:8060/>. Browser saves are separate from native saves.
+
+The [web demo](docs/web.md#survival-demo) shows demo mode and offers Survival only.
+Use `make export-web-demo` and `make serve-web-demo` to preview it. The regular
+exports retain the full campaign and Survival.
+
+The [Railway demo deployment](docs/railway.md) builds and tests the web demo in
+Docker, then serves its exported files with Caddy. Use `make image-demo` to
+check the same image locally.
 
 ## Play
 

@@ -1,0 +1,8 @@
+mutation ConfigureAutodeploy($triggerId: String!) {
+  deploymentTriggerUpdate(id: $triggerId, input: { checkSuites: true }) {
+    id
+    repository
+    branch
+    checkSuites
+  }
+}

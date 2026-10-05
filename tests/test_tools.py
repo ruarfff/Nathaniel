@@ -157,21 +157,22 @@ class ProjectToolTests(unittest.TestCase):
     def test_web_exports_select_single_thread_template_and_keep_logs_outside_site(self):
         engine = self.directory / "godot"
         engine.write_text("local engine stand-in")
-        for release in (False, True):
-            with self.subTest(release=release):
+        for release, demo in ((False, False), (True, False), (False, True), (True, True)):
+            with self.subTest(release=release, demo=demo):
                 mode = "release" if release else "debug"
-                templates = self.directory / mode / "templates"
+                build = f"{mode}-{'demo' if demo else 'full'}"
+                templates = self.directory / build / "templates"
                 templates.mkdir(parents=True)
                 (templates / f"web_nothreads_{mode}.zip").write_bytes(
                     b"template stand-in"
                 )
-                output = (self.directory / mode / "site/index.html").resolve()
+                output = (self.directory / build / "site/index.html").resolve()
 
                 def successful_export(
-                    command, stdout, mode=mode, output=output, **_kwargs
+                    command, stdout, mode=mode, output=output, demo=demo, **_kwargs
                 ):
                     self.assertIn(f"--export-{mode}", command)
-                    self.assertIn("Web", command)
+                    self.assertEqual(command[command.index(f"--export-{mode}") + 1], "Web Demo" if demo else "Web")
                     self.assertEqual(
                         command[command.index(f"--export-{mode}") + 2], str(output)
                     )
@@ -200,7 +201,7 @@ class ProjectToolTests(unittest.TestCase):
                     contextlib.redirect_stdout(io.StringIO()),
                 ):
                     status = export_project.export(
-                        "Web", output, str(engine), templates, release=release
+                        "Web", output, str(engine), templates, release=release, demo=demo
                     )
                 self.assertEqual(status, 0)
                 config = json.loads(
@@ -212,7 +213,7 @@ class ProjectToolTests(unittest.TestCase):
                 )
                 self.assertEqual(config["fileSizes"][config["mainPack"]], 7)
                 self.assertTrue(
-                    (output.parent.parent / "web-export.stdout.log").is_file()
+                    (output.parent.parent / ("web-demo-export.stdout.log" if demo else "web-export.stdout.log")).is_file()
                 )
 
     def test_web_pack_url_tracks_content_and_preserves_shell_without_extra_packs(self):
@@ -296,30 +297,51 @@ class ProjectToolTests(unittest.TestCase):
         self.assertEqual(
             run_export.call_args.args[1], self.source / "exports/web/index.html"
         )
-        self.assertTrue(run_export.call_args.args[-1])
+        self.assertTrue(run_export.call_args.args[5])
+        self.assertFalse(run_export.call_args.args[6])
+
+    def test_demo_web_command_uses_separate_output_and_demo_preset(self):
+        with (
+            mock.patch.object(export_project, "PROJECT", self.source),
+            mock.patch("sys.argv", ["export_project.py", "Web", "--release", "--demo"]),
+            mock.patch.object(export_project, "export", return_value=0) as run_export,
+            self.assertRaises(SystemExit) as result,
+        ):
+            export_project.main()
+        self.assertEqual(result.exception.code, 0)
+        self.assertEqual(run_export.call_args.args[1], self.source / "exports/web-demo/index.html")
+        self.assertTrue(run_export.call_args.args[5])
+        self.assertTrue(run_export.call_args.args[6])
+
+    def test_demo_export_rejects_native_platforms_before_running_engine(self):
+        for platform in ("macOS", "iOS"):
+            with self.subTest(platform=platform), self.assertRaisesRegex(ValueError, "Web platform"):
+                export_project.export(platform, self.directory / "unused", "missing-engine", None, demo=True)
 
     def test_web_preview_serves_only_export_directory_on_loopback(self):
-        preview = subprocess.check_output(
-            ["make", "-n", "serve-web", "WEB_PORT=8123"],
-            cwd=Path(__file__).resolve().parents[1],
-            text=True,
-        )
-        command = next(
-            shlex.split(line) for line in preview.splitlines() if "http.server" in line
-        )
-        self.assertEqual(
-            command,
-            [
-                "python3",
-                "-m",
-                "http.server",
-                "8123",
-                "--bind",
-                "127.0.0.1",
-                "--directory",
-                "exports/web",
-            ],
-        )
+        for target, directory in (("serve-web", "exports/web"), ("serve-web-demo", "exports/web-demo")):
+            with self.subTest(target=target):
+                preview = subprocess.check_output(
+                    ["make", "-n", target, "WEB_PORT=8123"],
+                    cwd=Path(__file__).resolve().parents[1],
+                    text=True,
+                )
+                command = next(
+                    shlex.split(line) for line in preview.splitlines() if "http.server" in line
+                )
+                self.assertEqual(
+                    command,
+                    [
+                        "python3",
+                        "-m",
+                        "http.server",
+                        "8123",
+                        "--bind",
+                        "127.0.0.1",
+                        "--directory",
+                        directory,
+                    ],
+                )
 
 
 if __name__ == "__main__":

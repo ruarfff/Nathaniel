@@ -1,0 +1,21 @@
+{
+	admin off
+	auto_https off
+}
+
+:{$PORT:8080} {
+	root * /srv
+	encode zstd gzip {
+		match {
+			header Content-Type application/wasm*
+			header Content-Type application/octet-stream*
+			header Content-Type application/javascript*
+			header Content-Type text/*
+			header Content-Type image/svg+xml*
+		}
+	}
+	header Cache-Control "no-cache"
+	header /*.pck Content-Type "application/octet-stream"
+	respond /healthz "ok" 200
+	file_server
+}

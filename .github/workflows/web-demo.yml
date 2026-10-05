@@ -1,0 +1,24 @@
+name: Web demo build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test and export the demo
+        run: docker build -t nathaniel-demo:ci .
+      - name: Check the web server
+        run: |
+          docker run -d --name nathaniel-demo-ci -e PORT=8090 -p 127.0.0.1:8090:8090 nathaniel-demo:ci
+          trap 'docker logs nathaniel-demo-ci; docker rm -f nathaniel-demo-ci' EXIT
+          python3 tools/check_web.py http://127.0.0.1:8090

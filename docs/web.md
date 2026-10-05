@@ -4,6 +4,40 @@ The Web preset exports the same game, scenes, and GDScript used by the native
 apps. It uses the existing Compatibility renderer (WebGL 2.0), a single-thread
 WebAssembly runtime, and Godot's standard HTML shell. No game server is needed.
 
+## Survival demo
+
+The `Web Demo` preset offers Survival only. Its main menu says
+`DEMO MODE · SURVIVAL ONLY`; the gameplay HUD and pause menu also identify the
+demo. Settings, Survival save/load, and retry remain available. Campaign menus,
+campaign loads, and Swift-save import are unavailable. Campaign level scenes
+are excluded from the demo pack.
+
+```sh
+rtk make                  # Run demo mode with the local Godot editor binary
+rtk make test-demo        # Check demo startup, access rules, and saves
+rtk make export-web-demo  # Build exports/web-demo/index.html and companion files
+rtk make serve-web-demo   # Preview at http://127.0.0.1:8060/
+```
+
+The export helper also accepts `Web --release --demo`. In the Godot editor,
+select `Web Demo` in the export dialog. The preset supplies the `demo`
+[custom feature tag](https://docs.godotengine.org/en/stable/tutorials/export/feature_tags.html#custom-features),
+which applies to exported builds. Local editor runs use the `--demo` user
+argument, as `make` and `make demo` do. Use `make run` to launch the full game.
+The regular `Web`, macOS, and iOS presets still provide the full game.
+
+Demo saves, settings, and records use `user://demo/`. An explicit
+`--storage-dir=PATH` uses `PATH/demo/`. The full game's storage identity and save
+format stay unchanged. A campaign save copied into demo storage is rejected
+without replacing the current session.
+
+Use the [Railway deployment setup](railway.md) for a tested Docker image and
+GitHub workflow based on the CorpWorld deployment.
+
+Deploy the complete `exports/web-demo/` directory when hosting is ready. It has
+the same static hosting requirements as the full web build below. This command
+prepares local files and does not publish them.
+
 ## Run locally
 
 Use Godot 4.7.2 stable and its matching export templates. The export helper

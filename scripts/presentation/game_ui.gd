@@ -8,6 +8,7 @@ var menu := "main"
 var notice_time := 0.0
 var build_kind := ""
 var build_open := false
+var demo_mode := false
 var buttons: Dictionary = {}
 
 
@@ -65,7 +66,8 @@ func update_game(sim: GameSimulation, fog_enabled: bool = true) -> void:
 	%NathanielTarget.text = _target_text(sim, sim.nathaniel, fog_enabled)
 	%HermesTarget.text = _target_text(sim, sim.hermes, fog_enabled)
 	%Nathaniel.set_pressed_no_signal(sim.focused_character == "nathaniel")
-	%Stats.text = "Resources %d · Lives %d · Score %d\n%s\n%s  %s" % [sim.resources, sim.lives, sim.score, _cargo_text(sim), "SURVIVAL" if sim.config.get("number", 0) == 0 else "LEVEL %d" % sim.config.get("number", 1), _time_text(sim.elapsed_time)]
+	var mode_label := "DEMO · SURVIVAL" if demo_mode else ("SURVIVAL" if sim.config.get("number", 0) == 0 else "LEVEL %d" % sim.config.get("number", 1))
+	%Stats.text = "Resources %d · Lives %d · Score %d\n%s\n%s  %s" % [sim.resources, sim.lives, sim.score, _cargo_text(sim), mode_label, _time_text(sim.elapsed_time)]
 	var following := sim.hermes_mode == "following"
 	var tower_count := 0
 	var refund := 0
@@ -196,11 +198,12 @@ func show_menu(which: String, context: Dictionary = {}) -> void:
 		child.queue_free()
 	match which:
 		"main":
-			_heading("NATHANIEL", "EARTH NEEDS YOU")
-			if context.get("has_progress", false):
-				_menu_button("Continue · Level %d" % context.get("continue_level", 1), "level", context.get("continue_level", 1))
-			_menu_button("New campaign", "level", 1)
-			_menu_button("Select level", "levels")
+			_heading("NATHANIEL", "DEMO MODE · SURVIVAL ONLY\nEARTH NEEDS YOU" if demo_mode else "EARTH NEEDS YOU")
+			if not demo_mode:
+				if context.get("has_progress", false):
+					_menu_button("Continue · Level %d" % context.get("continue_level", 1), "level", context.get("continue_level", 1))
+				_menu_button("New campaign", "level", 1)
+				_menu_button("Select level", "levels")
 			_menu_button("Survival", "level", 0)
 			_menu_button("Load game", "load_menu")
 			_menu_button("Settings", "settings")
@@ -215,7 +218,7 @@ func show_menu(which: String, context: Dictionary = {}) -> void:
 				_menu_button("Level %d%s%s" % [number, "  ✓" if number in context.get("completed", []) else "", score_text], "level", number)
 			_menu_button("Back", "main")
 		"pause":
-			_heading("PAUSED", "Your orders can wait")
+			_heading("PAUSED", "Demo mode · Survival only" if demo_mode else "Your orders can wait")
 			_menu_button("Resume", "resume")
 			_menu_button("Save game", "save_menu")
 			_menu_button("Load game", "load_menu")
@@ -251,7 +254,7 @@ func show_menu(which: String, context: Dictionary = {}) -> void:
 			_menu_button("Cancel", "save_menu")
 		"victory":
 			_heading("CAMPAIGN COMPLETE" if context.get("next_level", -1) < 0 else "LEVEL COMPLETE", "Score %d · Time %s" % [context.get("score", 0), _time_text(context.get("elapsed", 0.0))])
-			if context.get("next_level", -1) >= 0:
+			if not demo_mode and context.get("next_level", -1) >= 0:
 				_menu_button("Next level", "level", context.next_level)
 			_menu_button("Main menu", "main")
 		"gameOver":

@@ -1,0 +1,15 @@
+mutation ConfigureDemo($serviceId: String!, $environmentId: String!) {
+  serviceInstanceUpdate(
+    serviceId: $serviceId
+    environmentId: $environmentId
+    input: {
+      dockerfilePath: "Dockerfile"
+      buildCommand: null
+      startCommand: null
+      healthcheckPath: "/healthz"
+      healthcheckTimeout: 60
+      restartPolicyType: ON_FAILURE
+      restartPolicyMaxRetries: 3
+    }
+  )
+}

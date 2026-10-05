@@ -269,7 +269,7 @@ Current content checks validate the native scenes and resources.
 
 ## Export and platform checks
 
-`export_presets.cfg` defines macOS, iOS, and Web exports. Keep the bundle identifier
+`export_presets.cfg` defines macOS, iOS, Web, and Web Demo exports. Keep the bundle identifier
 `dev.ruarfff.nathaniel.godot` and custom user directory `NathanielGodot` stable so
 existing saves remain accessible. The visible app is named Nathaniel. The macOS
 preset uses local ad-hoc signing; the iOS preset creates an Xcode project.
@@ -296,6 +296,11 @@ access and does not create an installable App Store archive.
 The Web export produces `exports/web/index.html` and its companion files.
 Use `make serve-web` for a local preview. See [browser setup and limits](web.md)
 for templates, persistence, and static hosting.
+
+Use `make export-web-demo` for a Survival-only build in `exports/web-demo/`,
+then `make serve-web-demo` to preview it. The `Web Demo` preset supplies the
+`demo` feature tag and excludes campaign scenes. See [demo mode](web.md#survival-demo)
+for local runs and separate demo storage.
 
 The official template used during local verification lacked its advertised ARM64
 Simulator library. A separate template copy adds a debug Simulator library built

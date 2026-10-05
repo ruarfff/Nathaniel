@@ -7,6 +7,10 @@ campaign records use `progress.json`. The retired Swift app used a different
 preferences domain. Audio defaults to off. Fog visibility is a persisted setting
 and defaults to enabled.
 
+Demo mode uses the same filenames and formats under `user://demo/`. It loads
+Survival saves only and does not import Swift saves. The full game's storage
+identity is unchanged. See [demo mode](web.md#survival-demo).
+
 Use Pause → Save or the main menu's Load control. Slot metadata comes from each
 validated save, so a missing metadata cache cannot hide a valid slot. A save writes
 and flushes a sibling temporary file, checks its JSON, then renames it over the

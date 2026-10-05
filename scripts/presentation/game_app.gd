@@ -16,6 +16,7 @@ var fog: FogView
 var camera_zoom := 1.0
 var return_menu := "main"
 var storage_root := "user://"
+var demo_mode := OS.has_feature("demo")
 var _displayed_result := "playing"
 var _scene_cache: Dictionary = {}
 var _debug: Node
@@ -31,6 +32,11 @@ func _ready() -> void:
 	for argument: String in OS.get_cmdline_user_args():
 		if argument.begins_with("--storage-dir="):
 			storage_root = argument.trim_prefix("--storage-dir=").trim_suffix("/") + "/"
+		elif argument == "--demo":
+			demo_mode = true
+	if demo_mode:
+		storage_root = storage_root.path_join("demo") + "/"
+	ui.demo_mode = demo_mode
 	save_store = GameSaveStore.new(storage_root.path_join("saves"))
 	settings = GameSettingsStore.new(storage_root.path_join("settings.json"))
 	progress = GameProgressStore.new(storage_root.path_join("progress.json"))
@@ -58,6 +64,9 @@ func _ready() -> void:
 
 
 func load_level(number: int) -> bool:
+	if demo_mode and number != 0:
+		ui.show_notice("Demo mode includes Survival only.")
+		return false
 	if number < 0 or number > 5:
 		return false
 	var packed := load("res://levels/level_%d.tscn" % number) as PackedScene
@@ -69,6 +78,10 @@ func load_level(number: int) -> bool:
 
 
 func start_level_scene(new_level: GameLevel) -> void:
+	if demo_mode and new_level.definition.number != 0:
+		ui.show_notice("Demo mode includes Survival only.")
+		new_level.queue_free()
+		return
 	if _scenery != null:
 		_scenery.get_parent().remove_child(_scenery)
 		_scenery.queue_free()
@@ -386,6 +399,9 @@ func command(action: String, value: Variant = null) -> void:
 				else:
 					load_level(level.definition.next_level)
 		"levels":
+			if demo_mode:
+				ui.show_notice("Demo mode includes Survival only.")
+				return
 			var completed: Array[int] = []
 			for number in range(1, 6):
 				if progress.is_level_completed(number):
@@ -585,6 +601,8 @@ func _import_cli_file() -> void:
 
 
 func import_swift_save(path: String, slot: int) -> Dictionary:
+	if demo_mode:
+		return {"success": false, "error": "Swift save import is unavailable in demo mode."}
 	# Scene ownership stays here; storage validates and writes the supplied data.
 	var config: Dictionary = {}
 	var source := GameAtomicJSON.read_file(path)
