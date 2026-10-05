@@ -94,7 +94,10 @@ func notify_attack(direction: Vector2 = Vector2.ZERO, weapon_id: String = "") ->
 		_facing = _screen_direction(IsoProjection.project(direction))
 		_logical_facing = _world_direction(direction)
 	if model_view != null and model_view.visible:
-		model_view.fire(_aim_direction, weapon_id)
+		if visual.laser != null and weapon_id.is_empty() and model_view.pitch_pivot != null:
+			model_view.set_aim(_aim_direction)
+		else:
+			model_view.fire(_aim_direction, weapon_id)
 		return
 	if visual == null or visual.animations == null or not visual.animations.has_animation("fire_%d" % _logical_facing):
 		return
@@ -109,6 +112,28 @@ func notify_attack(direction: Vector2 = Vector2.ZERO, weapon_id: String = "") ->
 func notify_heal() -> void:
 	if healing_pulse != null:
 		healing_pulse.pulse()
+
+
+func gathering_model() -> ActorModelView:
+	return model_view
+
+
+func sync_gathering(corpses: Array, nathaniel: Dictionary, hermes: Dictionary, receiver: ActorView) -> void:
+	var receiver_model: ActorModelView = receiver.gathering_model() if is_instance_valid(receiver) else null
+	if model_view != null and model_view.gathering_view != null:
+		model_view.gathering_view.sync(corpses, nathaniel, hermes, receiver_model)
+		# The two characters render in separate viewports. Keep the held matter
+		# above the receiver sprite until the intake owns its mesh.
+		model_view.z_index = 0
+		for corpse: Dictionary in corpses:
+			if str(corpse.get("phase", "")) in ["present", "feed"]:
+				model_view.z_index = 1
+				break
+
+
+func sync_intake(corpses: Array, nathaniel: Dictionary, hermes: Dictionary) -> void:
+	if model_view != null and model_view.gathering_view != null:
+		model_view.gathering_view.sync(corpses, nathaniel, hermes, null)
 
 
 func sprite_contains_screen_point(screen: Vector2) -> bool:
@@ -167,6 +192,7 @@ func _update_sprite(facing: int, moving: bool, elapsed: float) -> void:
 		if model_view.configure(visual.model_scene, visual.tint, visual.weapons):
 			model_view.position = visual.feet_offset
 			model_view.playback_enabled = _playback_enabled
+			model_view.set_firing(_firing)
 			model_view.equip_weapon(_equipped_weapon_id if not _equipped_weapon_id.is_empty() else visual.default_weapon_id)
 			model_view.set_aim(_aim_direction)
 			model_view.set_movement(_movement_direction, _movement_speed if _moving else 0.0)

@@ -21,6 +21,7 @@ func _run() -> void:
 	if "--unit" not in OS.get_cmdline_user_args():
 		_check_source("spawner", Vector2i(2560, 2304), Vector2(1280, 1792))
 		_check_source("soldier_corpse", Vector2i(1024, 1024), Vector2(512, 768))
+		_check_source("gun_soldier_corpse", Vector2i(1024, 1024), Vector2(512, 768))
 		_check_spawner()
 		_check_corpse_scene()
 		if "--render" in OS.get_cmdline_user_args():
@@ -50,6 +51,8 @@ func _check_source(asset: String, canvas: Vector2i, anchor: Vector2) -> void:
 
 func _check_spawner() -> void:
 	var actor: ActorView = load("res://scenes/actors/spawner.tscn").instantiate() as ActorView
+	actor.visual = actor.visual.duplicate() as ActorVisual
+	actor.visual.model_scene = null
 	root.add_child(actor)
 	actor.apply_state({"position": Vector2(64, 96)}, false, false)
 	var contact: Vector2 = actor.sprite.position + (actor.visual.frame_ground_anchor() - actor.sprite.region_rect.size * 0.5) * actor.sprite.scale

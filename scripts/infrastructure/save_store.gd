@@ -141,7 +141,7 @@ static func validate_state(state: Dictionary) -> String:
 	for entity: Variant in state.entities:
 		if not AtomicJSON.is_point(entity.get("position")):
 			return "Invalid entity"
-		if entity.get("kind") not in ["nathaniel", "hermes", "grunt", "soldier", "boss", "spawner", "gunTower", "laserTower", "healTower"]:
+		if not GameBalance.STATS.has(entity.get("kind")):
 			return "Unknown entity kind"
 		for key: String in ["hp", "max_hp"]:
 			if not AtomicJSON.is_number(entity.get(key)):
@@ -170,6 +170,8 @@ static func validate_state(state: Dictionary) -> String:
 	for corpse: Variant in state.get("corpses", []):
 		if not corpse is Dictionary or not AtomicJSON.is_point(corpse.get("position")) or not AtomicJSON.is_number(corpse.get("amount")) or not AtomicJSON.is_number(corpse.get("expiration")) or not corpse.get("carried") is bool:
 			return "Invalid corpse state"
+		if corpse.get("source_kind", "soldier") not in ["soldier", "gunSoldier"]:
+			return "Invalid corpse source kind"
 	for shot: Variant in state.get("projectiles", []):
 		if not shot is Dictionary or not AtomicJSON.is_point(shot.get("position")) or not AtomicJSON.is_point(shot.get("direction")) or not shot.get("enemy") is bool:
 			return "Invalid projectile state"
@@ -179,6 +181,9 @@ static func validate_state(state: Dictionary) -> String:
 	for visibility: Variant in state.get("fog", []):
 		if not AtomicJSON.is_integer(visibility) or int(visibility) not in [0, 1, 2]:
 			return "Invalid fog state"
+	var gathering_issue: String = GameSimulation.gathering_state_error(state)
+	if not gathering_issue.is_empty():
+		return gathering_issue
 	return GameSimulation.weapon_state_error(state)
 
 

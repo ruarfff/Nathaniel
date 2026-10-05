@@ -7,9 +7,11 @@ const HERMES_RANGE_SEGMENTS: int = 96
 ## The 45-degree azimuth and 30-degree elevation project vertical distance by sqrt(2) * cos(30).
 const HEIGHT_PROJECTION: float = 1.22474487139
 const IMPACT_LIFETIME: float = 0.18
+const CORPSE_SHADER: Shader = preload("res://scripts/presentation/corpse_self_destruct.gdshader")
 
 @export_group("Corpses")
 @export var corpse_visual: ActorVisual
+@export var gun_soldier_corpse_visual: ActorVisual
 @export var corpse_texture: Texture2D = preload("res://assets/Sprites/Objects/corpse.png")
 @export var corpse_size := Vector2(30, 16)
 @export_range(0.0, 1.0) var carried_corpse_alpha: float = 0.65
@@ -70,7 +72,12 @@ var simulation: GameSimulation:
 			hermes_transfers.clear()
 			_laser_actors.clear()
 			_laser_states.clear()
+			_laser_pulses.clear()
 			impact_flashes.clear()
+			corpse_dissolves.clear()
+			for sprite: Sprite2D in _corpse_sprites.values():
+				sprite.queue_free()
+			_corpse_sprites.clear()
 			selected_healing_tower_id = -1
 		simulation = value
 var transients: Array[Dictionary] = []
@@ -80,8 +87,11 @@ var selected_healing_tower_id: int = -1
 var _projectile_offsets: Dictionary = {}
 var _laser_actors: Dictionary = {}
 var _laser_states: Dictionary = {}
+var _laser_pulses: Dictionary = {}
 var _impact_visuals: Dictionary = {}
 var impact_flashes: Array[Dictionary] = []
+var corpse_dissolves: Array[Dictionary] = []
+var _corpse_sprites: Dictionary = {}
 var cursor_world := Vector2.ZERO
 var placement := false
 var placement_valid := false
@@ -110,6 +120,9 @@ func _process(delta: float) -> void:
 		effect.life -= delta
 	transients = transients.filter(func(effect: Dictionary) -> bool: return effect.life > 0)
 	if simulation != null and not simulation.paused and simulation.result == "playing":
+		for corpse: Dictionary in corpse_dissolves:
+			corpse.age = float(corpse.age) + delta
+		corpse_dissolves = corpse_dissolves.filter(func(corpse: Dictionary) -> bool: return float(corpse.age) < GameBalance.RESOURCE_DISSOLVE_SECONDS)
 		for id: int in _laser_states:
 			_laser_states[id].age = float(_laser_states[id].age) + delta
 		for impact: Dictionary in impact_flashes:
@@ -128,6 +141,7 @@ func _process(delta: float) -> void:
 		hermes_transfers.clear()
 	if _hermes_ground != null:
 		_hermes_ground.queue_redraw()
+	_sync_corpse_sprites()
 	queue_redraw()
 
 
@@ -181,10 +195,18 @@ func _draw_target_markers() -> void:
 
 func add_events(events: Array, actors: Dictionary = {}) -> void:
 	for event: Dictionary in events:
+		if event.get("type", "") == "corpse_expired":
+			var age: float = float(event.get("elapsed_since_expiry", 0.0))
+			if age < GameBalance.RESOURCE_DISSOLVE_SECONDS:
+				corpse_dissolves.append({"id": event.corpse_id, "source_kind": event.get("source_kind", "soldier"),
+					"position": event.position, "age": age})
+			continue
 		if event.get("type", "") == "hit":
 			_add_impact(event, actors)
 			continue
 		if event.get("type", "") == "laser":
+			if event.get("pulse", false):
+				_laser_pulses[int(event.owner_id)] = event.duplicate()
 			var owner: ActorView = actors.get(int(event.get("owner_id", -1))) as ActorView
 			if is_instance_valid(owner) and owner.laser_visual() != null:
 				continue
@@ -195,6 +217,8 @@ func add_events(events: Array, actors: Dictionary = {}) -> void:
 		if event.get("type", "") == "hermes_mode":
 			continue
 		if event.get("type", "") == "weapon_collected":
+			continue
+		if event.get("type", "") in ["gathering_phase", "delivery", "resource_delivered", "resource_upgrade"]:
 			continue
 		if event.get("type", "") == "heal":
 			var target_id: int = int(event.get("target_id", -1))
@@ -214,6 +238,7 @@ func add_events(events: Array, actors: Dictionary = {}) -> void:
 					continue
 		if event.has("position"):
 			transients.append({"position": event.position, "life": transient_lifetime, "kind": event.get("type", "hit")})
+	_sync_corpse_sprites()
 	queue_redraw()
 
 
@@ -410,40 +435,54 @@ func laser_beams() -> Array[Dictionary]:
 	if simulation == null:
 		return beams
 	for unit: Dictionary in simulation.entities:
-		if not CombatRules.alive(unit) or unit.get("weapon", "") not in ["laser", "spawner_laser"]:
+		if not CombatRules.alive(unit) or unit.get("weapon", "") not in ["laser", "spawner_laser", "pulse_laser"]:
 			continue
 		var target: Dictionary = simulation.entity(int(unit.get("target_id", -1)))
-		if not CombatRules.alive(target):
+		var pulse: bool = unit.weapon == "pulse_laser"
+		var contact: Dictionary = {}
+		if pulse and unit.get("firing", false):
+			if not _laser_pulses.has(int(unit.id)) and CombatRules.alive(target):
+				_laser_pulses[int(unit.id)] = {"target_id": target.id, "target_position": target.position, "target_kind": target.kind}
+			contact = _laser_pulses.get(int(unit.id), {})
+			if not contact.is_empty():
+				target = simulation.entity(int(contact.target_id))
+		if not CombatRules.alive(target) and contact.is_empty():
 			continue
+		var target_id: int = int(contact.target_id) if not contact.is_empty() else int(target.id)
+		var target_kind: String = str(contact.target_kind) if not contact.is_empty() else str(target.kind)
+		var target_position: Vector2 = target.position if CombatRules.alive(target) else contact.target_position
 		var actor: ActorView = _laser_actors.get(int(unit.id)) as ActorView
 		var style: LaserVisual = actor.laser_visual() if is_instance_valid(actor) else null
-		var height: float = _contact_height(int(target.id), str(target.kind), _laser_actors)
+		var height: float = _contact_height(target_id, target_kind, _laser_actors)
 		if style != null:
-			actor.aim_laser(Vector2(target.position) - Vector2(unit.position), height)
+			actor.aim_laser(target_position - Vector2(unit.position), height)
 		if not unit.get("firing", false):
 			continue
 		if simulation.visibility_at(unit.position) != 2 and (fog_enabled or style == null):
 			continue
 		var start: Vector2 = IsoProjection.project(unit.position) - Vector2(0, laser_height)
-		var finish: Vector2 = IsoProjection.project(target.position) - Vector2(0, laser_height)
+		var finish: Vector2 = IsoProjection.project(target_position) - Vector2(0, laser_height)
 		if style != null:
-			if unit.get("anchored", false) or (fog_enabled and simulation.visibility_at(target.position) != 2):
+			if unit.get("anchored", false) or (fog_enabled and simulation.visibility_at(target_position) != 2):
 				continue
 			var muzzle: Vector2 = actor.laser_muzzle()
 			if not muzzle.is_finite():
 				continue
 			start = IsoProjection.project(unit.position) + muzzle
-			finish = IsoProjection.project(target.position) - Vector2(0, height * HEIGHT_PROJECTION)
+			finish = IsoProjection.project(target_position) - Vector2(0, height * HEIGHT_PROJECTION)
 		active[int(unit.id)] = true
 		if not _laser_states.has(int(unit.id)):
-			_laser_states[int(unit.id)] = {"target_id": int(target.id), "age": float(unit.get("burst", 0.0))}
-		elif int(_laser_states[int(unit.id)].target_id) != int(target.id):
-			_laser_states[int(unit.id)] = {"target_id": int(target.id), "age": 0.0}
-		beams.append({"owner_id": int(unit.id), "target_id": int(target.id), "start": start, "finish": finish,
-			"style": style, "enemy": bool(unit.enemy), "age": float(_laser_states[int(unit.id)].age)})
+			_laser_states[int(unit.id)] = {"target_id": target_id, "age": float(unit.get("burst", 0.0))}
+		elif int(_laser_states[int(unit.id)].target_id) != target_id:
+			_laser_states[int(unit.id)] = {"target_id": target_id, "age": 0.0}
+		beams.append({"owner_id": int(unit.id), "target_id": target_id, "start": start, "finish": finish,
+			"style": style, "enemy": bool(unit.enemy), "age": float(unit.burst) if pulse else float(_laser_states[int(unit.id)].age)})
 	for id: int in _laser_states.keys():
 		if not active.has(id):
 			_laser_states.erase(id)
+	for id: int in _laser_pulses.keys():
+		if not active.has(id):
+			_laser_pulses.erase(id)
 	return beams
 
 
@@ -452,7 +491,7 @@ func _contact_height(id: int, kind: String, actors: Dictionary) -> float:
 	if is_instance_valid(actor):
 		return actor.laser_contact_height()
 	if not _impact_visuals.has(kind):
-		var resource_kind: String = {"gunTower": "gun_tower", "laserTower": "laser_tower", "healTower": "heal_tower"}.get(kind, kind)
+		var resource_kind: String = {"gunTower": "gun_tower", "laserTower": "laser_tower", "healTower": "heal_tower", "gunSoldier": "gun_soldier"}.get(kind, kind)
 		var path: String = "res://resources/actors/%s.tres" % resource_kind
 		_impact_visuals[kind] = load(path) if ResourceLoader.exists(path) else null
 	var visual: ActorVisual = _impact_visuals[kind] as ActorVisual
@@ -535,19 +574,106 @@ func _draw_impacts() -> void:
 		_draw_sparks(point, Vector2.UP, 1.0 - strength, 7.0, Color("e6ac4f"), Color("fff4cd"))
 
 
-func corpse_rect(point: Vector2) -> Rect2:
-	if corpse_visual != null and corpse_visual.texture != null:
-		var density: float = corpse_visual.frame_pixel_density()
+func corpse_art(source_kind: String = "soldier") -> ActorVisual:
+	return gun_soldier_corpse_visual if source_kind == "gunSoldier" and gun_soldier_corpse_visual != null else corpse_visual
+
+
+func corpse_rect(point: Vector2, source_kind: String = "soldier") -> Rect2:
+	var visual: ActorVisual = corpse_art(source_kind)
+	if visual != null and visual.texture != null:
+		var density: float = visual.frame_pixel_density()
 		if density > 0.0:
-			return Rect2(point + corpse_visual.feet_offset - corpse_visual.frame_ground_anchor() / density, corpse_visual.texture.get_size() / density)
-		return Rect2(point + corpse_visual.feet_offset - Vector2(corpse_visual.display_size.x * 0.5, corpse_visual.display_size.y), corpse_visual.display_size)
+			return Rect2(point + visual.feet_offset - visual.frame_ground_anchor() / density, visual.texture.get_size() / density)
+		return Rect2(point + visual.feet_offset - Vector2(visual.display_size.x * 0.5, visual.display_size.y), visual.display_size)
 	return Rect2(point - corpse_size * 0.5, corpse_size)
 
 
-func corpse_color(carried: bool) -> Color:
-	var color: Color = corpse_visual.tint if corpse_visual != null and corpse_visual.texture != null else Color.WHITE
+func corpse_color(carried: bool, source_kind: String = "soldier") -> Color:
+	var visual: ActorVisual = corpse_art(source_kind)
+	var color: Color = visual.tint if visual != null and visual.texture != null else Color.WHITE
 	color.a *= carried_corpse_alpha if carried else 1.0
 	return color
+
+
+func corpse_warning_strength(corpse: Dictionary) -> float:
+	if corpse.get("disarmed", corpse.get("carried", false)):
+		return 0.0
+	var remaining: float = float(corpse.get("expiration", GameBalance.RESOURCE_LIFETIME_SECONDS))
+	if remaining > GameBalance.RESOURCE_WARNING_SECONDS or remaining <= 0.0:
+		return 0.0
+	var elapsed: float = GameBalance.RESOURCE_WARNING_SECONDS - remaining
+	return pow(maxf(0.0, sin(elapsed * TAU * 2.0)), 2.0)
+
+
+func _sync_corpse_sprites() -> void:
+	if simulation == null:
+		return
+	var live: Dictionary = {}
+	for corpse: Dictionary in simulation.corpses:
+		if ResourceGatheringView.ground_visible(corpse):
+			_sync_corpse_sprite(corpse, 0.0, live)
+	for corpse: Dictionary in corpse_dissolves:
+		_sync_corpse_sprite(corpse, float(corpse.age) / GameBalance.RESOURCE_DISSOLVE_SECONDS, live)
+	for id: int in _corpse_sprites.keys():
+		if not live.has(id):
+			(_corpse_sprites[id] as Sprite2D).queue_free()
+			_corpse_sprites.erase(id)
+
+
+func _sync_corpse_sprite(corpse: Dictionary, dissolve: float, live: Dictionary) -> void:
+	var id: int = int(corpse.id)
+	live[id] = true
+	if not _corpse_sprites.has(id):
+		var sprite := Sprite2D.new()
+		sprite.name = "Corpse%d" % id
+		sprite.centered = false
+		sprite.z_index = -1
+		var shader_material := ShaderMaterial.new()
+		shader_material.shader = CORPSE_SHADER
+		sprite.material = shader_material
+		add_child(sprite)
+		_corpse_sprites[id] = sprite
+	var sprite: Sprite2D = _corpse_sprites[id]
+	var source_kind: String = corpse.get("source_kind", "soldier")
+	var visual: ActorVisual = corpse_art(source_kind)
+	sprite.texture = visual.texture if visual != null and visual.texture != null else corpse_texture
+	var rect: Rect2 = corpse_rect(IsoProjection.project(corpse.position), source_kind)
+	sprite.position = rect.position
+	sprite.scale = rect.size / sprite.texture.get_size()
+	sprite.modulate = corpse_color(false, source_kind)
+	sprite.visible = not fog_enabled or simulation.visibility_at(corpse.position) == 2
+	var shader_material: ShaderMaterial = sprite.material
+	shader_material.set_shader_parameter("warning", corpse_warning_strength(corpse) if dissolve <= 0.0 else 0.0)
+	shader_material.set_shader_parameter("dissolve", dissolve)
+	shader_material.set_shader_parameter("disarmed", bool(corpse.get("disarmed", false)))
+	shader_material.set_shader_parameter("corpse_seed", float(id))
+
+
+func _draw_corpse_flecks() -> void:
+	for corpse: Dictionary in corpse_dissolves:
+		if fog_enabled and simulation.visibility_at(corpse.position) != 2:
+			continue
+		var fraction: float = float(corpse.age) / GameBalance.RESOURCE_DISSOLVE_SECONDS
+		var strength: float = sin(fraction * PI)
+		var center: Vector2 = IsoProjection.project(corpse.position) - Vector2(0, 9)
+		for index: int in range(4):
+			var heading: Vector2 = Vector2.from_angle(float(index) * 2.4 + float(corpse.id))
+			var point: Vector2 = center + heading * (8.0 + fraction * 13.0) - Vector2(0, fraction * 13.0)
+			draw_colored_polygon(PackedVector2Array([point + Vector2(-1.5, 1), point + Vector2(0, -2), point + Vector2(2, 1)]), Color("81915c", strength * 0.8))
+
+
+func _draw_crush_chips() -> void:
+	for corpse: Dictionary in simulation.corpses:
+		if str(corpse.get("phase", "")) != "crush" or simulation.visibility_at(corpse.position) != 2:
+			continue
+		var fraction: float = ResourceGatheringView.phase_fraction(corpse)
+		var strength: float = sin(fraction * PI)
+		var point: Vector2 = IsoProjection.project(corpse.get("pickup_position", corpse.position)) - Vector2(0, 7)
+		draw_circle(point, 8.0 + fraction * 6.0, Color("b9a58a", strength * 0.20))
+		for index: int in range(3):
+			var heading: Vector2 = Vector2.from_angle(float(index) * 2.2 + 0.4)
+			var chip: Vector2 = point + heading * (4.0 + fraction * 10.0)
+			draw_line(chip, chip + heading * 2.0, Color("cabfb0", strength), 1.5, true)
 
 
 func _draw() -> void:
@@ -564,11 +690,8 @@ func _draw() -> void:
 			if blocked:
 				draw_line(point - Vector2(6, 6), point + Vector2(6, 6), color, 2, true)
 				draw_line(point - Vector2(-6, 6), point + Vector2(-6, 6), color, 2, true)
-		for corpse: Dictionary in simulation.corpses:
-			if simulation.visibility_at(corpse.position) == 2:
-				var point := IsoProjection.project(corpse.position)
-				var texture: Texture2D = corpse_visual.texture if corpse_visual != null and corpse_visual.texture != null else corpse_texture
-				draw_texture_rect(texture, corpse_rect(point), false, corpse_color(corpse.carried))
+		_draw_corpse_flecks()
+		_draw_crush_chips()
 		for shot: Dictionary in simulation.projectiles:
 			if not fog_enabled or simulation.visibility_at(shot.position) == 2:
 				var point := projectile_position(shot)

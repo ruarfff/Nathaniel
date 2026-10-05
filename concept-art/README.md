@@ -23,6 +23,13 @@ sheets, Blender models, or implemented gameplay changes.
 | [Spawner crown laser](iron-and-ink/13-spawner-crown-laser.png) | A visible aiming crown refines the existing enemy beam role. |
 | [Soldier lance laser](iron-and-ink/14-soldier-lance-laser.png) | Proposed laser variant with an integrated triangular forearm lens. |
 | [Boss siege laser](iron-and-ink/15-boss-siege-laser.png) | Proposed laser variant with a protected emitter beneath an opening crest. |
+| [Resource backpack](iron-and-ink/16-resource-backpack.png) | One-body starter pack with two grabber arms, plus proposed reach and capacity upgrades. |
+| [Resource collection](iron-and-ink/17-resource-collection.png) | Approach, grab, crush, and carry one alien body in a visible rear cradle. |
+| [Hermes resource furnace](iron-and-ink/18-hermes-resource-furnace.png) | Physical transfer into the chest intake, followed by a contained furnace pulse. |
+| [Corpse self-destruct](iron-and-ink/19-corpse-self-destruct.png) | Warning flashes and dissolution, plus backpack disarm and safe cargo. |
+| [Boss corpse](iron-and-ink/20-boss-corpse.png) | A collapsed heavy boss, clamp contact, and a proposed one-slot matter bundle. |
+| [Grunt death](iron-and-ink/21-grunt-death.png) | A small shell explosion that fades to clear ground, leaving no resource. |
+| [Spawner death](iron-and-ink/22-spawner-death.png) | A core rupture and collapsing crown, leaving no resource or permanent wreck. |
 
 [Hermes build-mode notes](hermes-build-mode.md) describe the transformation,
 connections, and teardown sequence. In this proposal, Hermes himself is the
@@ -34,6 +41,19 @@ acceptance checks. The face and forearm sheets remain alternatives only.
 
 [Enemy laser notes](enemy-lasers.md) separate the spawner's existing beam role
 from proposed soldier and boss variants, with shared aiming and contact cues.
+
+[Resource gathering notes](resource-gathering.md) describe the requested
+one-body backpack, proposed upgrades, collection sequence, and delivery into
+Hermes. The three-slot rack is an upgrade example, not a fixed capacity rule.
+The [self-destruct concept](resource-gathering.md#corpse-self-destruct) adds
+flashing corpses, dissolution, and disarm through the backpack clamps; the
+[implemented mechanics](../docs/resource-gathering.md#corpse-self-destruct)
+defines the recovery deadline and safe cargo rules.
+
+[Enemy death notes](enemy-deaths.md) describe the proposed boss corpse and
+grunt/spawner explosions. Boss matter supports the ongoing survival run.
+Recovery from campaign bosses that end a level needs a separate collection
+window and reward decision.
 
 ![Selected scene](iron-and-ink/01-scene.png)
 
@@ -64,6 +84,20 @@ from proposed soldier and boss variants, with shared aiming and contact cues.
 ![Proposed soldier lance laser](iron-and-ink/14-soldier-lance-laser.png)
 
 ![Proposed boss siege laser](iron-and-ink/15-boss-siege-laser.png)
+
+![Resource backpack and upgrades](iron-and-ink/16-resource-backpack.png)
+
+![Resource collection sequence](iron-and-ink/17-resource-collection.png)
+
+![Hermes resource furnace sequence](iron-and-ink/18-hermes-resource-furnace.png)
+
+![Corpse self-destruct and backpack disarm](iron-and-ink/19-corpse-self-destruct.png)
+
+![Boss corpse and matter bundle](iron-and-ink/20-boss-corpse.png)
+
+![Grunt explosion sequence](iron-and-ink/21-grunt-death.png)
+
+![Spawner explosion sequence](iron-and-ink/22-spawner-death.png)
 
 ## Sandy Earth buildings
 
@@ -111,9 +145,10 @@ by these concepts.
 
 The grunt, soldier, boss, spawner, gun tower, laser tower, and healing tower
 match existing gameplay kinds. Their depicted appearance is exploratory.
-Only soldiers currently leave usable bodies, so the matter example uses a
-soldier. The reclamation pod, relay, and bastion are visual proposals; their
-gameplay roles and inclusion remain undecided.
+Only soldier variants currently leave usable bodies. The boss corpse is a
+new collection proposal; grunt and spawner explosions leave no usable matter.
+The reclamation pod, relay, and bastion are visual proposals; their gameplay
+roles and inclusion remain undecided.
 
 The aliens in this pass have a hard, partly mechanical shell. Their mix of
 organic tissue and machinery remains open for refinement.

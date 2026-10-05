@@ -5,3 +5,6 @@ from iron_ink_towers import build_tower
 
 def build():
     build_tower("laser")
+    from rig_laser_tower import rig_laser_tower
+
+    rig_laser_tower()

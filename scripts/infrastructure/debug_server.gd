@@ -12,7 +12,7 @@ const ACTIONS: Array[Dictionary] = [
 	{"name": "mainMenu", "params": ""},
 	{"name": "pause", "params": ""},
 	{"name": "resume", "params": ""},
-	{"name": "spawnEnemy", "params": "type: grunt|soldier|boss|spawner; x, y: logical world coordinates (y up)"},
+	{"name": "spawnEnemy", "params": "type: grunt|soldier|gunSoldier|boss|spawner; x, y: logical world coordinates (y up)"},
 	{"name": "killAllEnemies", "params": ""},
 	{"name": "healPlayer", "params": ""},
 	{"name": "addResources", "params": "amount: positive integer"},

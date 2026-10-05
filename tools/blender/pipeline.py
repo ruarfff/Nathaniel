@@ -207,13 +207,22 @@ def render(asset, settings):
         render_terrain(sys.modules[__name__], asset, scene, settings, source, before)
         return
     export = {}
-    if scene.get("asset_animation"):
-        sys.path.insert(0, str(Path(__file__).parent))
-        from animation_export import render_animation
+    model_only = {obj: obj.hide_render for obj in scene.objects if obj.get("model_only")}
+    for obj in tuple(model_only):
+        model_only.update({child: child.hide_render for child in obj.children_recursive})
+    try:
+        for obj in model_only:
+            obj.hide_render = True
+        if scene.get("asset_animation"):
+            sys.path.insert(0, str(Path(__file__).parent))
+            from animation_export import render_animation
 
-        export = render_animation(sys.modules[__name__], asset, scene, settings, source, before)
-    else:
-        export = render_still(asset, scene, canvas, source, before, settings)
+            export = render_animation(sys.modules[__name__], asset, scene, settings, source, before)
+        else:
+            export = render_still(asset, scene, canvas, source, before, settings)
+    finally:
+        for obj, hidden in model_only.items():
+            obj.hide_render = hidden
     if scene.get("asset_model"):
         sys.path.insert(0, str(Path(__file__).parent))
         from model_export import export_model
@@ -322,7 +331,7 @@ def write_import_settings(asset, density, *, premultiplied=False):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["doctor", "generate", "render", "regenerate", "verify", "verify-hermes", "rig-gun", "rig-character", "rig-hermes"])
+    parser.add_argument("command", choices=["doctor", "generate", "render", "regenerate", "verify", "verify-hermes", "verify-enemy-lasers", "rig-gun", "rig-laser-tower", "rig-character", "rig-hermes", "rig-enemy-laser", "prepare-soldier-variants"])
     parser.add_argument("asset", nargs="?", default="placeholder_prop")
     parser.add_argument("--generator", type=Path, default=ROOT / "tools/blender/generate_placeholder.py")
     parser.add_argument("--profile", default="default", help="Shared profile saved in a new source; rendering uses its saved profile")
@@ -346,6 +355,16 @@ def main():
         verify_hermes_model(sys.modules[__name__], settings)
     elif args.command == "generate":
         generate(args.asset, args.generator.resolve(), settings, args.profile)
+    elif args.command == "verify-enemy-lasers":
+        sys.path.insert(0, str(Path(__file__).parent))
+        from verify_enemy_lasers import verify_enemy_lasers
+
+        verify_enemy_lasers(sys.modules[__name__], settings)
+    elif args.command == "prepare-soldier-variants":
+        sys.path.insert(0, str(Path(__file__).parent))
+        from soldier_variants import prepare
+
+        prepare(sys.modules[__name__])
     elif args.command == "render":
         render(args.asset, settings)
     elif args.command == "rig-gun":
@@ -358,9 +377,19 @@ def main():
         from rig_nathaniel import migrate
 
         migrate(sys.modules[__name__], args.asset, settings)
+    elif args.command == "rig-laser-tower":
+        sys.path.insert(0, str(Path(__file__).parent))
+        from rig_laser_tower import migrate
+
+        migrate(sys.modules[__name__], args.asset)
     elif args.command == "rig-hermes":
         sys.path.insert(0, str(Path(__file__).parent))
         from rig_hermes import migrate
+
+        migrate(sys.modules[__name__], args.asset)
+    elif args.command == "rig-enemy-laser":
+        sys.path.insert(0, str(Path(__file__).parent))
+        from rig_enemy_lasers import migrate
 
         migrate(sys.modules[__name__], args.asset)
     else:

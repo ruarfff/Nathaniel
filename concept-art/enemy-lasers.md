@@ -4,15 +4,15 @@ The spawner is the current enemy beam user. Its beam needs a visible source
 that can aim while the main body stays rooted. These sheets explore the
 appearance of the weapon and its effects; they do not change gameplay.
 
-The user also requested proposed laser-equipped soldier and boss variants.
-Those concepts are explicitly marked as proposals on their sheets. They do
-not select replacements for the existing projectile weapons.
+The soldier and boss sheets were proposals when drawn. On 2026-10-04 the user
+selected them for implementation with instant laser pulses, retaining their
+previous damage, range and shot intervals.
 
 | Concept | Status | Main visual change |
 | --- | --- | --- |
 | Spawner crown laser | Refines an existing beam role | A separate crown aims above the emergence opening. |
-| Soldier lance arm | Proposed laser variant | An integrated forearm lens gives a clear pointing pose. |
-| Boss siege prism | Proposed laser variant | A split crest opens around a protected central emitter. |
+| Soldier lance arm | Selected laser replacement | An integrated forearm lens gives a clear pointing pose. |
+| Boss siege prism | Selected laser replacement | A split crest opens around a protected central emitter. |
 
 ## Spawner: crown laser
 
@@ -71,25 +71,15 @@ at the lens and end at the target's surface.
 
 ## Current implementation boundary
 
-Checked on 2026-10-04: `spawner_laser` is the only enemy beam profile. Grunts
-use `blaster`, soldiers use `gun`, and bosses use `bow`; those weapons fire
-moving projectiles. See [game balance](../scripts/domain/game_balance.gd)
-and [combat rules](../scripts/domain/combat_rules.gd) for current behavior.
+All three now use live Blender models and authored muzzle markers.
+The spawner retains `spawner_laser`, its fixed body and production timing.
+Soldier and boss use `pulse_laser`; grunts retain travelling `blaster` shots.
+See [game balance](../scripts/domain/game_balance.gd) and
+[combat rules](../scripts/domain/combat_rules.gd) for damage and timing.
 
-The spawner currently uses a static sprite. Its beam in
-[WorldEffects](../scripts/presentation/world_effects.gd) starts at an offset
-from the entity position, without an authored emitter or visible aiming
-part. Implementing this concept would need a separate aiming crown and a
-projected lens origin. Preserve the existing beam timing, damage, spawn rules,
-and stationary behavior when improving its presentation.
-
-The soldier and boss variants would need a separate gameplay decision before
-implementation because their current weapons are projectiles. Their editable
-sources are `art/blender/sources/soldier.blend` and `boss.blend` in the same
-directory. Keep the current projectile versions available unless a later task
-explicitly selects a replacement.
-
-The editable source is `art/blender/sources/spawner.blend`. Follow the
+The editable sources are `art/blender/sources/spawner.blend`, `soldier.blend`
+and `boss.blend`. Their original replaced weapon meshes remain hidden in the
+saved sources. Follow the
 [Blender pipeline](../docs/blender-assets.md) and edit saved sources rather
 than runtime exports. A concept sheet is not proof that the aiming assembly,
 beam attachment, or sprite sorting works in the game.

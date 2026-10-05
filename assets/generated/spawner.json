@@ -1,7 +1,7 @@
 {
   "source": "art/blender/sources/spawner.blend",
-  "source_sha256": "bccaa8bb8e63be735e2d396dbf526a3f66f82dec7e759e3d0eca371888c93bdd",
-  "settings_sha256": "30f4a0d1ceb67c68c9aca3071f8939a3fad4dae60ed710cc784f00ee673797c0",
+  "source_sha256": "d746a6008e1761e654c2fbc97c95b28c13687dde12476ed2fc3f8d1cf108548c",
+  "settings_sha256": "07a344fdb8daeb6e1cd0d54263fd5fc4af187a6fdb84b05ea01b90d02169914b",
   "blender_version": "5.2.2 LTS",
   "python_version": "3.13.15",
   "canvas": [
@@ -40,5 +40,44 @@
   ],
   "dependencies": [
     "Blender (bundled bpy and Python standard library)"
-  ]
+  ],
+  "model": {
+    "path": "assets/generated/spawner.glb",
+    "scene": "scenes/actors/generated/spawner_model.tscn",
+    "sha256": "5467a59430d91e5fede6e1000c1555ce17038e2dc2c28f1a2fe589eb839f78f3",
+    "blender_to_godot": [
+      "X",
+      "Z",
+      "-Y"
+    ],
+    "logical_xy_from_godot": [
+      "-32 * Z",
+      "32 * X"
+    ],
+    "forward_axis": "+X",
+    "rig_nodes": [
+      "AssetFacing",
+      "LocomotionPivot",
+      "ShoulderMount",
+      "AimPivot",
+      "PitchPivot",
+      "Recoil",
+      "Muzzle"
+    ],
+    "role": "mounted_character",
+    "muzzle_blender": [
+      -0.13199996948242188,
+      -8.145892138600175e-08,
+      3.3299999237060547
+    ],
+    "animations": [
+      "idle",
+      "walk"
+    ],
+    "exporter": "Khronos glTF Blender I/O v5.2.40",
+    "mesh_float_decimal_places": 6,
+    "dependencies": [
+      "Blender bundled glTF 2.0 exporter"
+    ]
+  }
 }

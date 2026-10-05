@@ -120,7 +120,11 @@ func _check_levels(tiles: TileSet) -> void:
 		data.blocked = occupied
 		# Weapon pickups were added after the terrain migration and have their own content checks.
 		data.erase("weapon_pickups")
-		expect(JSON.stringify(data).sha256_text() == LEVEL_HASHES[number], "Level %d preserves the original blocked cells, spawns, encounters, and rules" % number)
+		# Soldier variant checks cover the weapon mix; this baseline protects placement and terrain.
+		for spawn: Dictionary in data.enemies:
+			if spawn.kind == "gunSoldier":
+				spawn.kind = "soldier"
+		expect(JSON.stringify(data).sha256_text() == LEVEL_HASHES[number], "Level %d preserves blocked cells, encounter positions, counts and level rules" % number)
 		for layer_name: String in ["Ground", "NonCollision", "Collision"]:
 			var layer: TileMapLayer = level.get_node(layer_name) as TileMapLayer
 			expect(layer.tile_set == tiles and layer.scale == Vector2.ONE / 8.0 and layer.position == Vector2(-32, 0), "Level %d %s uses the shared art at the original grid scale" % [number, layer_name])

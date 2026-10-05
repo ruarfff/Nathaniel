@@ -104,6 +104,8 @@ func _check_launch_and_restore() -> void:
 	expect(effects.projectile_position(second) == IsoProjection.project(second.position), "New level cannot reuse a previous level's launch offset")
 
 	var legacy: ActorView = load("res://scenes/actors/soldier.tscn").instantiate()
+	legacy.visual = legacy.visual.duplicate() as ActorVisual
+	legacy.visual.model_scene = null
 	root.add_child(legacy)
 	expect(not legacy.weapon_muzzle(direction).is_finite(), "Sprite-only actors explicitly report no model muzzle")
 	effects.add_events([{"type": "shot", "shot_id": 99, "owner_id": 99,
@@ -118,15 +120,17 @@ func _check_reusable_model() -> void:
 	var actor: ActorView = load("res://scenes/actors/soldier.tscn").instantiate()
 	var original: ActorVisual = actor.visual
 	var variant: ActorVisual = original.duplicate() as ActorVisual
+	var original_model: PackedScene = original.model_scene
 	var gun_visual: ActorVisual = load("res://resources/actors/gun_tower.tres")
 	variant.model_scene = gun_visual.model_scene
+	variant.laser = null
 	actor.visual = variant
 	root.add_child(actor)
 	actor.model_view.set_process(false)
 	var direction := Vector2(0.17, 0.97).normalized()
 	actor.apply_state({"position": Vector2(180, 180), "facing": direction}, false, false)
 	expect(actor.kind == "soldier" and actor.model_view != null and not actor.sprite.visible, "Assigning a model resource enables live aiming on another actor kind")
-	expect(original.model_scene == null, "Reusing the model does not change the production soldier resource")
+	expect(original.model_scene == original_model, "Reusing the model does not change the production soldier resource")
 	var model: ActorModelView = actor.model_view
 	var forward: Vector3 = model.aim_pivot.global_basis.x
 	expect(Vector2(-forward.z, forward.x).normalized().dot(direction) > 0.99999, "Another actor kind aims continuously through apply_state")

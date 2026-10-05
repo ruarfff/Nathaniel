@@ -46,7 +46,7 @@ static func convert(source: Dictionary, level_config: Dictionary) -> Dictionary:
 		next_id += 1
 	var corpses: Array[Dictionary] = []
 	for corpse: Dictionary in source.get("battlefieldResources", []) if source.get("battlefieldResources") != null else []:
-		corpses.append({"id": next_id, "position": corpse.position.duplicate(), "amount": int(corpse.amount), "expiration": float(corpse.timeToExpiration), "carried": corpse.isCarried and player.hp > 0})
+		corpses.append({"id": next_id, "position": corpse.position.duplicate(), "amount": int(corpse.amount), "expiration": float(corpse.timeToExpiration), "carried": corpse.isCarried and player.hp > 0, "disarmed": corpse.isCarried})
 		next_id += 1
 	var elapsed := float(source.elapsedTime)
 	var interval: float = 1.0 if elapsed > 240 else (2.0 if elapsed > 180 else (3.0 if elapsed > 120 else (4.0 if elapsed > 60 else 5.0)))

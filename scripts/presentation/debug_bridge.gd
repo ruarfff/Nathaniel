@@ -31,6 +31,9 @@ func state() -> Dictionary:
 		"hermesPosition": {"x": sim.hermes.position.x, "y": sim.hermes.position.y},
 		"playerHealth": sim.nathaniel.hp, "hermesHealth": sim.hermes.hp,
 		"hermesMode": "following" if sim.hermes_mode == "following" else "independent"}, true)
+	result["gathering"] = {"phase": sim.gathering_state().phase,
+		"cargoCount": sim.carried_resource_count(), "capacity": sim.nathaniel.resource_capacity,
+		"reach": sim.nathaniel.resource_reach, "furnaceRemaining": sim.hermes.furnace_remaining}
 	for entity: Dictionary in sim.entities:
 		if entity.hp <= 0:
 			continue
@@ -112,7 +115,7 @@ func action(name: String, params: Dictionary) -> Dictionary:
 					var y := str(params.get("y", ""))
 					if not x.is_valid_float() or not y.is_valid_float() or not is_finite(float(x)) or not is_finite(float(y)):
 						return {"success": false, "error": "Expected finite x,y"}
-					if params.get("type", "") not in ["grunt", "soldier", "boss", "spawner"] or sim.spawn_enemy(params.type, Vector2(float(x), float(y))).is_empty():
+					if params.get("type", "") not in GameBalance.ENEMIES or sim.spawn_enemy(params.type, Vector2(float(x), float(y))).is_empty():
 						return {"success": false, "error": "Unknown enemy type"}
 				"killAllEnemies":
 					for entity: Dictionary in sim.entities.duplicate():

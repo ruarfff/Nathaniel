@@ -15,6 +15,7 @@ metadata/logical_ground_anchor = Vector2(64, 128)
 metadata/max_pixel_density = 8.0
 metadata/world_points_per_unit = 32
 metadata/model_role = "mounted_character"
+metadata/body_aim = "movement"
 
 [node name="Geometry" parent="." instance=ExtResource("1")]
 

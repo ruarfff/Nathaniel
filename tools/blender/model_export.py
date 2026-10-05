@@ -86,8 +86,17 @@ def validate_rig(scene):
         if node is None or node.type != "EMPTY":
             raise ValueError(f"Model requires an Empty named {name}; run rig-gun for the original gun source.")
         nodes[name] = node
-    if nodes["Recoil"].parent != nodes["AimPivot"] or nodes["Muzzle"].parent != nodes["Recoil"]:
-        raise ValueError("Weapon hierarchy must be AimPivot > Recoil > Muzzle.")
+    pitch = scene.objects.get("PitchPivot")
+    if pitch is not None:
+        if pitch.type != "EMPTY" or pitch.parent != nodes["AimPivot"]:
+            raise ValueError("PitchPivot must be an Empty below AimPivot.")
+        if abs(pitch.location.x) > 0.0001 or abs(pitch.location.y) > 0.0001:
+            raise ValueError("PitchPivot must lie directly above the turret yaw axis.")
+        if abs(nodes["Muzzle"].location.z) > 0.0001:
+            raise ValueError("Tilting muzzle must lie on the local +X pitch axis.")
+        nodes["PitchPivot"] = pitch
+    if nodes["Recoil"].parent != (pitch or nodes["AimPivot"]) or nodes["Muzzle"].parent != nodes["Recoil"]:
+        raise ValueError("Weapon hierarchy must be AimPivot > optional PitchPivot > Recoil > Muzzle.")
     if scene.get("weapon_forward_axis") != "+X":
         raise ValueError("Weapon model must use local +X for barrel forward and recoil.")
     for node in nodes.values():
@@ -133,12 +142,13 @@ def _scene_text(asset, scene, settings):
         f'ambient_light_energy = {settings["world_strength"]:g}\n'
         'reflected_light_source = 1\n'
         'tonemap_mode = 0\n\n'
-        f'[node name="{asset.title() + "Model" if role == "mounted_character" else "NathanielModel" if role == "character" else "GunTowerModel"}" type="Node3D"]\n'
+        f'[node name="{asset.title().replace("_", "") + "Model"}" type="Node3D"]\n'
         f'metadata/logical_canvas = Vector2i({settings["canvas"][0]}, {settings["canvas"][1]})\n'
         f'metadata/logical_ground_anchor = Vector2({settings["anchor"][0]}, {settings["anchor"][1]})\n'
         f'metadata/max_pixel_density = {settings["render_density"]}.0\n'
         'metadata/world_points_per_unit = 32\n'
         + ('metadata/model_role = "mounted_character"\n' if role == "mounted_character" else '')
+        + (f'metadata/body_aim = "{scene.get("model_body_aim", "movement")}"\n' if role == "mounted_character" else '')
         + '\n'
         '[node name="Geometry" parent="." instance=ExtResource("1")]\n\n'
         '[node name="Camera3D" type="Camera3D" parent="."]\n'

@@ -58,7 +58,7 @@ func _run() -> void:
 		design.max_hp = 321
 		design.speed = 0.0
 		var enemy_marker: SpawnMarker = SpawnMarker.new()
-		enemy_marker.kind = "soldier"
+		enemy_marker.kind = "gunSoldier"
 		enemy_marker.parameters = design
 		level.get_node("Spawns").add_child(enemy_marker)
 		enemy_marker.owner = level
@@ -76,7 +76,7 @@ func _run() -> void:
 		expect(not roundtrip.data().blocked.has(removed), "Painted collision edits survive scene serialization")
 		roundtrip.free()
 		level.free()
-	for kind: String in ["nathaniel", "hermes", "grunt", "soldier", "boss", "spawner", "gun_tower", "laser_tower", "heal_tower", "corpse"]:
+	for kind: String in ["nathaniel", "hermes", "grunt", "soldier", "gun_soldier", "boss", "spawner", "gun_tower", "laser_tower", "heal_tower", "corpse"]:
 		var scene: PackedScene = load("res://scenes/actors/%s.tscn" % kind) as PackedScene
 		expect(scene != null, "Reusable actor scene loads: " + kind)
 		var actor: ActorView = scene.instantiate() as ActorView

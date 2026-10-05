@@ -248,7 +248,7 @@ func _test_resources() -> void:
 	_check(sim.corpses.size() == 1 and sim.corpses[0].amount == 10, "Only Soldier drops corpse worth ten")
 	sim.corpses.clear()
 	var corpse: Dictionary = sim.spawn_resource(10, sim.nathaniel.position)
-	sim.step(0)
+	sim.step(0.6)
 	_check(sim.nathaniel.has_corpse and sim.resources == 30, "Nathaniel carries without payment")
 	sim.nathaniel.position = Vector2(300, 242)
 	sim.step(20)
@@ -257,7 +257,7 @@ func _test_resources() -> void:
 	_check(restored.restore(JSON.parse_string(JSON.stringify(sim.snapshot()))), "Carried corpse JSON restore")
 	_check(restored.corpses[0].carried and restored.resources == 30, "Saved carry does not pay twice")
 	sim.nathaniel.position = sim.hermes.position
-	sim.step(0)
+	sim.step(0.6)
 	_check(sim.resources == 40 and sim.corpses.is_empty() and not sim.nathaniel.has_corpse, "Hermes delivery pays once")
 	sim.step(1)
 	_check(sim.resources == 40, "No double credit")
@@ -266,14 +266,15 @@ func _test_resources() -> void:
 	_check(sim.corpses.size() == 1, "Loose corpse exists before ten seconds")
 	sim.step(0.2)
 	_check(sim.corpses.is_empty(), "Loose corpse expires after ten seconds")
+	sim.nathaniel.position = Vector2(100, 100)
 	sim.spawn_resource(10, sim.hermes.position)
 	sim.step(0)
-	_check(sim.resources == 50, "Hermes also directly collects loose corpse")
+	_check(sim.resources == 40, "Hermes only consumes bundles fed by Nathaniel")
 	sim = _game()
 	sim.spawn_resource(10, sim.nathaniel.position)
-	sim.step(0)
+	sim.step(0.6)
 	sim.damage_entity(int(sim.nathaniel.id), 8000)
-	_check(not sim.corpses[0].carried and sim.corpses[0].expiration == 10.0, "Death drops corpse with reset expiry")
+	_check(not sim.corpses[0].carried and sim.corpses[0].disarmed and sim.corpses[0].expiration == 0.0, "Death drops a permanently disarmed corpse")
 
 func _test_combat() -> void:
 	var sim: GameSimulation = _game()
@@ -337,6 +338,7 @@ func _test_combat() -> void:
 	# Dead enemy projectiles persist; tower projectiles are removed on destruction.
 	sim = _game()
 	soldier = sim.spawn_enemy("soldier", Vector2(1000, 1000))
+	soldier.weapon = "gun" # Legacy saves can still contain travelling enemy shots.
 	soldier.cooldown = 0.8
 	_check(CombatRules.shoot(sim, soldier, Vector2(1200, 1000)), "Soldier projectile setup")
 	sim.damage_entity(int(soldier.id), 200)
@@ -553,6 +555,7 @@ func _test_targeting_and_update_order() -> void:
 	sim.hermes.position = Vector2(200, 200)
 	sim.hermes.hp = 25
 	var boss: Dictionary = sim.spawn_enemy("boss", Vector2(300, 200))
+	boss.weapon = "bow" # Exercise the legacy in-flight arrow ordering.
 	boss.hp = 25
 	boss.cooldown = 1.5
 	CombatRules.shoot(sim, boss, sim.hermes.position)

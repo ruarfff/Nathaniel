@@ -205,8 +205,8 @@ label = "Nathaniel"
 [node name="Soldier2" type="Marker2D" parent="Spawns"]
 position = Vector2(491, 1130.5)
 script = ExtResource("4")
-kind = "soldier"
-label = "Soldier"
+kind = "gunSoldier"
+label = "Gun soldier"
 
 [node name="Soldier3" type="Marker2D" parent="Spawns"]
 position = Vector2(618, 1050)
@@ -217,8 +217,8 @@ label = "Soldier"
 [node name="Soldier4" type="Marker2D" parent="Spawns"]
 position = Vector2(820, 931)
 script = ExtResource("4")
-kind = "soldier"
-label = "Soldier"
+kind = "gunSoldier"
+label = "Gun soldier"
 
 [node name="Soldier5" type="Marker2D" parent="Spawns"]
 position = Vector2(978, 848)
@@ -247,8 +247,8 @@ label = "Spawner"
 [node name="Soldier9" type="Marker2D" parent="Spawns"]
 position = Vector2(1889, 1309.5)
 script = ExtResource("4")
-kind = "soldier"
-label = "Soldier"
+kind = "gunSoldier"
+label = "Gun soldier"
 
 [node name="Soldier10" type="Marker2D" parent="Spawns"]
 position = Vector2(1731, 1386.5)
@@ -265,8 +265,8 @@ label = "Boss"
 [node name="Soldier12" type="Marker2D" parent="Spawns"]
 position = Vector2(970, 603)
 script = ExtResource("4")
-kind = "soldier"
-label = "Soldier"
+kind = "gunSoldier"
+label = "Gun soldier"
 
 [node name="Soldier13" type="Marker2D" parent="Spawns"]
 position = Vector2(217, 920.5)
@@ -277,8 +277,8 @@ label = "Soldier"
 [node name="Soldier14" type="Marker2D" parent="Spawns"]
 position = Vector2(1716, 1744)
 script = ExtResource("4")
-kind = "soldier"
-label = "Soldier"
+kind = "gunSoldier"
+label = "Gun soldier"
 
 [node name="Soldier15" type="Marker2D" parent="Spawns"]
 position = Vector2(2141, 1858.5)

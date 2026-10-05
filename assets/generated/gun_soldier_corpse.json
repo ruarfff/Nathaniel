@@ -1,0 +1,44 @@
+{
+  "source": "art/blender/sources/gun_soldier_corpse.blend",
+  "source_sha256": "00760bab0edbe268aa9c04c9dd463311c86e6419725a3d1073fc9913bb4e9c9c",
+  "settings_sha256": "07a344fdb8daeb6e1cd0d54263fd5fc4af187a6fdb84b05ea01b90d02169914b",
+  "blender_version": "5.2.2 LTS",
+  "python_version": "3.13.15",
+  "canvas": [
+    1024,
+    1024
+  ],
+  "anchor": [
+    512,
+    768
+  ],
+  "trimmed": false,
+  "logical_canvas": [
+    128,
+    128
+  ],
+  "logical_anchor": [
+    64,
+    96
+  ],
+  "render_density": 8,
+  "profile": "iron_ink",
+  "world_points_per_unit": 32,
+  "blender_xy_basis_pixels": [
+    [
+      -256,
+      128
+    ],
+    [
+      256,
+      128
+    ]
+  ],
+  "logical_xy_from_blender": [
+    "32 * Y",
+    "32 * X"
+  ],
+  "dependencies": [
+    "Blender (bundled bpy and Python standard library)"
+  ]
+}

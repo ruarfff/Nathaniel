@@ -27,6 +27,7 @@ damage. These events are transient and are not added to snapshots.
 | Editor/map setup | `spawn_enemy(kind, point)`, `place_map_tower(kind, point)` |
 | Weapon pickup setup | `spawn_weapon_pickup(weapon_id, point)`; level data accepts `weapon_pickups: [{weapon_id, position}]` |
 | Damage/setup | `damage_entity(id, amount, attacker_id)`, `spawn_resource(...)` |
+| Backpack | `return_to_hermes()`, `gathering_state()`, `gathering_upgrade_cost("capacity" / "reach")`, `upgrade_gathering(kind)` |
 | Pause | `set_paused(bool)` |
 | Save state | `snapshot()` returns JSON primitives; `restore(state)` rebuilds routes |
 | Visibility | `visibility_at(point)` returns 0 unexplored, 1 explored, 2 visible |
@@ -86,14 +87,31 @@ is retained in Git history at `824c8f1`. Current rules include:
 - Player shots update before enemy shots. Death rewards are immediate, and enemy
   shots continue after death. Victory cannot be replaced by a later lethal hit.
 - Hermes and tower lasers carry fractional damage. The spawner beam pays whole
-  seconds of damage. Each healing tick restores up to five HP to both Nathaniel
+  seconds of damage. Soldier and boss use `pulse_laser`: one instant 25-point
+  hit every 0.8 and 1.5 seconds respectively, at their existing ranges. The
+  0.18-second `firing` phase lets presentation show the pulse; it applies no
+  additional damage. The `laser` event includes a pulse flag and target contact
+  for lethal-hit feedback. Each healing tick restores up to five HP to both Nathaniel
   and Hermes if they are alive, injured, and strictly inside the tower's range.
   Healing ticks have a one-second interval; an idle tower stays ready to heal.
-- Only Soldiers leave corpses, worth ten resources. Loose corpses expire after
-  ten seconds. Carried corpses do not expire; Hermes contact credits them once.
+- `soldier` uses the pulse lance; `gunSoldier` uses travelling bullets at 450
+  points per second. Their other stats match. Both leave corpses worth ten
+  resources; `source_kind` preserves the matching death image through carrying
+  and saving. Armed corpses expire after ten seconds. The starter backpack
+  carries one body, collected within 44 points through timed grab/crush phases.
+  A successful grip permanently disarms a body, including after a later drop.
+  Expiry wins at the exact grip deadline. Expiry emits `corpse_expired` for a
+  presentation-only dissolve and removes the collectible matter immediately.
+  Hermes accepts bodies sequentially within 48 points
+  in either form; the completed feed credits once, followed by a furnace pulse.
+  Loose bodies do not credit Hermes directly. Movement before grip or during
+  delivery can cancel handling without losing or duplicating matter. Separate
+  capacity/reach upgrades survive respawn and saves. See
+  [resource gathering](../../docs/resource-gathering.md) for timings and balance.
 - Spawners produce at 30, 60, and 90 seconds, then every 120 seconds. Their child
   position adds `(240, -168)`. Wave intervals change strictly after 60, 120, 180,
-  and 240 seconds; the original weighted enemy distribution and edge offsets remain.
+  and 240 seconds; soldier selections split equally between laser and gun types.
+  Total soldier weight and the other enemy weights and edge offsets remain.
 - Navigation blocks diagonal corner cutting, retains circular tower clearance,
   replans when towers change, and preserves the collision/axis-slide fallback
   when a complete route is unavailable. Tower pursuit finds an attack position

@@ -1,7 +1,7 @@
 extends SceneTree
 ## Native clip playback and the generated character resource contract.
 
-const KINDS: Array[String] = ["nathaniel", "hermes", "grunt", "soldier", "boss"]
+const KINDS: Array[String] = ["nathaniel", "hermes", "grunt", "soldier", "gun_soldier", "boss"]
 
 var checks: int = 0
 var failures: int = 0

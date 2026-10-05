@@ -245,8 +245,8 @@ label = "Nathaniel"
 [node name="Soldier2" type="Marker2D" parent="Spawns"]
 position = Vector2(222, 832)
 script = ExtResource("4")
-kind = "soldier"
-label = "Soldier"
+kind = "gunSoldier"
+label = "Gun soldier"
 
 [node name="Soldier3" type="Marker2D" parent="Spawns"]
 position = Vector2(443, 735.5)
@@ -257,8 +257,8 @@ label = "Soldier"
 [node name="Soldier4" type="Marker2D" parent="Spawns"]
 position = Vector2(722, 691)
 script = ExtResource("4")
-kind = "soldier"
-label = "Soldier"
+kind = "gunSoldier"
+label = "Gun soldier"
 
 [node name="Spawner5" type="Marker2D" parent="Spawns"]
 position = Vector2(528, 866)

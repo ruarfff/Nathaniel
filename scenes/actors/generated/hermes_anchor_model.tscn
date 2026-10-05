@@ -9,7 +9,7 @@ ambient_light_energy = 0.35
 reflected_light_source = 1
 tonemap_mode = 0
 
-[node name="GunTowerModel" type="Node3D"]
+[node name="HermesAnchorModel" type="Node3D"]
 metadata/logical_canvas = Vector2i(128, 128)
 metadata/logical_ground_anchor = Vector2(64, 96)
 metadata/max_pixel_density = 8.0

@@ -35,6 +35,30 @@ the original rifle and no pending equip or manual shot. The envelope and snapsho
 schema stay at version 1. A spare-life respawn retains weapons; a fresh level
 uses its authored default loadout and pickups.
 
+Soldier and boss saves with the old `gun` or `bow` mechanism upgrade to
+`pulse_laser` while retaining their damage, range and elapsed cooldown. Already
+travelling projectiles finish normally. Current pulse saves retain their brief
+firing phase without replaying damage. The save format and schema are unchanged.
+
+The separate `gunSoldier` kind retains its projectile gun, cooldown and active
+bullets on load. Soldier corpses now save `source_kind` as `soldier` or
+`gunSoldier`, including when carried. Older corpses without this optional field
+use the default soldier image. Loading does not change delivery rewards.
+
+Backpack saves include reach and capacity, each body's handling phase and cargo
+slot, the return-to-Hermes command, and Hermes's remaining furnace time.
+In-flight collection and delivery resume without repeating a credit.
+Old saves receive the one-slot starter rack;
+extra carried bodies drop beside Nathaniel, permanently disarmed. Their
+values and source types remain intact. The envelope and schema stay at version 1.
+See [resource gathering](resource-gathering.md) for interruption and upgrade rules.
+
+Corpses save their remaining armed lifetime and permanent `disarmed` flag.
+Older held cargo loads as disarmed, including overflow dropped from the rack.
+Older loose bodies remain armed with their saved time remaining. Loading never
+resets that countdown. Expired bodies are absent from snapshots; the short
+dissolve effect is presentation-only and is not restored as collectible matter.
+
 ## Storage identity
 
 Keep `config/use_custom_user_dir=true`, `config/custom_user_dir_name="NathanielGodot"`, and the export bundle identifier `dev.ruarfff.nathaniel.godot`. Moving the project or renaming the displayed app does not require a new storage location. Changing the iOS bundle identifier creates a different app container. Native files retain envelope format `nathaniel-godot`, version `1`, and gameplay snapshot schema `1`. The slot filenames and settings/progress filenames are part of this compatibility contract.

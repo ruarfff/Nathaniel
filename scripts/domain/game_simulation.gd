@@ -160,11 +160,98 @@ func place_map_tower(kind: String, position: Vector2) -> Dictionary:
 	navigation.update_towers(entities)
 	return tower
 
-func spawn_resource(amount: int, position: Vector2, expiration: float = 10.0, carried: bool = false) -> Dictionary:
+func spawn_resource(amount: int, position: Vector2, expiration: float = GameBalance.RESOURCE_LIFETIME_SECONDS, carried: bool = false, source_kind: String = "soldier") -> Dictionary:
+	if amount <= 0 or not position.is_finite() or not is_finite(expiration) or source_kind not in ["soldier", "gunSoldier"]:
+		return {}
+	var cargo_slot: int = -1
+	var disarmed: bool = carried
+	if carried:
+		var occupied_slots: Array[int] = []
+		for existing: Dictionary in corpses:
+			if int(existing.cargo_slot) >= 0:
+				occupied_slots.append(int(existing.cargo_slot))
+		for slot: int in int(nathaniel.resource_capacity):
+			if slot not in occupied_slots:
+				cargo_slot = slot
+				break
+		position = nathaniel.position
+		carried = cargo_slot >= 0 and CombatRules.alive(nathaniel)
+		if not carried:
+			cargo_slot = -1
+		expiration = 0.0
 	var corpse: Dictionary = {"id": allocate_id(), "amount": amount,
-		"position": position, "expiration": expiration, "carried": carried}
+		"position": position, "expiration": expiration, "carried": carried, "disarmed": disarmed, "source_kind": source_kind,
+		"phase": "carry" if carried else "loose", "phase_elapsed": 0.0,
+		"cargo_slot": cargo_slot, "pickup_position": position}
 	corpses.append(corpse)
+	nathaniel.has_corpse = carried_resource_count() > 0
 	return corpse
+
+func carried_resource_count() -> int:
+	var count: int = 0
+	for corpse: Dictionary in corpses:
+		if corpse.carried:
+			count += 1
+	return count
+
+func gathering_state() -> Dictionary:
+	var carried: Dictionary = {}
+	for corpse: Dictionary in corpses:
+		if corpse.phase in ["grab", "crush", "present", "feed"]:
+			return _gathering_details(corpse)
+		if corpse.carried and carried.is_empty():
+			carried = corpse
+	return _gathering_details(carried) if not carried.is_empty() else {"phase": "idle", "elapsed": 0.0, "corpse_id": -1}
+
+func _gathering_details(corpse: Dictionary) -> Dictionary:
+	return {"phase": corpse.phase, "elapsed": corpse.phase_elapsed, "corpse_id": corpse.id,
+		"cargo_slot": corpse.cargo_slot, "source_kind": corpse.source_kind,
+		"pickup_position": corpse.pickup_position}
+
+func gathering_upgrade_cost(kind: String) -> int:
+	if nathaniel.is_empty():
+		return -1
+	var index: int = -1
+	var costs: Array[int] = []
+	if kind == "capacity":
+		index = GameBalance.RESOURCE_CAPACITIES.find(int(nathaniel.resource_capacity))
+		costs = GameBalance.RESOURCE_CAPACITY_COSTS
+	elif kind == "reach":
+		index = GameBalance.RESOURCE_REACHES.find(float(nathaniel.resource_reach))
+		costs = GameBalance.RESOURCE_REACH_COSTS
+	return costs[index] if index >= 0 and index < costs.size() else -1
+
+func upgrade_gathering(kind: String) -> bool:
+	var cost: int = gathering_upgrade_cost(kind)
+	if paused or result != "playing" or not CombatRules.alive(nathaniel) or not CombatRules.alive(hermes) or cost < 0 or resources < cost:
+		return false
+	if kind == "capacity":
+		nathaniel.resource_capacity = int(nathaniel.resource_capacity) + 1
+	else:
+		var index: int = GameBalance.RESOURCE_REACHES.find(float(nathaniel.resource_reach))
+		nathaniel.resource_reach = GameBalance.RESOURCE_REACHES[index + 1]
+	resources -= cost
+	emit_event("gathering_upgrade", {"kind": kind, "cost": cost, "position": nathaniel.position})
+	return true
+
+func return_to_hermes() -> bool:
+	if paused or result != "playing" or not CombatRules.alive(nathaniel) or not CombatRules.alive(hermes) or carried_resource_count() == 0:
+		return false
+	nathaniel.returning_cargo = true
+	_stop(nathaniel)
+	_update_cargo_return()
+	return true
+
+func _update_cargo_return() -> void:
+	if not nathaniel.returning_cargo:
+		return
+	if not CombatRules.alive(nathaniel) or not CombatRules.alive(hermes) or carried_resource_count() == 0:
+		nathaniel.returning_cargo = false
+		_stop(nathaniel)
+	elif Vector2(nathaniel.position).distance_to(hermes.position) <= GameBalance.RESOURCE_RETURN_DISTANCE:
+		_stop(nathaniel)
+	else:
+		_command_move(nathaniel, hermes.position, GameBalance.RESOURCE_RETURN_DISTANCE)
 
 func set_paused(value: bool) -> void:
 	paused = value
@@ -205,6 +292,7 @@ func step(delta: float) -> void:
 		return
 	elapsed_time += delta
 	# Preserve GameScene's player -> waves -> enemy -> corpse -> tower order.
+	_update_cargo_return()
 	if CombatRules.alive(nathaniel):
 		_move(nathaniel, delta)
 	_collect_weapon_pickups()
@@ -234,6 +322,8 @@ func step(delta: float) -> void:
 		if CombatRules.alive(unit):
 			_move(unit, delta)
 	BattlefieldRules.update_corpses(self, delta)
+	if nathaniel.returning_cargo and carried_resource_count() == 0:
+		_update_cargo_return()
 	for unit: Dictionary in entities.duplicate():
 		if unit.tower:
 			CombatRules.update_unit(self, unit, delta)
@@ -255,6 +345,7 @@ func move_to(destination: Vector2) -> void:
 	if paused or result != "playing" or not CombatRules.alive(nathaniel):
 		return
 	# Focusing Hermes only changes the camera. All ground commands move Nathaniel.
+	nathaniel.returning_cargo = false
 	nathaniel.manual_target_id = -1
 	nathaniel.manual_fire_target = null
 	_stop(nathaniel)
@@ -262,6 +353,7 @@ func move_to(destination: Vector2) -> void:
 
 func stop_player() -> void:
 	if not nathaniel.is_empty():
+		nathaniel.returning_cargo = false
 		_stop(nathaniel)
 
 func _stop(unit: Dictionary) -> void:
@@ -455,24 +547,23 @@ func damage_entity(id: int, amount: int, attacker_id: int = -1) -> void:
 	emit_event("death", {"kind": unit.kind, "position": unit.position})
 	if unit.enemy:
 		score += int(unit.score)
-		if unit.kind == "soldier":
-			spawn_resource(10, unit.position)
+		if unit.kind in ["soldier", "gunSoldier"]:
+			spawn_resource(10, unit.position, 10.0, false, unit.kind)
 		elif unit.kind == "boss" and level_number > 0 and level.get("has_boss", true) and result == "playing":
 			result = "victory"
 	elif unit.tower:
 		_destroy_tower(unit)
 	elif unit.kind == "hermes":
 		unit.anchored = false
+		BattlefieldRules.interrupt_delivery(self)
+		_update_cargo_return()
 		_dismantle_towers(false)
 		if result == "playing":
 			result = "gameOver"
 	elif unit.kind == "nathaniel":
 		unit.manual_fire_target = null
-		for corpse: Dictionary in corpses:
-			if corpse.carried:
-				corpse.carried = false
-				corpse.expiration = 10.0
-		unit.has_corpse = false
+		unit.returning_cargo = false
+		BattlefieldRules.drop_resources(self)
 		if result == "playing":
 			if lives > 0:
 				lives -= 1
@@ -487,6 +578,7 @@ func _respawn_player() -> void:
 	nathaniel.facing = Vector2(0, -1)
 	nathaniel.aim_direction = Vector2(0, -1)
 	nathaniel.manual_fire_target = null
+	nathaniel.returning_cargo = false
 	nathaniel.target_id = -1
 	nathaniel.manual_target_id = -1
 	_stop(nathaniel)
@@ -557,6 +649,8 @@ func restore(saved: Dictionary) -> bool:
 		return false
 	if not weapon_state_error(saved).is_empty():
 		return false
+	if not gathering_state_error(saved).is_empty():
+		return false
 	configure(saved.level)
 	entities.clear()
 	_by_id.clear()
@@ -570,6 +664,11 @@ func restore(saved: Dictionary) -> bool:
 	for data: Dictionary in saved.entities:
 		var unit: Dictionary = GameBalance.create(data.kind, int(data.id), point(data.position))
 		unit.merge(data, true)
+		if unit.kind in ["soldier", "boss"] and unit.weapon in ["gun", "bow"]:
+			unit.weapon = "pulse_laser"
+			unit.firing = false
+			unit.burst = 0.0
+			unit.pending_damage = 0.0
 		for key: String in ["position", "facing", "size"]:
 			unit[key] = point(unit[key])
 		for key: String in ["destination", "follow_destination"]:
@@ -603,9 +702,26 @@ func restore(saved: Dictionary) -> bool:
 		_next_id = maxi(_next_id, int(shot.id) + 1)
 	for data: Dictionary in saved.get("corpses", []):
 		var corpse: Dictionary = data.duplicate(true)
-		corpse.position = point(corpse.position)
-		corpses.append(corpse)
 		_next_id = maxi(_next_id, int(corpse.id) + 1)
+		corpse.disarmed = corpse.get("disarmed", corpse.carried)
+		if corpse.disarmed:
+			corpse.expiration = 0.0
+		elif float(corpse.expiration) <= 0:
+			continue
+		corpse.source_kind = corpse.get("source_kind", "soldier")
+		corpse.position = point(corpse.position)
+		corpse.pickup_position = point(corpse.get("pickup_position", corpse.position))
+		corpse.phase = corpse.get("phase", "carry" if corpse.carried else "loose")
+		corpse.phase_elapsed = float(corpse.get("phase_elapsed", 0.0))
+		corpse.cargo_slot = int(corpse.get("cargo_slot", carried_resource_count() if corpse.carried else -1))
+		if corpse.phase == "grab":
+			corpse.cargo_slot = -1
+		if not data.has("phase") and corpse.carried and int(corpse.cargo_slot) >= int(nathaniel.resource_capacity):
+			corpse.carried = false
+			corpse.phase = "loose"
+			corpse.position = nathaniel.position
+			corpse.cargo_slot = -1
+		corpses.append(corpse)
 	for data: Dictionary in saved.get("weapon_pickups", []):
 		var pickup: Dictionary = data.duplicate(true)
 		pickup.position = point(pickup.position)
@@ -642,13 +758,17 @@ func restore(saved: Dictionary) -> bool:
 			unit.moving = not unit.path.is_empty()
 	if int(nathaniel.hp) <= 0 and result == "playing":
 		# Old Swift pending respawns have already spent their spare life.
+		BattlefieldRules.drop_resources(self)
 		_respawn_player()
 	if int(hermes.hp) <= 0 and result == "playing":
 		result = "gameOver"
+	if not CombatRules.alive(hermes):
+		BattlefieldRules.interrupt_delivery(self)
 	nathaniel.has_corpse = false
 	for corpse: Dictionary in corpses:
 		if corpse.carried and CombatRules.alive(nathaniel):
 			nathaniel.has_corpse = true
+	_update_cargo_return()
 	BattlefieldRules.update_fog(self)
 	events.clear()
 	return true
@@ -667,6 +787,68 @@ static func state_id_error(state: Dictionary) -> String:
 			if used_ids.has(id):
 				return "Duplicate object ID: " + collection
 			used_ids[id] = true
+	return ""
+
+static func gathering_state_error(state: Dictionary) -> String:
+	var capacity: int = GameBalance.RESOURCE_CAPACITIES[0]
+	for item: Variant in state.get("entities", []):
+		if not item is Dictionary:
+			return "Invalid gathering entity"
+		if item.get("kind") == "nathaniel":
+			if not item.get("returning_cargo", false) is bool:
+				return "Invalid cargo return intent"
+			var stored_capacity: Variant = item.get("resource_capacity", capacity)
+			var stored_reach: Variant = item.get("resource_reach", GameBalance.RESOURCE_REACHES[0])
+			if not _finite_number(stored_capacity) or float(stored_capacity) != float(int(stored_capacity)) or stored_capacity not in GameBalance.RESOURCE_CAPACITIES:
+				return "Invalid resource capacity"
+			if not _finite_number(stored_reach) or stored_reach not in GameBalance.RESOURCE_REACHES:
+				return "Invalid resource reach"
+			capacity = int(stored_capacity)
+		if item.get("kind") == "hermes" and item.has("furnace_remaining"):
+			if not _finite_number(item.furnace_remaining) or float(item.furnace_remaining) < 0 or float(item.furnace_remaining) > GameBalance.RESOURCE_FURNACE_SECONDS:
+				return "Invalid furnace timer"
+	var slots: Array[int] = []
+	var active_count: int = 0
+	if not state.get("corpses", []) is Array:
+		return "Invalid gathering corpses"
+	for item: Variant in state.get("corpses", []):
+		if not item is Dictionary or not _finite_number(item.get("amount")) or float(item.amount) <= 0 or float(item.amount) != float(int(item.amount)):
+			return "Invalid resource amount"
+		if not item.get("carried") is bool or not _finite_number(item.get("expiration")):
+			return "Invalid resource ownership or expiry"
+		if not item.get("disarmed", item.carried) is bool or (item.carried and not item.get("disarmed", true)):
+			return "Invalid resource disarm state"
+		if not _weapon_point_valid(item.get("position")) or item.get("source_kind", "soldier") not in ["soldier", "gunSoldier"]:
+			return "Invalid resource position or source"
+		if not item.has("phase"):
+			for key: String in ["phase_elapsed", "cargo_slot", "pickup_position"]:
+				if item.has(key):
+					return "Incomplete gathering state"
+			continue
+		if item.phase not in ["loose", "grab", "crush", "carry", "present", "feed"]:
+			return "Invalid gathering phase"
+		if bool(item.carried) != (item.phase in ["crush", "carry", "present", "feed"]):
+			return "Resource phase conflicts with ownership"
+		if not _weapon_point_valid(item.get("pickup_position")):
+			return "Invalid gathering origin"
+		if not _finite_number(item.get("phase_elapsed")) or float(item.phase_elapsed) < 0 or float(item.phase_elapsed) > BattlefieldRules.phase_seconds(item.phase):
+			return "Invalid gathering timer"
+		if not _finite_number(item.get("cargo_slot")) or float(item.cargo_slot) != float(int(item.cargo_slot)):
+			return "Invalid cargo slot"
+		var slot: int = int(item.cargo_slot)
+		if item.phase == "loose":
+			if slot != -1:
+				return "Loose resource occupies cargo slot"
+		elif item.phase == "grab" and slot == -1:
+			pass
+		else:
+			if slot < 0 or slot >= capacity or slot in slots:
+				return "Invalid or duplicate occupied cargo slot"
+			slots.append(slot)
+		if item.phase in ["grab", "crush", "present", "feed"]:
+			active_count += 1
+	if active_count > 1:
+		return "Multiple gathering actions share one arm pair"
 	return ""
 
 static func weapon_state_error(state: Dictionary) -> String:

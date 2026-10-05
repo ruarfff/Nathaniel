@@ -2,15 +2,30 @@ class_name GameBalance
 extends RefCounted
 ## Shipped gameplay constants, independent of presentation and storage.
 
-const ENEMIES: Array[String] = ["grunt", "soldier", "boss", "spawner"]
+const ENEMIES: Array[String] = ["grunt", "soldier", "gunSoldier", "boss", "spawner"]
 const TOWERS: Array[String] = ["gunTower", "laserTower", "healTower"]
 const COSTS: Dictionary = {"gunTower": 5, "laserTower": 10, "healTower": 15}
 const HERMES_BUILD_RANGE: float = 240.0
+const RESOURCE_CAPACITIES: Array[int] = [1, 2, 3]
+const RESOURCE_CAPACITY_COSTS: Array[int] = [20, 40]
+const RESOURCE_REACHES: Array[float] = [44.0, 60.0, 76.0]
+const RESOURCE_REACH_COSTS: Array[int] = [15, 30]
+const RESOURCE_DELIVERY_REACH: float = 48.0
+const RESOURCE_RETURN_DISTANCE: float = 40.0
+const RESOURCE_GRAB_SECONDS: float = 0.28
+const RESOURCE_CRUSH_SECONDS: float = 0.32
+const RESOURCE_PRESENT_SECONDS: float = 0.22
+const RESOURCE_FEED_SECONDS: float = 0.38
+const RESOURCE_FURNACE_SECONDS: float = 0.55
+const RESOURCE_LIFETIME_SECONDS: float = 10.0
+const RESOURCE_WARNING_SECONDS: float = 3.0
+const RESOURCE_DISSOLVE_SECONDS: float = 0.6
 const HERMES_ANCHORED_WEAPON: Dictionary = {
 	"weapon": "gun", "damage": 80, "delay": 0.8, "range": 300.0, "shot_speed": 650.0,
 }
 const WEAPON_EQUIP_SECONDS: float = 0.35
 const WEAPON_PICKUP_RADIUS: float = 32.0
+const LASER_PULSE_SECONDS: float = 0.18
 const WEAPON_AIM_SPEED: float = TAU
 const WEAPON_AIM_TOLERANCE: float = PI / 180.0
 const WEAPONS: Dictionary = {
@@ -27,10 +42,13 @@ const STATS: Dictionary = {
 		"weapon": "blaster", "delay": 0.8, "damage": 25, "shot_speed": 450.0,
 		"size": Vector2(72, 33), "radius": 28.8, "score": 20},
 	"soldier": {"max_hp": 200, "speed": 40.0, "range": 300.0, "vision": 300.0,
+		"weapon": "pulse_laser", "delay": 0.8, "damage": 25, "shot_speed": 450.0,
+		"size": Vector2(60, 72), "radius": 24.0, "score": 30},
+	"gunSoldier": {"max_hp": 200, "speed": 40.0, "range": 300.0, "vision": 300.0,
 		"weapon": "gun", "delay": 0.8, "damage": 25, "shot_speed": 450.0,
 		"size": Vector2(60, 72), "radius": 24.0, "score": 30},
 	"boss": {"max_hp": 800, "speed": 60.0, "range": 500.0, "vision": 600.0,
-		"weapon": "bow", "delay": 1.5, "damage": 25, "shot_speed": 240.0,
+		"weapon": "pulse_laser", "delay": 1.5, "damage": 25, "shot_speed": 240.0,
 		"size": Vector2(80, 72), "radius": 32.0, "score": 100},
 	"spawner": {"max_hp": 1500, "speed": 0.0, "range": 350.0, "vision": 400.0,
 		"weapon": "spawner_laser", "delay": 3.5, "damage": 30,
@@ -71,7 +89,10 @@ static func create(kind: String, id: int, position: Vector2) -> Dictionary:
 	if kind == "nathaniel":
 		value.merge({"equipped_weapon_id": "rifle", "owned_weapon_ids": ["rifle"],
 			"aim_direction": Vector2(0, -1), "manual_fire_target": null,
-			"equip_ready_remaining": 0.0, "recovery_delay": value.delay})
+			"equip_ready_remaining": 0.0, "recovery_delay": value.delay,
+			"resource_capacity": RESOURCE_CAPACITIES[0], "resource_reach": RESOURCE_REACHES[0],
+			"returning_cargo": false})
 	elif kind == "hermes":
 		value.anchored = false
+		value.furnace_remaining = 0.0
 	return value

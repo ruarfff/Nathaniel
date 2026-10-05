@@ -8,6 +8,188 @@ of later code or assets.
 Test host: Apple M4 Pro (12 CPU cores), arm64 macOS, Xcode 26.6 (17F113),
 Godot 4.7.2 stable. Results are local measurements, not guarantees for other hardware.
 
+## Corpse self-destruct — 2026-10-04
+
+Soldier and Gun Soldier bodies warn during the final three seconds of their
+ten-second lifetime. Expiry removes their value and starts a 0.6-second visual
+dissolve. Successful grip permanently disarms the body; dropped cargo remains
+safe. Old held cargo loads as disarmed, and old loose bodies keep their saved
+deadline. Hermes still credits each accepted bundle once.
+
+`make test` passed the full regression suite and live MCP integration.
+Focused domain checks passed 159 assertions, gameplay passed 334 assertions,
+and services passed 327 checks. Coverage includes exact and split-step expiry
+boundaries, collection during warning, full capacity, interrupted grips, safe
+death drops, pause, save/load, old overflow cargo, and Swift save compatibility.
+
+Visual inspection found an initial shader texture multiplication that darkened
+the body. The corrected shader passed 467 rendered checks, including a pixel
+comparison against the original texture. Warning brightness, independent
+deadlines, disarm contact, pause, fog, dissolution, and effect cleanup are covered.
+The inspected comparison image is
+`test-artifacts/corpse-self-destruct-stages-4k.png`; regenerate it with
+`make art-resource-gathering`. It shows both warning phases, dissolution, and
+safe cargo at normal zoom on sand and dark rubble. This is scripted rendering.
+
+The final `make test-resource-gathering` passed 159 domain, 36 control,
+429 headless visual, and 467 rendered checks. Formatting and diff whitespace
+checks passed. macOS release and unsigned iOS exports passed after the shader
+correction. Real mouse and keyboard input in the macOS release loaded an
+isolated fixture, paused and resumed play, moved Nathaniel to a body, and
+collected it. The bundle remained in cargo past its original deadline. An
+unattended body expired without credit. Clicking Deliver cargo emptied the
+rack and changed resources from 30 to 40 once through deployed Hermes.
+
+iOS runtime and touch remain unverified. The exported arm64 Simulator library
+contains Node2D but omits Node3D, MeshInstance3D, and Camera3D; the installed
+custom template cannot run the current live models. No performance or physical
+device checks were run.
+
+## Resource gathering — 2026-10-04
+
+Nathaniel's backpack now grabs, crushes and stores bodies in a visible rack.
+It presents and feeds one bundle at a time into mobile or deployed Hermes.
+Resources become available when Hermes accepts the bundle; the furnace then
+pulses before accepting another. Separate capacity and reach upgrades, cargo
+status and a return-to-Hermes command complete the loop. Current timings and
+provisional upgrade prices are in [resource gathering](resource-gathering.md).
+
+The final `make test` passed all regression suites, Python tooling and live MCP
+integration. Gathering checks passed 108 domain, 36 control and 415 headless
+visual assertions. The rendered visual suite passed 450 assertions. Coverage
+includes credit timing, interrupted collection and delivery, death, expiry,
+legacy and in-flight saves, upgrades, return to moving Hermes, pause, all eight
+headings, three cargo slots, maximum arm reach and both intake heights.
+Formatting and diff whitespace checks passed.
+
+Blender verification passed for all three saved sources. It checked 117 added
+parts, preserved original geometry and transforms, matching export hashes and
+idempotent migration. The inspected scripted captures are
+`test-artifacts/resource-gathering-stages-4k.png` and
+`test-artifacts/resource-gathering-{carry,feed,consume}-gameplay-4k.png`.
+Regenerate them with `make art-resource-gathering`. They use isolated storage;
+the gameplay images use the actual level scene.
+
+Final macOS release and unsigned iOS project exports passed. Real mouse and
+keyboard input in an isolated macOS Survival session verified movement, pause,
+Build, camera focus and buying a cargo slot. A second native check loaded an
+isolated three-bundle fixture into the final release. Clicking Deliver cargo
+returned all bundles to mobile Hermes, changed cargo from 3/3 to 0/3 and raised
+resources from 30 to 60. Building a gun tower then spent five resources and
+deployed Hermes. Both native sessions exited without engine/script errors.
+The fixture establishes native delivery input; collection is covered by the
+automated domain and rendered checks.
+
+iOS runtime and touch remain unverified. The exported Simulator library has
+arm64 and x86_64 slices, but its arm64 symbols include Node2D and omit Node3D,
+MeshInstance3D and Camera3D: the available custom template has 3D disabled.
+No hardware-device or performance measurements were taken.
+
+## Live laser tower — 2026-10-04
+
+The saved laser tower now has a live yaw/tilt head, side bearings and a cyan
+lens. Its beam uses the shared laser effects and starts at the transformed
+lens marker. The pedestal stays fixed. Cost, range, damage, burst duration,
+recovery, placement and Hermes ownership rules are unchanged.
+
+`make test-laser-tower` passed 213 headless and 229 rendered checks. These cover
+16 headings at close and maximum range, low-target pitch, muzzle/contact
+alignment, fixed-base transforms, no ballistic recoil, render bounds, damage
+timing, JSON save restoration, pause, fog, lethal feedback, retargeting, tower
+destruction and normal construction/refund rules. The source migration was
+rerun and left the saved source unchanged. Export retained its source hash.
+
+The final `make test` passed all regression suites and live MCP integration.
+The first run passed all presentation assertions but reported a resource still
+in use during shutdown. A diagnostic rerun and the final full run exited cleanly;
+the transient shutdown failure was not reproduced. Formatting and diff
+whitespace checks passed.
+
+`make art-laser-tower` produces the inspected scripted captures
+`test-artifacts/laser-tower-gameplay.png` and
+`test-artifacts/laser-tower-turned.png` from the actual Survival scene with
+isolated storage. These show two target directions and attached contact effects.
+
+macOS release and unsigned iOS project exports passed. The macOS release ran
+Survival with isolated storage. Real keyboard input opened Build; real mouse
+input selected and placed the laser tower. The visible result spent ten
+resources, deployed Hermes and connected the tower with a cable. Later native
+screen captures returned blank images, so further native combat and pause
+inspection is unverified. The app closed normally without engine/script errors.
+
+iOS runtime and touch remain unverified: the available custom Simulator template
+has 3D disabled. No performance measurements were taken.
+
+## Soldier weapon variants — 2026-10-04
+
+`gunSoldier` adds a travelling-bullet soldier beside the existing laser soldier.
+Its barrel and magazine use a separate saved live model, with walk clips,
+aiming and recoil. Both soldier types retain the same health, speed, range,
+damage, shot interval, score and ten-resource corpse reward. Each corpse uses
+its matching weapon image and keeps its type when carried or saved.
+
+Campaign 1 contains six of each type, campaign 2 contains five of each, and
+campaign 3 contains two gun and three laser soldiers. Original enemy positions,
+counts, terrain and level rules remain unchanged. Wave modes split soldier
+selections equally between both types without changing total soldier weight.
+
+`make test` passed the full regression suite, including native content,
+gameplay, persistence, presentation, Python tooling and live MCP checks. The
+focused soldier suite passed 64 headless and 72 rendered assertions. It checks
+projectile travel and damage, laser damage, cooldown and range, save restoration,
+corpse identity and delivery, mixed campaign and wave encounters, repeatable
+wave restoration, and eight gun headings with recoil and muzzle attachment.
+Later turns cannot move an already emitted bullet. Both death images passed
+the static art checks; gun sprites passed the animated art checks.
+
+The asset preparation command was rerun without changing completed sources.
+Source hashes match the final export metadata. The inspected scripted captures
+are `test-artifacts/soldier-variants-gameplay.png` and
+`test-artifacts/soldier-corpses-gameplay.png`; regenerate them with
+`make art-soldiers`. These use the actual Survival scene with isolated storage.
+
+macOS release and unsigned iOS project exports passed. The macOS release ran
+campaign 1 with isolated storage. Real mouse input moved Nathaniel through the
+map, with Hermes following and the new corpse art visible after combat. Keyboard
+S stopped Nathaniel; Escape opened Pause. The process exited without engine or
+script errors. Formatting and diff whitespace checks passed.
+
+iOS runtime and touch remain unverified because the available custom Simulator
+template has 3D disabled. No performance measurements were taken.
+
+## Enemy mounted lasers — 2026-10-04
+
+Soldier, boss and spawner now use live mounted laser models from their saved
+Blender sources. Soldier and boss turn toward the target and fire instant
+pulses with their existing damage, range and shot interval. The spawner body
+stays fixed while its crown tracks the target. Boss crest plates open during
+fire. Each beam starts at the moving muzzle and uses a separate laser style.
+
+`make test` passed the full headless regression suite, Python tooling and live
+MCP checks. The final focused rendered enemy suite passed 171 assertions. These
+cover eight aim directions, close targets, pause, muzzle and contact alignment,
+boss shutters, pulse timing, lethal hits, death cleanup and saved pulse phases.
+Legacy gun/bow saves upgrade without replaying damage; existing travelling shots
+still finish. Formatting and diff whitespace checks passed.
+
+Blender verification passed migration idempotence, preservation of edited body
+geometry and walk poses, and 576 muzzle-clearance rays across three models,
+16 headings, four walk frames and three target distances. Source and GLB hashes
+match their export metadata. Scripted Survival captures show each live weapon
+firing and the boss crest closed; regenerate them with `make art-enemy-lasers`.
+The images are under `test-artifacts/*-laser-gameplay.png` and
+`test-artifacts/boss-laser-closed.png`. They use isolated storage and establish
+rendered behavior, not real input.
+
+macOS release and unsigned iOS project exports passed after the final model and
+contact-height changes. Real mouse and keyboard input in the macOS release
+verified ground movement, Hermes following and Escape opening Pause. Native
+captures were intermittently blank; fitting the window restored the pause
+capture. The isolated playtest exited without engine or script errors.
+
+iOS runtime and physical touch/pinch remain unverified. The available custom
+Simulator template has 3D disabled. No performance measurements were taken.
+
 ## Hermes shoulder laser — 2026-10-04
 
 Mobile Hermes uses a live shoulder pod with independent yaw and tilt. The amber

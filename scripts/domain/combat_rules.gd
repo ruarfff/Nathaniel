@@ -65,6 +65,9 @@ static func update_unit(sim: GameSimulation, unit: Dictionary, delta: float) -> 
 	if unit.weapon == "laser" or unit.weapon == "spawner_laser":
 		_laser(sim, unit, target, delta)
 		return
+	if unit.weapon == "pulse_laser":
+		_pulse_laser(sim, unit, target, delta)
+		return
 	unit.cooldown = float(unit.cooldown) + delta
 	if unit.kind == "nathaniel":
 		_update_player_weapon(sim, unit, target, delta)
@@ -72,6 +75,22 @@ static func update_unit(sim: GameSimulation, unit: Dictionary, delta: float) -> 
 	if alive(target) and distance(unit, target) <= float(unit.range):
 		unit.facing = (Vector2(target.position) - Vector2(unit.position)).normalized()
 		shoot(sim, unit, target.position)
+
+static func _pulse_laser(sim: GameSimulation, unit: Dictionary, target: Dictionary, delta: float) -> void:
+	unit.cooldown = float(unit.cooldown) + delta
+	unit.burst = float(unit.burst) + delta
+	unit.firing = bool(unit.firing) and float(unit.burst) < GameBalance.LASER_PULSE_SECONDS
+	if not alive(target) or distance(unit, target) > float(unit.range):
+		return
+	unit.facing = (Vector2(target.position) - Vector2(unit.position)).normalized()
+	if float(unit.cooldown) + 0.00000001 < float(unit.delay):
+		return
+	unit.cooldown = 0.0
+	unit.burst = 0.0
+	unit.firing = true
+	sim.emit_event("laser", {"owner_id": unit.id, "position": unit.position, "pulse": true,
+		"target_id": target.id, "target_position": target.position, "target_kind": target.kind})
+	sim.damage_entity(int(target.id), int(unit.damage), int(unit.id))
 
 static func ready_to_shoot(unit: Dictionary) -> bool:
 	if not alive(unit) or unit.weapon not in ["gun", "blaster", "bow"]:

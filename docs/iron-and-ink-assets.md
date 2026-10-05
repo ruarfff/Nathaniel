@@ -196,6 +196,44 @@ Adding a new gameplay kind still follows the [actor authoring steps](authoring.m
 Walking cycles, multiple barrels, and vertical aiming need additional rig support;
 assigning this model does not add those animations.
 
+## Live laser tower
+
+The laser tower uses its saved 3D head in normal gameplay. The head turns toward
+the target and tilts to the enemy's contact height. The folding pedestal stays
+fixed. A cyan lens marks the firing point; the cyan-white beam starts there,
+with a short aperture flash, a contact glow and repeated sparks. Laser firing
+does not use gun recoil. The shared `LaserVisual` resource controls these effects.
+
+Combat keeps the existing ten-resource cost, 350-point range, 20 damage per
+second, 1.5-second burst and 3.5-second recovery. Pause freezes damage and beam
+effects. Losing the target or removing the tower ends the beam. Save/load keeps
+the firing phase and direction, then rebuilds the visual connection.
+
+Edit `art/blender/sources/laser_tower.blend`, then export the saved source:
+
+```sh
+rtk make art-render ASSET=laser_tower
+rtk make test-laser-tower
+rtk make art-laser-tower
+```
+
+The rig is `AimPivot > PitchPivot > Recoil > Muzzle`. `AimPivot` stays at the
+bearing; `PitchPivot` sits directly above it at the lens height. Keep controls at
+zero rotation and unit scale. Keep `Recoil` at zero location and `Muzzle` on
+local +X, at the lens opening. The side supports turn with yaw; the saved head
+tilts with pitch. The PNG remains the static fallback.
+
+For an older unmodified source, run
+`rtk sh tools/blender.sh rig-laser-tower laser_tower` once. This explicit migration
+retains the saved geometry, adds tilt supports, raises the head for clearance,
+and changes the lens to cyan. It rejects partial rigs. Repeating it on a complete
+rig leaves the source unchanged. Normal rendering does not run the migration.
+
+`resources/actors/laser_tower.tres` selects the model and
+`resources/weapons/tower_laser.tres` selects the beam appearance. `ActorModelView`
+uses the same yaw/tilt calculation as mounted lasers. `WorldEffects` reads the
+live muzzle after aiming; neither presentation component applies damage.
+
 ## Healing tower lights
 
 The healing tower keeps its Blender-rendered PNG and fixed pedestal. Its three

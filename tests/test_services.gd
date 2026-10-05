@@ -60,6 +60,16 @@ func _test_legacy() -> void:
 	_check(restored_weapons.restore(state), "Swift state restores through current weapon defaults")
 	_check(restored_weapons.nathaniel.equipped_weapon_id == "rifle" and restored_weapons.nathaniel.owned_weapon_ids == ["rifle"], "Swift import starts with the original rifle only")
 	_check(restored_weapons.nathaniel.equip_ready_remaining == 0.0 and restored_weapons.nathaniel.aim_direction == restored_weapons.nathaniel.facing and restored_weapons.weapon_pickups.is_empty(), "Swift import defaults aim and equip state without adding pickups")
+	_check(restored_weapons.corpses[0].disarmed and restored_weapons.corpses[0].expiration == 0, "Imported held cargo is permanently disarmed")
+	var pending_respawn: Dictionary = _swift_fixture()
+	pending_respawn.nathaniel.currentHP = 0
+	var pending_state: Dictionary = LegacyImport.convert(pending_respawn, _level()).state
+	_check(pending_state.corpses[0].disarmed and pending_state.corpses[0].carried, "Swift pending respawn preserves original held cargo disarm state")
+	_check(restored_weapons.restore(pending_state) and restored_weapons.corpses[0].disarmed and restored_weapons.corpses[0].expiration == 0, "Swift pending respawn restores safe cargo")
+	pending_respawn.battlefieldResources[0].isCarried = false
+	pending_respawn.battlefieldResources[0].timeToExpiration = 2.5
+	pending_state = LegacyImport.convert(pending_respawn, _level()).state
+	_check(restored_weapons.restore(pending_state) and not restored_weapons.corpses[0].disarmed and restored_weapons.corpses[0].expiration == 2.5, "Swift loose body retains its saved warning deadline")
 	for patch: Dictionary in [{"projectiles": ["bad"]}, {"fog": [3]}, {"entities": [{"id": 1}]}, {"resources": 0.5}, {"rng_state": {}}]:
 		var invalid := state.duplicate(true)
 		invalid.merge(patch, true)

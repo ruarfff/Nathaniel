@@ -174,7 +174,7 @@ func _sync_views() -> void:
 		var id: int = entity.id
 		live[id] = true
 		if not views.has(id):
-			var kind: String = {"gunTower": "gun_tower", "laserTower": "laser_tower", "healTower": "heal_tower"}.get(entity.kind, entity.kind)
+			var kind: String = {"gunTower": "gun_tower", "laserTower": "laser_tower", "healTower": "heal_tower", "gunSoldier": "gun_soldier"}.get(entity.kind, entity.kind)
 			var path := "res://scenes/actors/%s.tscn" % kind
 			if not ResourceLoader.exists(path):
 				continue
@@ -190,6 +190,11 @@ func _sync_views() -> void:
 		if not live.has(id):
 			views[id].queue_free()
 			views.erase(id)
+	if views.has(int(sim.nathaniel.id)):
+		var player_view: ActorView = views[int(sim.nathaniel.id)]
+		player_view.sync_gathering(sim.corpses, sim.nathaniel, sim.hermes, views.get(int(sim.hermes.id)) as ActorView)
+	if views.has(int(sim.hermes.id)):
+		(views[int(sim.hermes.id)] as ActorView).sync_intake(sim.corpses, sim.nathaniel, sim.hermes)
 	_sync_pickup_views()
 	effects.sync_projectiles(views)
 	effects.sync_lasers(views)
@@ -266,16 +271,13 @@ func world_click(screen: Vector2) -> void:
 		if entity.kind == "nathaniel":
 			command("focus", "nathaniel")
 		elif entity.kind == "hermes":
-			if sim.nathaniel.get("has_corpse", false) and sim.hermes_mode == "building":
-				_move_nathaniel(entity.position)
-				effects.pulse_delivery(entity.position)
-				if not sim.nathaniel.direct_movement:
-					ui.show_notice("Returning resources to Hermes.")
+			if sim.nathaniel.get("has_corpse", false):
+				command("deliver")
 			else:
-				ui.show_notice("Use Build to place towers, or Stop / Follow to direct Hermes.")
+				ui.show_notice("Collect a body, then return here to feed Hermes. Build opens towers and backpack upgrades.")
 		elif entity.kind == "healTower":
 			ui.show_notice("Healing range shown. Heals injured Nathaniel and Hermes.")
-		elif entity.kind in ["grunt", "soldier", "boss", "spawner"]:
+		elif entity.kind in GameBalance.ENEMIES:
 			if sim.visibility_at(entity.position) != 2:
 				ui.show_notice("Target is out of sight.")
 				return
@@ -467,6 +469,15 @@ func _game_command(action: String, value: Variant) -> void:
 	if sim == null or not ui.menu.is_empty() or sim.paused:
 		return
 	match action:
+		"deliver":
+			if sim.return_to_hermes():
+				_set_build_open(false)
+				effects.pulse_delivery(sim.hermes.position)
+				ui.show_notice("No clear route to Hermes. Clear a path, then deliver again." if sim.nathaniel.direct_movement else "Returning cargo to Hermes.")
+		"upgrade_gathering":
+			if sim.upgrade_gathering(String(value)):
+				ui.show_notice("Backpack holds %d bodies." % sim.nathaniel.resource_capacity if value == "capacity" else "Backpack arms now reach farther.")
+				ui.update_game(sim, fog.enabled)
 		"equip_weapon":
 			if sim.equip_weapon(String(value)):
 				ui.update_game(sim, fog.enabled)

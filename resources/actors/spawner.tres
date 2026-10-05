@@ -3,8 +3,13 @@
 [ext_resource type="Script" path="res://scripts/presentation/actors/actor_visual.gd" id="1"]
 [ext_resource type="Texture2D" path="res://assets/generated/spawner.png" id="2"]
 
+[ext_resource type="PackedScene" path="res://scenes/actors/generated/spawner_model.tscn" id="3"]
+[ext_resource type="Resource" path="res://resources/weapons/spawner_laser.tres" id="4"]
+
 [resource]
 script = ExtResource("1")
+model_scene = ExtResource("3")
+laser = ExtResource("4")
 texture = ExtResource("2")
 columns = 1
 rows = 1

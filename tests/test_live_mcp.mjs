@@ -49,6 +49,8 @@ try {
   await action('spawnEnemy', { type: 'soldier', x: '100', y: '100' });
   const spawned = await call('game_state');
   check(spawned.enemyCount === initial.enemyCount + 1, 'Repeatable enemy setup works while paused');
+  await action('spawnEnemy', { type: 'gunSoldier', x: '160', y: '100' });
+  check((await call('game_state')).enemyCount === initial.enemyCount + 2, 'Projectile soldier setup coexists with laser soldiers');
   await action('addResources', { amount: '12' });
   check((await call('game_state')).resources === initial.resources + 12, 'Resource setup updates exact state');
   await action('healPlayer');

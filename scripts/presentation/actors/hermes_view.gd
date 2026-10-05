@@ -138,3 +138,17 @@ func weapon_muzzle(direction: Vector2, weapon_id: String = "") -> Vector2:
 	if not _anchored or model_view == null:
 		return Vector2.INF
 	return model_view.weapon_muzzle(direction, weapon_id) + visual.feet_offset
+
+
+func gathering_model() -> ActorModelView:
+	return model_view if _anchored else mobile_model_view
+
+
+func sync_intake(corpses: Array, nathaniel: Dictionary, hermes: Dictionary) -> void:
+	super.sync_intake(corpses, nathaniel, hermes)
+	if mobile_model_view != null and mobile_model_view.gathering_view != null:
+		mobile_model_view.gathering_view.sync(corpses, nathaniel, hermes, null)
+	var inactive: ActorModelView = mobile_model_view if _anchored else model_view
+	if inactive != null and inactive.gathering_view != null and inactive.gathering_view.intake_bundle != null:
+		inactive.gathering_view.intake_bundle.hide()
+		inactive.refresh_pose()

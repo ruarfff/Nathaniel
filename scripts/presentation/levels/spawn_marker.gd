@@ -4,7 +4,7 @@ extends Marker2D
 ## Move this marker in the 2D editor. Its position is projected presentation space.
 ## Gameplay reads the inverse projection, preserving original Swift coordinates.
 
-@export_enum("nathaniel", "hermes", "grunt", "soldier", "boss", "spawner", "gunTower", "laserTower", "healTower", "objective", "weaponPickup") var kind: String = "soldier":
+@export_enum("nathaniel", "hermes", "grunt", "soldier", "gunSoldier", "boss", "spawner", "gunTower", "laserTower", "healTower", "objective", "weaponPickup") var kind: String = "soldier":
 	set(value):
 		kind = value
 		queue_redraw()

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="LaserVisual" format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/actors/laser_visual.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+edge_color = Color(0.23, 0.84, 0.96, 1)
+core_color = Color(0.88, 1, 1, 1)
+edge_width = 3.2
+core_width = 1.1
+contact_radius = 3.0
+spark_length = 7.0
+spark_duration = 0.14
+spark_interval = 0.28
+muzzle_flash_duration = 0.09

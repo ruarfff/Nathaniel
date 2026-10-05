@@ -441,7 +441,7 @@ func _test_delivery_feedback(app: GameApp) -> void:
 	app.command("focus", "nathaniel")
 	var wallet := app.sim.resources
 	app.sim.spawn_resource(10, app.sim.nathaniel.position)
-	app.sim.step(0)
+	BattlefieldRules.update_corpses(app.sim, 0.7)
 	check(app.sim.nathaniel.has_corpse and app.sim.resources == wallet, "Delivery feedback fixture collects a corpse without crediting the wallet")
 	app.command("pause")
 	app.world_click(hermes_click)
@@ -457,13 +457,13 @@ func _test_delivery_feedback(app: GameApp) -> void:
 	app.sim.set_paused(false)
 	app.command("follow")
 	app.world_click(hermes_click)
-	check(app.sim.focused_character == "nathaniel" and not app.ui.build_open and app.effects.delivery_pulse_time == 0 and app.sim.nathaniel.destination == null, "Clicking following Hermes cannot select him or start stopped-Hermes delivery")
+	check(app.sim.focused_character == "nathaniel" and not app.ui.build_open and app.effects.delivery_pulse_time > 0 and app.sim.nathaniel.destination == app.sim.hermes.position, "Clicking following Hermes returns cargo without deploying him")
 	app.command("hermes_stop")
 	app.command("focus", "nathaniel")
 	app.world_click(hermes_click)
 	check(app.sim.focused_character == "nathaniel" and app.sim.nathaniel.destination == app.sim.hermes.position, "Delivery click keeps Nathaniel selected and commands movement to Hermes")
 	check(app.effects.delivery_pulse_position == app.sim.hermes.position and app.effects.delivery_pulse_time == app.effects.delivery_pulse_lifetime, "Delivery order starts a full pulse at Hermes")
-	check(app.sim.resources == wallet and app.sim.nathaniel.has_corpse and app.ui.get_node("%Notice").text == "Returning resources to Hermes.", "Delivery acknowledgement states the pending action without crediting resources early")
+	check(app.sim.resources == wallet and app.sim.nathaniel.has_corpse and app.ui.get_node("%Notice").text == "Returning cargo to Hermes.", "Delivery acknowledgement states the pending action without crediting resources early")
 	app.effects._process(app.effects.delivery_pulse_lifetime * 0.5)
 	check(app.effects.delivery_pulse_time > 0 and app.effects.delivery_pulse_time < app.effects.delivery_pulse_lifetime, "Delivery pulse fades over time")
 	app.world_click(hermes_click)
@@ -472,7 +472,7 @@ func _test_delivery_feedback(app: GameApp) -> void:
 	check(app.effects.delivery_pulse_time == 0 and app.sim.resources == wallet, "Delivery pulse expires without changing the resource wallet")
 	app.command("build")
 	app.world_click(hermes_click)
-	check(app.sim.focused_character == "hermes" and app.ui.build_open and app.sim.nathaniel.destination == app.sim.hermes.position and app.effects.delivery_pulse_time == app.effects.delivery_pulse_lifetime, "Stopped-Hermes delivery still works in Build view without changing camera mode")
+	check(app.sim.focused_character == "nathaniel" and not app.ui.build_open and app.sim.nathaniel.destination == app.sim.hermes.position and app.effects.delivery_pulse_time == app.effects.delivery_pulse_lifetime, "Delivery from Build returns the camera to the cargo carrier")
 	app.command("main")
 	app.fog.enabled = app.settings.fog_enabled
 

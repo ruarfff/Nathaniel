@@ -31,6 +31,10 @@ Hermes positions/health, enemy/tower counts, and Hermes `following`/`independent
 mode. State also includes engine, scene size, entity details, camera zoom, and a
 `coordinateSystem` description.
 
+The `gathering` state reports `phase`, `cargoCount`, `capacity`, `reach`, and
+`furnaceRemaining`. Cargo is separate from spendable `resources`. Backpack
+upgrades and Deliver cargo use the same discoverable HUD buttons as real input.
+
 - State positions and `spawnEnemy` x/y are **logical world pixels, y up**.
 - `/nodes` bounds and `/tap`/`swipe` input are **viewport pixels, origin top-left**.
 - Rendering projects logical coordinates into the isometric world and camera.
@@ -43,8 +47,9 @@ mouse, keyboard, or touch recognition.
 `/actions` exposes `loadLevel` (0–5), `mainMenu`, `pause`, `resume`, `spawnEnemy`,
 `killAllEnemies`, `healPlayer`, `addResources`, and `setHermesMode`; menus expose
 only navigation. Parameters are strings. Setup retains its established action
-names and parameter fields. Ordinary enemy death handling still applies, so
-`killAllEnemies` can complete a campaign level and record progress. Use survival
+names and parameter fields. `spawnEnemy` accepts `grunt`, `soldier` (laser),
+`gunSoldier` (projectile), `boss`, and `spawner`. Ordinary enemy death handling
+still applies, so `killAllEnemies` can complete a campaign level and record progress. Use survival
 and `--storage-dir` for fixtures.
 
 The transport supports fragmented requests and one response per connection,

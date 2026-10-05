@@ -2,31 +2,152 @@ class_name BattlefieldRules
 extends RefCounted
 ## Corpse delivery, fog and original time-based wave/spawner cadence.
 
+# Repeated frame subtraction can leave a tiny residue at a shared deadline.
+const TIMER_EPSILON: float = 0.000000000001
+
 static func update_corpses(sim: GameSimulation, delta: float) -> void:
+	if not CombatRules.alive(sim.nathaniel):
+		drop_resources(sim)
+	var remaining: float = delta
+	while true:
+		var active: Dictionary = _prepare_gathering(sim)
+		var tick: float = remaining
+		if not active.is_empty():
+			tick = minf(tick, maxf(0.0, phase_seconds(active.phase) - float(active.phase_elapsed)))
+		if float(sim.hermes.furnace_remaining) > 0:
+			tick = minf(tick, float(sim.hermes.furnace_remaining))
+		for corpse: Dictionary in sim.corpses:
+			if not corpse.disarmed:
+				tick = minf(tick, maxf(0.0, float(corpse.expiration)))
+		for corpse: Dictionary in sim.corpses.duplicate():
+			if corpse.carried:
+				corpse.position = sim.nathaniel.position
+			if not corpse.disarmed:
+				corpse.expiration = float(corpse.expiration) - tick
+				if float(corpse.expiration) <= TIMER_EPSILON:
+					sim.emit_event("corpse_expired", {"corpse_id": corpse.id,
+						"source_kind": corpse.source_kind, "position": corpse.position,
+						"elapsed_since_expiry": maxf(0.0, remaining - tick)})
+					sim.corpses.erase(corpse)
+					if corpse == active:
+						active = {}
+		sim.hermes.furnace_remaining = maxf(0.0, float(sim.hermes.furnace_remaining) - tick)
+		if not active.is_empty():
+			active.phase_elapsed = float(active.phase_elapsed) + tick
+			if float(active.phase_elapsed) + TIMER_EPSILON >= phase_seconds(active.phase):
+				_finish_gathering_phase(sim, active)
+		remaining -= tick
+		if remaining <= 0:
+			break
+	_update_carry_flag(sim)
+
+static func phase_seconds(phase: String) -> float:
+	match phase:
+		"grab": return GameBalance.RESOURCE_GRAB_SECONDS
+		"crush": return GameBalance.RESOURCE_CRUSH_SECONDS
+		"present": return GameBalance.RESOURCE_PRESENT_SECONDS
+		"feed": return GameBalance.RESOURCE_FEED_SECONDS
+	return 0.0
+
+static func _set_phase(sim: GameSimulation, corpse: Dictionary, phase: String) -> void:
+	corpse.phase = phase
+	corpse.phase_elapsed = 0.0
+	sim.emit_event("gathering_phase", {"corpse_id": corpse.id, "phase": phase,
+		"source_kind": corpse.source_kind, "position": corpse.position})
+
+static func _prepare_gathering(sim: GameSimulation) -> Dictionary:
 	var player: Dictionary = sim.nathaniel
-	var robot: Dictionary = sim.hermes
-	for corpse: Dictionary in sim.corpses.duplicate():
-		if not corpse.carried and CombatRules.alive(player) and overlaps(corpse.position, Vector2(70, 60), player.position, player.size):
-			corpse.carried = true
+	var can_deliver: bool = CombatRules.alive(player) and CombatRules.alive(sim.hermes) and Vector2(player.position).distance_to(sim.hermes.position) <= GameBalance.RESOURCE_DELIVERY_REACH
+	var cargo_count: int = 0
+	var delivery: Dictionary = {}
+	var nearest: Dictionary = {}
+	var nearest_distance: float = INF
+	for corpse: Dictionary in sim.corpses:
 		if corpse.carried:
-			if CombatRules.alive(player):
-				corpse.position = player.position
-			else:
-				corpse.carried = false
-				corpse.expiration = 10.0
-		if not corpse.carried:
-			corpse.expiration = float(corpse.expiration) - delta
-		if float(corpse.expiration) <= 0:
-			sim.corpses.erase(corpse)
-		elif CombatRules.alive(robot) and overlaps(corpse.position, Vector2(70, 60), robot.position, robot.size):
+			corpse.position = player.position
+			cargo_count += 1
+		if corpse.phase == "grab" and Vector2(player.position).distance_to(corpse.position) > float(player.resource_reach):
+			corpse.cargo_slot = -1
+			_set_phase(sim, corpse, "loose")
+		if corpse.phase in ["present", "feed"] and not can_deliver:
+			_set_phase(sim, corpse, "carry")
+		if corpse.phase in ["grab", "crush", "present", "feed"]:
+			return corpse
+		if corpse.phase == "carry" and delivery.is_empty():
+			delivery = corpse
+		if corpse.phase == "loose" and (corpse.disarmed or float(corpse.expiration) > 0):
+			var distance: float = Vector2(player.position).distance_to(corpse.position)
+			if distance <= float(player.resource_reach) and distance < nearest_distance:
+				nearest = corpse
+				nearest_distance = distance
+	if not CombatRules.alive(player):
+		return {}
+	if can_deliver and not delivery.is_empty() and float(sim.hermes.furnace_remaining) <= 0:
+		_set_phase(sim, delivery, "present")
+		return delivery
+	if cargo_count < int(player.resource_capacity) and not nearest.is_empty():
+		nearest.pickup_position = nearest.position
+		_set_phase(sim, nearest, "grab")
+		return nearest
+	return {}
+
+static func _finish_gathering_phase(sim: GameSimulation, corpse: Dictionary) -> void:
+	match corpse.phase:
+		"grab":
+			var player: Dictionary = sim.nathaniel
+			var slot: int = _available_cargo_slot(sim)
+			if not CombatRules.alive(player) or Vector2(player.position).distance_to(corpse.position) > float(player.resource_reach) or slot < 0 or (not corpse.disarmed and float(corpse.expiration) <= 0):
+				corpse.cargo_slot = -1
+				_set_phase(sim, corpse, "loose")
+				return
+			corpse.cargo_slot = slot
+			corpse.carried = true
+			corpse.disarmed = true
+			corpse.expiration = 0.0
+			corpse.position = player.position
+			_set_phase(sim, corpse, "crush")
+		"crush":
+			_set_phase(sim, corpse, "carry")
+		"present":
+			_set_phase(sim, corpse, "feed")
+		"feed":
 			sim.resources += int(corpse.amount)
 			sim.corpses.erase(corpse)
-			sim.emit_event("delivery", {"amount": corpse.amount, "position": robot.position})
-	if not player.is_empty():
-		player.has_corpse = false
-		for corpse: Dictionary in sim.corpses:
-			if corpse.carried:
-				player.has_corpse = true
+			sim.hermes.furnace_remaining = GameBalance.RESOURCE_FURNACE_SECONDS
+			sim.emit_event("delivery", {"amount": corpse.amount, "position": sim.hermes.position,
+				"corpse_id": corpse.id, "source_kind": corpse.source_kind})
+
+static func _available_cargo_slot(sim: GameSimulation) -> int:
+	var occupied_slots: Array[int] = []
+	for corpse: Dictionary in sim.corpses:
+		if corpse.carried:
+			occupied_slots.append(int(corpse.cargo_slot))
+	for slot: int in int(sim.nathaniel.resource_capacity):
+		if slot not in occupied_slots:
+			return slot
+	return -1
+
+static func drop_resources(sim: GameSimulation) -> void:
+	for corpse: Dictionary in sim.corpses:
+		if corpse.carried:
+			corpse.position = sim.nathaniel.position
+			corpse.carried = false
+		if corpse.phase != "loose":
+			corpse.cargo_slot = -1
+			_set_phase(sim, corpse, "loose")
+	_update_carry_flag(sim)
+
+static func interrupt_delivery(sim: GameSimulation) -> void:
+	for corpse: Dictionary in sim.corpses:
+		if corpse.phase in ["present", "feed"]:
+			_set_phase(sim, corpse, "carry")
+	sim.hermes.furnace_remaining = 0.0
+
+static func _update_carry_flag(sim: GameSimulation) -> void:
+	sim.nathaniel.has_corpse = false
+	for corpse: Dictionary in sim.corpses:
+		if corpse.carried:
+			sim.nathaniel.has_corpse = true
 
 static func overlaps(first: Vector2, first_size: Vector2, second: Vector2, second_size: Vector2) -> bool:
 	var separation: Vector2 = (first - second).abs()
@@ -78,6 +199,8 @@ static func update_waves(sim: GameSimulation, delta: float) -> void:
 		kind = "spawner"
 	elif index == 3:
 		kind = "boss"
+	if kind == "soldier" and sim.random.randi_range(0, 1) == 1:
+		kind = "gunSoldier"
 	var x: float = sim.navigation.width * sim.navigation.tile_size * (0.25 if index == 2 else sim.random.randf())
 	var y: float = 200.0 if index == 2 else (10.0 if index == 0 else 50.0)
 	var enemy: Dictionary = sim.spawn_enemy(kind, Vector2(x, minf(y, sim.navigation.height * sim.navigation.tile_size)))

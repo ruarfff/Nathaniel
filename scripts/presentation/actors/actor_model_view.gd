@@ -47,6 +47,12 @@ var _idle_clip: StringName = &""
 var _mounted_character: bool = false
 var _pitch_rest: Transform3D
 var _laser_target: Vector3 = Vector3.INF
+var _body_aim: String = "movement"
+var _apertures: Array[Node3D] = []
+var _aperture_rests: Array[Transform3D] = []
+var _aperture_open: float = 0.0
+var _firing: bool = false
+var gathering_view: ResourceGatheringView
 
 
 func configure(scene: PackedScene, tint: Color, weapons: Array[WeaponVisual] = []) -> bool:
@@ -63,6 +69,10 @@ func configure(scene: PackedScene, tint: Color, weapons: Array[WeaponVisual] = [
 	_weapon_markers.clear()
 	_hip_nodes.clear()
 	_hip_rests.clear()
+	_apertures.clear()
+	_aperture_rests.clear()
+	_aperture_open = 0.0
+	_firing = false
 	_weapons = weapons.duplicate()
 	weapon_id = ""
 	_walk_clip = &""
@@ -71,6 +81,7 @@ func configure(scene: PackedScene, tint: Color, weapons: Array[WeaponVisual] = [
 	_recoil_distance = RECOIL_DISTANCE
 	_recoil_duration = RECOIL_DURATION
 	_scene = scene
+	gathering_view = null
 	viewport = SubViewport.new()
 	viewport.name = "ModelViewport"
 	viewport.own_world_3d = true
@@ -80,6 +91,12 @@ func configure(scene: PackedScene, tint: Color, weapons: Array[WeaponVisual] = [
 	add_child(viewport)
 	model_root = scene.instantiate() as Node3D
 	_mounted_character = model_root.get_meta("model_role", "") == "mounted_character"
+	_body_aim = model_root.get_meta("body_aim", "movement")
+	for name: String in ["ApertureLeft", "ApertureRight"]:
+		var shutter: Node3D = model_root.find_child(name, true, false) as Node3D
+		if shutter != null:
+			_apertures.append(shutter)
+			_aperture_rests.append(shutter.transform)
 	_laser_target = Vector3.INF
 	_canvas = model_root.get_meta("logical_canvas", _canvas)
 	_anchor = model_root.get_meta("logical_ground_anchor", _anchor)
@@ -97,6 +114,7 @@ func configure(scene: PackedScene, tint: Color, weapons: Array[WeaponVisual] = [
 		if pitch_pivot == null:
 			push_error("Mounted actor model needs a PitchPivot: " + scene.resource_path)
 			return false
+	if pitch_pivot != null:
 		_pitch_rest = pitch_pivot.transform
 	if not _attach_weapons():
 		return false
@@ -113,6 +131,17 @@ func configure(scene: PackedScene, tint: Color, weapons: Array[WeaponVisual] = [
 	if _weapon_hands != null:
 		_hands_rest = _weapon_hands.transform
 	_setup_locomotion()
+	if model_root.find_child("BackpackRoot", true, false) != null or model_root.find_child("IntakeTarget", true, false) != null:
+		gathering_view = ResourceGatheringView.new(self)
+		if gathering_view.backpack != null:
+			# Pad the arm workspace without changing world scale or the ground point.
+			var padding := Vector2i(96, 64)
+			var previous_height: float = _canvas.y
+			_canvas += padding * 2
+			_anchor += Vector2(padding)
+			camera.size *= float(_canvas.y) / previous_height
+			model_root.set_meta("logical_canvas", _canvas)
+			model_root.set_meta("logical_ground_anchor", _anchor)
 	display = Sprite2D.new()
 	display.name = "ModelSprite"
 	display.texture = viewport.get_texture()
@@ -211,8 +240,10 @@ func set_aim(direction: Vector2) -> void:
 	if direction.is_zero_approx() or not direction.is_finite() or aim_pivot == null:
 		return
 	var normalized: Vector2 = direction.normalized()
-	if _mounted_character:
+	if pitch_pivot != null:
 		_aim = normalized
+		_laser_target = Vector3.INF
+		_update_locomotion(0.0)
 		_apply_mounted_aim()
 		return
 	var pose: Transform3D = _aim_transform(normalized)
@@ -253,6 +284,8 @@ func weapon_muzzle(direction: Vector2, fired_weapon_id: String = "") -> Vector2:
 	# Query the firing pose without moving a turret which may now track another target.
 	var pivot_parent: Node3D = aim_pivot.get_parent() as Node3D
 	var pose: Transform3D = pivot_parent.global_transform * _aim_transform(heading)
+	if _mounted_character:
+		pose.basis = model_root.global_basis * Basis(Vector3.UP, atan2(heading.x, heading.y))
 	var marker: Transform3D = _muzzle_from_pivot
 	if not _weapons.is_empty():
 		var id: String = weapon_id if fired_weapon_id.is_empty() else fired_weapon_id
@@ -264,10 +297,33 @@ func weapon_muzzle(direction: Vector2, fired_weapon_id: String = "") -> Vector2:
 
 
 func aim_laser(target_offset: Vector2, target_height: float) -> void:
-	if not _mounted_character or not target_offset.is_finite() or not is_finite(target_height):
+	if pitch_pivot == null or not target_offset.is_finite() or not is_finite(target_height):
 		return
 	_laser_target = Vector3(target_offset.y, target_height, -target_offset.x) / 32.0
+	if not target_offset.is_zero_approx():
+		_aim = target_offset.normalized()
+	_update_locomotion(0.0)
 	_apply_mounted_aim()
+
+
+func set_firing(firing: bool) -> void:
+	_firing = firing
+	if not playback_enabled:
+		_update_aperture(1.0)
+
+
+func _update_aperture(delta: float) -> void:
+	if _apertures.is_empty():
+		return
+	var amount: float = move_toward(_aperture_open, 1.0 if _firing else 0.0, delta / 0.12)
+	if is_equal_approx(amount, _aperture_open):
+		return
+	_aperture_open = amount
+	for index: int in _apertures.size():
+		var sign: float = 1.0 if _apertures[index].name == "ApertureLeft" else -1.0
+		var rest: Transform3D = _aperture_rests[index]
+		_apertures[index].transform = Transform3D(rest.basis * Basis(Vector3.RIGHT, sign * amount * 0.42), rest.origin)
+	_dirty = true
 
 
 func live_weapon_muzzle() -> Vector2:
@@ -314,11 +370,14 @@ func _process(delta: float) -> void:
 	if display == null:
 		return
 	if playback_enabled and not Engine.is_editor_hint():
+		_update_aperture(delta)
 		if _recoil_elapsed < _recoil_duration:
 			_recoil_elapsed = minf(_recoil_duration, _recoil_elapsed + delta)
 			_apply_recoil()
 		if _speed > 0.01:
 			_update_locomotion(delta)
+			if gathering_view != null:
+				gathering_view.apply_pose()
 	if not is_visible_in_tree() or not _on_screen():
 		viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 		return
@@ -359,6 +418,8 @@ func _update_locomotion(delta: float) -> void:
 	if absf(body_offset) > PI / 2.0:
 		body_offset = wrapf(body_offset + PI, -PI, PI)
 	var body_yaw: float = travel_yaw if _mounted_character else (aim_yaw + clampf(body_offset, -PI / 3.0, PI / 3.0) if _speed > 0.01 else aim_yaw)
+	if _mounted_character and _body_aim != "movement":
+		body_yaw = aim_yaw if _body_aim == "target" else 0.0
 	var body: Transform3D = Transform3D(_locomotion_rest.basis * Basis(Vector3.UP, body_yaw), _locomotion_rest.origin)
 	if not locomotion_pivot.transform.is_equal_approx(body):
 		locomotion_pivot.transform = body

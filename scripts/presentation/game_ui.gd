@@ -24,7 +24,7 @@ func _ready() -> void:
 		if menu in ["victory", "gameOver"] and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			command.emit("continue_result", null)
 	)
-	for item: Array in [["Fire Nathaniel", "fire"], ["Stop Nathaniel [S]", "stop"], ["Follow [R]", "follow"], ["Stop Hermes [R]", "hermes_stop"], ["Build [B]", "build"], ["Gun · 5", "gun_tower"], ["Laser · 10", "laser_tower"], ["Heal · 15", "heal_tower"], ["−", "zoom_out"], ["+", "zoom_in"]]:
+	for item: Array in [["Fire Nathaniel", "fire"], ["Stop Nathaniel [S]", "stop"], ["Deliver cargo", "deliver"], ["Follow [R]", "follow"], ["Stop Hermes [R]", "hermes_stop"], ["Build [B]", "build"], ["Gun · 5", "gun_tower"], ["Laser · 10", "laser_tower"], ["Heal · 15", "heal_tower"], ["−", "zoom_out"], ["+", "zoom_in"]]:
 		var is_tower := String(item[1]).ends_with("_tower")
 		var button := _button(item[0], %Towers if is_tower else %Commands)
 		buttons[item[1]] = button
@@ -36,6 +36,7 @@ func _ready() -> void:
 	buttons.build.toggle_mode = true
 	buttons.fire.tooltip_text = "Nathaniel fires at his current enemy target. F fires toward the pointer."
 	buttons.stop.tooltip_text = "Stop Nathaniel's movement. Automatic combat continues."
+	buttons.deliver.tooltip_text = "Return to Hermes to feed carried bundles into his furnace. Each body supplies 10 resources."
 	buttons.hermes_stop.tooltip_text = "Deploy Hermes as a stationary cannon base. Follow packs the base away."
 	buttons.zoom_out.tooltip_text = "Zoom out"
 	buttons.zoom_in.tooltip_text = "Zoom in"
@@ -44,6 +45,10 @@ func _ready() -> void:
 		button.toggle_mode = true
 		button.pressed.connect(func() -> void: command.emit("equip_weapon", weapon_id))
 		buttons[weapon_id] = button
+	for upgrade: String in ["capacity", "reach"]:
+		var button := _button("", %Towers)
+		button.pressed.connect(func() -> void: command.emit("upgrade_gathering", upgrade))
+		buttons["upgrade_" + upgrade] = button
 	_fit_hud.call_deferred()
 
 
@@ -60,7 +65,7 @@ func update_game(sim: GameSimulation, fog_enabled: bool = true) -> void:
 	%NathanielTarget.text = _target_text(sim, sim.nathaniel, fog_enabled)
 	%HermesTarget.text = _target_text(sim, sim.hermes, fog_enabled)
 	%Nathaniel.set_pressed_no_signal(sim.focused_character == "nathaniel")
-	%Stats.text = "Resources %d · Lives %d · Score %d\n%s  %s" % [sim.resources, sim.lives, sim.score, "SURVIVAL" if sim.config.get("number", 0) == 0 else "LEVEL %d" % sim.config.get("number", 1), _time_text(sim.elapsed_time)]
+	%Stats.text = "Resources %d · Lives %d · Score %d\n%s\n%s  %s" % [sim.resources, sim.lives, sim.score, _cargo_text(sim), "SURVIVAL" if sim.config.get("number", 0) == 0 else "LEVEL %d" % sim.config.get("number", 1), _time_text(sim.elapsed_time)]
 	var following := sim.hermes_mode == "following"
 	var tower_count := 0
 	var refund := 0
@@ -82,6 +87,14 @@ func update_game(sim: GameSimulation, fog_enabled: bool = true) -> void:
 		hermes_state = "Destroyed"
 	%Status.text = "Nathaniel: %s · Hermes: %s · Camera: %s\n%s" % [_nathaniel_state(sim), hermes_state, sim.focused_character.capitalize(), instruction]
 	%Towers.visible = build_open
+	buttons.deliver.disabled = not sim.nathaniel.get("has_corpse", false) or not CombatRules.alive(sim.hermes) or not CombatRules.alive(sim.nathaniel)
+	for upgrade: String in ["capacity", "reach"]:
+		var cost: int = sim.gathering_upgrade_cost(upgrade)
+		var button: Button = buttons["upgrade_" + upgrade]
+		var label := "Cargo slot" if upgrade == "capacity" else "Arm reach"
+		button.text = "%s · %d" % [label, cost] if cost >= 0 else "%s · Max" % label
+		button.disabled = cost < 0 or sim.resources < cost or not CombatRules.alive(sim.nathaniel) or not CombatRules.alive(sim.hermes)
+		button.tooltip_text = "All upgrades fitted." if cost < 0 else "Costs %d resources. %s" % [cost, "Add one visible cargo clamp." if upgrade == "capacity" else "Reach more distant bodies with the same two arms."]
 	for kind: String in ["gun_tower", "laser_tower", "heal_tower"]:
 		var cost := int(GameBalance.COSTS[GameBalance.canonical_kind(kind)])
 		buttons[kind].disabled = sim.resources < cost or not CombatRules.alive(sim.hermes)
@@ -110,6 +123,18 @@ func update_game(sim: GameSimulation, fog_enabled: bool = true) -> void:
 	if switching > 0.0:
 		weapon_state = "Equipping…"
 	%WeaponStatus.text = "%s · %s" % [weapon_name, weapon_state]
+
+
+func _cargo_text(sim: GameSimulation) -> String:
+	var count: int = sim.carried_resource_count()
+	var phase: String = sim.gathering_state().phase
+	var capacity: int = int(sim.nathaniel.get("resource_capacity", 1))
+	var status: String = {"grab": "Grabbing", "crush": "Crushing", "present": "Presenting", "feed": "Feeding Hermes"}.get(phase, "")
+	if status.is_empty() and count >= capacity:
+		status = "Full · Deliver to Hermes"
+	elif status.is_empty():
+		status = "Approach a body to collect" if count == 0 else "Ready to deliver"
+	return "Cargo %d / %d · %s" % [count, capacity, status]
 
 
 func _fit_hud() -> void:

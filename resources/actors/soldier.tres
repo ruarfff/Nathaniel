@@ -3,8 +3,13 @@
 [ext_resource type="Script" path="res://scripts/presentation/actors/actor_visual.gd" id="1"]
 [ext_resource type="SpriteFrames" path="res://assets/generated/soldier_frames.tres" id="2"]
 
+[ext_resource type="PackedScene" path="res://scenes/actors/generated/soldier_model.tscn" id="3"]
+[ext_resource type="Resource" path="res://resources/weapons/soldier_laser.tres" id="4"]
+
 [resource]
 script = ExtResource("1")
+model_scene = ExtResource("3")
+laser = ExtResource("4")
 display_size = Vector2(60, 80)
 pixels_per_world_pixel = 8.0
 ground_anchor = Vector2(282, 635)

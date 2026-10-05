@@ -19,8 +19,13 @@ PROFILE ?= default
 .PHONY: test-content test-gameplay test-services test-presentation
 .PHONY: test-hermes-base art-hermes-base
 .PHONY: test-lasers art-hermes-laser
+.PHONY: art-enemy-lasers test-soldiers art-soldiers
+.PHONY: test-laser-tower art-laser-tower
+.PHONY: test-resource-gathering art-resource-gathering
 
 help:
+	@echo "make test-resource-gathering Check backpack rules, controls, saves and live models"
+	@echo "make art-resource-gathering Capture collection, cargo and both furnace poses"
 	@echo "Development and platform exports"
 	@echo "make / make run       Run Nathaniel"
 	@echo "make editor           Open the project in Godot"
@@ -73,6 +78,11 @@ help:
 	@echo "make test-hermes-base Check Hermes transformation, build range, and cables"
 	@echo "make test-lasers      Check mounted aim, connected beams, and combat impacts"
 	@echo "make art-hermes-laser Capture Hermes's shoulder laser in the running game"
+	@echo "make art-enemy-lasers Capture the enemy crown, lance and siege prism"
+	@echo "make test-laser-tower Check tower aiming, beam contact and combat lifecycle"
+	@echo "make art-laser-tower  Capture the live laser tower in gameplay"
+	@echo "make test-soldiers    Check both weapons, corpse types and mixed encounters"
+	@echo "make art-soldiers     Capture the two soldier types and matching corpses"
 	@echo "Override GODOT, LEVEL, DEBUG_PORT, WEB_PORT, or GODOT_TEMPLATE_DIR as needed."
 
 version:
@@ -94,6 +104,12 @@ import: version
 	python3 tools/run_checked.py "$(GODOT)" --headless --editor --path . --import --quit
 
 test: import format-check test-tooling
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_resource_gathering.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_resource_gathering_controls.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_resource_gathering_visuals.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_laser_tower.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_soldier_variants.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_enemy_lasers.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_content.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_blender_asset.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_hd_art.gd
@@ -118,10 +134,18 @@ test: import format-check test-tooling
 test-tooling:
 	python3 -m unittest discover -s tests -p 'test_*.py'
 
+test-soldiers: import
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_soldier_variants.gd
+	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tests/test_soldier_variants.gd -- --render
+
+art-soldiers: import
+	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tools/render_soldier_variants.gd
+
 test-content: import
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_content.gd
 
 test-gameplay: import
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_resource_gathering.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_gameplay.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_weapons.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_combat_impacts.gd
@@ -130,6 +154,7 @@ test-services: import
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_services.gd
 
 test-presentation: import
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_resource_gathering_controls.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_presentation.gd -- --storage-dir="$(TEST_STORAGE)"
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_weapon_controls.gd
 
@@ -138,6 +163,15 @@ test-nathaniel-weapons: import
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_weapon_controls.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_nathaniel_weapons.gd
 	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tests/test_nathaniel_weapons.gd -- --render
+
+test-resource-gathering: import
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_resource_gathering.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_resource_gathering_controls.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_resource_gathering_visuals.gd
+	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tests/test_resource_gathering_visuals.gd -- --render
+
+art-resource-gathering: import
+	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tools/render_resource_gathering.gd
 
 art-nathaniel-weapons: import
 	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tools/render_nathaniel_weapons.gd
@@ -152,6 +186,9 @@ art-hermes-base: import
 	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tools/render_hermes_base.gd
 
 test-lasers: import
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_laser_tower.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_enemy_lasers.gd
+	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tests/test_enemy_lasers.gd -- --render
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_combat_impacts.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_laser_effects.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_hermes_actor.gd
@@ -159,6 +196,16 @@ test-lasers: import
 
 art-hermes-laser: import
 	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tools/render_hermes_laser.gd
+
+test-laser-tower: import
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_laser_tower.gd
+	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tests/test_laser_tower.gd -- --render
+
+art-laser-tower: import
+	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tools/render_laser_tower.gd
+
+art-enemy-lasers: import
+	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tools/render_enemy_lasers.gd
 
 test-mcp: import
 	npm --prefix game-mcp-server test

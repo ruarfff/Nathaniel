@@ -28,7 +28,7 @@ and workload, not setup instructions.
    collision polygons and tile custom properties are not used for this rule.
 4. Expand `Spawns`. Move a marker in the 2D view, duplicate it, or change its
    **Kind**, **Label**, and **Enabled** fields. Use one enabled Nathaniel start
-   and one enabled Hermes start. Enemy kinds are `grunt`, `soldier`, `boss`, and
+   and one enabled Hermes start. Enemy kinds are `grunt`, `soldier`, `gunSoldier`, `boss`, and
    `spawner`. Spawners are stationary enemies with their existing timed spawn
    rule. Map enemy markers are ignored by wave-based encounter setup. Add an
    optional **Parameters / New EncounterParameters** resource to override health,
@@ -136,13 +136,53 @@ row and Hermes moving-sheet mappings. Reusing old PNGs does not require Blender.
 
 ### Laser appearance and contacts
 
+`soldier` is the lance-laser type; `gunSoldier` fires travelling bullets from a
+barrel arm. Both use the same health, movement, range, damage, shot interval and
+rewards. Campaign maps 1–3 mix their existing soldier placements. Wave modes
+split soldier selections equally between the two types, keeping total soldier
+weight and wave timing unchanged. Spawner production still creates grunts.
+
+The gun model is saved in `art/blender/sources/gun_soldier.blend`. Both corpse
+sources keep the existing collapsed body, with their matching weapon at rest:
+`soldier_corpse.blend` and `gun_soldier_corpse.blend`. Export saved edits with
+`make art-render ASSET=gun_soldier`, `ASSET=soldier_corpse`, or
+`ASSET=gun_soldier_corpse`. `rtk sh tools/blender.sh prepare-soldier-variants`
+creates the gun source and fits the corpse weapons once; completed sources
+remain unchanged on later runs. Rendering never runs this preparation step.
+
+The effects scene assigns both corpse resources. The corpse's `source_kind`
+selects its image, including while carried. Both types still give ten resources
+on delivery. Run `make test-soldiers` for combat, saves and rendered gun checks;
+`make art-soldiers` captures both living types and their death images.
+
 `ActorVisual.laser` selects a `LaserVisual` resource. Hermes uses
 `resources/weapons/hermes_laser.tres`: a narrow amber edge, ivory core, brief
 aperture flash, and three short contact sparks. Duplicate this resource to make
 another straight laser style, then assign it to the actor's Visual resource.
-The existing tower and spawner beams retain their original appearance when no
+The existing tower beam retains its original appearance when no
 laser resource is assigned. A resource changes presentation only; combat damage,
 range and firing duration stay in the domain.
+
+Spawner, soldier and boss use live models from their saved `.blend` sources.
+The spawner crown turns above a fixed body. The soldier turns its body toward
+the target and points its single lance arm. The boss opens two pale crest
+shutters around the siege prism. Their `*_laser.tres` resources use a pink-white
+core and crimson edge; the boss beam is wider. Nathaniel's authored contact
+height places their impact on his upper body.
+
+`rtk sh tools/blender.sh rig-enemy-laser spawner` migrates an older saved source;
+the same command accepts `soldier` or `boss`. Existing body meshes, edited
+vertices and walk actions are retained. Replaced weapon parts remain hidden
+in the source for reference. Export saved edits with `make art-render ASSET=...`.
+The generated `body_aim` metadata selects a fixed body, target-facing body or
+movement-facing body. The muzzle and pitch-axis contracts are shared with
+Hermes. Boss `ApertureLeft` and `ApertureRight` are optional presentation joints;
+their opening does not delay damage.
+
+Soldier and boss fire instant pulses with their previous damage, range and
+shot interval. The spawner retains its timed continuous beam and production
+rules. Pulse contact records keep lethal hits visible briefly and resume an
+active nonlethal pulse after loading without applying damage again.
 
 For another moving emitter, reuse the mobile source's `mounted_character` rig
 and assign its exported scene to `ActorVisual.model_scene`. The body follows
@@ -172,8 +212,22 @@ changes. `rtk make art-hermes-laser` captures the shoulder beam at normal zoom,
 in detail, and while walking. `rtk make art-hermes-base` captures the cannon and
 mode transitions. These commands use scripted setups; real input and platform
 acceptance are recorded separately in [verification](verification.md).
+Use `rtk sh tools/blender.sh verify-enemy-lasers` for source preservation and
+body-clearance checks, and `make art-enemy-lasers` for actual-level captures.
 
 ## Edit effects
+
+The backpack and both Hermes intake rigs are saved in the live character
+sources. Keep their gathering nodes separate from weapon and locomotion mounts.
+See [resource gathering](resource-gathering.md) for ownership phases, timings,
+upgrades, and focused checks.
+
+Corpse warning and dissolution use the existing corpse textures with
+`scripts/presentation/corpse_self_destruct.gdshader`. `WorldEffects` drives the
+warning from the saved armed countdown and keeps a short visual tail after
+expiry. The existing clamp pad flashes amber at successful grip. These effects
+use gameplay state rather than shader wall-clock time, so pause freezes them.
+The lifetime, warning window, and dissolve duration are in `GameBalance`.
 
 Open `scenes/effects/world_effects.tscn` and select its root. The Inspector
 groups corpse size and opacity, projectile radius and colors, laser width and

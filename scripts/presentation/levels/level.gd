@@ -52,7 +52,7 @@ func data() -> Dictionary:
 			result["hermes_start"] = point
 		elif marker.kind == "weaponPickup":
 			result["weapon_pickups"].append({"weapon_id": marker.weapon_id, "position": point})
-		elif marker.kind in ["grunt", "soldier", "spawner", "boss", "gunTower", "laserTower", "healTower"]:
+		elif marker.kind in GameBalance.ENEMIES or marker.kind in GameBalance.TOWERS:
 			var encounter: Dictionary = {"kind": marker.kind, "position": point}
 			if marker.parameters != null:
 				encounter.merge(marker.parameters.data())
