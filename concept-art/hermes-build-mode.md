@@ -90,6 +90,13 @@ rules, and combat behavior during the transition remain undecided.
 
 ## Simple Blender construction
 
+The selected [automatic recovery winch](hermes-auto-consume.md) adds a
+separate grapple to the deployed base. It consumes collectible corpses from
+deaths inside the build zone while the cannon keeps firing. The guide covers
+shared intake use and dropping unfinished loads when Hermes packs up. It is
+implemented as the G1 prototype. The
+[runtime guide](../docs/resource-gathering.md) records its current rules.
+
 Use one shared body with separate rigid parts for the head, shoulder shells,
 legs, anchors, and cannon. Start with a small set of key poses. Reuse the
 existing tower base; animate its head folding and pedestal lowering. Build

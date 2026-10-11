@@ -1,7 +1,7 @@
 {
   "source": "art/blender/sources/hermes_anchor.blend",
-  "source_sha256": "c4361c197c2c1d7801d7b38439d14db8f56c01f229c63acafadab49592d6e025",
-  "settings_sha256": "07a344fdb8daeb6e1cd0d54263fd5fc4af187a6fdb84b05ea01b90d02169914b",
+  "source_sha256": "caa93b11d82917cd7471c4cfe3a4c43107232f31dce92982c6d2580afc2d2aaa",
+  "settings_sha256": "ce131252871f9502a3c272d475d9e68e6e2e77cbc42bfcd7a5dc096d0a1ec6eb",
   "blender_version": "5.2.2 LTS",
   "python_version": "3.13.15",
   "canvas": [
@@ -44,7 +44,7 @@
   "model": {
     "path": "assets/generated/hermes_anchor.glb",
     "scene": "scenes/actors/generated/hermes_anchor_model.tscn",
-    "sha256": "b684897aa208b10a2af8cb00510c686884e5f39b7e6223876f40ddd4b2763fc0",
+    "sha256": "6a4f77cfceb68ef871766ab88ba0708746aa66bd93e031c364a5af8a09dd6cff",
     "blender_to_godot": [
       "X",
       "Z",

@@ -80,7 +80,8 @@ Search source directories first; `assets/generated/` contains export output.
 
 | Change | Start here | Guide / focused check |
 | --- | --- | --- |
-| Combat, weapons, movement or balance | `scripts/domain/game_simulation.gd`, `combat_rules.gd`, `game_balance.gd`, `world_navigation.gd` | [Domain APIs](scripts/domain/README.md); `make test-gameplay` |
+| Character stats, tower stats or balance | `scripts/domain/game_balance.gd` | [Balance reference](docs/balance.md); `make test-gameplay` |
+| Combat, weapons or movement | `scripts/domain/game_simulation.gd`, `combat_rules.gd`, `world_navigation.gd` | [Domain APIs](scripts/domain/README.md); `make test-gameplay` |
 | Backpack, cargo or Hermes intake | `scripts/domain/battlefield_rules.gd`, `scripts/presentation/actors/`, `tools/blender/resource_gathering.py` | [Resource gathering](docs/resource-gathering.md); `make test-resource-gathering` |
 | Input, HUD or camera | `scripts/presentation/game_input.gd`, `game_ui.gd`, `game_app.gd` | [Controls](docs/web.md#character-controls); `make test-presentation` |
 | Aiming, recoil or healing visuals | `scripts/presentation/actors/`, `world_effects.gd`, `resources/actors/`, `resources/weapons/` | [Weapons](docs/nathaniel-weapons.md), [tower art](docs/iron-and-ink-assets.md); `make test-nathaniel-weapons` / `make test-healing-tower` |

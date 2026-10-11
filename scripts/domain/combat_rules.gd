@@ -185,7 +185,7 @@ static func _laser(sim: GameSimulation, unit: Dictionary, target: Dictionary, de
 		sim.emit_event("laser", {"owner_id": unit.id, "position": unit.position})
 	if not unit.firing:
 		return
-	var active_time: float = minf(delta, maxf(0.0, 1.5 - float(unit.burst)))
+	var active_time: float = minf(delta, maxf(0.0, GameBalance.LASER_BURST_SECONDS - float(unit.burst)))
 	unit.burst = float(unit.burst) + active_time
 	# Spawners apply whole seconds; Hermes and towers carry fractional damage.
 	unit.pending_damage = float(unit.pending_damage) + active_time * (1.0 if spawner else float(unit.damage))
@@ -193,17 +193,18 @@ static func _laser(sim: GameSimulation, unit: Dictionary, target: Dictionary, de
 	unit.pending_damage = float(unit.pending_damage) - amount
 	if amount > 0:
 		sim.damage_entity(int(target.id), amount * int(unit.damage) if spawner else amount, int(unit.id))
-	if float(unit.burst) + 0.00000001 >= 1.5:
+	if float(unit.burst) + 0.00000001 >= GameBalance.LASER_BURST_SECONDS:
 		unit.firing = false
 
 static func _heal(sim: GameSimulation, unit: Dictionary, delta: float) -> void:
 	unit.cooldown = float(unit.cooldown) + delta
-	if float(unit.cooldown) + 0.00000001 < 1.0:
+	var amount: int = int(unit.damage)
+	if float(unit.cooldown) + 0.00000001 < float(unit.delay) or amount <= 0:
 		return
 	var healed: bool = false
 	for target: Dictionary in [sim.nathaniel, sim.hermes]:
 		if alive(target) and int(target.hp) < int(target.max_hp) and distance(unit, target) < float(unit.range):
-			target.hp = mini(int(target.max_hp), int(target.hp) + 5)
+			target.hp = mini(int(target.max_hp), int(target.hp) + amount)
 			healed = true
 			sim.emit_event("heal", {"position": target.position, "target_id": target.id, "owner_id": unit.id})
 	if healed:

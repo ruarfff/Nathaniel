@@ -8,6 +8,8 @@ extends Marker2D
 	set(value):
 		kind = value
 		queue_redraw()
+		notify_property_list_changed()
+		update_configuration_warnings()
 @export var label: String = "":
 	set(value):
 		label = value
@@ -17,9 +19,23 @@ extends Marker2D
 		enabled = value
 		queue_redraw()
 
-## Leave empty to preserve shared gameplay balance.
-@export var parameters: EncounterParameters
+## Enemy and tower overrides only. Leave empty to use GameBalance.
+@export var parameters: EncounterParameters:
+	set(value):
+		parameters = value
+		update_configuration_warnings()
 @export_enum("rifle", "heavy_rifle") var weapon_id: String = "heavy_rifle"
+
+
+func _validate_property(property: Dictionary) -> void:
+	if property.name == "parameters" and kind not in GameBalance.ENEMIES and kind not in GameBalance.TOWERS:
+		property.usage = int(property.usage) & ~PROPERTY_USAGE_EDITOR
+
+
+func _get_configuration_warnings() -> PackedStringArray:
+	if parameters != null and kind not in GameBalance.ENEMIES and kind not in GameBalance.TOWERS:
+		return PackedStringArray(["Parameters apply only to enemies and towers. This marker's overrides are unused."])
+	return PackedStringArray()
 
 
 func _draw() -> void:

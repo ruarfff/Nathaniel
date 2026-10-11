@@ -32,6 +32,7 @@ shell animations. These animations cannot attack, spawn units, or create matter.
 | Weapon pickup setup | `spawn_weapon_pickup(weapon_id, point)`; level data accepts `weapon_pickups: [{weapon_id, position}]` |
 | Damage/setup | `damage_entity(id, amount, attacker_id)`, `spawn_resource(...)` |
 | Backpack | `return_to_hermes()`, `gathering_state()`, `gathering_upgrade_cost("capacity" / "reach")`, `upgrade_gathering(kind)` |
+| Automatic recovery display | `recovery_state()` returns Hermes's one active body, or an empty dictionary |
 | Pause | `set_paused(bool)` |
 | Save state | `snapshot()` returns JSON primitives; `restore(state)` rebuilds routes |
 | Visibility | `visibility_at(point)` returns 0 unexplored, 1 explored, 2 visible |
@@ -65,8 +66,10 @@ spare-life respawn keep the loadout. A fresh level starts with the rifle only.
 Snapshots preserve pickups, pending aim, equip time, and recovery; old saves
 receive the rifle defaults without spawning new pickups.
 
-`GameBalance` contains the shipped release constants. The legacy implementation
-is retained in Git history at `824c8f1`. Current rules include:
+`GameBalance` contains the shipped release constants. The
+[balance reference](../../docs/balance.md) lists character health, movement,
+weapons, tower costs and timing rules. The legacy implementation is retained
+in Git history at `824c8f1`. Current rules include:
 
 - Campaign starts with three spare lives; survival ends on the first death.
   Losing Hermes ends the game. A boss death wins campaign levels, including waves.
@@ -94,12 +97,12 @@ is retained in Git history at `824c8f1`. Current rules include:
   shots continue after death. Victory cannot be replaced by a later lethal hit.
 - Hermes and tower lasers carry fractional damage. The spawner beam pays whole
   seconds of damage. Soldier and boss use `pulse_laser`: one instant 25-point
-  hit every 0.8 and 1.5 seconds respectively, at their existing ranges. The
+  hit every 0.8 seconds at their existing ranges. The
   0.18-second `firing` phase lets presentation show the pulse; it applies no
   additional damage. The `laser` event includes a pulse flag and target contact
-  for lethal-hit feedback. Each healing tick restores up to five HP to both Nathaniel
+  for lethal-hit feedback. Each healing tick restores up to 40 HP to both Nathaniel
   and Hermes if they are alive, injured, and strictly inside the tower's range.
-  Healing ticks have a one-second interval; an idle tower stays ready to heal.
+  Healing ticks have a two-second interval; an idle tower stays ready to heal.
 - `soldier` uses the pulse lance; `gunSoldier` uses travelling bullets at 450
   points per second. Their other stats match. Both leave corpses worth ten
   resources. Boss deaths also leave one body, provisionally worth ten resources
@@ -117,6 +120,16 @@ is retained in Git history at `824c8f1`. Current rules include:
   delivery can cancel handling without losing or duplicating matter. Separate
   capacity/reach upgrades survive respawn and saves. See
   [resource gathering](../../docs/resource-gathering.md) for timings and balance.
+- Deployed Hermes automatically recovers collectible deaths recorded inside his
+  inclusive build radius. Deployment does not sweep old corpses; pack-up clears
+  the candidate list. The winch claims before Nathaniel's unfinished grip, but
+  cannot take held cargo. Armed bodies nearest expiry go first, then distance
+  and ID; disarmed bodies follow. A clear body-width route and visibility are
+  required. Contact permanently disarms; intake acceptance credits once.
+  Manual cargo within intake reach gets the next intake turn after a pull.
+  `BattlefieldRules` advances both jobs and expiry at exact phase boundaries;
+  presentation cannot change ownership or award resources. Saves retain the
+  recorded eligibility, route, safe drop position, phase and reset timer.
 - Spawners produce at 30, 60, and 90 seconds, then every 120 seconds. Their child
   position adds `(240, -168)`. Wave intervals change strictly after 60, 120, 180,
   and 240 seconds; soldier selections split equally between laser and gun types.

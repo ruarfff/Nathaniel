@@ -35,6 +35,8 @@ sheets, Blender models, or implemented gameplay changes.
 | [HUD C: original context ring](iron-and-ink/25-hud-context-ring.png) | Initial study of the selected HUD direction; its controls are superseded by the two revised sheets. |
 | [HUD C2: Hermes ring](iron-and-ink/26-hud-hermes-ring.png) | Four optional ability slots, Settings, and Pack up & move; persistent icons only select and focus. |
 | [HUD C2: Nathaniel ring](iron-and-ink/27-hud-nathaniel-ring.png) | Toggle weapon and Settings, plus cargo single-tap and ring double-tap behavior. |
+| [Hermes grapple options](iron-and-ink/28-hermes-grapple-options.png) | Selected G1 side winch; G2 folding boom and G3 arm launchers remain alternatives. |
+| [Hermes grapple sequence](iron-and-ink/29-hermes-grapple-sequence.png) | Detect, fire, clamp and disarm, reel, crush, and consume one body. |
 
 [Character HUD design](hud-character-controls.md) records the selected **C /
 Context ring** direction and its revised selection, target portraits, cargo
@@ -65,6 +67,15 @@ defines the recovery deadline and safe cargo rules.
 grunt/spawner explosions. Boss matter supports the ongoing survival run.
 Recovery from campaign bosses that end a level needs a separate collection
 window and reward decision.
+
+[Hermes automatic recovery](hermes-auto-consume.md) defines the selected passive grapple
+for collectible enemies that die inside his deployed build zone. G1 / Side
+winch is selected, with one body per cycle and no new control. Hermes has
+priority over Nathaniel before successful grip; held cargo remains protected.
+The guide covers decay, intake sharing, and interruptions. The
+[implementation handoff](hermes-auto-consume-implementation-prompt.md) targets
+the current branch. The G1 prototype is implemented; the
+[runtime guide](../docs/resource-gathering.md) records its current rules.
 
 ![Selected scene](iron-and-ink/01-scene.png)
 
@@ -120,6 +131,10 @@ window and reward decision.
 
 ![HUD C2: Nathaniel ring and cargo gestures](iron-and-ink/27-hud-nathaniel-ring.png)
 
+![Hermes automatic recovery mechanisms](iron-and-ink/28-hermes-grapple-options.png)
+
+![Hermes grapple and furnace sequence](iron-and-ink/29-hermes-grapple-sequence.png)
+
 ## Sandy Earth buildings
 
 This area uses ordinary Earth architecture: plaster and brick walls, simple
@@ -166,8 +181,9 @@ by these concepts.
 
 The grunt, soldier, boss, spawner, gun tower, laser tower, and healing tower
 match existing gameplay kinds. Their depicted appearance is exploratory.
-Only soldier variants currently leave usable bodies. The boss corpse is a
-new collection proposal; grunt and spawner explosions leave no usable matter.
+Soldier variants and the boss currently leave usable bodies. Grunt and
+spawner explosions leave no usable matter. Automatic recovery by deployed
+Hermes is a new proposal; it does not add drops to those explosions.
 The reclamation pod, relay, and bastion are visual proposals; their gameplay
 roles and inclusion remain undecided.
 
@@ -193,7 +209,7 @@ been tested in game or across animation directions.
 
 ## Source and reuse
 
-Created with the Codex built-in imagegen tool on 2026-10-03 through 2026-10-05. The original
+Created with the Codex built-in imagegen tool on 2026-10-03 through 2026-10-11. The original
 scene established direction A; later sheets use that scene and related
 concept sheets as references. [prompts.json](prompts.json) stores the exact
 prompts, refinement steps, and reference relationships for further iteration.

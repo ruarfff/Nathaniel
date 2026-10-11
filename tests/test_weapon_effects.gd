@@ -159,11 +159,11 @@ func _check_healing_recipients() -> void:
 	effects.simulation = sim
 	sim.fog.fill(2)
 	sim.take_events()
-	CombatRules.update_unit(sim, tower, 1.0)
+	CombatRules.update_unit(sim, tower, float(tower.delay))
 	effects.add_events(sim.take_events())
 	expect(effects.healing_flashes.is_empty(), "A tower near healthy characters produces no healing flash")
 	sim.nathaniel.hp -= 10
-	CombatRules.update_unit(sim, tower, 1.0)
+	CombatRules.update_unit(sim, tower, float(tower.delay))
 	effects.add_events(sim.take_events())
 	expect(effects.healing_flashes.size() == 1 and int(effects.healing_flashes[0].target_id) == int(sim.nathaniel.id), "Successful healing flashes the character selected by the domain event")
 	expect(effects.transients.is_empty(), "Healing does not produce the generic orange event ring")
@@ -195,7 +195,7 @@ func _check_healing_recipients() -> void:
 	sim.nathaniel.hp = sim.nathaniel.max_hp
 	sim.hermes.position = tower.position + Vector2(80, 0)
 	sim.hermes.hp -= 10
-	CombatRules.update_unit(sim, tower, 1.0)
+	CombatRules.update_unit(sim, tower, float(tower.delay))
 	effects.add_events(sim.take_events())
 	expect(effects.healing_flashes.size() == 1 and int(effects.healing_flashes[0].target_id) == int(sim.hermes.id), "Hermes receives the cue when Hermes is healed")
 	sim.damage_entity(int(sim.hermes.id), int(sim.hermes.hp))

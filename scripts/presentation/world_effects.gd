@@ -420,6 +420,10 @@ func projectile_position(shot: Dictionary) -> Vector2:
 
 func sync_lasers(actors: Dictionary) -> void:
 	_laser_actors = actors.duplicate()
+	if simulation != null:
+		var hermes: HermesView = actors.get(int(simulation.hermes.id)) as HermesView
+		if is_instance_valid(hermes) and hermes.recovery_ground().is_finite():
+			hermes.set_recovery_visible(not fog_enabled or simulation.visibility_at(hermes.recovery_ground()) == 2)
 	laser_beams()
 	queue_redraw()
 
@@ -644,7 +648,7 @@ func corpse_at_screen(screen: Vector2) -> Dictionary:
 	var hit: Dictionary = {}
 	for corpse: Dictionary in simulation.corpses:
 		var sprite := _corpse_sprites.get(int(corpse.id)) as Sprite2D
-		if not ResourceGatheringView.ground_visible(corpse) or not is_instance_valid(sprite) or not sprite.is_visible_in_tree():
+		if not ResourceGatheringView.collectible_visible(corpse) or not is_instance_valid(sprite) or not sprite.is_visible_in_tree():
 			continue
 		var local: Vector2 = sprite.get_global_transform_with_canvas().affine_inverse() * screen
 		if sprite.is_pixel_opaque(local):
@@ -657,7 +661,7 @@ func _sync_pickup_target() -> void:
 		return
 	if CombatRules.alive(simulation.nathaniel) and simulation.result == "playing":
 		for corpse: Dictionary in simulation.corpses:
-			if int(corpse.id) != pickup_target_id or not ResourceGatheringView.ground_visible(corpse):
+			if int(corpse.id) != pickup_target_id or not ResourceGatheringView.collectible_visible(corpse):
 				continue
 			if not corpse.get("disarmed", false) and float(corpse.get("expiration", 0.0)) <= 0.0:
 				break
@@ -748,6 +752,45 @@ func _draw_crush_chips() -> void:
 			draw_line(chip, chip + heading * 2.0, Color("cabfb0", strength), 1.5, true)
 
 
+func recovery_cable_points() -> PackedVector2Array:
+	var points := PackedVector2Array()
+	if simulation == null or simulation.result != "playing":
+		return points
+	var active: Dictionary = simulation.recovery_state()
+	if not active.is_empty() and fog_enabled and simulation.visibility_at(active.position) != 2:
+		return points
+	if active.is_empty() and float(simulation.hermes.get("recovery_cooldown", 0.0)) <= 0.0:
+		return points
+	var actor: HermesView = _laser_actors.get(int(simulation.hermes.id)) as HermesView
+	if not is_instance_valid(actor):
+		return points
+	for point: Vector2 in actor.recovery_cable():
+		points.append(IsoProjection.project(simulation.hermes.position) + point)
+	return points
+
+
+func _draw_recovery() -> void:
+	var points: PackedVector2Array = recovery_cable_points()
+	if points.size() < 2:
+		return
+	# A round dark cable and a narrow worn edge differ from flat base conduits.
+	draw_polyline(points, Color("172124"), 2.4, true)
+	draw_polyline(points, Color("a79978"), 0.65, true)
+	var active: Dictionary = simulation.recovery_state()
+	if str(active.get("phase", "")) != "winch_reel":
+		return
+	var point: Vector2 = IsoProjection.project(active.position)
+	var size: float = 20.0 if active.get("source_kind", "") == "boss" else 11.0
+	draw_set_transform(point, 0.0, Vector2(1.0, 0.45))
+	draw_circle(Vector2.ZERO, size, Color("182026", 0.16))
+	draw_set_transform(Vector2.ZERO)
+	var drag: Vector2 = (IsoProjection.project(active.get("pickup_position", active.position)) - point).normalized()
+	var fraction: float = ResourceGatheringView.phase_fraction(active)
+	for index: int in range(3):
+		var offset: Vector2 = drag * (size + 3.0 + index * 3.0) + Vector2(0, (index - 1) * 2.0)
+		draw_line(point + offset, point + offset + drag * 3.0, Color("b7a58b", sin(fraction * PI) * 0.45), 1.4, true)
+
+
 func _draw() -> void:
 	if simulation != null:
 		var healing_range: PackedVector2Array = healing_range_points()
@@ -764,6 +807,7 @@ func _draw() -> void:
 				draw_line(point - Vector2(-6, 6), point + Vector2(-6, 6), color, 2, true)
 		_draw_corpse_flecks()
 		_draw_crush_chips()
+		_draw_recovery()
 		for shot: Dictionary in simulation.projectiles:
 			if not fog_enabled or simulation.visibility_at(shot.position) == 2:
 				var point := projectile_position(shot)

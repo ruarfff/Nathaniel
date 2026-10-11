@@ -133,7 +133,7 @@ func configure(scene: PackedScene, tint: Color, weapons: Array[WeaponVisual] = [
 	_setup_locomotion()
 	if model_root.find_child("BackpackRoot", true, false) != null or model_root.find_child("IntakeTarget", true, false) != null:
 		gathering_view = ResourceGatheringView.new(self)
-		if gathering_view.backpack != null:
+		if gathering_view.backpack != null or gathering_view.winch != null:
 			# Pad the arm workspace without changing world scale or the ground point.
 			var padding := Vector2i(96, 64)
 			var previous_height: float = _canvas.y

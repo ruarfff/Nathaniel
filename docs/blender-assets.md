@@ -136,6 +136,18 @@ source changes during rendering. A source with `asset_model` also exports its
 saved weapon geometry and markers as a GLB and a native 3D scene. See the
 [live gun tower guide](iron-and-ink-assets.md#live-gun-tower) for its rig and commands.
 
+The saved deployed Hermes source includes the G1 side reel, low orbital guide
+rail, sliding guide and two-jaw clamp. `ResourceGatheringView` poses these
+controls independently of the cannon. The guide extends to the domain's
+72-point outer route; the clamp uses the same saved subtree in its own small
+viewport to avoid clipping at recovery range. To migrate an older source once,
+run `rtk blender --background --factory-startup --disable-autoexec
+--python-exit-code 1 --python tools/blender/resource_gathering.py -- migrate
+hermes_anchor`, then export with `rtk make art-render ASSET=hermes_anchor`.
+The migration preserves existing body geometry and transforms. Rendering
+does not run it. Verify source controls and export hashes with the same
+command using `verify hermes_anchor`.
+
 The default settings use CPU Cycles, 32 samples (64 for Iron & Ink), a fixed seed, no denoising,
 transparent film, no motion blur, a box pixel filter, and 8-bit RGBA PNG.
 Per-layer sample overrides are reset to use the shared sample count.

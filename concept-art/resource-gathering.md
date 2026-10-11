@@ -127,18 +127,39 @@ anchor. Model the contact pad as one small inset box. Reuse the corpse mesh
 and existing arm pivots; no fracture or fluid simulation is needed. The
 sheet explores appearance, not calibrated animation frames or tested VFX.
 
-## Proposed boss matter
+## Boss matter
 
 The [boss corpse study](enemy-deaths.md#boss-a-collapsed-heavy-shell) extends
 this loop to a low, collapsed boss with its crest and dark prism still visible.
-It proposes one compressed bundle per body and one cargo slot, using the same
-disarm and delivery sequence. The value remains open. In survival, Nathaniel
+The current implementation uses one compressed bundle per body and one cargo
+slot, using the same disarm and delivery sequence. Its current value is 10
+resources; balance remains provisional. In survival, Nathaniel
 can recover the body and spend its resources during the same ongoing run.
 Campaign bosses that end a level are a separate case: victory currently stops
 play and Continue resets cargo and resources, so campaign collection time and
 reward persistence need a decision.
 Grunts and spawners instead [explode on death](enemy-deaths.md), with no
-collectible remains in the proposed design.
+collectible remains.
+
+## Selected automatic recovery design for Hermes
+
+The [grapple study](hermes-auto-consume.md) adds automatic recovery while
+Hermes is deployed. The user confirmed collectible corpses only: Soldier,
+Gun Soldier, and Boss. Grunts and spawners keep their no-resource deaths.
+
+The selected design uses one side winch. Hermes has priority over Nathaniel
+when claiming a body before successful grip; he cannot take held cargo.
+It claims a body, fires a clamp, disables
+self-destruct on contact, and pulls the body into the existing furnace.
+It credits the body's value once at intake acceptance. Waiting bodies keep
+their expiry timers, and Nathaniel can rescue overflow or gather beyond the
+build zone. His delivery gets the next intake turn after an active pull.
+
+The [design rules](hermes-auto-consume.md#zone-and-eligibility) specify
+eligibility at death inside the deployed build zone, one active pull, and a
+clear route. They also define interruption, ownership, and prototype timing.
+The G1 prototype is implemented. See the
+[runtime guide](../docs/resource-gathering.md) for its current behavior and checks.
 
 ## Feed Hermes
 
@@ -175,9 +196,10 @@ establish a new requirement to deploy Hermes before delivery.
 
 ## Current implementation boundary
 
-Updated on 2026-10-04 after the backpack and self-destruct implementations:
+Checked on 2026-10-11 after the backpack, self-destruct, and enemy-death work:
 
-- `soldier` and `gunSoldier` deaths leave bodies worth 10 resources each.
+- `soldier`, `gunSoldier`, and `boss` deaths leave bodies worth 10 resources
+  each. Grunt and spawner deaths leave no usable matter.
 - The starter holds one body and has a 44-point collection reach. Capacity
   and reach upgrades are implemented; their balance values are provisional.
 - The grab takes 0.28 seconds. Expiry continues until successful grip, when

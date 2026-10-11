@@ -1,8 +1,10 @@
 # Resource gathering
 
-Nathaniel's backpack gathers Soldier, Gun Soldier, and Boss bodies. Both mechanical
-arms handle one body at a time. The starter rack holds one bundle. A bundle is
-cargo; it becomes ten spendable resources only after Hermes accepts it.
+Nathaniel's backpack gathers Soldier, Gun Soldier, and Boss bodies. Deployed
+Hermes can recover new deaths inside his build zone with one side winch.
+Both paths preserve each body's stored value and credit resources only when
+his chest intake accepts the bundle. Nathaniel's two arms handle one body at
+a time, and the starter rack holds one bundle.
 
 The [boss corpse and enemy death design](../concept-art/enemy-deaths.md)
 is implemented. One boss leaves one body, compressed into one bundle in one
@@ -10,9 +12,9 @@ starter slot. The bundle retains a pale crest shard and dark prism. Grunts and
 spawners leave no matter. In survival, the run continues and boss matter uses
 the normal collection and delivery loop. Its current value is **10 resources**,
 a provisional soldier-value default, not approved final balance. Change it in
-`GameBalance.RESOURCE_VALUES`. Campaign bosses that end a level still need a separate
-collection opportunity and reward decision because victory stops collection
-and Continue resets cargo and resources.
+`GameBalance.RESOURCE_VALUES`. Campaign boss death still ends play immediately.
+It adds no recovery window or automatic boss payout; Continue resets cargo
+and resources.
 
 ## Collect and deliver
 
@@ -50,6 +52,78 @@ the body. Nathaniel's death drops held matter at his death position, still safe;
 an ungripped armed body retains its remaining lifetime. Hermes's death cancels an
 unfinished transfer without credit. Pause freezes all handling and furnace
 timers.
+
+## Hermes automatic recovery
+
+The selected [G1 side winch](../concept-art/hermes-auto-consume.md) works while
+Hermes is alive and deployed. Eligibility is recorded when a collectible enemy
+dies inside or on his actual build boundary, currently 240 logical points.
+The damage source does not matter. Deployment does not sweep older bodies,
+and packing up clears the current deployment's pending list. Debug-created
+bundles from `spawn_resource` do not enter that list.
+
+Before launch, the simulation checks the body's range, visibility, ownership,
+and route again. It checks the full body width along a straight ground pull
+to the outer guide and the short guide path into the chest. Solid terrain,
+towers, and spawners block the route. Live mobile units and flat tower conduits
+do not. Blocked bodies remain available to Nathaniel and can be retried while
+they are eligible. The winch has no rope pathfinding or hidden cargo buffer.
+
+The guide keeps full bodies outside the 44-point deployed footprint plus their
+radius. The final leg compresses matter into the intake. If this leg is
+interrupted, the full body drops at its last clear exterior point.
+
+Hermes selects the armed body with the shortest remaining lifetime, then the
+closest body, then the lowest stable ID. Permanently disarmed bodies follow
+armed bodies. A waiting or reserved body still expires. The hook must make
+contact before the deadline; expiry wins at exact contact. Contact permanently
+disarms the body without awarding resources.
+
+The initial timings are tuning values in `GameBalance`:
+
+| Stage | Seconds | Ownership and resource rule |
+| --- | --- | --- |
+| Launch and clamp | 0.2 + 0.1 | One reserved ground body; decay continues until contact. |
+| Reel | 0.7 | One disarmed shell moves along the ground route. |
+| Crush | 0.15 | The shell becomes its existing compact bundle at the intake lip. |
+| Feed | 0.15 | Intake acceptance removes the body and credits its stored value once. |
+| Reset | 0.2 | The empty hook returns before the next launch. |
+
+The cannon keeps its combat target and fire timing throughout recovery.
+The build outline remains the range indicator. No new input, upgrade, cost,
+or HUD button is needed.
+
+### Claim and intake priority
+
+When the winch can launch now, Hermes can take a loose body or a backpack grab
+that has not completed its grip. Resolve expiry first, the valid hook claim
+second, and backpack grip completion third. The claim clears that body's
+obsolete grab progress and presentation state. It preserves unrelated cargo
+and orders. A body gripped in an earlier step remains Nathaniel's. A busy or
+blocked winch does not prevent him from collecting waiting bodies.
+
+The chest receives one bundle at a time. Finish a manual delivery already in
+progress before launching a hook. If Nathaniel reaches intake range during
+a pull, finish that pull, then accept his held cargo before launching again.
+A distant return order does not reserve the intake. Nathaniel can leave while
+waiting; his cargo remains in the rack until acceptance. Manual delivery works
+with either Hermes form.
+
+### Interruptions
+
+Packing up or losing Hermes before clamp contact releases the armed body with
+its remaining lifetime. After contact, either event or a newly blocked route
+drops the body at its current safe ground position, permanently disarmed and
+available to Nathaniel. Neither case credits resources. After acceptance, the
+credit remains and the body cannot return. Hermes death still ends the run.
+
+Pause freezes the job, ground motion, corpse timers, and intake feedback.
+A fresh run or scene transition clears unfinished jobs and visual cables.
+Saves retain unclaimed death-time eligibility, exclusive ownership, route
+progress, expiry, permanent disarm, and reset time. Loading with an unavailable
+owner releases or safely drops the body. Older saves receive no inferred
+eligibility or active hook. Survival continues after boss death; campaign
+victory still stops collection immediately.
 
 ## Corpse self-destruct
 
@@ -143,7 +217,8 @@ level starts with the starter backpack. Balance and stage timings live in
 ## State and artwork
 
 `GameSimulation` owns body identity, cargo slots, handling phases, and credit.
-Each body has one phase: `loose`, `grab`, `crush`, `carry`, `present`, or `feed`.
+Each body has one phase: `loose`, `grab`, `crush`, `carry`, `present`, `feed`,
+`winch_launch`, `winch_reel`, `winch_crush`, or `winch_feed`.
 The body remains in the corpse collection until accepted or expired. The
 presentation reads this state and animates the two arms and Hermes's intake.
 
@@ -166,8 +241,9 @@ never run that migration. Use the pinned Blender version:
 rtk blender --background --factory-startup --disable-autoexec --python-exit-code 1 --python tools/blender/resource_gathering.py -- verify all
 ```
 
-Snapshots retain upgrade levels, handling progress, cargo ownership, the return
-order, and the remaining furnace pulse. Older saves receive starter defaults.
+Snapshots retain upgrade levels, handling progress, cargo and winch ownership,
+death-time recovery eligibility, the return order, and the remaining furnace
+pulse. Older saves receive starter defaults.
 If an older save carries more than one body, the first stays in the rack and the others
 drop beside Nathaniel, permanently disarmed. No matter is discarded
 or credited during migration. The save format stays at version 1.
@@ -183,7 +259,10 @@ rtk make format-check
 ```
 
 The focused checks cover capacity, range, interrupted handling, death, sequential
-credit, upgrades, saves, HUD commands, and live model rigs. The capture target
+credit, upgrades, saves, HUD commands, and live model rigs. Automatic recovery
+checks also cover death-time eligibility, urgent-body order, all-around routes,
+body clearance, visibility, contested grips, shared intake, exact contact expiry,
+per-phase interruptions, and campaign versus survival outcomes. The capture target
 uses scripted game state for collection, full racks, and both intake heights.
 `art-enemy-deaths` also captures boss warning and dissolve, a complete scripted
 survival delivery, both shell sequences, and simultaneous deaths at normal zoom.

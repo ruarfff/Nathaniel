@@ -18,6 +18,7 @@ func expect(value: bool, message: String) -> void:
 
 func _run() -> void:
 	_check_atlas()
+	_check_marker_parameters()
 	var widths: Array[int] = [30, 120, 100, 100, 30, 30]
 	var blocked_counts: Array[int] = [52, 450, 459, 165, 52, 52]
 	var enemy_counts: Array[int] = [0, 16, 14, 10, 0, 0]
@@ -101,6 +102,36 @@ func _run() -> void:
 		actor.free()
 	print("Content checks: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
+
+
+func _check_marker_parameters() -> void:
+	var marker := SpawnMarker.new()
+	var design := EncounterParameters.new()
+	design.max_hp = 321
+	marker.parameters = design
+	for kind: String in ["nathaniel", "hermes", "grunt", "soldier", "gunSoldier", "boss", "spawner", "gunTower", "laserTower", "healTower", "objective", "weaponPickup"]:
+		marker.kind = kind
+		var usage: int = 0
+		for property: Dictionary in marker.get_property_list():
+			if property.name == "parameters":
+				usage = int(property.usage)
+		var supports_parameters: bool = kind in GameBalance.ENEMIES or kind in GameBalance.TOWERS
+		expect(bool(usage & PROPERTY_USAGE_EDITOR) == supports_parameters, "Inspector shows parameters only for an enemy or tower: " + kind)
+		expect(bool(usage & PROPERTY_USAGE_STORAGE) and marker.parameters == design, "Changing marker kind preserves authored parameters: " + kind)
+		expect(marker._get_configuration_warnings().is_empty() == supports_parameters, "Unused marker parameters produce an editor warning: " + kind)
+	var scene := Node2D.new()
+	scene.add_child(marker)
+	marker.owner = scene
+	marker.kind = "nathaniel"
+	var packed := PackedScene.new()
+	expect(packed.pack(scene) == OK, "Hero marker with hidden parameters packs")
+	var restored: Node = packed.instantiate()
+	var restored_marker: SpawnMarker = restored.get_child(0) as SpawnMarker
+	expect(restored_marker.kind == "nathaniel" and restored_marker.parameters.max_hp == 321, "Hidden parameters survive scene serialization")
+	restored.free()
+	marker.parameters = null
+	expect(marker._get_configuration_warnings().is_empty(), "Clearing unused parameters clears the warning")
+	scene.free()
 
 
 func _check_atlas() -> void:

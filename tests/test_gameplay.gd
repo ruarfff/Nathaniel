@@ -13,6 +13,7 @@ func _initialize() -> void:
 	_test_resources()
 	_test_combat()
 	_test_healing()
+	_test_healing_parameters()
 	_test_shot_emission()
 	_test_targeting_and_update_order()
 	_test_spawners_and_waves()
@@ -54,24 +55,24 @@ func _test_lives_and_outcomes() -> void:
 	var sim: GameSimulation = _game()
 	for remaining: int in [2, 1, 0]:
 		sim.move_to(Vector2(600, 500))
-		sim.damage_entity(int(sim.nathaniel.id), 8000)
+		sim.damage_entity(int(sim.nathaniel.id), int(sim.nathaniel.hp))
 		_check(sim.lives == remaining and sim.result == "playing", "Campaign spare lives: %d" % remaining)
-		_check(sim.nathaniel.hp == 8000 and sim.nathaniel.position == Vector2(84, 242), "Immediate full-health respawn")
+		_check(sim.nathaniel.hp == sim.nathaniel.max_hp and sim.nathaniel.position == Vector2(84, 242), "Immediate full-health respawn")
 		_check(sim.nathaniel.destination == null and not sim.nathaniel.moving, "Respawn clears route")
-	sim.damage_entity(int(sim.nathaniel.id), 8000)
+	sim.damage_entity(int(sim.nathaniel.id), int(sim.nathaniel.hp))
 	_check(sim.result == "gameOver" and sim.lives == 0, "Fourth campaign death loses")
 	sim = _game(0)
-	sim.damage_entity(int(sim.nathaniel.id), 8000)
+	sim.damage_entity(int(sim.nathaniel.id), int(sim.nathaniel.hp))
 	_check(sim.result == "gameOver", "First survival death loses")
 	for number: int in range(6):
 		sim = _game(number)
 		_check(sim.resources == (0 if number >= 4 else 30), "Original level wallet %d" % number)
 		var boss: Dictionary = sim.spawn_enemy("boss", Vector2(1000, 1000))
-		sim.damage_entity(int(boss.id), 800)
+		sim.damage_entity(int(boss.id), int(boss.hp))
 		_check(sim.result == ("playing" if number == 0 else "victory"), "Boss outcome %d" % number)
-		_check(sim.score == 100, "Boss death rewards immediately")
+		_check(sim.score == boss.score, "Boss death rewards immediately")
 		if number > 0:
-			sim.damage_entity(int(sim.hermes.id), 2000)
+			sim.damage_entity(int(sim.hermes.id), int(sim.hermes.hp))
 			_check(sim.result == "victory", "Hermes death cannot replace victory")
 	sim = _game()
 	sim.set_paused(true)
@@ -80,27 +81,30 @@ func _test_lives_and_outcomes() -> void:
 	sim.set_paused(false)
 	sim.step(2)
 	_check(sim.elapsed_time == 2, "Resume advances time")
-	sim.damage_entity(int(sim.hermes.id), 2000)
+	sim.damage_entity(int(sim.hermes.id), int(sim.hermes.hp))
 	_check(sim.result == "gameOver" and sim.lives == 3, "Hermes death ends game without spending Nathaniel lives")
 	sim = _game()
 	sim.level.has_boss = false
 	var optional_boss: Dictionary = sim.spawn_enemy("boss", Vector2(1000, 1000))
 	sim.damage_entity(int(optional_boss.id), int(optional_boss.max_hp))
-	_check(sim.result == "playing" and sim.score == 100, "Inspector has_boss=false disables boss victory while preserving kill score")
+	_check(sim.result == "playing" and sim.score == optional_boss.score, "Inspector has_boss=false disables boss victory while preserving kill score")
 
 func _test_hermes_and_towers() -> void:
 	var sim: GameSimulation = _game()
 	_check(sim.hermes_mode == "following", "Hermes follows by default on a fresh level")
 	sim.nathaniel.position = Vector2(1600, 242)
+	var start: Vector2 = sim.hermes.position
+	var travel: Vector2 = Vector2(float(sim.hermes.speed), 0)
 	sim.step(1)
-	_check(Vector2(sim.hermes.position).distance_to(Vector2(640, 242)) < 0.01, "Hermes follows at 40 points/second without teleporting")
+	_check(Vector2(sim.hermes.position).distance_to(start + travel) < 0.01, "Hermes follows at his configured speed without teleporting")
 	var following_restore := GameSimulation.new()
 	_check(following_restore.restore(sim.snapshot()) and following_restore.hermes_mode == "following", "Saved follow mode restores")
 	following_restore.step(1)
-	_check(Vector2(following_restore.hermes.position).distance_to(Vector2(680, 242)) < 0.01, "Restored Hermes continues following from his saved position")
-	sim.nathaniel.position = Vector2(740, 242)
+	_check(Vector2(following_restore.hermes.position).distance_to(start + travel * 2) < 0.01, "Restored Hermes continues following from his saved position")
+	var stopped_position: Vector2 = sim.hermes.position
+	sim.nathaniel.position = stopped_position + Vector2(GameBalance.HERMES_FOLLOW_DISTANCE, 0)
 	sim.step(1)
-	_check(sim.hermes.position == Vector2(640, 242), "Hermes stops at 100 points")
+	_check(sim.hermes.position == stopped_position, "Hermes stops at the configured follow boundary")
 	sim.set_hermes_mode("building")
 	sim.configure(sim.level)
 	_check(sim.hermes_mode == "following", "Restarting a level resets stopped Hermes to following")
@@ -190,11 +194,11 @@ func _test_build_while_following() -> void:
 func _test_hermes_base() -> void:
 	var sim: GameSimulation = _game()
 	var edge: Vector2 = sim.hermes.position + Vector2(sim.hermes_build_range(), 0)
-	_check(sim.hermes_build_range() == 240.0 and not sim.hermes.anchored, "Fresh Hermes is mobile with a modest build range")
+	_check(sim.hermes_build_range() == GameBalance.HERMES_BUILD_RANGE and not sim.hermes.anchored, "Fresh Hermes is mobile with the configured build range")
 	_check(sim.placement_error(edge) == "valid", "A tower center on the build boundary is valid")
 	_check(sim.placement_error(edge + Vector2(0.01, 0)) == "outOfBuildRange", "A tower center outside the build boundary is rejected")
 	_check(sim.place_tower("gunTower", edge), "A valid boundary build anchors Hermes")
-	_check(sim.hermes.anchored and sim.hermes.weapon == "gun" and sim.hermes.damage == 80 and sim.hermes.range == 300.0, "Anchored Hermes carries the stronger short-range cannon")
+	_check(sim.hermes.anchored and sim.hermes.weapon == "gun" and sim.hermes.damage == GameBalance.HERMES_ANCHORED_WEAPON.damage and sim.hermes.range == GameBalance.HERMES_ANCHORED_WEAPON.range, "Anchored Hermes uses the deployed weapon profile")
 	var tower: Dictionary = sim.entities.back()
 	tower.cooldown = tower.delay
 	_check(CombatRules.shoot(sim, tower, tower.position + Vector2(100, 0)), "Connected tower fires before recycling")
@@ -230,11 +234,11 @@ func _test_hermes_base() -> void:
 	sim.place_map_tower("gunTower", Vector2(1000, 1000))
 	_check(sim.hermes.anchored and sim.hermes_mode == "building", "Authored tower setup anchors Hermes")
 	sim.set_hermes_mode("following")
-	_check(not sim.hermes.anchored and sim.hermes.weapon == "laser" and sim.hermes.damage == 25, "Follow restores Hermes mobile weapon")
+	_check(not sim.hermes.anchored and sim.hermes.weapon == "laser" and sim.hermes.damage == GameBalance.STATS.hermes.damage, "Follow restores Hermes mobile weapon")
 	_check(sim.entities.size() == 2 and sim.resources == 30, "Map towers recycle without granting unspent resources")
 	sim.set_hermes_mode("building")
-	var outside: Dictionary = sim.spawn_enemy("soldier", sim.hermes.position + Vector2(301, 0))
-	var inside: Dictionary = sim.spawn_enemy("soldier", sim.hermes.position + Vector2(200, 0))
+	var outside: Dictionary = sim.spawn_enemy("soldier", sim.hermes.position + Vector2(float(sim.hermes.range) + 1, 0))
+	var inside: Dictionary = sim.spawn_enemy("soldier", sim.hermes.position + Vector2(float(sim.hermes.range) * 0.5, 0))
 	sim.hermes.target_id = outside.id
 	CombatRules.acquire(sim, sim.hermes)
 	_check(sim.hermes.target_id == inside.id, "Anchored cannon replaces an unreachable target with one inside its range")
@@ -273,7 +277,7 @@ func _test_resources() -> void:
 	sim = _game()
 	sim.spawn_resource(10, sim.nathaniel.position)
 	sim.step(0.6)
-	sim.damage_entity(int(sim.nathaniel.id), 8000)
+	sim.damage_entity(int(sim.nathaniel.id), int(sim.nathaniel.hp))
 	_check(not sim.corpses[0].carried and sim.corpses[0].disarmed and sim.corpses[0].expiration == 0.0, "Death drops a permanently disarmed corpse")
 
 func _test_combat() -> void:
@@ -282,10 +286,13 @@ func _test_combat() -> void:
 	sim.hermes.position = Vector2(1500, 1500)
 	sim.nathaniel.position = Vector2(400, 200)
 	var grunt: Dictionary = sim.spawn_enemy("grunt", Vector2(200, 200))
+	grunt.delay = 0.8
+	grunt.shot_speed = 450.0
+	var player_hp: int = int(sim.nathaniel.hp)
 	_advance(sim, 1.5)
 	_check(grunt.position == Vector2(200, 200), "Grunt fires without moving within range")
-	_check(sim.nathaniel.hp == 7975, "Grunt ranged blaster damages once after travel")
-	_check(grunt.weapon == "blaster" and grunt.delay == 0.8, "Original Grunt weapon")
+	_check(sim.nathaniel.hp == player_hp - int(grunt.damage), "Grunt ranged blaster damages once after travel")
+	_check(grunt.weapon == "blaster", "Grunt uses travelling blaster shots")
 	var original_id: int = int(grunt.target_id)
 	sim.nathaniel.position = Vector2(1800, 200)
 	sim.hermes.position = Vector2(210, 200)
@@ -299,17 +306,19 @@ func _test_combat() -> void:
 	var tower: Dictionary = sim.place_map_tower("gunTower", Vector2(400, 200))
 	tower.delay = 100000.0
 	var soldier: Dictionary = sim.spawn_enemy("soldier", Vector2(200, 200))
+	soldier.delay = 0.8
+	var tower_hp: int = int(tower.hp)
 	_advance(sim, 1.5)
-	_check(soldier.target_id == tower.id and tower.hp == 575, "Soldier acquires and damages tower")
+	_check(soldier.target_id == tower.id and tower.hp == tower_hp - int(soldier.damage), "Soldier acquires and damages tower")
 	soldier.position = Vector2(900, 200)
-	tower.hp = 600
+	tower.hp = tower.max_hp
 	_advance(sim, 7)
-	_check(Vector2(soldier.position).distance_to(tower.position) <= 300.0 and tower.hp < 600, "Retained target tower is approached despite blocked endpoint")
+	_check(Vector2(soldier.position).distance_to(tower.position) <= float(soldier.range) and tower.hp < tower.max_hp, "Retained target tower is approached despite blocked endpoint")
 	var boss: Dictionary = sim.spawn_enemy("boss", Vector2(1000, 700))
 	boss.target_id = sim.nathaniel.id
-	sim.nathaniel.position = Vector2(1400, 700)
+	sim.nathaniel.position = boss.position + Vector2(float(boss.range) * (1.0 + GameBalance.BOSS_APPROACH_RANGE_RATIO) * 0.5, 0)
 	sim.step(0.5)
-	_check(boss.moving and boss.position.x > 1000 and boss.shot_speed == 240.0, "Boss advances inside attack range at original arrow speed")
+	_check(boss.moving and boss.position.x > 1000, "Boss advances inside attack range toward his configured approach distance")
 	for fps: int in [30, 60, 120]:
 		sim = _game()
 		_quiet_players(sim)
@@ -317,9 +326,11 @@ func _test_combat() -> void:
 		var enemy: Dictionary = sim.spawn_enemy("grunt", Vector2(1200, 1000))
 		enemy.speed = 0.0
 		enemy.delay = 100000.0
-		laser.cooldown = 3.5
-		_advance(sim, 1.5, fps)
-		_check(absi(150 - int(enemy.hp) - 30) <= 1, "Laser tower frame-independent DPS at %d FPS" % fps)
+		enemy.max_hp = 10000
+		enemy.hp = enemy.max_hp
+		laser.cooldown = laser.delay
+		_advance(sim, GameBalance.LASER_BURST_SECONDS, fps)
+		_check(absf(float(enemy.max_hp) - float(enemy.hp) - float(laser.damage) * GameBalance.LASER_BURST_SECONDS) <= 1, "Laser tower frame-independent DPS at %d FPS" % fps)
 		enemy.position = Vector2(1700, 1000)
 		sim.step(1.0 / fps)
 		_check(not laser.firing, "Laser stops out of range")
@@ -327,28 +338,29 @@ func _test_combat() -> void:
 		sim.nathaniel.delay = 100000.0
 		sim.set_hermes_mode("building")
 		sim.hermes.position = Vector2(1000, 1000)
-		sim.hermes.cooldown = 3.5
+		sim.hermes.delay = 0.8
+		sim.hermes.cooldown = sim.hermes.delay
 		enemy = sim.spawn_enemy("grunt", Vector2(1200, 1000))
-		enemy.max_hp = 1000
-		enemy.hp = 1000
+		enemy.max_hp = 10000
+		enemy.hp = enemy.max_hp
 		enemy.speed = 0.0
 		enemy.delay = 100000.0
 		_advance(sim, 1.5, fps)
-		_check(enemy.hp == 840, "Anchored Hermes cannon delivers two 80-damage hits at %d FPS" % fps)
+		_check(enemy.hp == int(enemy.max_hp) - 2 * int(sim.hermes.damage), "Anchored Hermes cannon delivers two configured hits at %d FPS" % fps)
 	# Dead enemy projectiles persist; tower projectiles are removed on destruction.
 	sim = _game()
 	soldier = sim.spawn_enemy("soldier", Vector2(1000, 1000))
 	soldier.weapon = "gun" # Legacy saves can still contain travelling enemy shots.
-	soldier.cooldown = 0.8
+	soldier.cooldown = soldier.delay
 	_check(CombatRules.shoot(sim, soldier, Vector2(1200, 1000)), "Soldier projectile setup")
-	sim.damage_entity(int(soldier.id), 200)
-	_check(sim.projectiles.size() == 1 and sim.score == 30 and sim.corpses.size() == 1, "Enemy death pays immediately and keeps shot")
-	sim.damage_entity(int(soldier.id), 200)
-	_check(sim.score == 30 and sim.corpses.size() == 1, "Death reward once")
+	sim.damage_entity(int(soldier.id), int(soldier.hp))
+	_check(sim.projectiles.size() == 1 and sim.score == soldier.score and sim.corpses.size() == 1, "Enemy death pays immediately and keeps shot")
+	sim.damage_entity(int(soldier.id), int(soldier.max_hp))
+	_check(sim.score == soldier.score and sim.corpses.size() == 1, "Death reward once")
 	tower = sim.place_map_tower("gunTower", Vector2(1400, 1000))
-	tower.cooldown = 0.8
+	tower.cooldown = tower.delay
 	CombatRules.shoot(sim, tower, Vector2(1500, 1000))
-	sim.damage_entity(int(tower.id), 600)
+	sim.damage_entity(int(tower.id), int(tower.hp))
 	_check(sim.projectiles.size() == 1, "Tower death removes its shot only")
 
 func _test_healing() -> void:
@@ -356,13 +368,18 @@ func _test_healing() -> void:
 	sim.set_hermes_mode("building")
 	sim.hermes.position = sim.nathaniel.position + Vector2(100, 0)
 	var healer: Dictionary = sim.place_map_tower("healTower", Vector2(100, 250))
+	# Fixed healing inputs isolate tick, clamp and recipient rules from release balance.
+	healer.damage = 5
+	healer.delay = 1.0
+	var player_max_hp: int = int(sim.nathaniel.max_hp)
+	var hermes_max_hp: int = int(sim.hermes.max_hp)
 	sim.nathaniel.hp -= 6
 	sim.hermes.hp -= 50
 	sim.take_events()
 	sim.step(0.5)
-	_check(sim.nathaniel.hp == 7994 and sim.hermes.hp == 1950 and sim.take_events().is_empty(), "Healing waits for its first interval")
+	_check(sim.nathaniel.hp == player_max_hp - 6 and sim.hermes.hp == hermes_max_hp - 50 and sim.take_events().is_empty(), "Healing waits for its first interval")
 	sim.step(0.5)
-	_check(sim.nathaniel.hp == 7999 and sim.hermes.hp == 1955, "One healing tick restores five HP to both injured players")
+	_check(sim.nathaniel.hp == player_max_hp - 1 and sim.hermes.hp == hermes_max_hp - 45, "One healing tick restores five HP to both injured players")
 	var healing_events: Array[Dictionary] = sim.take_events()
 	_check(healing_events.size() == 2, "Healing both players emits two recipient events")
 	_check(healing_events.has({"type": "heal", "position": sim.nathaniel.position,
@@ -370,12 +387,12 @@ func _test_healing() -> void:
 	_check(healing_events.has({"type": "heal", "position": sim.hermes.position,
 		"target_id": sim.hermes.id, "owner_id": healer.id}), "Successful healing identifies its tower and Hermes")
 	sim.step(0.5)
-	_check(sim.nathaniel.hp == 7999 and sim.hermes.hp == 1955 and sim.take_events().is_empty(), "Healing waits a full interval after a successful tick")
+	_check(sim.nathaniel.hp == player_max_hp - 1 and sim.hermes.hp == hermes_max_hp - 45 and sim.take_events().is_empty(), "Healing waits a full interval after a successful tick")
 	sim.step(0.5)
-	_check(sim.nathaniel.hp == 8000 and sim.hermes.hp == 1960, "Healing clamps each recipient to maximum HP")
+	_check(sim.nathaniel.hp == player_max_hp and sim.hermes.hp == hermes_max_hp - 40, "Healing clamps each recipient to maximum HP")
 	_check(sim.take_events().size() == 2, "Both recipients emit events when one reaches maximum HP")
 	sim.step(1)
-	_check(sim.nathaniel.hp == 8000 and sim.hermes.hp == 1965, "A full-health player does not block the injured player")
+	_check(sim.nathaniel.hp == player_max_hp and sim.hermes.hp == hermes_max_hp - 35, "A full-health player does not block the injured player")
 	healing_events = sim.take_events()
 	_check(healing_events.size() == 1 and healing_events[0].target_id == sim.hermes.id, "Only the injured player emits a healing event")
 	sim.hermes.hp = sim.hermes.max_hp
@@ -384,28 +401,49 @@ func _test_healing() -> void:
 	sim.nathaniel.hp -= 1
 	sim.hermes.hp -= 1
 	sim.step(0)
-	_check(sim.nathaniel.hp == 8000 and sim.hermes.hp == 2000 and sim.take_events().size() == 2, "An idle ready tower heals both players immediately when injured")
+	_check(sim.nathaniel.hp == player_max_hp and sim.hermes.hp == hermes_max_hp and sim.take_events().size() == 2, "An idle ready tower heals both players immediately when injured")
 	sim.step(1)
 	sim.take_events()
 	sim.nathaniel.hp -= 10
 	sim.nathaniel.position = healer.position + Vector2(float(healer.range), 0)
 	sim.step(0)
-	_check(sim.nathaniel.hp == 7990 and sim.take_events().is_empty(), "Healing excludes the exact range boundary")
+	_check(sim.nathaniel.hp == player_max_hp - 10 and sim.take_events().is_empty(), "Healing excludes the exact range boundary")
 	sim.nathaniel.position.x += 1
 	sim.step(0)
-	_check(sim.nathaniel.hp == 7990 and sim.take_events().is_empty(), "Healing excludes players outside the range")
+	_check(sim.nathaniel.hp == player_max_hp - 10 and sim.take_events().is_empty(), "Healing excludes players outside the range")
 	sim.nathaniel.position.x -= 2
 	sim.step(0)
-	_check(sim.nathaniel.hp == 7995 and sim.take_events().size() == 1, "An idle ready tower heals immediately inside the range")
+	_check(sim.nathaniel.hp == player_max_hp - 5 and sim.take_events().size() == 1, "An idle ready tower heals immediately inside the range")
 	sim.nathaniel.hp = 0
 	sim.hermes.hp -= 10
 	sim.step(1)
 	healing_events = sim.take_events()
-	_check(sim.nathaniel.hp == 0 and sim.hermes.hp == 1995, "Healing skips a dead player and restores the living player")
+	_check(sim.nathaniel.hp == 0 and sim.hermes.hp == hermes_max_hp - 5, "Healing skips a dead player and restores the living player")
 	_check(healing_events.size() == 1 and healing_events[0].target_id == sim.hermes.id, "A dead player emits no healing event")
 	sim.hermes.hp = 0
 	sim.step(1)
 	_check(sim.nathaniel.hp == 0 and sim.hermes.hp == 0 and sim.take_events().is_empty(), "Dead players remain dead without healing events")
+
+func _test_healing_parameters() -> void:
+	var sim: GameSimulation = _game()
+	var config: Dictionary = sim.level.duplicate(true)
+	config.hermes_start = sim.nathaniel.position + Vector2(100, 0)
+	config.towers = [{"kind": "healTower", "position": Vector2(100, 250), "damage": 12, "delay": 0.5}]
+	sim.configure(config)
+	var healer: Dictionary = sim.entities.back()
+	sim.nathaniel.hp -= 30
+	sim.hermes.hp -= 30
+	var player_hp: int = int(sim.nathaniel.hp)
+	var hermes_hp: int = int(sim.hermes.hp)
+	sim.take_events()
+	sim.step(0.25)
+	_check(sim.nathaniel.hp == player_hp and sim.hermes.hp == hermes_hp and sim.take_events().is_empty(), "Configured healing waits for its half-second interval")
+	sim.step(0.25)
+	_check(sim.nathaniel.hp == player_hp + 12 and sim.hermes.hp == hermes_hp + 12, "Configured healing restores twelve HP to both players")
+	_check(sim.take_events().size() == 2, "Configured healing emits recipient events")
+	sim.apply_design_parameters(healer, {"damage": 0})
+	sim.step(0.5)
+	_check(sim.nathaniel.hp == player_hp + 12 and sim.hermes.hp == hermes_hp + 12 and sim.take_events().is_empty(), "Zero healing amount restores no HP and emits no events")
 
 func _test_shot_emission() -> void:
 	var sim: GameSimulation = _game()
@@ -475,24 +513,29 @@ func _test_spawners_and_waves() -> void:
 	var sim: GameSimulation = _game()
 	_quiet_players(sim)
 	var spawner: Dictionary = sim.spawn_enemy("spawner", Vector2(1000, 1000))
-	sim.step(29)
-	_check(sim.entities.size() == 3, "Spawner waits thirty seconds")
-	sim.step(1)
-	_check(sim.entities.size() == 4 and spawner.spawn_countdown == 30.0, "Spawner first production")
-	_check(sim.entities.back().position == Vector2(1240, 832), "Spawner child y-up offset")
-	sim.step(30)
-	sim.step(30)
-	_check(spawner.initial_spawns_remaining == 0 and spawner.spawn_countdown == 120.0, "Spawner original 30,60,90 then120 cadence")
+	BattlefieldRules.update_spawner(sim, spawner, GameBalance.SPAWNER_INITIAL_INTERVAL_SECONDS * 0.5)
+	_check(sim.entities.size() == 3, "Spawner waits for its configured first interval")
+	BattlefieldRules.update_spawner(sim, spawner, GameBalance.SPAWNER_INITIAL_INTERVAL_SECONDS * 0.5)
+	_check(sim.entities.size() == 4 and spawner.spawn_countdown == GameBalance.SPAWNER_INITIAL_INTERVAL_SECONDS, "Spawner first production")
+	_check(sim.entities.back().position == Vector2(spawner.position) + GameBalance.SPAWNER_SPAWN_OFFSET, "Spawner child y-up offset")
+	for index: int in GameBalance.SPAWNER_INITIAL_SPAWNS - 1:
+		BattlefieldRules.update_spawner(sim, spawner, GameBalance.SPAWNER_INITIAL_INTERVAL_SECONDS)
+	_check(spawner.initial_spawns_remaining == 0 and spawner.spawn_countdown == GameBalance.SPAWNER_INTERVAL_SECONDS, "Spawner switches to its configured ongoing interval")
 	var restored := GameSimulation.new()
 	_check(restored.restore(sim.snapshot()), "Spawner state restore")
-	_check(restored.entity(int(spawner.id)).spawn_countdown == 120.0, "Spawner countdown persists")
-	for timing: Array in [[0, 5], [60, 5], [60.01, 4], [120, 4], [120.01, 3], [180, 3], [180.01, 2], [240, 2], [240.01, 1], [365, 1]]:
-		_check(BattlefieldRules.wave_interval(float(timing[0])) == float(timing[1]), "Wave threshold %s" % timing[0])
+	_check(restored.entity(int(spawner.id)).spawn_countdown == GameBalance.SPAWNER_INTERVAL_SECONDS, "Spawner countdown persists")
+	_check(BattlefieldRules.wave_interval(0.0) == GameBalance.WAVE_STAGES[0].interval_seconds, "Wave starts at its initial interval")
+	for index: int in range(1, GameBalance.WAVE_STAGES.size()):
+		var stage: Dictionary = GameBalance.WAVE_STAGES[index]
+		var previous: Dictionary = GameBalance.WAVE_STAGES[index - 1]
+		_check(BattlefieldRules.wave_interval(float(stage.after_seconds) - 0.01) == previous.interval_seconds, "Wave interval before threshold %s" % stage.after_seconds)
+		_check(BattlefieldRules.wave_interval(float(stage.after_seconds)) == previous.interval_seconds, "Wave interval at exact threshold %s" % stage.after_seconds)
+		_check(BattlefieldRules.wave_interval(float(stage.after_seconds) + 0.01) == stage.interval_seconds, "Wave interval after threshold %s" % stage.after_seconds)
 	sim = _game(0)
 	sim.level.wave_based = true
-	sim.wave_elapsed = 365.0
+	sim.wave_elapsed = float(GameBalance.WAVE_STAGES.back().after_seconds) + 1.0
 	for index: int in 30:
-		BattlefieldRules.update_waves(sim, 1)
+		BattlefieldRules.update_waves(sim, float(GameBalance.WAVE_STAGES.back().interval_seconds))
 		var enemy: Dictionary = sim.entities.back()
 		_check(enemy.position.x >= 0 and enemy.position.x < 2048, "Wave spawn X bounds")
 		_check(enemy.position.y == (200.0 if enemy.kind == "spawner" else (10.0 if enemy.kind == "grunt" else 50.0)), "Wave bottom edge y-up offsets")
@@ -503,12 +546,13 @@ func _test_spawners_and_waves() -> void:
 	sim.hermes.position = Vector2(1800, 1800)
 	spawner = sim.spawn_enemy("spawner", Vector2(1000, 1000))
 	spawner.target_id = sim.nathaniel.id
-	_advance(sim, 5)
-	_check(sim.nathaniel.hp == 7970, "Spawner laser pays one whole-second tick in first burst")
+	var player_hp: int = int(sim.nathaniel.hp)
+	_advance(sim, float(spawner.delay) + GameBalance.LASER_BURST_SECONDS)
+	_check(sim.nathaniel.hp == player_hp - floori(GameBalance.LASER_BURST_SECONDS) * int(spawner.damage), "Spawner laser pays whole-second ticks in first burst")
 	_check(spawner.position == Vector2(1000, 1000), "Spawner is stationary")
-	sim.damage_entity(int(spawner.id), 1500)
+	sim.damage_entity(int(spawner.id), int(spawner.hp))
 	var count: int = sim.entities.size()
-	BattlefieldRules.update_spawners(sim, 120)
+	BattlefieldRules.update_spawners(sim, GameBalance.SPAWNER_INTERVAL_SECONDS)
 	_check(sim.entities.size() == count, "Dead spawner cannot produce")
 
 func _test_targeting_and_update_order() -> void:
@@ -522,11 +566,11 @@ func _test_targeting_and_update_order() -> void:
 	var distant: Dictionary = sim.spawn_enemy("soldier", Vector2(1800, 1800))
 	sim.target_enemy(int(distant.id))
 	_check(sim.nathaniel.manual_target_id == -1, "Cannot manually target inside unexplored fog")
-	sim.nathaniel.cooldown = 0.8
+	sim.nathaniel.cooldown = sim.nathaniel.delay
 	sim.nathaniel.aim_direction = Vector2.RIGHT
 	_check(sim.fire_at(Vector2(184, 242)), "Fire targets an arbitrary in-range logical mouse point")
 	_check(sim.projectiles.back().radius == 12.0, "Bullet radius comes from original24px texture")
-	sim.nathaniel.cooldown = 0.8
+	sim.nathaniel.cooldown = sim.nathaniel.delay
 	_check(not sim.fire_at(Vector2(1800, 1800)), "Manual fire obeys range")
 	# Threat score beats proximity on acquisition; living targets then stay sticky.
 	sim = _game()
@@ -553,25 +597,25 @@ func _test_targeting_and_update_order() -> void:
 	sim = _game()
 	sim.nathaniel.position = Vector2(100, 200)
 	sim.hermes.position = Vector2(200, 200)
-	sim.hermes.hp = 25
 	var boss: Dictionary = sim.spawn_enemy("boss", Vector2(300, 200))
+	sim.hermes.hp = boss.damage
 	boss.weapon = "bow" # Exercise the legacy in-flight arrow ordering.
-	boss.hp = 25
-	boss.cooldown = 1.5
+	boss.hp = sim.nathaniel.damage
+	boss.cooldown = boss.delay
 	CombatRules.shoot(sim, boss, sim.hermes.position)
 	sim.projectiles.back().position = sim.hermes.position
-	sim.nathaniel.cooldown = 0.8
+	sim.nathaniel.cooldown = sim.nathaniel.delay
 	sim.nathaniel.aim_direction = Vector2.RIGHT
 	CombatRules.shoot(sim, sim.nathaniel, boss.position)
 	sim.projectiles.back().position = boss.position
 	sim.step(0)
 	_check(sim.result == "victory" and sim.hermes.hp == 0, "Boss victory before simultaneous lethal arrow")
-	_check(sim.score == 100 and sim.projectiles.is_empty(), "Simultaneous shots resolve once")
+	_check(sim.score == boss.score and sim.projectiles.is_empty(), "Simultaneous shots resolve once")
 	# Refund cancelled tower shots must never hit later.
 	sim = _game()
 	sim.place_tower("gunTower", Vector2(700, 242))
 	tower = sim.entities.back()
-	tower.cooldown = 0.8
+	tower.cooldown = tower.delay
 	CombatRules.shoot(sim, tower, tower.position + Vector2(200, 0))
 	sim.set_hermes_mode("following")
 	_check(sim.projectiles.is_empty() and sim.resources == 26, "Dismantle removes owned shots and refunds one")
@@ -605,7 +649,7 @@ func _test_navigation_and_restore() -> void:
 	var tower: Dictionary = sim.place_map_tower("healTower", Vector2(368, 176))
 	_advance(sim, 5)
 	_check(Vector2(sim.nathaniel.position).distance_to(Vector2(500, 176)) < 16, "New tower invalidates and replans active route")
-	sim.damage_entity(int(tower.id), 600)
+	sim.damage_entity(int(tower.id), int(tower.hp))
 	sim.move_to(Vector2(272, 176))
 	_advance(sim, 4)
 	_check(Vector2(sim.nathaniel.position).distance_to(Vector2(272, 176)) < 16, "Destroyed tower restores route")
@@ -614,7 +658,7 @@ func _test_navigation_and_restore() -> void:
 		sim.nathaniel.position = Vector2(1000, 1000)
 		sim.move_to(Vector2(1000, 1000) + direction * 300)
 		sim.step(1)
-		_check(absf(Vector2(sim.nathaniel.position).distance_to(Vector2(1000, 1000)) - 70.0) < 0.001, "Direction-independent logical movement")
+		_check(absf(Vector2(sim.nathaniel.position).distance_to(Vector2(1000, 1000)) - float(sim.nathaniel.speed)) < 0.001, "Direction-independent logical movement")
 	var invalid: Dictionary = restored.snapshot()
 	invalid.entities.append(invalid.entities[0].duplicate())
 	var before: Vector2 = restored.nathaniel.position

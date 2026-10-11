@@ -23,6 +23,7 @@ func _run() -> void:
 	_test_state_ids()
 	_test_slots()
 	_test_simulation_restoration()
+	_test_recovery_restoration()
 	_test_settings_progress()
 	_test_http_framing()
 	_test_routes()
@@ -239,6 +240,144 @@ func _test_simulation_restoration() -> void:
 	_check(restored.navigation.towers.size() == 2 and restored.nathaniel.destination == Vector2(900, 700), "Disk reload rebuilds towers before routes")
 	restored.set_hermes_mode("following")
 	_check(restored.resources == 34 and restored.navigation.towers.is_empty(), "Follow reclaims imported and map towers but refunds only the paid tower")
+
+
+func _test_recovery_restoration() -> void:
+	var sim: GameSimulation = _recovery_fixture()
+	var body: Dictionary = sim.corpses[0]
+	var waiting: Dictionary = sim.snapshot()
+	var restored := GameSimulation.new()
+	_check(SaveStore.validate_state(waiting).is_empty() and restored.restore(waiting), "Waiting recovery candidate restores")
+	_check(restored.corpses[0].recovery_eligible and restored.corpses[0].phase == "loose" and restored.hermes.recovery_corpse_id == 0, "Load preserves death-time eligibility without claiming or crediting")
+	var old: Dictionary = waiting.duplicate(true)
+	for corpse: Dictionary in old.corpses:
+		for key: String in ["recovery_eligible", "recovery_route", "recovery_drop_position"]:
+			corpse.erase(key)
+	for entity: Dictionary in old.entities:
+		if entity.kind == "hermes":
+			entity.erase("recovery_corpse_id")
+			entity.erase("recovery_cooldown")
+	_check(SaveStore.validate_state(old).is_empty() and restored.restore(old), "Older snapshot without recovery fields restores")
+	BattlefieldRules.update_corpses(restored, 0.1)
+	_check(not restored.corpses[0].recovery_eligible and restored.corpses[0].phase == "loose" and restored.hermes.recovery_corpse_id == 0 and restored.hermes.recovery_cooldown == 0.0, "Older nearby body receives no automatic eligibility or active job")
+	var store := SaveStore.new(directory.path_join("recovery"))
+	var launch: Dictionary = {}
+	var secured: Dictionary = {}
+	BattlefieldRules.update_corpses(sim, 0.0)
+	for phase: String in ["winch_launch", "winch_reel", "winch_crush", "winch_feed"]:
+		var duration: float = BattlefieldRules.phase_seconds(phase)
+		BattlefieldRules.update_corpses(sim, duration * 0.5)
+		var saved: Dictionary = sim.snapshot()
+		_check(body.phase == phase, "Recovery reaches saved %s phase" % phase)
+		_check(store.save_slot(1, saved).success and restored.restore(store.load_slot(1).state), "Recovery %s saves and restores through disk" % phase)
+		_check(restored.corpses[0].phase == phase and is_equal_approx(restored.corpses[0].phase_elapsed, float(body.phase_elapsed)) and restored.corpses[0].position.is_equal_approx(body.position), "Recovery %s keeps phase time and ground position" % phase)
+		_check(restored.hermes.recovery_corpse_id == body.id and not restored.corpses[0].carried and restored.corpses[0].cargo_slot == -1 and restored.resources == sim.resources, "Recovery %s keeps exclusive ownership without cargo or credit" % phase)
+		_check(restored.corpses[0].recovery_route == body.recovery_route and restored.corpses[0].recovery_drop_position.is_equal_approx(body.recovery_drop_position), "Recovery %s preserves pull route and safe drop point" % phase)
+		var displaced: Dictionary = saved.duplicate(true)
+		displaced.corpses[0].position = GameSimulation.encode(Vector2(body.position) + Vector2(1, 0))
+		_check(not SaveStore.validate_state(displaced).is_empty() and not restored.restore(displaced), "Recovery %s rejects ground position inconsistent with phase" % phase)
+		var bent: Dictionary = saved.duplicate(true)
+		bent.corpses[0].recovery_route[1].x = float(bent.corpses[0].recovery_route[1].x) + 1.0
+		_check(not SaveStore.validate_state(bent).is_empty() and not restored.restore(bent), "Recovery %s rejects a changed intermediate guide point" % phase)
+		if phase in ["winch_reel", "winch_crush"]:
+			var inconsistent: Dictionary = saved.duplicate(true)
+			inconsistent.corpses[0].phase_elapsed = float(body.phase_elapsed) * 0.5
+			_check(not SaveStore.validate_state(inconsistent).is_empty() and not restored.restore(inconsistent), "Recovery %s rejects valid timer with inconsistent ground progress" % phase)
+		if phase == "winch_launch":
+			launch = saved
+			_check(not restored.corpses[0].disarmed and is_equal_approx(float(restored.corpses[0].expiration), float(body.expiration)), "In-flight hook retains the armed expiry deadline")
+		else:
+			secured = saved
+			_check(restored.corpses[0].disarmed and restored.corpses[0].expiration == 0.0, "Contact disarm survives %s load" % phase)
+		BattlefieldRules.update_corpses(sim, duration * 0.5)
+	_check(sim.corpses.is_empty() and sim.resources == int(waiting.resources) + int(body.amount), "Recovery feed accepts one body and credits it once")
+	var accepted: Dictionary = sim.snapshot()
+	_check(store.save_slot(1, accepted).success and restored.restore(store.load_slot(1).state), "Completed credit and reset time restore")
+	_check(restored.corpses.is_empty() and restored.hermes.recovery_corpse_id == 0 and restored.hermes.recovery_cooldown == sim.hermes.recovery_cooldown and restored.resources == sim.resources, "Accepted body is absent after loading")
+	BattlefieldRules.update_corpses(restored, 2.0)
+	_check(restored.corpses.is_empty() and restored.resources == sim.resources, "Loaded completed feed cannot recreate or credit the body")
+	for saved: Dictionary in [launch, secured]:
+		for invalid_owner: String in ["following", "dead", "victory"]:
+			var interrupted: Dictionary = saved.duplicate(true)
+			if invalid_owner == "following":
+				interrupted.hermes_mode = "following"
+			elif invalid_owner == "victory":
+				interrupted.result = "victory"
+			else:
+				for entity: Dictionary in interrupted.entities:
+					if entity.kind == "hermes":
+						entity.hp = 0
+						entity.active = false
+			_check(restored.restore(interrupted), "Interrupted %s recovery snapshot loads safely" % invalid_owner)
+			_check(restored.corpses[0].phase == "loose" and not restored.corpses[0].recovery_eligible and restored.hermes.recovery_corpse_id == 0 and restored.resources == int(saved.resources), "Invalid %s owner releases recovery without credit" % invalid_owner)
+			_check(restored.corpses[0].disarmed == saved.corpses[0].disarmed and is_equal_approx(float(restored.corpses[0].expiration), float(saved.corpses[0].expiration)), "Invalid %s owner preserves contact disarm or armed lifetime" % invalid_owner)
+			if saved.corpses[0].disarmed:
+				_check(restored.corpses[0].position.is_equal_approx(GameSimulation.point(saved.corpses[0].recovery_drop_position)), "Invalid %s owner drops secured body at saved safe ground" % invalid_owner)
+	var invalid_patches: Array[Dictionary] = [
+		{"recovery_eligible": "true"}, {"recovery_eligible": false},
+		{"carried": true}, {"cargo_slot": 0}, {"disarmed": false}, {"expiration": 0.1},
+		{"phase_elapsed": -0.1}, {"phase_elapsed": INF}, {"phase_elapsed": 100.0},
+		{"recovery_drop_position": {"x": NAN, "y": 0}},
+		{"recovery_route": "route"}, {"recovery_route": []},
+		{"recovery_route": [{"x": 0, "y": 0}, secured.corpses[0].recovery_route[-1]]},
+		{"recovery_route": [secured.corpses[0].pickup_position, {"x": 0, "y": 0}]},
+		{"recovery_route": [secured.corpses[0].pickup_position, {"x": INF, "y": 0}, secured.corpses[0].recovery_route[-1]]},
+	]
+	for patch: Dictionary in invalid_patches:
+		var invalid: Dictionary = secured.duplicate(true)
+		invalid.corpses[0].merge(patch, true)
+		_check(not SaveStore.validate_state(invalid).is_empty() and not restored.restore(invalid), "Malformed recovery body state is rejected: " + str(patch.keys()))
+	for key: String in ["recovery_eligible", "recovery_route", "recovery_drop_position"]:
+		var incomplete: Dictionary = secured.duplicate(true)
+		incomplete.corpses[0].erase(key)
+		_check(not SaveStore.validate_state(incomplete).is_empty() and not restored.restore(incomplete), "Active job requires saved recovery field: " + key)
+	for patch: Dictionary in [
+		{"recovery_corpse_id": -1}, {"recovery_corpse_id": 0},
+		{"recovery_corpse_id": 2.5}, {"recovery_corpse_id": "3"},
+		{"recovery_corpse_id": true}, {"recovery_corpse_id": 9999},
+		{"recovery_cooldown": -0.1}, {"recovery_cooldown": NAN},
+		{"recovery_cooldown": GameBalance.HERMES_WINCH_RESET_SECONDS + 0.1},
+		{"recovery_cooldown": GameBalance.HERMES_WINCH_RESET_SECONDS},
+		{"furnace_remaining": GameBalance.RESOURCE_FURNACE_SECONDS},
+	]:
+		var invalid: Dictionary = secured.duplicate(true)
+		for entity: Dictionary in invalid.entities:
+			if entity.kind == "hermes":
+				entity.merge(patch, true)
+		_check(not SaveStore.validate_state(invalid).is_empty() and not restored.restore(invalid), "Malformed recovery owner state is rejected: " + str(patch.keys()))
+	var stale: Dictionary = accepted.duplicate(true)
+	for entity: Dictionary in stale.entities:
+		if entity.kind == "hermes":
+			entity.recovery_corpse_id = body.id
+	_check(not SaveStore.validate_state(stale).is_empty() and not restored.restore(stale), "Accepted body cannot retain a stale pending ownership reference")
+	var duplicated: Dictionary = secured.duplicate(true)
+	var second_job: Dictionary = duplicated.corpses[0].duplicate(true)
+	second_job.id = int(duplicated.next_id)
+	duplicated.corpses.append(second_job)
+	_check(not SaveStore.validate_state(duplicated).is_empty() and not restored.restore(duplicated), "Two winch jobs cannot share one owner")
+	var concurrent: GameSimulation = _recovery_fixture()
+	BattlefieldRules.update_corpses(concurrent, 0.0)
+	var cargo: Dictionary = concurrent.spawn_resource(10, concurrent.nathaniel.position, 0.0, true)
+	cargo.phase = "feed"
+	var contested: Dictionary = concurrent.snapshot()
+	_check(not SaveStore.validate_state(contested).is_empty() and not restored.restore(contested), "Manual and automatic feeds cannot own the intake together")
+	cargo.phase = "crush"
+	_check(SaveStore.validate_state(concurrent.snapshot()).is_empty(), "Nathaniel's separate arm pair can crush cargo during a winch launch")
+	concurrent.hermes.furnace_remaining = GameBalance.RESOURCE_FURNACE_SECONDS
+	_check(SaveStore.validate_state(concurrent.snapshot()).is_empty(), "Previous furnace pulse can finish during the next winch launch")
+
+
+func _recovery_fixture() -> GameSimulation:
+	var sim := GameSimulation.new()
+	var level: Dictionary = _level()
+	level.wave_based = false
+	level.player_start = Vector2(900, 900)
+	level.hermes_start = Vector2(512, 512)
+	sim.configure(level)
+	sim.set_hermes_mode("building")
+	var body: Dictionary = sim.spawn_resource(10, Vector2(672, 612))
+	body.recovery_eligible = true
+	return sim
 
 
 func _test_http_framing() -> void:

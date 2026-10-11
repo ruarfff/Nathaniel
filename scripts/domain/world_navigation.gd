@@ -82,6 +82,32 @@ func segment_clear(start: Vector2, goal: Vector2, radius: float) -> bool:
 		previous = current
 	return true
 
+func swept_terrain_clear(start: Vector2, goal: Vector2, radius: float) -> bool:
+	var bounds := Rect2(Vector2.ONE * radius, Vector2(width, height) * tile_size - Vector2.ONE * radius * 2.0)
+	if not bounds.has_point(start) or not bounds.has_point(goal):
+		return false
+	for at: Vector2i in blocked:
+		if segment_hits_rect(start, goal, Rect2(Vector2(at) * tile_size, Vector2.ONE * tile_size).grow(radius)):
+			return false
+	return true
+
+static func segment_hits_rect(start: Vector2, goal: Vector2, bounds: Rect2) -> bool:
+	var low: float = 0.0
+	var high: float = 1.0
+	var offset: Vector2 = goal - start
+	for axis: int in 2:
+		if is_zero_approx(offset[axis]):
+			if start[axis] < bounds.position[axis] or start[axis] > bounds.end[axis]:
+				return false
+		else:
+			var first: float = (bounds.position[axis] - start[axis]) / offset[axis]
+			var last: float = (bounds.end[axis] - start[axis]) / offset[axis]
+			low = maxf(low, minf(first, last))
+			high = minf(high, maxf(first, last))
+			if low > high:
+				return false
+	return true
+
 func route(start: Vector2, goal: Vector2, radius: float) -> Array[Vector2]:
 	var result: Array[Vector2] = []
 	if not walkable(goal, radius) or not terrain_clear(start):

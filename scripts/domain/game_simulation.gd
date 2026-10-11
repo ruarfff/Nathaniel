@@ -182,7 +182,8 @@ func spawn_resource(amount: int, position: Vector2, expiration: float = GameBala
 	var corpse: Dictionary = {"id": allocate_id(), "amount": amount,
 		"position": position, "expiration": expiration, "carried": carried, "disarmed": disarmed, "source_kind": source_kind,
 		"phase": "carry" if carried else "loose", "phase_elapsed": 0.0,
-		"cargo_slot": cargo_slot, "pickup_position": position}
+		"cargo_slot": cargo_slot, "pickup_position": position,
+		"recovery_eligible": false, "recovery_route": [], "recovery_drop_position": position}
 	corpses.append(corpse)
 	nathaniel.has_corpse = carried_resource_count() > 0
 	return corpse
@@ -193,6 +194,12 @@ func carried_resource_count() -> int:
 		if corpse.carried:
 			count += 1
 	return count
+
+func recovery_state() -> Dictionary:
+	for corpse: Dictionary in corpses:
+		if int(corpse.id) == int(hermes.recovery_corpse_id):
+			return corpse
+	return {}
 
 func gathering_state() -> Dictionary:
 	var carried: Dictionary = {}
@@ -310,7 +317,7 @@ func step(delta: float) -> void:
 		if CombatRules.alive(unit) and unit.kind != "spawner":
 			var target: Dictionary = entity(int(unit.target_id))
 			if CombatRules.alive(target):
-				var stop_distance: float = float(unit.range) * (0.3 if unit.kind == "boss" else 1.0)
+				var stop_distance: float = float(unit.range) * (GameBalance.BOSS_APPROACH_RANGE_RATIO if unit.kind == "boss" else 1.0)
 				if CombatRules.distance(unit, target) > stop_distance:
 					_command_move(unit, target.position, stop_distance)
 				else:
@@ -334,10 +341,10 @@ func step(delta: float) -> void:
 	_cleanup_dead()
 
 func _update_follow(robot: Dictionary) -> void:
-	if hermes_mode != "following" or not CombatRules.alive(nathaniel) or CombatRules.distance(robot, nathaniel) <= 100.0:
+	if hermes_mode != "following" or not CombatRules.alive(nathaniel) or CombatRules.distance(robot, nathaniel) <= GameBalance.HERMES_FOLLOW_DISTANCE:
 		_stop(robot)
 		return
-	if robot.destination == null or robot.follow_destination == null or Vector2(robot.follow_destination).distance_to(nathaniel.position) > 100.0:
+	if robot.destination == null or robot.follow_destination == null or Vector2(robot.follow_destination).distance_to(nathaniel.position) > GameBalance.HERMES_FOLLOW_DISTANCE:
 		robot.follow_destination = nathaniel.position
 		_command_move(robot, nathaniel.position)
 
@@ -465,6 +472,7 @@ func set_hermes_mode(mode: String) -> void:
 		_apply_hermes_weapon(true)
 		emit_event("hermes_mode", {"mode": mode, "position": hermes.position, "anchored": hermes.anchored})
 	if mode == "following":
+		BattlefieldRules.interrupt_recovery(self, true)
 		_dismantle_towers(CombatRules.alive(hermes))
 
 func _apply_hermes_weapon(reset_phase: bool) -> void:
@@ -548,13 +556,15 @@ func damage_entity(id: int, amount: int, attacker_id: int = -1) -> void:
 	if unit.enemy:
 		score += int(unit.score)
 		if GameBalance.RESOURCE_VALUES.has(unit.kind):
-			spawn_resource(int(GameBalance.RESOURCE_VALUES[unit.kind]), unit.position, GameBalance.RESOURCE_LIFETIME_SECONDS, false, unit.kind)
+			var corpse: Dictionary = spawn_resource(int(GameBalance.RESOURCE_VALUES[unit.kind]), unit.position, GameBalance.RESOURCE_LIFETIME_SECONDS, false, unit.kind)
+			corpse.recovery_eligible = CombatRules.alive(hermes) and hermes_mode == "building" and Vector2(unit.position).distance_to(hermes.position) <= hermes_build_range()
 		if unit.kind == "boss" and level_number > 0 and level.get("has_boss", true) and result == "playing":
 			result = "victory"
 	elif unit.tower:
 		_destroy_tower(unit)
 	elif unit.kind == "hermes":
 		unit.anchored = false
+		BattlefieldRules.interrupt_recovery(self, true)
 		BattlefieldRules.interrupt_delivery(self)
 		_update_cargo_return()
 		_dismantle_towers(false)
@@ -570,6 +580,8 @@ func damage_entity(id: int, amount: int, attacker_id: int = -1) -> void:
 				_respawn_player()
 			else:
 				result = "gameOver"
+	if result != "playing":
+		BattlefieldRules.interrupt_recovery(self, true)
 
 func _respawn_player() -> void:
 	nathaniel.hp = nathaniel.max_hp
@@ -691,6 +703,8 @@ func restore(saved: Dictionary) -> bool:
 		if unit.kind == "nathaniel":
 			_nathaniel_id = int(unit.id)
 		elif unit.kind == "hermes":
+			unit.recovery_corpse_id = int(unit.get("recovery_corpse_id", 0))
+			unit.recovery_cooldown = float(unit.get("recovery_cooldown", 0.0))
 			_hermes_id = int(unit.id)
 	for data: Dictionary in saved.get("projectiles", []):
 		var shot: Dictionary = data.duplicate(true)
@@ -711,6 +725,12 @@ func restore(saved: Dictionary) -> bool:
 		corpse.source_kind = corpse.get("source_kind", "soldier")
 		corpse.position = point(corpse.position)
 		corpse.pickup_position = point(corpse.get("pickup_position", corpse.position))
+		corpse.recovery_eligible = corpse.get("recovery_eligible", false)
+		corpse.recovery_drop_position = point(corpse.get("recovery_drop_position", corpse.position))
+		var recovery_route: Array[Vector2] = []
+		for route_point: Variant in corpse.get("recovery_route", []):
+			recovery_route.append(point(route_point))
+		corpse.recovery_route = recovery_route
 		corpse.phase = corpse.get("phase", "carry" if corpse.carried else "loose")
 		corpse.phase_elapsed = float(corpse.get("phase_elapsed", 0.0))
 		corpse.cargo_slot = int(corpse.get("cargo_slot", carried_resource_count() if corpse.carried else -1))
@@ -746,6 +766,8 @@ func restore(saved: Dictionary) -> bool:
 	if hermes_mode in ["independent", "locked", "stopped"]:
 		hermes_mode = "building"
 	_apply_hermes_weapon(false)
+	if hermes_mode != "building" or not CombatRules.alive(hermes) or result != "playing":
+		BattlefieldRules.interrupt_recovery(self, true)
 	if hermes_mode == "following" or not CombatRules.alive(hermes):
 		_dismantle_towers(hermes_mode == "following" and CombatRules.alive(hermes))
 	else:
@@ -791,6 +813,10 @@ static func state_id_error(state: Dictionary) -> String:
 
 static func gathering_state_error(state: Dictionary) -> String:
 	var capacity: int = GameBalance.RESOURCE_CAPACITIES[0]
+	var recovery_id: int = 0
+	var recovery_cooldown: float = 0.0
+	var furnace_remaining: float = 0.0
+	var hermes_position := Vector2.ZERO
 	for item: Variant in state.get("entities", []):
 		if not item is Dictionary:
 			return "Invalid gathering entity"
@@ -804,11 +830,23 @@ static func gathering_state_error(state: Dictionary) -> String:
 			if not _finite_number(stored_reach) or stored_reach not in GameBalance.RESOURCE_REACHES:
 				return "Invalid resource reach"
 			capacity = int(stored_capacity)
-		if item.get("kind") == "hermes" and item.has("furnace_remaining"):
-			if not _finite_number(item.furnace_remaining) or float(item.furnace_remaining) < 0 or float(item.furnace_remaining) > GameBalance.RESOURCE_FURNACE_SECONDS:
+		if item.get("kind") == "hermes":
+			if not _finite_number(item.get("furnace_remaining", 0.0)) or float(item.get("furnace_remaining", 0.0)) < 0 or float(item.get("furnace_remaining", 0.0)) > GameBalance.RESOURCE_FURNACE_SECONDS:
 				return "Invalid furnace timer"
+			furnace_remaining = float(item.get("furnace_remaining", 0.0))
+			var stored_recovery_id: Variant = item.get("recovery_corpse_id", 0)
+			if not _finite_number(stored_recovery_id) or float(stored_recovery_id) != float(int(stored_recovery_id)) or int(stored_recovery_id) < 0 or int(stored_recovery_id) == 9223372036854775807:
+				return "Invalid recovery owner reference"
+			recovery_id = int(stored_recovery_id)
+			var stored_cooldown: Variant = item.get("recovery_cooldown", 0.0)
+			if not _finite_number(stored_cooldown) or float(stored_cooldown) < 0 or float(stored_cooldown) > GameBalance.HERMES_WINCH_RESET_SECONDS:
+				return "Invalid recovery cooldown"
+			recovery_cooldown = float(stored_cooldown)
+			hermes_position = point(item.get("position"))
 	var slots: Array[int] = []
 	var active_count: int = 0
+	var recovery_count: int = 0
+	var delivery_count: int = 0
 	if not state.get("corpses", []) is Array:
 		return "Invalid gathering corpses"
 	for item: Variant in state.get("corpses", []):
@@ -820,12 +858,22 @@ static func gathering_state_error(state: Dictionary) -> String:
 			return "Invalid resource disarm state"
 		if not _weapon_point_valid(item.get("position")) or not GameBalance.RESOURCE_VALUES.has(item.get("source_kind", "soldier")):
 			return "Invalid resource position or source"
+		if not item.get("recovery_eligible", false) is bool:
+			return "Invalid recovery eligibility"
+		if not _weapon_point_valid(item.get("recovery_drop_position", item.position)):
+			return "Invalid recovery drop position"
+		var route: Variant = item.get("recovery_route", [])
+		if not route is Array or route.size() > 16:
+			return "Invalid recovery route"
+		for route_point: Variant in route:
+			if not _weapon_point_valid(route_point):
+				return "Invalid recovery route point"
 		if not item.has("phase"):
 			for key: String in ["phase_elapsed", "cargo_slot", "pickup_position"]:
 				if item.has(key):
 					return "Incomplete gathering state"
 			continue
-		if item.phase not in ["loose", "grab", "crush", "carry", "present", "feed"]:
+		if item.phase not in ["loose", "grab", "crush", "carry", "present", "feed", "winch_launch", "winch_reel", "winch_crush", "winch_feed"]:
 			return "Invalid gathering phase"
 		if bool(item.carried) != (item.phase in ["crush", "carry", "present", "feed"]):
 			return "Resource phase conflicts with ownership"
@@ -836,7 +884,34 @@ static func gathering_state_error(state: Dictionary) -> String:
 		if not _finite_number(item.get("cargo_slot")) or float(item.cargo_slot) != float(int(item.cargo_slot)):
 			return "Invalid cargo slot"
 		var slot: int = int(item.cargo_slot)
-		if item.phase == "loose":
+		if item.phase in ["winch_launch", "winch_reel", "winch_crush", "winch_feed"]:
+			if slot != -1 or int(item.id) != recovery_id or not item.get("recovery_eligible", false):
+				return "Invalid recovery ownership"
+			if not item.has("recovery_drop_position"):
+				return "Missing recovery drop position"
+			if item.phase != "winch_launch" and not item.get("disarmed", false):
+				return "Secured recovery resource must be disarmed"
+			if item.phase == "winch_launch" and not item.get("disarmed", false) and float(item.expiration) <= 0:
+				return "Expired recovery launch"
+			if item.get("disarmed", false) and float(item.expiration) != 0.0:
+				return "Disarmed recovery resource has an expiry timer"
+			var expected_route: Array[Vector2] = BattlefieldRules.recovery_route(hermes_position, point(item.pickup_position))
+			if route.size() != expected_route.size():
+				return "Recovery route conflicts with guide path"
+			var decoded_route: Array[Vector2] = []
+			for index: int in route.size():
+				var route_point: Vector2 = point(route[index])
+				if route_point.distance_to(expected_route[index]) > 0.001:
+					return "Recovery route conflicts with guide path"
+				decoded_route.append(route_point)
+			var recovery: Dictionary = {"phase": item.phase, "phase_elapsed": float(item.phase_elapsed),
+				"pickup_position": point(item.pickup_position), "recovery_route": decoded_route}
+			if point(item.position).distance_to(BattlefieldRules.recovery_position(recovery)) > 0.001:
+				return "Recovery position conflicts with phase progress"
+			if item.phase in ["winch_crush", "winch_feed"] and furnace_remaining > 0:
+				return "Recovery intake conflicts with furnace"
+			recovery_count += 1
+		elif item.phase == "loose":
 			if slot != -1:
 				return "Loose resource occupies cargo slot"
 		elif item.phase == "grab" and slot == -1:
@@ -847,8 +922,14 @@ static func gathering_state_error(state: Dictionary) -> String:
 			slots.append(slot)
 		if item.phase in ["grab", "crush", "present", "feed"]:
 			active_count += 1
+		if item.phase in ["present", "feed"]:
+			delivery_count += 1
 	if active_count > 1:
 		return "Multiple gathering actions share one arm pair"
+	if recovery_count > 1 or (recovery_id != 0) != (recovery_count == 1):
+		return "Recovery owner does not match one active job"
+	if recovery_count > 0 and (recovery_cooldown > 0 or delivery_count > 0):
+		return "Recovery job conflicts with reset or manual intake"
 	return ""
 
 static func weapon_state_error(state: Dictionary) -> String:

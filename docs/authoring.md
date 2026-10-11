@@ -31,9 +31,12 @@ and workload, not setup instructions.
    and one enabled Hermes start. Enemy kinds are `grunt`, `soldier`, `gunSoldier`, `boss`, and
    `spawner`. Spawners are stationary enemies with their existing timed spawn
    rule. Map enemy markers are ignored by wave-based encounter setup. Add an
-   optional **Parameters / New EncounterParameters** resource to override health,
+   optional **Parameters / New EncounterParameters** resource on an enemy or tower to override health,
    speed, attack range, vision, damage, cooldown, or projectile speed for one
-   encounter. `-1` uses shared balance. Zero speed makes an actor stationary; zero damage makes it harmless. Health, range, vision, cooldown and projectile speed must be positive. Tower marker
+   encounter. Other marker kinds hide this field and warn if they retain unused
+   parameters. Edit shared hero stats in `scripts/domain/game_balance.gd`.
+   `-1` uses shared balance. Zero speed makes an actor stationary; zero damage makes it harmless.
+   Maximum HP, range, vision, cooldown and projectile speed must be positive; current HP can be zero. Tower marker
    kinds `gunTower`, `laserTower`, and `healTower` place configured starting
    towers; they are separate from player-purchased construction.
 5. Select the level root and expand **Definition** in the Inspector. Set its
@@ -125,6 +128,13 @@ For the deployed model, edit
 `rtk make art-render ASSET=hermes_anchor`. Keep `DeployBody`, the named limb
 pivots, the four `Anchor` pivots, and `AimPivot/Recoil/Muzzle` intact:
 `HermesView` uses those saved parts for the folding transition and cannon.
+Keep the deployed G1 `WinchRoot`, `WinchYoke`, `WinchDrum`, `WinchOutlet`,
+`WinchGuidePivot`, `WinchGuideArm`, `WinchGuide`, `WinchClamp` and its two
+`WinchJaw` controls. The low orbital guide rail clears the stabilizers and
+conduit sockets; its outer guide follows the domain's 72-point route. The
+presentation renders the same saved clamp in a separate viewport at full
+recovery reach. Cable, clamp and bundle poses use simulation progress.
+They do not credit matter. The mobile source has no winch.
 `make test-hermes-base` checks the pose, pause, range, cables, and rendering;
 `make art-hermes-base` captures mobile, deployed, and reclaimed gameplay.
 The [design reference](../concept-art/hermes-build-mode.md) separates current
@@ -179,8 +189,8 @@ movement-facing body. The muzzle and pitch-axis contracts are shared with
 Hermes. Boss `ApertureLeft` and `ApertureRight` are optional presentation joints;
 their opening does not delay damage.
 
-Soldier and boss fire instant pulses with their previous damage, range and
-shot interval. The spawner retains its timed continuous beam and production
+Soldier and boss fire instant pulses. Their damage, range and shot interval
+come from `GameBalance.STATS`. The spawner uses its timed continuous beam and production
 rules. Pulse contact records keep lethal hits visible briefly and resume an
 active nonlethal pulse after loading without applying damage again.
 

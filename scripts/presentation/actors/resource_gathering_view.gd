@@ -12,6 +12,11 @@ var backpack: Node3D
 var intake: Node3D
 var active_bundle: Node3D
 var intake_bundle: Node3D
+var winch: Node3D
+var winch_clamp: Node3D
+var winch_outlet: Node3D
+var winch_guide: Node3D
+var winch_contact: StandardMaterial3D
 var _slots: Array[Node3D] = []
 var _racks: Array[Node3D] = []
 var _bundles: Array[Node3D] = []
@@ -27,6 +32,11 @@ var _nathaniel: Dictionary = {}
 var _hermes: Dictionary = {}
 var _receiver: ActorModelView
 var _boss_bundles: Dictionary[Node3D, Node3D] = {}
+var _winch_yoke: Node3D
+var _winch_drum: Node3D
+var _winch_guide_pivot: Node3D
+var _winch_guide_arm: Node3D
+var _winch_guide_mesh: MeshInstance3D
 
 
 func _init(owner_model: ActorModelView) -> void:
@@ -62,6 +72,23 @@ func _init(owner_model: ActorModelView) -> void:
 	_grille = _node("IntakeGrille")
 	_glow = _node("FurnaceGlow") as MeshInstance3D
 	intake_bundle = _node("IntakeBundle")
+	winch = _node("WinchRoot")
+	winch_clamp = _node("WinchClamp")
+	winch_outlet = _node("WinchOutlet")
+	winch_guide = _node("WinchGuide")
+	_winch_yoke = _node("WinchYoke")
+	_winch_drum = _node("WinchDrum")
+	_winch_guide_pivot = _node("WinchGuidePivot")
+	_winch_guide_arm = _node("WinchGuideArm")
+	_winch_guide_mesh = _node("Winch short sliding guide") as MeshInstance3D
+	if winch_clamp != null:
+		winch_contact = StandardMaterial3D.new()
+		winch_contact.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		winch_contact.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		winch_contact.albedo_color = Color("ffc26c", 0.0)
+		for mesh: MeshInstance3D in winch_clamp.find_children("*", "MeshInstance3D", true, false):
+			if "flat contact pad" in str(mesh.name):
+				mesh.material_overlay = winch_contact
 	if intake_bundle != null:
 		intake_bundle.hide()
 	if _glow != null:
@@ -99,7 +126,11 @@ func _node(part_name: String) -> Node3D:
 
 
 static func ground_visible(corpse: Dictionary) -> bool:
-	return str(corpse.get("phase", "carry" if corpse.get("carried", false) else "loose")) in ["loose", "grab"]
+	return str(corpse.get("phase", "carry" if corpse.get("carried", false) else "loose")) in ["loose", "grab", "winch_launch", "winch_reel"]
+
+
+static func collectible_visible(corpse: Dictionary) -> bool:
+	return str(corpse.get("phase", "loose")) in ["loose", "grab"]
 
 
 static func phase_fraction(corpse: Dictionary) -> float:
@@ -119,6 +150,8 @@ func apply_pose() -> void:
 		_pose_backpack()
 	if intake != null:
 		_pose_intake()
+	if winch != null:
+		_pose_winch()
 	model.refresh_pose()
 
 
@@ -127,6 +160,45 @@ func _active_corpse() -> Dictionary:
 		if str(corpse.get("phase", "")) in ["grab", "crush", "present", "feed"]:
 			return corpse
 	return {}
+
+
+func recovery_corpse() -> Dictionary:
+	if not _hermes.get("anchored", false) or float(_hermes.get("hp", 0.0)) <= 0.0:
+		return {}
+	for corpse: Dictionary in _corpses:
+		if int(corpse.get("id", -1)) == int(_hermes.get("recovery_corpse_id", 0)) and str(corpse.get("phase", "")).begins_with("winch_"):
+			return corpse
+	return {}
+
+
+func _pose_winch() -> void:
+	var active: Dictionary = recovery_corpse()
+	winch_clamp.visible = active.is_empty()
+	winch_contact.albedo_color = Color("ffc26c", 0.0)
+	for part: Node3D in [_winch_yoke, _winch_drum, _winch_guide_pivot, _winch_guide_arm, _winch_guide_mesh, winch_guide]:
+		part.transform = _rest[part]
+	if active.is_empty():
+		return
+	var offset: Vector2 = Vector2(active.position) - Vector2(_hermes.position)
+	if str(active.phase) == "winch_launch":
+		var route: Array = active.get("recovery_route", [])
+		if route.size() > 1:
+			offset = Vector2(route[1]) - Vector2(_hermes.position)
+	var heading: Vector2 = offset.normalized() if offset.length_squared() > 0.001 else Vector2.RIGHT
+	if str(active.phase) in ["winch_crush", "winch_feed"]:
+		heading = Vector2.RIGHT
+	_winch_guide_pivot.global_basis = Basis(Vector3.UP, -heading.angle())
+	var end := Vector3(heading.y * GameBalance.HERMES_WINCH_GUIDE_RADIUS / 32.0, 0.30, -heading.x * GameBalance.HERMES_WINCH_GUIDE_RADIUS / 32.0)
+	winch_guide.global_position = end
+	winch_guide.global_basis = _winch_guide_pivot.global_basis
+	var start: Vector3 = _winch_guide_arm.global_position
+	# glTF maps the saved Blender beam's local +Z into Godot local +Y.
+	var length: float = _winch_guide_mesh.mesh.get_aabb().size.y
+	_winch_guide_mesh.global_transform = Transform3D(_basis_y(end - start, Vector3.RIGHT) * Basis.from_scale(Vector3(1.0, start.distance_to(end) / length, 1.0)), (start + end) * 0.5)
+	_winch_yoke.rotation.y += -heading.angle() * 0.18
+	_winch_drum.rotation.x += phase_fraction(active) * TAU * (3.0 if str(active.phase) == "winch_reel" else 0.3)
+	if str(active.phase) == "winch_reel":
+		winch_contact.albedo_color = Color("ffc26c", 1.0 - smoothstep(0.0, GameBalance.HERMES_WINCH_CLAMP_SECONDS, float(active.get("phase_elapsed", 0.0))))
 
 
 func _pose_backpack() -> void:
@@ -242,6 +314,9 @@ func _basis_y(direction: Vector3, outward: Vector3) -> Basis:
 
 func _pose_intake() -> void:
 	var active: Dictionary = _active_corpse()
+	var recovery: Dictionary = recovery_corpse() if winch != null else {}
+	if not recovery.is_empty():
+		active = recovery
 	var phase: String = str(active.get("phase", ""))
 	var fraction: float = phase_fraction(active)
 	var open: float = 0.0
@@ -249,6 +324,10 @@ func _pose_intake() -> void:
 		open = smoothstep(0.0, 1.0, fraction)
 	elif phase == "feed":
 		open = 1.0 - smoothstep(FEED_HANDOFF, 1.0, fraction)
+	elif phase == "winch_crush":
+		open = 1.0
+	elif phase == "winch_feed":
+		open = 1.0 - fraction
 	if _lip != null:
 		var rest: Transform3D = _rest[_lip]
 		_lip.transform = Transform3D(rest.basis * Basis(Vector3.RIGHT, (1.0 - open) * PI * 0.5), rest.origin)
@@ -258,7 +337,13 @@ func _pose_intake() -> void:
 	if intake_bundle != null:
 		_select_bundle(intake_bundle, active)
 		intake_bundle.visible = phase == "feed" and fraction >= FEED_HANDOFF
+		intake_bundle.transform = _rest[intake_bundle]
 		intake_bundle.scale = Vector3.ONE * lerpf(1.0, 0.12, smoothstep(FEED_HANDOFF, 1.0, fraction))
+		if phase in ["winch_crush", "winch_feed"]:
+			intake_bundle.show()
+			var offset: Vector2 = Vector2(active.position) - Vector2(_hermes.position)
+			intake_bundle.global_position = Vector3(offset.y / 32.0, lerpf(0.18, intake.global_position.y, fraction) if phase == "winch_crush" else intake.global_position.y, -offset.x / 32.0)
+			intake_bundle.scale = Vector3.ONE * (lerpf(4.0 if active.get("source_kind", "") == "boss" else 1.65, 1.0, smoothstep(0.0, 0.8, fraction)) if phase == "winch_crush" else lerpf(1.0, 0.12, fraction))
 	if _heat_material != null:
 		var remaining: float = clampf(float(_hermes.get("furnace_remaining", 0.0)) / GameBalance.RESOURCE_FURNACE_SECONDS, 0.0, 1.0)
 		var heat: float = sin((1.0 - remaining) * PI) if remaining > 0.0 else 0.0

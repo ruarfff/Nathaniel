@@ -50,6 +50,8 @@ func _shots(sim: GameSimulation) -> Array[Dictionary]:
 	return found
 
 func _test_starting_weapon_balance() -> void:
+	_check(GameBalance.WEAPONS.rifle.damage == 25 and GameBalance.WEAPONS.rifle.delay == 0.8 and GameBalance.WEAPONS.rifle.range == 450.0 and GameBalance.WEAPONS.rifle.shot_speed == 450.0, "Release rifle catalog values")
+	_check(GameBalance.WEAPONS.heavy_rifle.damage == 50 and GameBalance.WEAPONS.heavy_rifle.delay == 1.6, "Release heavy rifle catalog values")
 	# Exercise a catalog-only balance edit without changing the live game constants.
 	var source: String = FileAccess.get_file_as_string("res://scripts/domain/game_balance.gd")
 	var rifle_entry := RegEx.new()
@@ -74,7 +76,8 @@ func _test_starting_weapon_balance() -> void:
 func _test_pickups() -> void:
 	var sim: GameSimulation = _game()
 	_check(sim.nathaniel.equipped_weapon_id == "rifle" and sim.nathaniel.owned_weapon_ids == ["rifle"], "Fresh level owns and equips only the default rifle")
-	_check(sim.nathaniel.damage == 25 and sim.nathaniel.delay == 0.8 and sim.nathaniel.range == 450.0 and sim.nathaniel.shot_speed == 450.0, "Default rifle preserves current statistics")
+	for key: String in GameBalance.WEAPONS.rifle:
+		_check(sim.nathaniel[key] == GameBalance.WEAPONS.rifle[key], "Default rifle reads catalog %s" % key)
 	_check(not sim.equip_weapon("heavy_rifle") and not sim.equip_weapon("unknown"), "Unowned and unknown equipment is rejected")
 	_check(sim.spawn_weapon_pickup("unknown", Vector2.ZERO).is_empty() and sim.spawn_weapon_pickup("rifle", Vector2(NAN, 0)).is_empty(), "Invalid pickup requests add no state")
 	var pickup: Dictionary = sim.spawn_weapon_pickup("heavy_rifle", Vector2(532.01, 500))
@@ -106,39 +109,44 @@ func _test_equip_recovery() -> void:
 	var sim: GameSimulation = _game()
 	_unlock(sim)
 	_ready(sim)
+	var rifle_damage: int = int(sim.nathaniel.damage)
+	var rifle_delay: float = float(sim.nathaniel.delay)
 	_check(sim.fire_at(Vector2(600, 500)), "Ready aligned rifle fires immediately")
 	var rifle_shot: Dictionary = sim.projectiles.back()
 	var rifle_event: Dictionary = _shots(sim)[0]
 	_check(sim.equip_weapon("heavy_rifle"), "Owned alternate gun equips")
-	_check(sim.nathaniel.damage == 50 and sim.nathaniel.delay == 1.6 and sim.nathaniel.weapon == "gun", "Heavy rifle changes damage and cadence while retaining the gun mechanism")
-	_check(sim.nathaniel.equip_ready_remaining == 0.35 and sim.nathaniel.cooldown == 0.0 and sim.nathaniel.recovery_delay == 0.8, "Equip adds readiness time without changing elapsed shot recovery")
+	var heavy_damage: int = int(sim.nathaniel.damage)
+	var heavy_delay: float = float(sim.nathaniel.delay)
+	_check(heavy_damage == GameBalance.WEAPONS.heavy_rifle.damage and heavy_delay == GameBalance.WEAPONS.heavy_rifle.delay and sim.nathaniel.weapon == "gun", "Heavy rifle uses catalog damage and cadence with the gun mechanism")
+	_check(sim.nathaniel.equip_ready_remaining == GameBalance.WEAPON_EQUIP_SECONDS and sim.nathaniel.cooldown == 0.0 and sim.nathaniel.recovery_delay == rifle_delay, "Equip adds readiness time without changing elapsed shot recovery")
 	_check(not sim.fire_at(Vector2(600, 500)), "Manual fire is rejected during equip")
-	sim.step(0.2)
+	var partial_equip: float = GameBalance.WEAPON_EQUIP_SECONDS * 0.5
+	sim.step(partial_equip)
 	var equip_remaining: float = sim.nathaniel.equip_ready_remaining
 	_check(sim.equip_weapon("heavy_rifle") and sim.nathaniel.equip_ready_remaining == equip_remaining, "Equipping the current gun does not restart its timer")
 	sim.set_paused(true)
 	sim.step(10.0)
-	_check(not sim.equip_weapon("rifle") and sim.nathaniel.equip_ready_remaining == equip_remaining and sim.nathaniel.cooldown == 0.2, "Pause freezes equip and recovery and rejects swaps")
+	_check(not sim.equip_weapon("rifle") and sim.nathaniel.equip_ready_remaining == equip_remaining and sim.nathaniel.cooldown == partial_equip, "Pause freezes equip and recovery and rejects swaps")
 	sim.set_paused(false)
-	sim.step(0.15)
+	sim.step(equip_remaining)
 	_check(is_zero_approx(sim.nathaniel.equip_ready_remaining) and not sim.fire_at(Vector2(600, 500)), "Completed equip still respects the new gun's firing interval")
-	sim.step(1.25)
+	sim.step(maxf(rifle_delay, heavy_delay) - GameBalance.WEAPON_EQUIP_SECONDS)
 	_check(sim.fire_at(Vector2(600, 500)), "Heavy rifle fires after its full interval")
 	var heavy_shot: Dictionary = sim.projectiles.back()
 	var heavy_event: Dictionary = _shots(sim)[0]
-	_check(rifle_shot.damage == 25 and rifle_shot.weapon_id == "rifle" and rifle_event.weapon_id == "rifle", "Swapping preserves the earlier bullet and queued event weapon identity")
-	_check(heavy_shot.damage == 50 and heavy_shot.weapon_id == "heavy_rifle" and heavy_event.weapon_id == "heavy_rifle", "Heavy shot captures its own damage and weapon identity")
-	_check(heavy_shot.speed == 450.0 and heavy_shot.remaining == 600.0 and heavy_shot.radius == 12.0, "Both guns retain projectile speed, travel distance and collision radius")
+	_check(rifle_shot.damage == rifle_damage and rifle_shot.weapon_id == "rifle" and rifle_event.weapon_id == "rifle", "Swapping preserves the earlier bullet and queued event weapon identity")
+	_check(heavy_shot.damage == heavy_damage and heavy_shot.weapon_id == "heavy_rifle" and heavy_event.weapon_id == "heavy_rifle", "Heavy shot captures its own damage and weapon identity")
+	_check(heavy_shot.speed == GameBalance.WEAPONS.heavy_rifle.shot_speed and heavy_shot.remaining == 600.0 and heavy_shot.radius == 12.0, "Heavy gun uses catalog speed and retains projectile travel and collision rules")
 	_check(sim.equip_weapon("rifle"), "Can return to the default rifle")
-	sim.step(0.8)
+	sim.step(heavy_delay * 0.5)
 	_check(not sim.fire_at(Vector2(600, 500)), "Switching to the faster rifle cannot shorten heavy-shot recovery")
 	_check(sim.equip_weapon("heavy_rifle") and sim.equip_weapon("rifle"), "Repeated swaps remain valid equipment requests")
-	_check(sim.nathaniel.cooldown == 0.8 and sim.nathaniel.recovery_delay == 1.6, "Repeated swaps do not recharge or replace the last shot's recovery")
-	sim.step(0.79)
+	_check(sim.nathaniel.cooldown == heavy_delay * 0.5 and sim.nathaniel.recovery_delay == heavy_delay, "Repeated swaps do not recharge or replace the last shot's recovery")
+	sim.step(heavy_delay * 0.5 - 0.01)
 	_check(not sim.fire_at(Vector2(600, 500)), "Recovery remains blocked immediately before its deadline")
 	sim.step(0.01)
 	_check(sim.fire_at(Vector2(600, 500)), "Faster rifle becomes ready at the preserved heavy-shot deadline")
-	_check(heavy_shot.damage == 50 and heavy_shot.weapon_id == "heavy_rifle" and heavy_event.weapon_id == "heavy_rifle", "Subsequent swaps never mutate heavy-shot data")
+	_check(heavy_shot.damage == heavy_damage and heavy_shot.weapon_id == "heavy_rifle" and heavy_event.weapon_id == "heavy_rifle", "Subsequent swaps never mutate heavy-shot data")
 
 func _test_aim_and_manual_fire() -> void:
 	var sim: GameSimulation = _game()
@@ -198,7 +206,7 @@ func _test_manual_cancellation() -> void:
 			"move": sim.move_to(Vector2(500, 700))
 			"target": sim.target_enemy(int(sim.spawn_enemy("soldier", Vector2(550, 500)).id))
 			"equip": sim.equip_weapon("heavy_rifle")
-			"death": sim.damage_entity(int(sim.nathaniel.id), 8000)
+			"death": sim.damage_entity(int(sim.nathaniel.id), int(sim.nathaniel.hp))
 		_check(sim.nathaniel.manual_fire_target == null, "%s cancels the pending point-fire intent" % action)
 	var sim: GameSimulation = _game()
 	_ready(sim, Vector2.LEFT)
@@ -214,12 +222,12 @@ func _test_respawn() -> void:
 	sim.equip_weapon("heavy_rifle")
 	sim.step(0.1)
 	var timer: float = sim.nathaniel.equip_ready_remaining
-	sim.damage_entity(int(sim.nathaniel.id), 8000)
+	sim.damage_entity(int(sim.nathaniel.id), int(sim.nathaniel.hp))
 	_check(sim.lives == 2 and sim.nathaniel.equipped_weapon_id == "heavy_rifle" and sim.nathaniel.owned_weapon_ids == ["rifle", "heavy_rifle"], "Spare-life respawn retains the loadout")
 	_check(sim.nathaniel.equip_ready_remaining == timer and sim.nathaniel.cooldown == 0.1, "Respawn does not bypass equip or shot recovery")
 	_check(sim.nathaniel.aim_direction == Vector2(0, -1) and sim.nathaniel.manual_fire_target == null, "Respawn resets aim and pending fire at the new position")
 	sim.lives = 0
-	sim.damage_entity(int(sim.nathaniel.id), 8000)
+	sim.damage_entity(int(sim.nathaniel.id), int(sim.nathaniel.hp))
 	_check(not sim.equip_weapon("rifle") and not sim.fire_at(Vector2(600, 500)), "Defeat rejects equip and manual fire")
 
 func _test_saves() -> void:
@@ -230,6 +238,9 @@ func _test_saves() -> void:
 	sim.fire_at(Vector2(600, 500))
 	sim.equip_weapon("rifle")
 	sim.step(0.1)
+	var equip_remaining: float = float(sim.nathaniel.equip_ready_remaining)
+	var recovery_delay: float = float(sim.nathaniel.recovery_delay)
+	var shot_damage: int = int(sim.projectiles[0].damage)
 	var pickup: Dictionary = sim.spawn_weapon_pickup("heavy_rifle", Vector2(800, 500))
 	var directory: String = "/tmp/nathaniel-weapons-%d-%d" % [OS.get_process_id(), Time.get_ticks_usec()]
 	var store := SaveStore.new(directory)
@@ -238,8 +249,8 @@ func _test_saves() -> void:
 	var restored := GameSimulation.new()
 	_check(saved.success and restored.restore(saved.state), "Weapon state restores after a JSON disk round trip")
 	_check(restored.nathaniel.equipped_weapon_id == "rifle" and restored.nathaniel.owned_weapon_ids == ["rifle", "heavy_rifle"], "Both slots and selected gun survive reload")
-	_check(is_equal_approx(restored.nathaniel.equip_ready_remaining, 0.25) and restored.nathaniel.cooldown == 0.1 and restored.nathaniel.recovery_delay == 1.6, "Partial equip and previous heavy-shot recovery survive reload")
-	_check(restored.projectiles.size() == 1 and restored.projectiles[0].weapon_id == "heavy_rifle" and restored.projectiles[0].damage == 50, "In-flight shot keeps the old gun after saving with another gun equipped")
+	_check(is_equal_approx(restored.nathaniel.equip_ready_remaining, equip_remaining) and restored.nathaniel.cooldown == 0.1 and restored.nathaniel.recovery_delay == recovery_delay, "Partial equip and previous heavy-shot recovery survive reload")
+	_check(restored.projectiles.size() == 1 and restored.projectiles[0].weapon_id == "heavy_rifle" and restored.projectiles[0].damage == shot_damage, "In-flight shot keeps the old gun after saving with another gun equipped")
 	_check(restored.weapon_pickups.size() == 1 and restored.weapon_pickups[0].id == pickup.id and restored.weapon_pickups[0].position == pickup.position, "Uncollected pickup retains its ID and logical position")
 	_check(int(restored.spawn_weapon_pickup("rifle", Vector2(900, 500)).id) > int(pickup.id), "Restored pickup IDs advance the shared allocator")
 	DirAccess.remove_absolute(store.slot_path(1))

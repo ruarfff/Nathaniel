@@ -8,6 +8,48 @@ of later code or assets.
 Test host: Apple M4 Pro (12 CPU cores), arm64 macOS, Xcode 26.6 (17F113),
 Godot 4.7.2 stable. Results are local measurements, not guarantees for other hardware.
 
+## Hermes automatic recovery — 2026-10-11
+
+Deployed Hermes uses the selected G1 side winch, one body at a time. Death-time
+eligibility uses the inclusive build radius. Expiry wins before hook contact;
+a valid hook claim wins before Nathaniel's unfinished grip. Contact permanently
+disarms, while acceptance credits the stored value once. Manual cargo gets the
+next intake turn. Interrupted intake work drops the full shell at its last
+clear exterior point. Campaign victory remains immediate.
+
+The final run passed `make format-check`, `test-resource-gathering`,
+`test-gameplay`, `test-services`, `test-hermes-base`, `test-presentation`,
+`test-art`, and `test`, all invoked through RTK. Recovery passed 312 domain
+assertions; gathering visuals passed 773 headless and 811 rendered checks.
+Services passed 424 checks; gameplay passed 344 assertions. Hermes passed
+1,037 headless and 1,057 rendered actor checks, plus 28/32 base-effect checks.
+The complete regression includes Python tooling, source preservation, native
+content, controls, presentation, and live MCP integration.
+
+The saved Blender migration retained all 136 original deployed parts and is
+idempotent. The source/export check covers 69 gathering parts. Directional
+checks cover the saved guide's attachment, shell clearance, one body or bundle,
+contact feedback, pause, fog, reset, and independent cannon aim. Blender's
+installed extension startup logs a missing `requests` module; the asset
+verification and exports still pass.
+
+`make art-hermes-base art-resource-gathering` regenerated the inspected captures:
+
+- `test-artifacts/hermes-winch-stages-4k.png`
+- `test-artifacts/hermes-winch-directions-4k.png`
+- `test-artifacts/hermes-winch-{launch,reel,delivery-wait,pack-up}-gameplay.png`
+
+These scripted captures show all approach directions, Soldier and Boss matter,
+warning cancellation, connected towers, concurrent cannon fire, manual cargo
+waiting, and pack-up. They establish rendered behavior, not OS input.
+
+macOS release and unsigned iOS project exports passed after the final runtime
+changes. The macOS app started with isolated temporary storage, but Computer
+Use could not complete mouse or keyboard checks because the Mac was locked.
+iOS runtime, touch, and pinch remain untested: the available ARM64 Simulator
+template has 3D disabled. The 1.5-second cycle is initial tuning; balance and
+performance were not measured.
+
 ## Corpse pickup feedback — 2026-10-10
 
 Clicking opaque pixels of a visible corpse moves Nathaniel to its logical

@@ -92,10 +92,12 @@ func _check_application() -> void:
 	app.sim.set_hermes_mode("building")
 	var first: Dictionary = app.sim.place_map_tower("healTower", Vector2(200, 242))
 	var second: Dictionary = app.sim.place_map_tower("healTower", Vector2(700, 242))
-	app.sim.nathaniel.hp -= 5
+	app.sim.nathaniel.hp -= 80
 	app.sim.hermes.position = first.position + Vector2(80, 0)
-	app.sim.hermes.hp -= 5
+	app.sim.hermes.hp -= 80
 	app.sim.take_events()
+	CombatRules.update_unit(app.sim, first, 1.0)
+	expect(app.sim.nathaniel.hp == int(app.sim.nathaniel.max_hp) - 80 and app.sim.hermes.hp == int(app.sim.hermes.max_hp) - 80 and app.sim.take_events().is_empty(), "Default tower waits for its two-second interval")
 	CombatRules.update_unit(app.sim, first, 1.0)
 	app._physics_process(0.0)
 	var first_actor: ActorView = app.views[int(first.id)]
@@ -104,10 +106,12 @@ func _check_application() -> void:
 	second_actor.healing_pulse.set_process(false)
 	first_actor.healing_pulse._process(0.1)
 	second_actor.healing_pulse._process(0.1)
-	expect(app.sim.nathaniel.hp == app.sim.nathaniel.max_hp and app.sim.hermes.hp == app.sim.hermes.max_hp, "One domain healing tick reaches both injured characters")
+	expect(app.sim.nathaniel.hp == int(app.sim.nathaniel.max_hp) - 40 and app.sim.hermes.hp == int(app.sim.hermes.max_hp) - 40, "One default healing tick restores forty HP to each hero without a shared cap")
 	var recipients: Array = app.effects.healing_flashes.map(func(flash: Dictionary) -> int: return int(flash.target_id))
 	expect(recipients.size() == 2 and int(app.sim.nathaniel.id) in recipients and int(app.sim.hermes.id) in recipients, "GameApp gives each healed character one recipient flash")
 	expect(_intensity(first_actor) > _intensity(second_actor) + 0.5, "GameApp routes a heal to its owner after creating both tower views")
+	app.sim.nathaniel.hp = app.sim.nathaniel.max_hp
+	app.sim.hermes.hp = app.sim.hermes.max_hp
 	app.command("pause")
 	app._physics_process(0.0)
 	var frozen: float = _intensity(first_actor)
@@ -118,14 +122,14 @@ func _check_application() -> void:
 	first_actor.healing_pulse._process(0.9)
 	second_actor.healing_pulse._process(0.9)
 	expect(is_equal_approx(_intensity(first_actor), _intensity(second_actor)), "The real resume command lets healing recover to idle")
-	CombatRules.update_unit(app.sim, first, 1.0)
+	CombatRules.update_unit(app.sim, first, float(first.delay))
 	app._physics_process(0.0)
 	first_actor.healing_pulse._process(0.1)
 	second_actor.healing_pulse._process(0.1)
 	expect(is_equal_approx(_intensity(first_actor), _intensity(second_actor)), "A full-health target does not retrigger the tower's pulse")
 	app.sim.nathaniel.position = Vector2(600, 242)
 	app.sim.nathaniel.hp -= 5
-	CombatRules.update_unit(app.sim, second, 1.0)
+	CombatRules.update_unit(app.sim, second, float(second.delay))
 	app._physics_process(0.0)
 	first_actor.healing_pulse._process(0.1)
 	second_actor.healing_pulse._process(0.1)
@@ -138,7 +142,7 @@ func _check_application() -> void:
 	expect(removed_pulse.get_ref() == null, "Tower destruction releases its pulse without a pending animation")
 	app.sim.nathaniel.position = Vector2(84, 242)
 	app.sim.nathaniel.hp -= 5
-	CombatRules.update_unit(app.sim, first, 1.0)
+	CombatRules.update_unit(app.sim, first, float(first.delay))
 	app._physics_process(0.0)
 	var menu_pulse: WeakRef = weakref(first_actor.healing_pulse)
 	app.show_main()

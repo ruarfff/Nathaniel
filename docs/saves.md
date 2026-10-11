@@ -63,6 +63,23 @@ Older loose bodies remain armed with their saved time remaining. Loading never
 resets that countdown. Expired bodies are absent from snapshots; the short
 dissolve effect is presentation-only and is not restored as collectible matter.
 
+Hermes recovery saves each corpse's death-time eligibility, winch phase,
+phase time, pull route, current ground position, and safe drop position. Hermes
+saves the one pending corpse ID and reset time. Older saves default to no
+eligible corpses, pending job, or reset time; loading near Hermes does not make
+an old body eligible. Launch retains the saved armed lifetime. Reel, crush, and
+feed retain permanent disarm and do not use Nathaniel's cargo slots. Invalid
+ownership, phase timers, routes, or shared intake claims fail validation. Active
+routes must match the authored guide path, and each ground position must match
+its phase and elapsed time. Disarmed winch bodies have no expiry timer.
+
+Recovery resumes with living, deployed Hermes during play. Otherwise load
+releases a pre-contact body with its remaining lifetime, or drops a secured
+body at its saved safe ground position. It clears waiting eligibility. Intake
+acceptance removes the body and pending ID before saving the resource credit
+and furnace/reset time. Loading after acceptance cannot restore or credit the
+body again. The save envelope and snapshot schema remain at version 1.
+
 ## Storage identity
 
 Keep `config/use_custom_user_dir=true`, `config/custom_user_dir_name="NathanielGodot"`, and the export bundle identifier `dev.ruarfff.nathaniel.godot`. Moving the project or renaming the displayed app does not require a new storage location. Changing the iOS bundle identifier creates a different app container. Native files retain envelope format `nathaniel-godot`, version `1`, and gameplay snapshot schema `1`. The slot filenames and settings/progress filenames are part of this compatibility contract.

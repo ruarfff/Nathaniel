@@ -8,7 +8,9 @@ extends Resource
 @export_range(-1, 2000) var speed: float = -1.0
 @export_range(-1, 5000) var attack_range: float = -1.0
 @export_range(-1, 5000) var vision: float = -1.0
+## Per-hit damage for bullets/pulses, active-second damage for beams, HP per tick for healing.
 @export_range(-1, 99999) var damage: int = -1
+## Seconds between shots, seconds of rest after a beam, or seconds between healing ticks.
 @export_range(-1, 120) var attack_delay: float = -1.0
 @export_range(-1, 5000) var shot_speed: float = -1.0
 

@@ -68,6 +68,7 @@ func _run() -> void:
 	app.sim.set_paused(true)
 	app._sync_views()
 	await _capture(surface, "res://test-artifacts/hermes-base-gameplay.png")
+	await _capture_recovery(app, surface)
 	app.sim.set_paused(false)
 	app.command("follow")
 	app._physics_process(0.0)
@@ -78,3 +79,48 @@ func _run() -> void:
 	await process_frame
 	print("Hermes captures: test-artifacts/hermes-{mobile,base,reclaimed}-gameplay.png")
 	quit()
+
+
+func _capture_recovery(app: GameApp, surface: SubViewport) -> void:
+	app.sim.set_paused(false)
+	app.command("escape")
+	app._physics_process(0.0)
+	var body: Dictionary = {}
+	for index: int in range(16):
+		var point: Vector2 = Vector2(app.sim.hermes.position) + Vector2.from_angle(index * TAU / 16.0) * 180.0
+		var corpse: Dictionary = app.sim.spawn_resource(10, point, 2.875, false, "boss")
+		corpse.recovery_eligible = true
+		BattlefieldRules.update_corpses(app.sim, 0.01)
+		if not app.sim.recovery_state().is_empty():
+			body = corpse
+			break
+		app.sim.corpses.erase(corpse)
+	if body.is_empty():
+		push_error("No clear G1 recovery route in the actual Hermes capture level.")
+		return
+	app.sim.set_paused(true)
+	app._physics_process(0.0)
+	await _capture(surface, "res://test-artifacts/hermes-winch-launch-gameplay.png")
+	app.sim.set_paused(false)
+	BattlefieldRules.update_corpses(app.sim, BattlefieldRules.phase_seconds("winch_launch") + 0.1)
+	CombatRules.shoot(app.sim, app.sim.hermes, Vector2(app.sim.hermes.position) + Vector2(-190, 125))
+	app.sim.set_paused(true)
+	app._physics_process(0.0)
+	await _capture(surface, "res://test-artifacts/hermes-winch-reel-gameplay.png")
+	app.sim.nathaniel.position = Vector2(app.sim.hermes.position) + Vector2(-35, -20)
+	app.sim.spawn_resource(10, app.sim.nathaniel.position, 10.0, true, "soldier")
+	app.sim.set_paused(false)
+	BattlefieldRules.update_corpses(app.sim, GameBalance.HERMES_WINCH_REEL_SECONDS - 0.1 + GameBalance.HERMES_WINCH_CRUSH_SECONDS * 0.5)
+	app.sim.set_paused(true)
+	app._physics_process(0.0)
+	await _capture(surface, "res://test-artifacts/hermes-winch-delivery-wait-gameplay.png")
+	app.sim.set_paused(false)
+	app.sim.set_hermes_mode("following")
+	app.sim.set_paused(true)
+	app._physics_process(0.0)
+	var view: HermesView = app.views[int(app.sim.hermes.id)]
+	view.apply_state(app.sim.hermes, false, true)
+	view._process(HermesView.DEPLOY_SECONDS)
+	view.apply_state(app.sim.hermes, false, false)
+	await _capture(surface, "res://test-artifacts/hermes-winch-pack-up-gameplay.png")
+	print("G1 gameplay captures: test-artifacts/hermes-winch-{launch,reel,delivery-wait,pack-up}-gameplay.png")

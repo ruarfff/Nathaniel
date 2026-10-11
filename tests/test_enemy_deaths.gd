@@ -96,6 +96,7 @@ func _boss_collection() -> void:
 func _boss_saves_and_deadlines() -> void:
 	var sim: GameSimulation = game()
 	var body: Dictionary = kill_boss(sim, Vector2(100, 0))
+	body.recovery_eligible = false
 	sim.step(7.125)
 	sim = round_trip(sim, "Armed warning boss")
 	body = sim.corpses[0]

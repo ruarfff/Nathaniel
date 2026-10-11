@@ -46,10 +46,16 @@ func _run() -> void:
 		var anchor: Node3D = actor.model_view.model_root.find_child(part_name, true, false) as Node3D
 		check(anchor != null and anchor.scale.is_equal_approx(Vector3.ONE), "Stabilizer opens at ground contact: " + part_name)
 	var model: ActorModelView = actor.model_view
+	var canvas: Vector2i = model.model_root.get_meta("logical_canvas")
+	var density: float = float(model.viewport.size.x) / canvas.x
+	var ground_anchor: Vector2 = model.model_root.get_meta("logical_ground_anchor")
+	var projected_origin: Vector2 = model.camera.unproject_position(Vector3.ZERO) / density
+	check(projected_origin.is_equal_approx(ground_anchor), "Winch workspace padding preserves Hermes's ground anchor")
+	check((model.camera.unproject_position(Vector3.RIGHT) / density - projected_origin).is_equal_approx(Vector2(-32, 16)), "Winch workspace padding preserves the authored world scale")
 	for direction: Vector2 in [Vector2.RIGHT, Vector2.UP, Vector2(-0.8, 0.3)]:
 		state.facing = direction
 		actor.apply_state(state)
-		var marker: Vector2 = model.camera.unproject_position(model.muzzle.global_position) - Vector2(64, 96)
+		var marker: Vector2 = model.camera.unproject_position(model.muzzle.global_position) / density - ground_anchor
 		check(actor.weapon_muzzle(direction).is_equal_approx(marker), "Hermes fires from his actual cannon muzzle")
 		check(body.transform == deployed_body, "The cannon turns independently of the planted body")
 	actor.notify_attack(Vector2.UP)

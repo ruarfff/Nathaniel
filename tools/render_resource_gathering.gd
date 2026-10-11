@@ -77,6 +77,7 @@ func _run() -> void:
 	await process_frame
 	if not boss:
 		await _capture_gameplay()
+		await _capture_winch_studies()
 	await _capture_self_destruct()
 	print("Resource gathering capture: test-artifacts/%s-gathering-stages-4k.png" % ("boss" if boss else "resource"))
 	quit()
@@ -210,3 +211,85 @@ func _capture_self_destruct() -> void:
 	output.free()
 	await process_frame
 	print("Corpse self-destruct capture: test-artifacts/%s-self-destruct-stages-4k.png" % ("boss" if boss else "corpse"))
+
+
+func _winch_panel(output: SubViewport, point: Vector2, direction: Vector2, phase: String, fraction: float, source_kind: String, zoom: float) -> void:
+	var pair := Node2D.new()
+	pair.scale = Vector2.ONE * zoom
+	pair.position = point
+	output.add_child(pair)
+	var sim := GameSimulation.new()
+	sim.configure({"number": 1, "width": 64, "height": 64, "tile_size": 32, "blocked": [],
+		"player_start": Vector2(900, 900), "hermes_start": Vector2(600, 600), "enemies": [], "wave_based": false})
+	sim.set_hermes_mode("building")
+	sim.fog.fill(2)
+	sim.set_paused(true)
+	pair.position -= IsoProjection.project(sim.hermes.position) * zoom
+	var hermes: HermesView = load("res://scenes/actors/hermes.tscn").instantiate()
+	pair.add_child(hermes)
+	hermes.apply_state(sim.hermes, false, false)
+	var reach: float = 100.0 if zoom > 0.85 else 170.0
+	var corpse: Dictionary = sim.spawn_resource(10, Vector2(sim.hermes.position) + direction * reach, 2.875, false, source_kind)
+	corpse.phase = phase
+	corpse.phase_elapsed = BattlefieldRules.phase_seconds(phase) * fraction
+	corpse.pickup_position = corpse.position
+	corpse.disarmed = phase != "winch_launch"
+	corpse.recovery_route = [corpse.position, Vector2(sim.hermes.position) + direction * GameBalance.HERMES_WINCH_GUIDE_RADIUS,
+		Vector2(sim.hermes.position) + Vector2(GameBalance.HERMES_WINCH_GUIDE_RADIUS, 0), Vector2(sim.hermes.position) + GameBalance.HERMES_WINCH_INTAKE_OFFSET]
+	if phase == "winch_reel":
+		corpse.position = Vector2(sim.hermes.position) + direction * lerpf(reach, GameBalance.HERMES_WINCH_GUIDE_RADIUS, fraction)
+	elif phase == "winch_crush":
+		corpse.position = Vector2(sim.hermes.position) + Vector2(GameBalance.HERMES_WINCH_GUIDE_RADIUS, 0).lerp(GameBalance.HERMES_WINCH_INTAKE_OFFSET, fraction)
+	elif phase == "winch_feed":
+		corpse.position = Vector2(sim.hermes.position) + GameBalance.HERMES_WINCH_INTAKE_OFFSET
+	sim.hermes.recovery_corpse_id = corpse.id
+	if phase == "consume":
+		sim.corpses.clear()
+		sim.hermes.recovery_corpse_id = 0
+		sim.hermes.furnace_remaining = GameBalance.RESOURCE_FURNACE_SECONDS * 0.5
+	hermes.sync_intake(sim.corpses, sim.nathaniel, sim.hermes)
+	var effects: WorldEffects = load("res://scenes/effects/world_effects.tscn").instantiate()
+	effects.simulation = sim
+	effects.fog_enabled = false
+	pair.add_child(effects)
+	effects.set_process(false)
+	effects.sync_lasers({int(sim.hermes.id): hermes})
+	effects._process(0.0)
+	effects._hermes_ground.hide()
+
+
+func _capture_winch_studies() -> void:
+	for study: String in ["stages", "directions"]:
+		var output := SubViewport.new()
+		output.size = Vector2i(3840, 2160)
+		output.size_2d_override = Vector2i(1920, 1080)
+		output.size_2d_override_stretch = true
+		output.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		root.add_child(output)
+		var backdrop := ColorRect.new()
+		backdrop.color = Color("b3a387")
+		backdrop.size = Vector2(1920, 1080)
+		backdrop.z_index = -30
+		output.add_child(backdrop)
+		var rows: int = 3 if study == "stages" else 2
+		var columns: int = 6 if study == "stages" else 4
+		for row: int in rows:
+			for column: int in columns:
+				var heading: float = [0.0, PI, -PI * 0.5][row] if study == "stages" else TAU * (row * 4 + column) / 8.0
+				var phase: String = ["winch_launch", "winch_reel", "winch_reel", "winch_crush", "winch_feed", "consume"][column] if study == "stages" else "winch_reel"
+				var fraction: float = [0.35, 0.04, 0.5, 0.5, 0.5, 0.5][column] if study == "stages" else 0.5
+				var cell: Vector2 = Vector2(1920.0 / columns, 1080.0 / rows)
+				_winch_panel(output, Vector2(column * cell.x + cell.x * 0.5, row * cell.y + cell.y * 0.48), Vector2.from_angle(heading), phase, fraction, "boss" if row > 0 else "soldier", 1.0)
+				var label := Label.new()
+				label.text = ["Fire / armed", "Contact / disarmed", "Reel", "Crush", "Feed", "Furnace"][column] if study == "stages" else "Heading %d / %s" % [row * 4 + column, "boss" if row > 0 else "soldier"]
+				label.position = Vector2(column * cell.x + 8, row * cell.y + 12)
+				label.add_theme_font_size_override("font_size", 14)
+				label.add_theme_color_override("font_color", Color("18282b"))
+				output.add_child(label)
+		for frame: int in range(4):
+			await process_frame
+			await RenderingServer.frame_post_draw
+		output.get_texture().get_image().save_png("res://test-artifacts/hermes-winch-%s-4k.png" % study)
+		output.free()
+		await process_frame
+	print("Hermes winch captures: test-artifacts/hermes-winch-{stages,directions}-4k.png")

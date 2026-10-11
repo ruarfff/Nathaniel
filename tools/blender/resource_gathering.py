@@ -20,7 +20,7 @@ from rig_nathaniel import _empty, _reparent
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = ("nathaniel", "hermes", "hermes_anchor")
-REVISIONS = {"nathaniel": 2, "hermes": 1, "hermes_anchor": 1}
+REVISIONS = {"nathaniel": 2, "hermes": 1, "hermes_anchor": 2}
 LINK_LENGTH = 0.36
 PALETTE = {
     "ink": "dark joints", "blue": "petrol armour", "top": "top armour",
@@ -204,6 +204,49 @@ def _telescoping_rods():
     bpy.context.view_layer.update()
 
 
+def _winch():
+    scene = bpy.context.scene
+    m = Mechanism("Hermes | side winch")
+    root = m.empty("WinchRoot", (0, 0, 0), scene.objects["AssetFacing"])
+    rail_radius = 1.20
+    rail_height = 0.52
+    # The low orbital guide clears the four stabilizers and conduit sockets.
+    for index in range(24):
+        angle = index * math.tau / 24
+        next_angle = (index + 1) * math.tau / 24
+        start = Vector((math.cos(angle) * rail_radius, math.sin(angle) * rail_radius, rail_height))
+        end = Vector((math.cos(next_angle) * rail_radius, math.sin(next_angle) * rail_radius, rail_height))
+        m.beam(f"Winch low guide rail {index}", start, end, 0.032, 0.035, "ink", root)
+    pivot = m.empty("WinchYoke", (-0.60, 0.31, 0.61), root)
+    m.box("Winch compact side housing", (-0.60, 0.31, 0.61), (0.18, 0.33, 0.30), "blue", pivot)
+    for side in (-1, 1):
+        m.box(f"Winch yoke ochre cheek {side}", (-0.60 + side * 0.12, 0.31, 0.61),
+              (0.07, 0.38, 0.36), "ochre", pivot, bevel=0.017)
+    drum = m.empty("WinchDrum", (-0.60, 0.31, 0.61), pivot)
+    m.axle("Winch dark cable drum", (-0.60, 0.31, 0.61), 0.15, 0.21, drum)
+    for index in range(6):
+        m.axle(f"Winch reel flange {index}", (-0.69 + index * 0.036, 0.31, 0.61), 0.155, 0.012, drum)
+    m.empty("WinchOutlet", (-0.60, 0.465, 0.56), pivot)
+    guide = m.empty("WinchGuidePivot", (0, 0, 0), root)
+    m.box("Winch orbit runner", (0, rail_radius, rail_height), (0.18, 0.19, 0.11), "ochre", guide)
+    arm = m.empty("WinchGuideArm", (0, rail_radius, rail_height), guide)
+    m.beam("Winch short sliding guide", (0, rail_radius, rail_height), (0, rail_radius + 0.12, 0.30),
+           0.065, 0.07, "steel", arm)
+    eye = m.empty("WinchGuide", (0, rail_radius + 0.12, 0.30), root)
+    m.box("Winch cable guide eye", (0, rail_radius + 0.12, 0.30), (0.16, 0.13, 0.12), "ochre", eye)
+    clamp = m.empty("WinchClamp", (-0.60, 0.50, 0.47), root)
+    m.box("Winch clamp bridge", (-0.60, 0.50, 0.47), (0.54, 0.10, 0.12), "ink", clamp)
+    m.box("Winch clamp cable latch", (-0.60, 0.48, 0.54), (0.11, 0.13, 0.10), "steel", clamp)
+    for side, name in ((-1, "Left"), (1, "Right")):
+        jaw = m.empty("WinchJaw" + name, (-0.60 + side * 0.25, 0.60, 0.44), clamp)
+        m.box("Winch broad ochre jaw " + name, (-0.60 + side * 0.25, 0.60, 0.44),
+              (0.13, 0.30, 0.22), "ochre", jaw, bevel=0.019)
+        m.box("Winch flat contact pad " + name, (-0.60 + side * 0.185, 0.60, 0.44),
+              (0.025, 0.23, 0.16), "ink", jaw, edge=None)
+    scene["winch_guide_radius_points"] = 72
+    scene["winch_notes"] = "G1 side reel; low orbital guide above anchors and sockets; one broad two-jaw clamp; independent cannon."
+
+
 def _assert_contract(asset):
     scene = bpy.context.scene
     validate_rig(scene)
@@ -214,6 +257,14 @@ def _assert_contract(asset):
     for name in names:
         if name not in scene.objects:
             raise ValueError(f"{asset} is missing gathering control {name}")
+    if asset == "hermes_anchor":
+        for name in ("WinchRoot", "WinchYoke", "WinchDrum", "WinchOutlet", "WinchGuidePivot", "WinchGuideArm", "WinchGuide", "WinchClamp", "WinchJawLeft", "WinchJawRight"):
+            if name not in scene.objects:
+                raise ValueError(f"Deployed Hermes is missing side winch control {name}")
+        if scene.objects["WinchRoot"].parent != scene.objects["AssetFacing"]:
+            raise ValueError("Side winch must stay independent of cannon yaw and recoil")
+        if scene["winch_guide_radius_points"] != 72:
+            raise ValueError("Side winch guide must match the authored 72-point route")
     if asset == "nathaniel":
         root = scene.objects["BackpackRoot"]
         if root.parent != scene.objects["Spine"]:
@@ -240,7 +291,7 @@ def _assert_export(asset):
     document = glb_document(model.read_bytes())
     names = {node.get("name") for node in document["nodes"]}
     expected = {obj.name for obj in bpy.context.scene.objects
-                if obj.users_collection and obj.users_collection[0].name.endswith(("resource backpack", "resource furnace"))}
+                if obj.users_collection and obj.users_collection[0].name.endswith(("resource backpack", "resource furnace", "side winch"))}
     if expected - names:
         raise ValueError(f"{asset}: GLB lost gathering parts: {sorted(expected - names)}")
     source_animation = bpy.context.scene.get("asset_animation")
@@ -269,6 +320,8 @@ def migrate(asset):
         (_nathaniel if asset == "nathaniel" else _hermes)()
     if asset == "nathaniel":
         _telescoping_rods()
+    elif asset == "hermes_anchor":
+        _winch()
     scene["resource_gathering_revision"] = REVISIONS[asset]
     _assert_contract(asset)
     for name, (data, transform, parent) in original.items():

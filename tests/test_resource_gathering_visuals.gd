@@ -100,6 +100,7 @@ func _run() -> void:
 	hermes.sync_intake([], nathaniel, receiver)
 	for model: ActorModelView in [hermes.model_view, hermes.mobile_model_view]:
 		expect(not model.gathering_view.intake_bundle.visible, "Death clears received matter in both forms without a Nathaniel view")
+	_check_winch(player, hermes)
 	player.free()
 	hermes.free()
 	_check_self_destruct()
@@ -108,6 +109,70 @@ func _run() -> void:
 		await _check_self_destruct_rendered()
 	print("Resource gathering visuals: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
+
+
+func _check_winch(player: ActorView, hermes: HermesView) -> void:
+	var state: Dictionary = {"position": Vector2(100, 100), "hp": 100, "anchored": true, "furnace_remaining": 0.0, "recovery_corpse_id": 55, "recovery_cooldown": 0.0}
+	var carrier: Dictionary = {"position": Vector2(500, 500), "hp": 100, "resource_capacity": 1}
+	hermes.apply_state(state, false, true)
+	hermes._process(HermesView.DEPLOY_SECONDS)
+	hermes.apply_state(state, false, false)
+	var rig: ResourceGatheringView = hermes.model_view.gathering_view
+	expect(rig.winch != null and rig.winch_clamp != null and rig.winch_guide != null, "Deployed Hermes loads the saved G1 side winch controls")
+	expect(hermes.mobile_model_view.gathering_view.winch == null, "The side winch does not change mobile Hermes")
+	if rig.winch == null or hermes._hook_display == null:
+		return
+	var muzzle: Vector2 = hermes.weapon_muzzle(Vector2.RIGHT)
+	for kind: String in ["soldier", "gunSoldier", "boss"]:
+		for index: int in range(8):
+			var direction: Vector2 = Vector2.from_angle(TAU * index / 8.0)
+			var corpse: Dictionary = {"id": 55, "position": Vector2(state.position) + direction * 150.0, "pickup_position": Vector2(state.position) + direction * 180.0,
+				"phase": "winch_reel", "phase_elapsed": 0.05, "source_kind": kind, "disarmed": true, "carried": false,
+				"recovery_route": [Vector2(state.position) + direction * 180.0, Vector2(state.position) + direction * 72.0, Vector2(state.position) + Vector2(72, 0), Vector2(state.position) + Vector2(10, 0)]}
+			_sync(player, hermes, [corpse], carrier, state)
+			expect(hermes._hook_display.visible and not rig.winch_clamp.visible, "One authored clamp is visible while the " + kind + " is pulled")
+			expect(not rig.intake_bundle.visible and ResourceGatheringView.ground_visible(corpse), "A pulled shell stays visible on the ground before compression")
+			expect(not ResourceGatheringView.collectible_visible(corpse), "Nathaniel cannot click winch-owned cargo")
+			expect(rig.winch_guide.global_position.length() > 2.2 and rig.winch_guide.global_position.y < 0.4, "The outer guide stays clear of the stabilizers in heading %d" % index)
+			expect(rig._winch_guide_mesh.to_global(Vector3(0, rig._winch_guide_mesh.mesh.get_aabb().size.y * 0.5, 0)).distance_to(rig.winch_guide.global_position) < 0.001, "The short guide arm reaches its cable eye in heading %d" % index)
+			expect(hermes.recovery_cable()[-1].distance_to(hermes._hook_display.position) < 0.001, "The physical cable meets the moving clamp")
+			expect(hermes._hook_contact.albedo_color.a > 0.2, "Successful contact has a short amber pad cue")
+			expect(hermes.weapon_muzzle(Vector2.RIGHT).distance_to(muzzle) < 0.001, "Winch and guide motion leave cannon fire independent")
+			var guide_pose: Transform3D = rig.winch_guide.global_transform
+			var hook_point: Vector2 = hermes._hook_display.position
+			hermes._process(0.4)
+			expect(rig.winch_guide.global_transform.is_equal_approx(guide_pose) and hermes._hook_display.position.is_equal_approx(hook_point), "Pause freezes the winch motion")
+			corpse.phase_elapsed = 0.2
+			_sync(player, hermes, [corpse], carrier, state)
+			expect(hermes._hook_contact.albedo_color.a == 0.0, "Contact fades while the body remains permanently disarmed")
+			for phase: String in ["winch_crush", "winch_feed"]:
+				corpse.phase = phase
+				corpse.phase_elapsed = BattlefieldRules.phase_seconds(phase) * 0.5
+				corpse.position = Vector2(state.position) + Vector2(10, 0)
+				_sync(player, hermes, [corpse], carrier, state)
+				expect(rig.intake_bundle.visible and not ResourceGatheringView.ground_visible(corpse), "The shared bundle owns the body during " + phase)
+				expect(not player.model_view.gathering_view.active_bundle.visible, "Automatic intake never creates Nathaniel's held copy")
+	state.recovery_corpse_id = 0
+	state.recovery_cooldown = GameBalance.HERMES_WINCH_RESET_SECONDS * 0.5
+	_sync(player, hermes, [], carrier, state)
+	expect(hermes._hook_display.visible and not rig.intake_bundle.visible, "The empty clamp resets after acceptance without recreating matter")
+	state.recovery_cooldown = 0.0
+	_sync(player, hermes, [], carrier, state)
+	expect(not hermes._hook_display.visible and rig.winch_clamp.visible and hermes.recovery_cable().is_empty(), "The side winch returns to its single ready clamp")
+	expect(rig._winch_guide_mesh.transform.is_equal_approx(rig._rest[rig._winch_guide_mesh]), "Reset restores the saved short guide arm without an extended leftover")
+	state.recovery_corpse_id = 55
+	var hidden: Dictionary = {"id": 55, "position": Vector2(240, 100), "pickup_position": Vector2(240, 100), "phase": "winch_reel", "phase_elapsed": 0.1, "source_kind": "soldier"}
+	_sync(player, hermes, [hidden], carrier, state)
+	hermes.set_recovery_visible(false)
+	expect(not hermes._hook_display.visible and hermes.recovery_cable().is_empty(), "Hidden recovery details clear both clamp and cable")
+	state.recovery_corpse_id = 0
+	state.recovery_cooldown = GameBalance.HERMES_WINCH_RESET_SECONDS * 0.5
+	_sync(player, hermes, [], carrier, state)
+	expect(not hermes._hook_display.visible and hermes.recovery_cable().is_empty(), "A hidden cancellation cannot replay its old hook position during reset")
+	state.anchored = false
+	hermes.apply_state(state, false, false)
+	_sync(player, hermes, [], carrier, state)
+	expect(not hermes._hook_display.visible, "Pack-up clears the external hook")
 
 
 func _check_links(model: ActorModelView, phase: String) -> void:
