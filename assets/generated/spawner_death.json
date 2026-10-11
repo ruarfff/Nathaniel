@@ -1,0 +1,232 @@
+{
+  "source": "art/blender/sources/spawner_death.blend",
+  "source_sha256": "4feb5e6c22864bb6ab0361b0adde077b7670fcd0d8176cf4b99f62fa98061a8d",
+  "settings_sha256": "ce131252871f9502a3c272d475d9e68e6e2e77cbc42bfcd7a5dc096d0a1ec6eb",
+  "blender_version": "5.2.2 LTS",
+  "python_version": "3.13.15",
+  "canvas": [
+    994,
+    935
+  ],
+  "anchor": [
+    508,
+    667
+  ],
+  "trimmed": true,
+  "logical_canvas": [
+    248.5,
+    233.75
+  ],
+  "logical_anchor": [
+    127.0,
+    166.75
+  ],
+  "render_density": 4,
+  "profile": "iron_ink_death_structure",
+  "world_points_per_unit": 32,
+  "blender_xy_basis_pixels": [
+    [
+      -128,
+      64
+    ],
+    [
+      128,
+      64
+    ]
+  ],
+  "logical_xy_from_blender": [
+    "32 * Y",
+    "32 * X"
+  ],
+  "dependencies": [
+    "Blender (bundled bpy and Python standard library)"
+  ],
+  "crop_origin": [
+    260,
+    357
+  ],
+  "uncropped_canvas": [
+    1536,
+    1536
+  ],
+  "uncropped_anchor": [
+    768,
+    1024
+  ],
+  "animation": {
+    "directions": 1,
+    "clips": [
+      {
+        "name": "death",
+        "frames": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "fps": 10.0,
+        "loop": false
+      }
+    ]
+  },
+  "atlas_pages": [
+    {
+      "file": "spawner_death_atlas_0.png",
+      "canvas": [
+        3869,
+        1693
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "animation": "death_0",
+      "source_frame": 1,
+      "unique_frame": 0,
+      "page": 0,
+      "region": [
+        1857,
+        8,
+        994,
+        875
+      ],
+      "margin": [
+        0,
+        49,
+        0,
+        60
+      ]
+    },
+    {
+      "animation": "death_0",
+      "source_frame": 2,
+      "unique_frame": 1,
+      "page": 0,
+      "region": [
+        2867,
+        8,
+        994,
+        875
+      ],
+      "margin": [
+        0,
+        49,
+        0,
+        60
+      ]
+    },
+    {
+      "animation": "death_0",
+      "source_frame": 3,
+      "unique_frame": 2,
+      "page": 0,
+      "region": [
+        902,
+        8,
+        939,
+        884
+      ],
+      "margin": [
+        28,
+        30,
+        55,
+        51
+      ]
+    },
+    {
+      "animation": "death_0",
+      "source_frame": 4,
+      "unique_frame": 3,
+      "page": 0,
+      "region": [
+        8,
+        8,
+        878,
+        905
+      ],
+      "margin": [
+        60,
+        0,
+        116,
+        30
+      ]
+    },
+    {
+      "animation": "death_0",
+      "source_frame": 5,
+      "unique_frame": 4,
+      "page": 0,
+      "region": [
+        2148,
+        929,
+        814,
+        711
+      ],
+      "margin": [
+        94,
+        224,
+        180,
+        224
+      ]
+    },
+    {
+      "animation": "death_0",
+      "source_frame": 6,
+      "unique_frame": 5,
+      "page": 0,
+      "region": [
+        1382,
+        929,
+        750,
+        728
+      ],
+      "margin": [
+        129,
+        205,
+        244,
+        207
+      ]
+    },
+    {
+      "animation": "death_0",
+      "source_frame": 7,
+      "unique_frame": 6,
+      "page": 0,
+      "region": [
+        680,
+        929,
+        686,
+        744
+      ],
+      "margin": [
+        165,
+        187,
+        308,
+        191
+      ]
+    },
+    {
+      "animation": "death_0",
+      "source_frame": 8,
+      "unique_frame": 7,
+      "page": 0,
+      "region": [
+        8,
+        929,
+        656,
+        756
+      ],
+      "margin": [
+        167,
+        173,
+        338,
+        179
+      ]
+    }
+  ],
+  "unique_frames": 8
+}

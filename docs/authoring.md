@@ -229,16 +229,35 @@ expiry. The existing clamp pad flashes amber at successful grip. These effects
 use gameplay state rather than shader wall-clock time, so pause freezes them.
 The lifetime, warning window, and dissolve duration are in `GameBalance`.
 
+Boss ground matter uses `art/blender/sources/boss_corpse.blend`; the compressed
+cargo uses `art/blender/sources/boss_bundle.blend`. The latter has the `matter` model role and
+a `MatterRoot` parent. Edit these saved sources and export them through the
+Blender pipeline. Boss cargo uses the same slot and intake poses as soldier cargo.
+
+Grunt and spawner deaths use the saved `grunt_death.blend` and
+`spawner_death.blend` sources. Their non-looping `death` clips use the
+`iron_ink_death` and `iron_ink_death_structure` profiles. Grunts have eight
+headings; the fixed spawner has one. Keep shell fragments and dust inside the
+shared frame canvas. `make art-enemy-deaths` captures both sequences, boss
+collection, and both intake heights. These effects do not apply damage.
+
 Open `scenes/effects/world_effects.tscn` and select its root. The Inspector
 groups corpse size and opacity, projectile radius and colors, laser width and
-height, event-ring lifetime and expansion, delivery/target pulse timing,
-character target colors, and placement-preview size and colors.
+height, event-ring lifetime and expansion, delivery pulse timing, character
+target colors and `target_tint_strength`, and placement-preview size and colors.
+Visible enemy targets use a subtle body tint: amber for Nathaniel and cyan for
+Hermes, blended when both target the same unit. The default tint strength is
+0.22. The HUD portrait crosshair uses the matching character color. Target
+rings, N/H letters, and enemy-click pulses are no longer drawn.
+Clicked corpses use Nathaniel's color and the same tint strength until grip.
+Their normal movement ring is hidden while this pickup highlight is active;
+blocked movement keeps its error marker. The corpse warning and dissolve
+shader remain visible over the pickup tint.
 The application instantiates this reusable scene for its effects layer. Change
 the scene's properties and run a level with F6 to inspect the result. Duplicate
 the scene for a variant and select that scene in `GameApp`'s effects preload.
 These settings change presentation only; damage, attack ranges, collision
-radii, and tower-placement rules remain in the simulation. The scene defaults
-preserve the existing visual output.
+radii, and tower-placement rules remain in the simulation.
 
 ## Artwork and provenance
 

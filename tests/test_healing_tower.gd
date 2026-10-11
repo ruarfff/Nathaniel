@@ -189,7 +189,6 @@ func _check_selection() -> void:
 	expect(first_actor.sprite.texture.get_image().get_pixel(661, 375).a > 0.99, "Selection fixture clicks the tower's opaque upper emitter")
 	app.sim.move_to(Vector2(400, 1000))
 	var destination: Vector2 = app.sim.nathaniel.destination
-	app.sim.focused_character = "hermes"
 	for zoom: float in [0.5, 1.0, 2.0]:
 		app.camera_zoom = zoom
 		app.camera.zoom = Vector2.ONE * zoom
@@ -197,7 +196,7 @@ func _check_selection() -> void:
 		app.camera.force_update_scroll()
 		app.world_click(_emitter_screen(first_actor))
 		expect(app.effects.selected_healing_tower_id == int(first.id), "Clicking the upper emitter selects healing range at %.1fx zoom" % zoom)
-		expect(app.sim.nathaniel.destination == destination and app.sim.focused_character == "hermes", "Tower selection preserves movement and camera focus at %.1fx zoom" % zoom)
+		expect(app.sim.nathaniel.destination == destination and app.sim.focused_character == "nathaniel", "Tower selection preserves movement and Nathaniel control at %.1fx zoom" % zoom)
 	expect(not app.effects.healing_range_points().is_empty(), "Selecting the actual tower exposes its projected healing range")
 	app.world_click(_emitter_screen(second_actor))
 	expect(app.effects.selected_healing_tower_id == int(second.id), "Clicking another healing tower switches the range selection")

@@ -33,7 +33,14 @@ mode. State also includes engine, scene size, entity details, camera zoom, and a
 
 The `gathering` state reports `phase`, `cargoCount`, `capacity`, `reach`, and
 `furnaceRemaining`. Cargo is separate from spendable `resources`. Backpack
-upgrades and Deliver cargo use the same discoverable HUD buttons as real input.
+upgrades and ring actions use the same discoverable controls as real input.
+Nathaniel remains the controlled character. Hermes's card focuses Hermes and
+opens Build. A valid tower placement returns to Build. A world click away
+closes the ring, is consumed, and returns camera focus and manual controls to
+Nathaniel. Nathaniel's card or body also closes Build. World Hermes accepts a
+delivery order only when Build is closed and Nathaniel carries cargo. World
+taps never select Hermes or open Build. Build and placement temporarily disable
+manual Nathaniel commands; existing orders and automatic combat continue.
 
 - State positions and `spawnEnemy` x/y are **logical world pixels, y up**.
 - `/nodes` bounds and `/tap`/`swipe` input are **viewport pixels, origin top-left**.

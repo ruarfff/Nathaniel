@@ -2,6 +2,8 @@ class_name GameApp
 extends Node2D
 ## Composes input, scenes, storage, and audio around the gameplay domain.
 
+const CAMERA_FOCUS_DURATION := 0.28
+
 var sim: GameSimulation
 var level: GameLevel
 var views: Dictionary = {}
@@ -22,6 +24,9 @@ var _scene_cache: Dictionary = {}
 var _debug: Node
 var _debug_bridge: RefCounted
 var _scenery: Node2D
+var _camera_focus_from := Vector2.ZERO
+var _camera_focus_zoom := 1.0
+var _camera_focus_elapsed := CAMERA_FOCUS_DURATION
 @onready var ui: GameUI = $Interface/GameUI
 @onready var camera: Camera2D = $Camera
 
@@ -47,6 +52,7 @@ func _ready() -> void:
 	add_child(audio)
 	audio.apply_settings(settings.music_enabled, settings.sound_effects_enabled)
 	effects = preload("res://scenes/effects/world_effects.tscn").instantiate() as WorldEffects
+	effects.actor_layer = $World/Actors
 	$World.add_child(effects)
 	fog = FogView.new()
 	fog.z_index = 10
@@ -105,11 +111,10 @@ func start_level_scene(new_level: GameLevel) -> void:
 	sim.configure(level.data())
 	effects.simulation = sim
 	effects.delivery_pulse_time = 0.0
-	effects.target_pulse_time = 0.0
-	effects.target_pulse_id = -1
 	fog.simulation = sim
 	_displayed_result = "playing"
 	ui.build_open = false
+	ui.close_ring()
 	effects.build_open = false
 	game_input.cancel_tower_drag()
 	ui.show_notice("")
@@ -140,6 +145,9 @@ func _physics_process(delta: float) -> void:
 			audio.play_effect("laserFire")
 		elif event.get("type", "") == "death":
 			audio.play_effect("explosion")
+			if event.get("target_kind", event.get("kind", "")) in ["nathaniel", "hermes"] or not CombatRules.alive(sim.nathaniel) or not CombatRules.alive(sim.hermes):
+				game_input.cancel_world_tap()
+				_set_build_open(false)
 		elif event.get("type", "") == "weapon_collected":
 			var weapon_name := "Heavy rifle" if event.weapon_id == "heavy_rifle" else "Rifle"
 			ui.show_notice("%s collected · choose its weapon button to equip." % weapon_name)
@@ -161,9 +169,9 @@ func _physics_process(delta: float) -> void:
 				pulsed_healers[owner_id] = true
 	effects.add_events(events, views)
 	ui.update_game(sim, fog.enabled)
-	effects.fog_enabled = fog.enabled
 	effects.build_open = ui.build_open and ui.menu.is_empty()
 	_update_camera(delta)
+	_update_character_hud()
 	effects.placement = not ui.build_kind.is_empty() and ui.menu.is_empty() and not ui.blocks_world_input(game_input.pointer_position)
 	effects.cursor_world = screen_to_world(game_input.pointer_position)
 	if effects.placement:
@@ -177,6 +185,8 @@ func _physics_process(delta: float) -> void:
 
 
 func _sync_views() -> void:
+	effects.fog_enabled = fog.enabled
+	var target_highlights := effects.target_highlights()
 	var selected_tower: Dictionary = sim.entity(effects.selected_healing_tower_id)
 	if not CombatRules.alive(selected_tower) or selected_tower.get("kind") != "healTower" or (fog.enabled and sim.visibility_at(selected_tower.position) != 2):
 		effects.selected_healing_tower_id = -1
@@ -197,7 +207,8 @@ func _sync_views() -> void:
 			$World/Actors.add_child(view)
 			views[id] = view
 		var actor: ActorView = views[id]
-		actor.apply_state(entity, entity.kind == "nathaniel" or id == effects.selected_healing_tower_id, sim.result == "playing" and not sim.paused)
+		actor.apply_state(entity, entity.kind == "nathaniel" or (entity.kind == "hermes" and ui.build_open) or id == effects.selected_healing_tower_id, sim.result == "playing" and not sim.paused)
+		actor.set_target_highlight(target_highlights.get(id, Color.WHITE), effects.target_tint_strength)
 		actor.visible = entity.kind in ["nathaniel", "hermes"] or not fog.enabled or sim.visibility_at(entity.position) == 2
 	for id: int in views.keys():
 		if not live.has(id):
@@ -251,18 +262,72 @@ func world_to_screen(world: Vector2) -> Vector2:
 
 func world_click(screen: Vector2) -> void:
 	if sim == null or not ui.menu.is_empty() or sim.paused or sim.result != "playing" or not CombatRules.alive(sim.nathaniel):
+		game_input.cancel_world_tap()
+		return
+	if ui.blocks_world_input(screen):
+		game_input.cancel_world_tap()
+		return
+	game_input.cancel_world_tap()
+	var selected := world_entity_at(screen)
+	var target_id: int = int(selected.get("id", -1))
+	if selected.get("kind", "") == "nathaniel":
+		command("focus", "nathaniel")
+		return
+	if not ui.ring_character.is_empty():
+		_set_build_open(false)
+		return
+	if selected.get("kind", "") == "hermes":
+		if not ui.build_open and sim.carried_resource_count() > 0:
+			command("deliver")
 		return
 	if not ui.build_kind.is_empty():
-		if place_at(ui.build_kind, screen):
-			ui.build_kind = ""
+		place_at(ui.build_kind, screen)
 		return
+	_select_healing_tower(target_id if selected.get("kind") == "healTower" else -1)
+	if target_id >= 0:
+		var entity: Dictionary = sim.entity(target_id)
+		if entity.kind == "healTower":
+			ui.show_notice("Healing range shown. Heals injured Nathaniel and Hermes.")
+		elif entity.kind in GameBalance.ENEMIES and not ui.build_open:
+			if sim.visibility_at(entity.position) != 2:
+				ui.show_notice("Target is out of sight.")
+				return
+			sim.target_enemy(target_id)
+			ui.show_notice("Nathaniel targeting %s." % String(entity.kind).capitalize())
+	elif not ui.build_open:
+		var corpse := effects.corpse_at_screen(screen)
+		if corpse.is_empty():
+			_move_nathaniel(screen_to_world(screen))
+		else:
+			_move_nathaniel(corpse.position)
+			if sim.carried_resource_count() >= int(sim.nathaniel.resource_capacity):
+				ui.show_notice("Cargo full. Deliver to Hermes first.")
+			else:
+				effects.pickup_target_id = int(corpse.id)
+				ui.show_notice("No clear route to the corpse. Nathaniel will move as far as possible." if sim.nathaniel.direct_movement else "Collecting corpse.")
+
+
+func world_entity_at(screen: Vector2) -> Dictionary:
 	var target_id := -1
 	var nearest := 42.0
+	var friendly_hit_id := -1
+	var friendly_hit_y := -INF
 	var tower_hit_id: int = -1
 	var tower_hit_y: float = -INF
 	for entity: Dictionary in sim.entities:
-		if not CombatRules.alive(entity) or (sim.visibility_at(entity.position) != 2 and fog.enabled):
+		if not CombatRules.alive(entity) or (entity.kind not in ["nathaniel", "hermes"] and sim.visibility_at(entity.position) != 2 and fog.enabled):
 			continue
+		if entity.kind in ["nathaniel", "hermes"]:
+			var dimensions := Vector2(48, 74) if entity.kind == "nathaniel" else Vector2(80, 104)
+			if views.has(int(entity.id)):
+				dimensions = views[int(entity.id)].visual.display_size
+			dimensions *= camera_zoom
+			var feet := world_to_screen(entity.position)
+			var bounds := Rect2(feet - Vector2(dimensions.x / 2, dimensions.y), dimensions).grow(6)
+			var depth: float = IsoProjection.project(entity.position).y
+			if bounds.has_point(screen) and depth >= friendly_hit_y:
+				friendly_hit_id = int(entity.id)
+				friendly_hit_y = depth
 		if entity.kind == "healTower" and views.has(int(entity.id)):
 			var actor: ActorView = views[int(entity.id)]
 			var depth: float = IsoProjection.project(entity.position).y
@@ -273,32 +338,15 @@ func world_click(screen: Vector2) -> void:
 		if distance < nearest:
 			target_id = entity.id
 			nearest = distance
+	if friendly_hit_id >= 0:
+		var nearby: Dictionary = sim.entity(target_id)
+		if nearby.is_empty() or IsoProjection.project(nearby.position).y <= friendly_hit_y:
+			target_id = friendly_hit_id
 	if tower_hit_id >= 0:
 		var nearby: Dictionary = sim.entity(target_id)
 		if nearby.is_empty() or nearby.kind == "healTower" or IsoProjection.project(nearby.position).y <= tower_hit_y:
 			target_id = tower_hit_id
-	var selected: Dictionary = sim.entity(target_id)
-	_select_healing_tower(target_id if selected.get("kind") == "healTower" else -1)
-	if target_id >= 0:
-		var entity: Dictionary = sim.entity(target_id)
-		if entity.kind == "nathaniel":
-			command("focus", "nathaniel")
-		elif entity.kind == "hermes":
-			if sim.nathaniel.get("has_corpse", false):
-				command("deliver")
-			else:
-				ui.show_notice("Collect a body, then return here to feed Hermes. Build opens towers and backpack upgrades.")
-		elif entity.kind == "healTower":
-			ui.show_notice("Healing range shown. Heals injured Nathaniel and Hermes.")
-		elif entity.kind in GameBalance.ENEMIES:
-			if sim.visibility_at(entity.position) != 2:
-				ui.show_notice("Target is out of sight.")
-				return
-			sim.target_enemy(target_id)
-			effects.pulse_target(target_id)
-			ui.show_notice("Nathaniel targeting %s." % String(entity.kind).capitalize())
-	else:
-		_move_nathaniel(screen_to_world(screen))
+	return sim.entity(target_id)
 
 
 func _select_healing_tower(id: int) -> void:
@@ -311,6 +359,7 @@ func _select_healing_tower(id: int) -> void:
 
 
 func _move_nathaniel(world: Vector2) -> void:
+	effects.pickup_target_id = -1
 	sim.move_to(world)
 	ui.show_notice("No clear route. Nathaniel will move as far as possible." if sim.nathaniel.direct_movement else "Moving Nathaniel.")
 
@@ -330,6 +379,7 @@ func place_at(kind: String, screen: Vector2) -> bool:
 	var placed := sim.place_tower(kind, world)
 	if placed:
 		ui.show_notice("Tower linked. Hermes anchored and cannon active. Follow reclaims the base.")
+		open_context_ring()
 	else:
 		ui.show_notice("Could not place this tower.")
 	return placed
@@ -338,18 +388,85 @@ func place_at(kind: String, screen: Vector2) -> bool:
 func change_zoom(factor: float) -> void:
 	if sim == null or not ui.menu.is_empty():
 		return
+	game_input.cancel_world_tap()
 	camera_zoom = clampf(camera_zoom * factor, 0.5, 2.0)
 	camera.zoom = Vector2.ONE * camera_zoom
-	_update_camera(1.0, true)
+	if _camera_focus_elapsed < CAMERA_FOCUS_DURATION:
+		_begin_camera_focus()
+	else:
+		_update_camera(1.0, true)
+
+
+func _begin_camera_focus() -> void:
+	_camera_focus_from = camera.position
+	_camera_focus_zoom = camera_zoom
+	_camera_focus_elapsed = 0.0
 
 
 func _update_camera(delta: float, immediate: bool = false) -> void:
 	if sim == null:
 		return
-	var target: Dictionary = sim.hermes if sim.focused_character == "hermes" else sim.nathaniel
+	var target: Dictionary = sim.hermes if ui.build_open else sim.nathaniel
+	var zoom_target := camera_zoom
+	var dimensions := _character_display_size(target)
+	if ui.build_open:
+		zoom_target = minf(zoom_target, minf(136.0 / dimensions.y, 156.0 / dimensions.x))
+	var focusing := _camera_focus_elapsed < CAMERA_FOCUS_DURATION
+	_camera_focus_elapsed = CAMERA_FOCUS_DURATION if immediate else minf(_camera_focus_elapsed + delta, CAMERA_FOCUS_DURATION)
+	var focus_weight := smoothstep(0.0, CAMERA_FOCUS_DURATION, _camera_focus_elapsed)
+	camera_zoom = zoom_target if immediate else lerpf(_camera_focus_zoom, zoom_target, focus_weight)
+	camera.zoom = Vector2.ONE * camera_zoom
 	var world_size := Vector2(sim.config.width, sim.config.height) * float(sim.config.tile_size)
 	var point := IsoProjection.clamp_camera(IsoProjection.project(target.position), world_size, get_viewport_rect().size, camera_zoom)
-	camera.position = point if immediate else camera.position.lerp(point, 1.0 - exp(-8.0 * delta))
+	if ui.build_open:
+		point = IsoProjection.project(target.position) - Vector2(0, dimensions.y / 2) + (get_viewport_rect().size / 2 - ui.play_rect().get_center()) / camera_zoom
+	if immediate:
+		camera.position = point
+	elif focusing:
+		camera.position = _camera_focus_from.lerp(point, focus_weight)
+	else:
+		camera.position = camera.position.lerp(point, 1.0 - exp(-8.0 * delta))
+	camera.force_update_scroll()
+
+
+func open_context_ring() -> void:
+	if sim == null or sim.paused or sim.result != "playing" or not ui.menu.is_empty():
+		return
+	var actor: Dictionary = sim.hermes
+	if not CombatRules.alive(actor):
+		return
+	if ui.ring_character == "hermes":
+		ui.update_game(sim, fog.enabled)
+		return
+	_set_build_open(true)
+	ui.ring_character = "hermes"
+	ui._fit_hud()
+	ui.open_ring(ui.play_rect().get_center())
+	ui.update_game(sim, fog.enabled)
+	_sync_views()
+
+
+func _character_display_size(actor: Dictionary) -> Vector2:
+	if views.has(int(actor.id)):
+		return views[int(actor.id)].visual.display_size
+	return Vector2(80, 104) if actor.kind == "hermes" else Vector2(48, 74)
+
+
+func _update_character_hud() -> void:
+	var viewport := Rect2(Vector2.ZERO, get_viewport_rect().size)
+	for character: String in ["nathaniel", "hermes"]:
+		var actor: Dictionary = sim.hermes if character == "hermes" else sim.nathaniel
+		var point := world_to_screen(actor.position)
+		var card := ui.get_node("%" + character.capitalize()) as CharacterControl
+		card.target_color = effects.nathaniel_target_color if character == "nathaniel" else effects.hermes_target_color
+		card.offscreen_direction = Vector2.ZERO if viewport.has_point(point) else point - viewport.get_center()
+		card.queue_redraw()
+		if ui.ring_character == character:
+			if not CombatRules.alive(actor):
+				ui.close_ring()
+			else:
+				ui.ring_actor_position = point - Vector2(0, _character_display_size(actor).y * camera_zoom / 2)
+	ui.queue_redraw()
 
 
 func show_main() -> void:
@@ -367,6 +484,7 @@ func show_main() -> void:
 	fog.simulation = null
 	effects.placement = false
 	ui.build_open = false
+	ui.close_ring()
 	game_input.cancel_tower_drag()
 	ui.show_menu("main", {"in_game": false, "continue_level": progress.continue_level(), "has_progress": int(progress.data.highest_level_completed) > 0})
 	audio.play_music("menuMusic")
@@ -374,6 +492,7 @@ func show_main() -> void:
 
 
 func command(action: String, value: Variant = null) -> void:
+	game_input.cancel_world_tap()
 	if sim != null and sim.result in ["victory", "gameOver"] and action not in ["main", "level", "quit", "continue_result"]:
 		return
 	if action in ["pause", "settings", "credits", "save_menu", "load_menu", "resume", "exit_menu"]:
@@ -447,7 +566,9 @@ func command(action: String, value: Variant = null) -> void:
 			get_tree().quit()
 		"escape":
 			if not ui.build_kind.is_empty() or not game_input.drag_kind.is_empty():
-				game_input.cancel_tower_drag()
+				command("cancel_placement")
+			elif not ui.ring_character.is_empty():
+				_set_build_open(false)
 			elif ui.build_open:
 				_set_build_open(false)
 			elif ui.menu.is_empty() and effects.selected_healing_tower_id >= 0:
@@ -471,18 +592,26 @@ func command(action: String, value: Variant = null) -> void:
 
 
 func _set_build_open(open: bool) -> void:
+	var changed := ui.build_open != open
 	if open:
 		_select_healing_tower(-1)
 	ui.build_open = open
 	effects.build_open = open
 	game_input.cancel_tower_drag()
+	if not open:
+		ui.close_ring()
 	if sim != null:
-		sim.focused_character = "hermes" if open else "nathaniel"
+		sim.focused_character = "nathaniel"
+		if changed:
+			_begin_camera_focus()
 		ui.update_game(sim, fog.enabled)
+		_sync_views()
 
 
 func _game_command(action: String, value: Variant) -> void:
 	if sim == null or not ui.menu.is_empty() or sim.paused:
+		return
+	if action in ["deliver", "equip_weapon", "fire", "fire_at_pointer", "stop"] and ui.build_open:
 		return
 	match action:
 		"deliver":
@@ -500,9 +629,20 @@ func _game_command(action: String, value: Variant) -> void:
 			elif String(value) not in sim.nathaniel.get("owned_weapon_ids", []):
 				ui.show_notice("Find the heavy rifle crate, then walk over it to collect it.")
 		"focus":
-			if value == null or value == "nathaniel":
+			var character: String = "nathaniel" if value == null else String(value)
+			if character == "hermes":
+				open_context_ring()
+			elif character == "nathaniel":
 				_select_healing_tower(-1)
 				_set_build_open(false)
+		"cancel_placement":
+			game_input.cancel_tower_drag()
+			open_context_ring()
+		"pack":
+			if sim.hermes_mode != "following" and ui.ring_character == "hermes":
+				sim.set_hermes_mode("following")
+				_set_build_open(false)
+				ui.show_notice("Base reclaimed. Hermes follows Nathaniel.")
 		"fire":
 			if int(sim.nathaniel.target_id) < 0:
 				ui.show_notice("Select an enemy for Nathaniel, or aim with right-click / F.")
@@ -520,14 +660,23 @@ func _game_command(action: String, value: Variant) -> void:
 		"hermes_stop":
 			sim.set_hermes_mode("stopped")
 			game_input.cancel_tower_drag()
+			if ui.build_open:
+				open_context_ring()
 			ui.show_notice("Hermes anchored. Cannon active; build inside his range.")
+		"open_build":
+			open_context_ring()
 		"build":
-			_set_build_open(not ui.build_open)
+			if ui.build_open:
+				_set_build_open(false)
+			else:
+				open_context_ring()
 		"toggle_hermes":
 			command("hermes_stop" if sim.hermes_mode == "following" else "follow")
 		"gun_tower", "laser_tower", "heal_tower":
-			if ui.build_open:
+			if ui.build_open and sim.resources >= int(GameBalance.COSTS[GameBalance.canonical_kind(action)]) and CombatRules.alive(sim.hermes):
 				ui.build_kind = action
+				ui.close_ring()
+				ui.update_game(sim, fog.enabled)
 		"zoom_in":
 			change_zoom(1.15)
 		"zoom_out":
@@ -554,7 +703,7 @@ func _load(slot: int) -> void:
 	if not sim.restore(snapshot):
 		ui.show_notice("Save could not be restored")
 		return
-	_set_build_open(sim.focused_character == "hermes")
+	_set_build_open(false)
 	sim.set_paused(false)
 	ui.show_menu("")
 	_sync_views()

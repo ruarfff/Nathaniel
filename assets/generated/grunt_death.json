@@ -1,0 +1,805 @@
+{
+  "source": "art/blender/sources/grunt_death.blend",
+  "source_sha256": "f30fd79f10a8406eff8e43eb855483370a09b4b685e6398b7ac84ef56a38e5f2",
+  "settings_sha256": "323b3499f9763fc337ed72f9782c0d8cc76bcec744ede45ec0fcaae617e991bb",
+  "blender_version": "5.2.2 LTS",
+  "python_version": "3.13.15",
+  "canvas": [
+    494,
+    297
+  ],
+  "anchor": [
+    247,
+    187
+  ],
+  "trimmed": true,
+  "logical_canvas": [
+    123.5,
+    74.25
+  ],
+  "logical_anchor": [
+    61.75,
+    46.75
+  ],
+  "render_density": 4,
+  "profile": "iron_ink_death",
+  "world_points_per_unit": 32,
+  "blender_xy_basis_pixels": [
+    [
+      -128,
+      64
+    ],
+    [
+      128,
+      64
+    ]
+  ],
+  "logical_xy_from_blender": [
+    "32 * Y",
+    "32 * X"
+  ],
+  "dependencies": [
+    "Blender (bundled bpy and Python standard library)"
+  ],
+  "crop_origin": [
+    137,
+    293
+  ],
+  "uncropped_canvas": [
+    768,
+    640
+  ],
+  "uncropped_anchor": [
+    384,
+    480
+  ],
+  "animation": {
+    "directions": 8,
+    "clips": [
+      {
+        "name": "death",
+        "frames": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "fps": 12.5,
+        "loop": false
+      }
+    ]
+  },
+  "atlas_pages": [
+    {
+      "file": "grunt_death_atlas_0.png",
+      "canvas": [
+        3930,
+        949
+      ]
+    }
+  ],
+  "frames": [
+    {
+      "animation": "death_0",
+      "source_frame": 1,
+      "unique_frame": 0,
+      "page": 0,
+      "region": [
+        269,
+        293,
+        286,
+        229
+      ],
+      "margin": [
+        109,
+        35,
+        208,
+        68
+      ]
+    },
+    {
+      "animation": "death_0",
+      "source_frame": 2,
+      "unique_frame": 1,
+      "page": 0,
+      "region": [
+        3110,
+        293,
+        300,
+        209
+      ],
+      "margin": [
+        121,
+        23,
+        194,
+        88
+      ]
+    },
+    {
+      "animation": "death_0",
+      "source_frame": 3,
+      "unique_frame": 2,
+      "page": 0,
+      "region": [
+        1230,
+        539,
+        355,
+        200
+      ],
+      "margin": [
+        91,
+        19,
+        139,
+        97
+      ]
+    },
+    {
+      "animation": "death_0",
+      "source_frame": 4,
+      "unique_frame": 3,
+      "page": 0,
+      "region": [
+        311,
+        760,
+        406,
+        176
+      ],
+      "margin": [
+        64,
+        67,
+        88,
+        121
+      ]
+    },
+    {
+      "animation": "death_0",
+      "source_frame": 5,
+      "unique_frame": 4,
+      "page": 0,
+      "region": [
+        2991,
+        539,
+        454,
+        186
+      ],
+      "margin": [
+        40,
+        64,
+        40,
+        111
+      ]
+    },
+    {
+      "animation": "death_1",
+      "source_frame": 1,
+      "unique_frame": 5,
+      "page": 0,
+      "region": [
+        1972,
+        539,
+        260,
+        194
+      ],
+      "margin": [
+        117,
+        40,
+        234,
+        103
+      ]
+    },
+    {
+      "animation": "death_1",
+      "source_frame": 2,
+      "unique_frame": 6,
+      "page": 0,
+      "region": [
+        927,
+        539,
+        287,
+        201
+      ],
+      "margin": [
+        118,
+        15,
+        207,
+        96
+      ]
+    },
+    {
+      "animation": "death_1",
+      "source_frame": 3,
+      "unique_frame": 7,
+      "page": 0,
+      "region": [
+        8,
+        539,
+        311,
+        205
+      ],
+      "margin": [
+        121,
+        4,
+        183,
+        92
+      ]
+    },
+    {
+      "animation": "death_1",
+      "source_frame": 4,
+      "unique_frame": 8,
+      "page": 0,
+      "region": [
+        3461,
+        539,
+        355,
+        181
+      ],
+      "margin": [
+        104,
+        57,
+        139,
+        116
+      ]
+    },
+    {
+      "animation": "death_1",
+      "source_frame": 5,
+      "unique_frame": 9,
+      "page": 0,
+      "region": [
+        2248,
+        539,
+        400,
+        194
+      ],
+      "margin": [
+        85,
+        46,
+        94,
+        103
+      ]
+    },
+    {
+      "animation": "death_2",
+      "source_frame": 1,
+      "unique_frame": 10,
+      "page": 0,
+      "region": [
+        943,
+        293,
+        286,
+        227
+      ],
+      "margin": [
+        99,
+        37,
+        208,
+        70
+      ]
+    },
+    {
+      "animation": "death_2",
+      "source_frame": 2,
+      "unique_frame": 11,
+      "page": 0,
+      "region": [
+        2362,
+        8,
+        244,
+        239
+      ],
+      "margin": [
+        121,
+        14,
+        250,
+        58
+      ]
+    },
+    {
+      "animation": "death_2",
+      "source_frame": 3,
+      "unique_frame": 12,
+      "page": 0,
+      "region": [
+        1307,
+        8,
+        207,
+        248
+      ],
+      "margin": [
+        138,
+        4,
+        287,
+        49
+      ]
+    },
+    {
+      "animation": "death_2",
+      "source_frame": 4,
+      "unique_frame": 13,
+      "page": 0,
+      "region": [
+        3092,
+        8,
+        226,
+        235
+      ],
+      "margin": [
+        121,
+        52,
+        268,
+        62
+      ]
+    },
+    {
+      "animation": "death_2",
+      "source_frame": 5,
+      "unique_frame": 14,
+      "page": 0,
+      "region": [
+        1530,
+        8,
+        254,
+        244
+      ],
+      "margin": [
+        105,
+        52,
+        240,
+        53
+      ]
+    },
+    {
+      "animation": "death_3",
+      "source_frame": 1,
+      "unique_frame": 15,
+      "page": 0,
+      "region": [
+        1506,
+        293,
+        201,
+        223
+      ],
+      "margin": [
+        134,
+        32,
+        293,
+        74
+      ]
+    },
+    {
+      "animation": "death_3",
+      "source_frame": 2,
+      "unique_frame": 16,
+      "page": 0,
+      "region": [
+        2232,
+        293,
+        212,
+        220
+      ],
+      "margin": [
+        149,
+        25,
+        282,
+        77
+      ]
+    },
+    {
+      "animation": "death_3",
+      "source_frame": 3,
+      "unique_frame": 17,
+      "page": 0,
+      "region": [
+        8,
+        293,
+        245,
+        230
+      ],
+      "margin": [
+        139,
+        17,
+        249,
+        67
+      ]
+    },
+    {
+      "animation": "death_3",
+      "source_frame": 4,
+      "unique_frame": 18,
+      "page": 0,
+      "region": [
+        1015,
+        8,
+        276,
+        250
+      ],
+      "margin": [
+        130,
+        36,
+        218,
+        47
+      ]
+    },
+    {
+      "animation": "death_3",
+      "source_frame": 5,
+      "unique_frame": 19,
+      "page": 0,
+      "region": [
+        8,
+        8,
+        304,
+        269
+      ],
+      "margin": [
+        122,
+        28,
+        190,
+        28
+      ]
+    },
+    {
+      "animation": "death_4",
+      "source_frame": 1,
+      "unique_frame": 20,
+      "page": 0,
+      "region": [
+        3334,
+        8,
+        286,
+        235
+      ],
+      "margin": [
+        99,
+        24,
+        208,
+        62
+      ]
+    },
+    {
+      "animation": "death_4",
+      "source_frame": 2,
+      "unique_frame": 21,
+      "page": 0,
+      "region": [
+        611,
+        539,
+        300,
+        204
+      ],
+      "margin": [
+        73,
+        24,
+        194,
+        93
+      ]
+    },
+    {
+      "animation": "death_4",
+      "source_frame": 3,
+      "unique_frame": 22,
+      "page": 0,
+      "region": [
+        1601,
+        539,
+        355,
+        200
+      ],
+      "margin": [
+        48,
+        10,
+        139,
+        97
+      ]
+    },
+    {
+      "animation": "death_4",
+      "source_frame": 4,
+      "unique_frame": 23,
+      "page": 0,
+      "region": [
+        2460,
+        293,
+        406,
+        218
+      ],
+      "margin": [
+        24,
+        13,
+        88,
+        79
+      ]
+    },
+    {
+      "animation": "death_4",
+      "source_frame": 5,
+      "unique_frame": 24,
+      "page": 0,
+      "region": [
+        2622,
+        8,
+        454,
+        236
+      ],
+      "margin": [
+        0,
+        0,
+        40,
+        61
+      ]
+    },
+    {
+      "animation": "death_5",
+      "source_frame": 1,
+      "unique_frame": 25,
+      "page": 0,
+      "region": [
+        335,
+        539,
+        260,
+        205
+      ],
+      "margin": [
+        117,
+        21,
+        234,
+        92
+      ]
+    },
+    {
+      "animation": "death_5",
+      "source_frame": 2,
+      "unique_frame": 26,
+      "page": 0,
+      "region": [
+        8,
+        760,
+        287,
+        181
+      ],
+      "margin": [
+        89,
+        21,
+        207,
+        116
+      ]
+    },
+    {
+      "animation": "death_5",
+      "source_frame": 3,
+      "unique_frame": 27,
+      "page": 0,
+      "region": [
+        2664,
+        539,
+        311,
+        189
+      ],
+      "margin": [
+        62,
+        20,
+        183,
+        108
+      ]
+    },
+    {
+      "animation": "death_5",
+      "source_frame": 4,
+      "unique_frame": 28,
+      "page": 0,
+      "region": [
+        571,
+        293,
+        356,
+        228
+      ],
+      "margin": [
+        35,
+        21,
+        138,
+        69
+      ]
+    },
+    {
+      "animation": "death_5",
+      "source_frame": 5,
+      "unique_frame": 29,
+      "page": 0,
+      "region": [
+        598,
+        8,
+        401,
+        255
+      ],
+      "margin": [
+        8,
+        5,
+        93,
+        42
+      ]
+    },
+    {
+      "animation": "death_6",
+      "source_frame": 1,
+      "unique_frame": 30,
+      "page": 0,
+      "region": [
+        3636,
+        8,
+        286,
+        235
+      ],
+      "margin": [
+        109,
+        24,
+        208,
+        62
+      ]
+    },
+    {
+      "animation": "death_6",
+      "source_frame": 2,
+      "unique_frame": 31,
+      "page": 0,
+      "region": [
+        3426,
+        293,
+        244,
+        207
+      ],
+      "margin": [
+        129,
+        24,
+        250,
+        90
+      ]
+    },
+    {
+      "animation": "death_6",
+      "source_frame": 3,
+      "unique_frame": 32,
+      "page": 0,
+      "region": [
+        3686,
+        293,
+        207,
+        207
+      ],
+      "margin": [
+        149,
+        7,
+        287,
+        90
+      ]
+    },
+    {
+      "animation": "death_6",
+      "source_frame": 4,
+      "unique_frame": 33,
+      "page": 0,
+      "region": [
+        2120,
+        8,
+        226,
+        242
+      ],
+      "margin": [
+        147,
+        27,
+        268,
+        55
+      ]
+    },
+    {
+      "animation": "death_6",
+      "source_frame": 5,
+      "unique_frame": 34,
+      "page": 0,
+      "region": [
+        328,
+        8,
+        254,
+        266
+      ],
+      "margin": [
+        135,
+        19,
+        240,
+        31
+      ]
+    },
+    {
+      "animation": "death_7",
+      "source_frame": 1,
+      "unique_frame": 35,
+      "page": 0,
+      "region": [
+        1723,
+        293,
+        201,
+        223
+      ],
+      "margin": [
+        159,
+        32,
+        293,
+        74
+      ]
+    },
+    {
+      "animation": "death_7",
+      "source_frame": 2,
+      "unique_frame": 36,
+      "page": 0,
+      "region": [
+        2882,
+        293,
+        212,
+        214
+      ],
+      "margin": [
+        133,
+        24,
+        282,
+        83
+      ]
+    },
+    {
+      "animation": "death_7",
+      "source_frame": 3,
+      "unique_frame": 37,
+      "page": 0,
+      "region": [
+        1245,
+        293,
+        245,
+        227
+      ],
+      "margin": [
+        110,
+        4,
+        249,
+        70
+      ]
+    },
+    {
+      "animation": "death_7",
+      "source_frame": 4,
+      "unique_frame": 38,
+      "page": 0,
+      "region": [
+        1940,
+        293,
+        276,
+        223
+      ],
+      "margin": [
+        88,
+        23,
+        218,
+        74
+      ]
+    },
+    {
+      "animation": "death_7",
+      "source_frame": 5,
+      "unique_frame": 39,
+      "page": 0,
+      "region": [
+        1800,
+        8,
+        304,
+        243
+      ],
+      "margin": [
+        68,
+        15,
+        190,
+        54
+      ]
+    }
+  ],
+  "unique_frames": 40
+}

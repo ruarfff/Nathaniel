@@ -42,16 +42,34 @@ check the same image locally.
 
 ## Play
 
-- Click or tap the ground to move Nathaniel; select an enemy to target it.
-- Walk over a weapon crate to unlock the heavy rifle. Use **1 / 2** or the named weapon buttons to switch; movement and aiming continue during the 0.35-second switch.
-- Use Deploy/Follow to direct Hermes. He starts following Nathaniel and cannot be selected directly. Deploy plants him as a stationary cannon base.
-- Select Build to focus the camera on Hermes and show his amber build range. Hermes keeps following until a tower is placed. Drag a tower onto clear ground inside the ring, or select a tower and then its location. The starting radius is 240 logical points (7½ tiles). Gun, laser, and heal towers cost 5, 10, and 15 resources.
-- A valid build deploys Hermes and connects the tower to his base. His cannon fires while he stays anchored. Towers need Hermes to survive.
-- Make Hermes follow to close Build, return the camera to Nathaniel, reclaim all surviving connected towers, and refund 25% of each paid cost, rounded down. Map towers have no paid cost. Losing Hermes removes the base and its towers without a refund; enemy destruction also gives no refund.
-- Approach Soldier bodies to collect them with Nathaniel's backpack. The starter rack holds one bundle. Use Deliver cargo or click Hermes to feed him; each accepted bundle gives 10 resources. Hermes can receive in either form. Buy separate cargo and arm-reach upgrades in Build. Bodies warn for the final 3 seconds, then self-destruct at 10 seconds. A successful grip permanently disarms them, including after a drop. See [resource gathering](docs/resource-gathering.md).
-- Campaign levels start with three spare lives. Nathaniel respawns at the level start; losing Hermes ends the game. Defeat a boss to advance. Survival has no spare lives.
+- Nathaniel is always the controlled character. Tap his card or body to focus
+  him and close Build. The smaller target portrait is part of the same button.
+- Tap Hermes's card to focus him and open Build. Click away from his ring to
+  close it and return the camera and controls to Nathaniel. That click is consumed.
+  World taps on Hermes never open Build.
+- With Build closed and Nathaniel carrying cargo, tap Hermes to deliver immediately.
+  Repeated taps keep that action. Collection stays automatic at backpack reach.
+- Hermes's ring offers Gun, Laser and Heal for 5, 10 and 15 matter. Select a
+  tower, then tap clear ground inside his range. Only a valid placement deploys
+  Hermes and spends matter, then returns to Build so you can place another tower.
+  Cancel returns to Build; Nathaniel's card or body discards the preview and closes it.
+- Pack up & move reclaims surviving connected towers, refunds one quarter of
+  each paid cost rounded down, closes Build, and resumes following Nathaniel. Check the
+  displayed refund first. Backpack upgrades remain in the separate command tray.
+- Use the weapon buttons with Build closed. Collect the heavy rifle
+  crate to unlock it. Settings and the empty ability position stay inactive.
+- With Build closed, ground taps move Nathaniel and enemy taps target for him.
+  Build temporarily disables new manual Nathaniel commands. Existing orders
+  and automatic combat continue.
+- Campaign levels have three spare lives. Losing Hermes ends the game. Defeat
+  a boss to advance. Survival has no spare lives.
 
-Desktop controls: **B** opens or closes Build, **Space** returns the camera to Nathaniel and closes Build, **R** switches Hermes between Deploy and Follow, and **S** stops Nathaniel. **Escape** cancels an armed tower first, then closes Build, then pauses; it also closes the top menu. The mouse wheel zooms. **F** or right-click fires at the pointer; the HUD Fire button uses the current target. Touch uses the HUD and world controls, with zoom buttons and a two-finger camera gesture.
+Desktop: **B** opens/closes Hermes's ring, **Space** focuses Nathaniel, **R**
+deploys/packs Hermes, **S** stops Nathaniel, **1 / 2** select weapons, and
+**F** or right-click fires at the pointer. **Escape** returns from placement to
+Build, then closes commands, then pauses. Use the wheel or zoom buttons to zoom; touch
+also supports a two-finger camera gesture. See the
+[control rules](docs/web.md#character-controls) for focus and cancellation.
 
 Pause to save into one of three slots. Settings and campaign records are stored separately. Existing Swift saves can be imported from an explicit exported file into an empty slot; see [saves and compatibility](docs/saves.md).
 

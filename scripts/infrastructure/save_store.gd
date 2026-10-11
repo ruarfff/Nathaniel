@@ -170,7 +170,7 @@ static func validate_state(state: Dictionary) -> String:
 	for corpse: Variant in state.get("corpses", []):
 		if not corpse is Dictionary or not AtomicJSON.is_point(corpse.get("position")) or not AtomicJSON.is_number(corpse.get("amount")) or not AtomicJSON.is_number(corpse.get("expiration")) or not corpse.get("carried") is bool:
 			return "Invalid corpse state"
-		if corpse.get("source_kind", "soldier") not in ["soldier", "gunSoldier"]:
+		if not GameBalance.RESOURCE_VALUES.has(corpse.get("source_kind", "soldier")):
 			return "Invalid corpse source kind"
 	for shot: Variant in state.get("projectiles", []):
 		if not shot is Dictionary or not AtomicJSON.is_point(shot.get("position")) or not AtomicJSON.is_point(shot.get("direction")) or not shot.get("enemy") is bool:

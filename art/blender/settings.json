@@ -4,6 +4,18 @@
   "anchor": [64, 96],
   "render_density": 1,
   "profiles": {
+    "iron_ink_death": {
+      "canvas": [192, 160],
+      "anchor": [96, 120],
+      "render_density": 4,
+      "samples": 32
+    },
+    "iron_ink_death_structure": {
+      "canvas": [384, 384],
+      "anchor": [192, 256],
+      "render_density": 4,
+      "samples": 32
+    },
     "iron_ink": {
       "render_density": 8,
       "samples": 64

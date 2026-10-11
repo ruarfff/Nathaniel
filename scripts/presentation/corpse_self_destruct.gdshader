@@ -5,6 +5,8 @@ uniform float warning : hint_range(0.0, 1.0) = 0.0;
 uniform float dissolve : hint_range(0.0, 1.0) = 0.0;
 uniform bool disarmed = false;
 uniform float corpse_seed = 0.0;
+uniform vec4 pickup_color : source_color = vec4(1.0);
+uniform float pickup_strength : hint_range(0.0, 1.0) = 0.0;
 
 float patch_noise(vec2 cell) {
 	return fract(sin(dot(cell, vec2(127.1, 311.7)) + corpse_seed * 13.7) * 43758.5453);
@@ -14,6 +16,7 @@ void fragment() {
 	vec4 source = COLOR;
 	float luminance = dot(source.rgb, vec3(0.2126, 0.7152, 0.0722));
 	float seam = smoothstep(0.0, 0.10, source.g - max(source.r, source.b));
+	source.rgb = mix(source.rgb, pickup_color.rgb, pickup_strength);
 	if (disarmed) {
 		source.rgb *= 1.0 - seam * 0.42;
 	}

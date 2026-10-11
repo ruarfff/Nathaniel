@@ -161,7 +161,7 @@ func place_map_tower(kind: String, position: Vector2) -> Dictionary:
 	return tower
 
 func spawn_resource(amount: int, position: Vector2, expiration: float = GameBalance.RESOURCE_LIFETIME_SECONDS, carried: bool = false, source_kind: String = "soldier") -> Dictionary:
-	if amount <= 0 or not position.is_finite() or not is_finite(expiration) or source_kind not in ["soldier", "gunSoldier"]:
+	if amount <= 0 or not position.is_finite() or not is_finite(expiration) or not GameBalance.RESOURCE_VALUES.has(source_kind):
 		return {}
 	var cargo_slot: int = -1
 	var disarmed: bool = carried
@@ -544,12 +544,12 @@ func damage_entity(id: int, amount: int, attacker_id: int = -1) -> void:
 	unit.target_id = -1
 	unit.manual_target_id = -1
 	_stop(unit)
-	emit_event("death", {"kind": unit.kind, "position": unit.position})
+	emit_event("death", {"entity_id": unit.id, "kind": unit.kind, "position": unit.position, "facing": unit.facing})
 	if unit.enemy:
 		score += int(unit.score)
-		if unit.kind in ["soldier", "gunSoldier"]:
-			spawn_resource(10, unit.position, 10.0, false, unit.kind)
-		elif unit.kind == "boss" and level_number > 0 and level.get("has_boss", true) and result == "playing":
+		if GameBalance.RESOURCE_VALUES.has(unit.kind):
+			spawn_resource(int(GameBalance.RESOURCE_VALUES[unit.kind]), unit.position, GameBalance.RESOURCE_LIFETIME_SECONDS, false, unit.kind)
+		if unit.kind == "boss" and level_number > 0 and level.get("has_boss", true) and result == "playing":
 			result = "victory"
 	elif unit.tower:
 		_destroy_tower(unit)
@@ -818,7 +818,7 @@ static func gathering_state_error(state: Dictionary) -> String:
 			return "Invalid resource ownership or expiry"
 		if not item.get("disarmed", item.carried) is bool or (item.carried and not item.get("disarmed", true)):
 			return "Invalid resource disarm state"
-		if not _weapon_point_valid(item.get("position")) or item.get("source_kind", "soldier") not in ["soldier", "gunSoldier"]:
+		if not _weapon_point_valid(item.get("position")) or not GameBalance.RESOURCE_VALUES.has(item.get("source_kind", "soldier")):
 			return "Invalid resource position or source"
 		if not item.has("phase"):
 			for key: String in ["phase_elapsed", "cargo_slot", "pickup_position"]:

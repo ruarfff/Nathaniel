@@ -6,6 +6,8 @@ const ENEMIES: Array[String] = ["grunt", "soldier", "gunSoldier", "boss", "spawn
 const TOWERS: Array[String] = ["gunTower", "laserTower", "healTower"]
 const COSTS: Dictionary = {"gunTower": 5, "laserTower": 10, "healTower": 15}
 const HERMES_BUILD_RANGE: float = 240.0
+## Boss matter uses the soldier value until final balance is selected.
+const RESOURCE_VALUES: Dictionary = {"soldier": 10, "gunSoldier": 10, "boss": 10}
 const RESOURCE_CAPACITIES: Array[int] = [1, 2, 3]
 const RESOURCE_CAPACITY_COSTS: Array[int] = [20, 40]
 const RESOURCE_REACHES: Array[float] = [44.0, 60.0, 76.0]

@@ -41,9 +41,22 @@ def verify_animation(pipeline, settings, source):
     try:
         animation_spec(scene)
     except ValueError as error:
-        assert "fire must finish" in str(error)
+        assert "fire and death must finish" in str(error)
     else:
         raise AssertionError("Looping fire clip would prevent native playback recovery")
+    scene["asset_animation"] = valid_spec
+    death_spec = {"directions": 8, "clips": [
+        {"name": "death", "frames": [1, 2], "fps": 5, "loop": False}]}
+    scene["asset_animation"] = json.dumps(death_spec)
+    assert animation_spec(scene)[0] == death_spec
+    death_spec["clips"][0]["loop"] = True
+    scene["asset_animation"] = json.dumps(death_spec)
+    try:
+        animation_spec(scene)
+    except ValueError as error:
+        assert "death must finish" in str(error)
+    else:
+        raise AssertionError("A death clip must leave clear ground")
     scene["asset_animation"] = valid_spec
     prop.parent = None
     try:

@@ -21,13 +21,14 @@ PROFILE ?= default
 .PHONY: test-lasers art-hermes-laser
 .PHONY: art-enemy-lasers test-soldiers art-soldiers
 .PHONY: test-laser-tower art-laser-tower
-.PHONY: test-resource-gathering art-resource-gathering
+.PHONY: test-resource-gathering art-resource-gathering art-enemy-deaths
 .PHONY: demo test-demo export-web-demo serve-web-demo
 .PHONY: image-demo
 
 help:
 	@echo "make test-resource-gathering Check backpack rules, controls, saves and live models"
 	@echo "make art-resource-gathering Capture collection, cargo and both furnace poses"
+	@echo "make art-enemy-deaths Capture boss collection and shell death sequences"
 	@echo "Development and platform exports"
 	@echo "make / make demo      Run the Survival-only demo locally"
 	@echo "make run              Run the full game"
@@ -114,6 +115,8 @@ import: version
 	python3 tools/run_checked.py "$(GODOT)" --headless --editor --path . --import --quit
 
 test: import format-check test-tooling
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_character_controls.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_enemy_deaths.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_resource_gathering.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_resource_gathering_controls.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_resource_gathering_visuals.gd
@@ -165,6 +168,7 @@ test-services: import
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_services.gd
 
 test-presentation: import
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_character_controls.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_resource_gathering_controls.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_presentation.gd -- --storage-dir="$(TEST_STORAGE)"
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_weapon_controls.gd
@@ -179,6 +183,7 @@ test-nathaniel-weapons: import
 	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tests/test_nathaniel_weapons.gd -- --render
 
 test-resource-gathering: import
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_enemy_deaths.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_resource_gathering.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_resource_gathering_controls.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_resource_gathering_visuals.gd
@@ -186,6 +191,10 @@ test-resource-gathering: import
 
 art-resource-gathering: import
 	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tools/render_resource_gathering.gd
+
+art-enemy-deaths: import
+	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tools/render_resource_gathering.gd -- --boss
+	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tools/render_enemy_deaths.gd
 
 art-nathaniel-weapons: import
 	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tools/render_nathaniel_weapons.gd

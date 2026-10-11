@@ -12,24 +12,26 @@ import bpy
 
 def animation_spec(scene):
     spec = json.loads(scene["asset_animation"])
-    if spec.get("directions") != 8 or not isinstance(spec.get("clips"), list):
-        raise ValueError("asset_animation requires eight directions and a clips list.")
+    if spec.get("directions") not in (1, 8) or not isinstance(spec.get("clips"), list):
+        raise ValueError("asset_animation requires one or eight directions and a clips list.")
     names = set()
     for clip in spec["clips"]:
         name = clip.get("name")
         frames = clip.get("frames", [])
-        if name not in {"idle", "walk", "fire"} or name in names:
-            raise ValueError("Animation clips must have unique idle, walk or fire names.")
+        if name not in {"idle", "walk", "fire", "death"} or name in names:
+            raise ValueError("Animation clips must have unique idle, walk, fire or death names.")
         if not frames or len(frames) > 32 or any(type(frame) is not int for frame in frames):
             raise ValueError("Each clip needs 1–32 integer source frames.")
         fps = clip.get("fps", 0)
         if type(fps) not in {int, float} or not 0 < fps <= 60 or type(clip.get("loop")) is not bool:
             raise ValueError("Each clip needs an fps from 0 to 60 and a boolean loop.")
-        if clip["loop"] != (name != "fire"):
-            raise ValueError("Idle and walk must loop; fire must finish so the actor can return to movement.")
+        if clip["loop"] != (name in {"idle", "walk"}):
+            raise ValueError("Idle and walk must loop; fire and death must finish.")
         names.add(name)
-    if names != {"idle", "walk", "fire"}:
-        raise ValueError("Animated actors require idle, walk and fire clips.")
+    if names not in ({"idle", "walk", "fire"}, {"death"}):
+        raise ValueError("Sources require idle, walk and fire clips, or one death clip.")
+    if names != {"death"} and spec["directions"] != 8:
+        raise ValueError("Living actors require eight directions.")
     root = bpy.data.objects.get("AssetFacing")
     if root is None or root.type != "EMPTY" or root.animation_data:
         raise ValueError("Animated sources require an unkeyed AssetFacing Empty at the ground origin.")
@@ -82,7 +84,7 @@ def save_pixels(path, pixels, width, height, pipeline):
     path.write_bytes(pipeline.png_without_metadata(path.read_bytes()))
 
 
-def sprite_frames_text(asset, pages, records, clips, anchor, density):
+def sprite_frames_text(asset, pages, records, clips, anchor, density, directions=8):
     lines = ['[gd_resource type="SpriteFrames" format=3]', ""]
     for index in range(len(pages)):
         lines.append(f'[ext_resource type="Texture2D" path="res://assets/generated/{asset}_atlas_{index}.png" id="p{index}"]')
@@ -94,7 +96,7 @@ def sprite_frames_text(asset, pages, records, clips, anchor, density):
                       'margin = Rect2(' + ', '.join(map(str, record["margin"])) + ')',
                       'filter_clip = true'])
     animations = []
-    for direction in range(8):
+    for direction in range(directions):
         for clip in clips:
             name = f'{clip["name"]}_{direction}'
             frames = [f'{{"duration": 1.0, "texture": SubResource("f{i}")}}'
@@ -118,7 +120,7 @@ def render_animation(pipeline, asset, scene, settings, source, source_hash):
     hashes = {}
     with tempfile.TemporaryDirectory(prefix="nathaniel-animation-") as temporary:
         temporary = Path(temporary)
-        for direction in range(8):
+        for direction in range(spec["directions"]):
             root.rotation_euler.z = -direction * math.pi / 4
             for clip in spec["clips"]:
                 for frame in clip["frames"]:
@@ -135,7 +137,7 @@ def render_animation(pipeline, asset, scene, settings, source, source_hash):
                         unique.append({"path": path, "bounds": box})
                     records.append({"animation": f'{clip["name"]}_{direction}', "source_frame": frame,
                                     "unique_frame": hashes[frame_hash]})
-            print(f"Rendered {asset} facing {direction + 1}/8", flush=True)
+            print(f"Rendered {asset} facing {direction + 1}/{spec['directions']}", flush=True)
 
         # One union crop for the complete animation preserves size and foot contact.
         padding = 2 * density
@@ -204,7 +206,7 @@ def render_animation(pipeline, asset, scene, settings, source, source_hash):
         for filename in [f"{asset}.png"] + [page["file"] for page in pages]:
             (pipeline.IMAGES / filename).write_bytes((temporary / filename).read_bytes())
             pipeline.write_import_settings(Path(filename).stem, density)
-        (pipeline.IMAGES / f"{asset}_frames.tres").write_text(sprite_frames_text(asset, pages, records, spec["clips"], anchor, density))
+        (pipeline.IMAGES / f"{asset}_frames.tres").write_text(sprite_frames_text(asset, pages, records, spec["clips"], anchor, density, spec["directions"]))
         expected = {page["file"] for page in pages}
         for old in pipeline.IMAGES.glob(f"{asset}_atlas_*.png"):
             if old.name not in expected:

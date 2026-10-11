@@ -16,6 +16,13 @@ BLENDER_TO_GODOT = Matrix(((1, 0, 0), (0, 0, 1), (0, -1, 0)))
 
 def validate_rig(scene):
     role = scene.get("asset_model")
+    if role == "matter":
+        root = scene.objects.get("MatterRoot")
+        if root is None or root.type != "EMPTY":
+            raise ValueError("Matter models require a MatterRoot Empty.")
+        if any(obj.type == "MESH" and not obj.hide_render and obj not in root.children_recursive for obj in scene.objects):
+            raise ValueError("Parent visible matter geometry under MatterRoot.")
+        return {"MatterRoot": root}
     if role == "mounted_character":
         from model_animation import animation_spec
 

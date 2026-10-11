@@ -85,30 +85,63 @@ does not work; it must be served over HTTP or HTTPS.
 
 ## Character controls
 
-Select Nathaniel in the HUD or on the map, or press Space, to return the camera
-to him and close Build. Hermes cannot be selected directly. Ground taps and
-enemy selections always command Nathaniel, including while Build focuses the
-camera on Hermes. S stops Nathaniel; automatic combat
-continues. Right-click or F fires toward the pointer. A destination ring marks a
-movement order; a crossed ring and notice identify a destination without a clear
-route. Nathaniel keeps moving as far as the existing collision rules allow.
+Nathaniel is always the controlled character. His card focuses the camera on
+him and closes Build. Hermes's card focuses Hermes and opens Build; repeated
+clicks keep it open. The target portrait is part of the same button. Card taps
+do not issue gameplay orders.
+The friendly face stays visible; an off-screen arrow points to that friendly
+unit. Hidden enemy targets use “Out of sight” with no enemy image or health.
+The target portrait remains the main cue. Visible enemies have a subtle amber
+body tint for Nathaniel's target or cyan for Hermes's, with matching HUD
+crosshairs. A shared target blends both tints. Each character's tint clears on
+retarget, death, or fog. Enemy targeting uses no ring, letter, or click pulse.
 
-R switches Hermes between following and deployed. Build, or B, focuses the camera
-on Hermes and opens the tower choices without stopping him. Drag a tower onto
-clear ground inside his amber range ring, or select its button and then tap the
-location. A valid placement anchors Hermes as a cannon base and leaves Build
-open. A rejected drop keeps the tower selected for another attempt and does not
-stop Hermes. HUD drops cancel placement. B closes
-Build and returns the camera to Nathaniel. Escape first cancels an armed tower,
-then closes Build, then pauses.
+Tap Nathaniel in the world to focus him and close Build; he has no tap ring.
+Click away from Hermes's build ring to close it and return the camera and
+manual controls to Nathaniel. The closing world click is consumed; the next
+world click controls Nathaniel. Tapping Hermes in the world never selects him
+or opens Build. With Build closed and cargo loaded, it orders delivery;
+without cargo, it does nothing.
 
-Deploy anchors Hermes without closing Build. Follow closes Build, returns the
-camera to Nathaniel, reclaims all surviving connected towers, and refunds 25%
-of each owned tower's paid cost, rounded down; the HUD shows the total first.
-Towers disappear without a refund if Hermes is destroyed.
+Taps act on release with no double-tap timer. Repeated taps keep the same
+meaning. Drag, pinch, another control, pause, death, and scene changes cancel
+a held world tap. Pressed feedback clears on release or cancellation.
+If the world target changes under a stationary press, release cancels the tap.
+Opening or closing Build preserves existing orders and automatic combat.
 
-Terrain commands apply on release. A pointer drag or a second touch cancels the
-pending terrain tap so camera gestures do not also issue movement orders.
+Hermes has six fixed positions: Gun, Laser, Heal, an inactive empty slot,
+Pack up & move, and disabled Settings. Tower slots show their cost and explain
+insufficient matter. Select a tower to replace the ring with placement and a
+Cancel button, then tap clear ground inside the amber range or drag the tower
+there. A valid placement pays once, deploys Hermes, connects the tower, and
+returns to Build with Hermes still framed so you can place another tower.
+A rejected placement keeps the preview. Cancel or Escape returns to Build.
+Tapping Nathaniel's card or body, or pressing Space, discards the preview and
+closes Build; tapping Hermes's card returns to his build ring. Backpack upgrades
+remain in the separate command tray while Hermes's commands are open.
+
+Pack up & move shows the connected tower types, their counts, and the actual
+refund before activation. Existing ground cables show the connections;
+the control tooltip also lists individual IDs. Packing reclaims surviving
+connected towers and refunds 25% of each paid cost, rounded down. Hermes then
+follows Nathaniel; Build closes and the camera returns to Nathaniel. Mobile
+Hermes keeps the same disabled position. His death
+removes connected towers without a refund.
+
+Nathaniel uses the named weapon controls in the command tray. He has no tap
+ring. Settings in Hermes's ring remains a disabled placeholder; the pause menu
+retains its existing settings screen.
+
+Ground, enemy, fire, stop, weapon, and delivery commands control Nathaniel.
+His manual controls are disabled while Build or tower placement is open.
+S stops him; automatic combat continues. Right-click or F fires toward the
+pointer. Fire, Stop, zoom, Pause and the named weapon controls retain touch
+access. R retains the existing deploy/follow shortcut.
+B opens or closes Hermes's commands; Space closes them and focuses Nathaniel.
+Escape returns from placement to Build first, then closes commands, then pauses.
+Focus changes use a 280 ms camera move with easing in and out. Closing Build
+restores Nathaniel's manual controls immediately. Combat continues while a
+ring is open.
 
 ## Hosting
 

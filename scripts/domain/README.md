@@ -16,12 +16,16 @@ Accepted positive damage emits a `hit` event before any `death` event. It carrie
 effects, including lethal hits after a view is removed. Effects never apply
 damage. These events are transient and are not added to snapshots.
 
+The `death` event includes the entity ID, kind, logical position, and facing
+before the entity is removed. Presentation uses it to finish grunt and spawner
+shell animations. These animations cannot attack, spawn units, or create matter.
+
 | Intent | API |
 | --- | --- |
 | Move Nathaniel | `move_to(world_point)`, `stop_player()` |
 | Aim/fire Nathaniel | `target_enemy(id)`, `fire_at(world_point)` |
 | Equip Nathaniel | `equip_weapon("rifle")` or `equip_weapon("heavy_rifle")`; returns whether the request was accepted |
-| Saved camera focus | `focused_character = "nathaniel"` or `"hermes"`; presentation focuses Hermes only for Build |
+| Legacy saved focus | `focused_character = "nathaniel"` or `"hermes"` remains compatible; presentation normalizes restored focus to Nathaniel and owns temporary Build camera focus; ring and placement state are not saved |
 | Hermes control | `set_hermes_mode("building")` or `"following"` |
 | Build | `hermes_build_range()`, `placement_error(point)`, `place_tower(kind, point)` |
 | Editor/map setup | `spawn_enemy(kind, point)`, `place_map_tower(kind, point)` |
@@ -67,7 +71,9 @@ is retained in Git history at `824c8f1`. Current rules include:
 - Campaign starts with three spare lives; survival ends on the first death.
   Losing Hermes ends the game. A boss death wins campaign levels, including waves.
 - Hermes starts following Nathaniel, only moves by following him, and stops within
-  100 points. Camera focus does not change ground or enemy-target commands.
+  100 points. Nathaniel remains the controlled character. Presentation disables
+  new manual commands while Build or placement is open. Opening or closing
+  Build does not cancel existing domain orders.
 - Construction is limited to a 240-point radius from living Hermes. Presentation
   draws the ring from `hermes_build_range()`; `GameBalance.HERMES_BUILD_RANGE`
   owns the starting radius. Opening Build does not change his mode. A successful
@@ -96,7 +102,10 @@ is retained in Git history at `824c8f1`. Current rules include:
   Healing ticks have a one-second interval; an idle tower stays ready to heal.
 - `soldier` uses the pulse lance; `gunSoldier` uses travelling bullets at 450
   points per second. Their other stats match. Both leave corpses worth ten
-  resources; `source_kind` preserves the matching death image through carrying
+  resources. Boss deaths also leave one body, provisionally worth ten resources
+  through `GameBalance.RESOURCE_VALUES`; final boss balance remains undecided.
+  Survival continues for collection; campaign victory still stops play and Continue
+  resets cargo and resources. `source_kind` preserves the matching death image through carrying
   and saving. Armed corpses expire after ten seconds. The starter backpack
   carries one body, collected within 44 points through timed grab/crush phases.
   A successful grip permanently disarms a body, including after a later drop.

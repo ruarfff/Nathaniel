@@ -1,13 +1,13 @@
 # Enemy deaths: boss matter and shell explosions
 
-Requested on 2026-10-04. The boss should leave a collectible corpse. Grunts
-and spawners should explode on death. These sheets define appearance and
-propose handling rules; they do not implement those changes.
+Requested on 2026-10-04 and implemented from these appearance studies. The boss
+leaves collectible matter. Grunts and spawners explode without resources.
+The sheets remain visual references; runtime art comes from editable Blender sources.
 
 | Enemy | Requested death result | Resource outcome |
 | --- | --- | --- |
 | Soldier | Keep the existing corpse and collection sequence. | Collect, disarm, crush, and feed Hermes. |
-| Boss | Collapse into a distinct heavy corpse. | New collectible boss matter; value remains undecided. |
+| Boss | Collapse into a distinct heavy corpse. | One bundle, one slot; provisional value 10, final balance undecided. |
 | Grunt | A small, sharp shell burst, then clear ground. | No collectible corpse or fragments. |
 | Spawner | A larger core rupture and falling crown, then clear ground. | No collectible corpse or fragments. |
 
@@ -116,24 +116,46 @@ Check the boss corpse against the live boss silhouette, collection reach,
 backpack slot, and both Hermes intake heights. Check both explosions with
 several simultaneous deaths at normal zoom, on sand and dark rubble. Their
 effects must finish once, stop advancing during pause, and leave no ghost
-actor, collectible fragment, or repeated death event. These checks are for
-future implementation; the concept sheets are not gameplay tests.
+actor, collectible fragment, or repeated death event. The concept sheets are
+not gameplay tests. Current evidence is recorded in [verification](../docs/verification.md).
 
-## Current implementation boundary
+## Current implementation
 
-Fresh source check on 2026-10-04: only `soldier` and `gunSoldier` leave
-collectible bodies. Their warning, dissolve, and permanent disarm behavior
-are implemented. Boss, grunt, and spawner deaths create no resource body.
-The existing general death feedback is an explosion sound and a short orange
-ring, with the actor view removed immediately.
+Soldier, Gun Soldier, and Boss each leave one identifiable body. Boss matter
+uses the starter backpack, permanent grip disarm, ten-second expiry, final
+three-second warning, and existing dissolve. Collapse adds no collection delay.
+Crush produces one compact bundle with a pale crest shard and dark prism.
+Hermes accepts it in either form and credits it once. Armed time, kind, amount,
+handling state, and cargo ownership survive save/load. A dropped disarmed boss
+stays safe. Older soldier saves still load with their existing defaults.
+
+The provisional boss value is **10 resources**, copied from the soldier value
+in `GameBalance.RESOURCE_VALUES`. This is not approved final balance. Survival
+continues after a boss death. Campaign victory and Continue remain unchanged:
+there is no post-victory collection phase, carry-over reward, or automatic credit.
+Campaign recovery remains a separate design decision.
+
+Grunts use a 0.4-second shell burst. Spawners use a 0.8-second rupture with a
+falling dark crown. Both replace the orange death ring, retain the existing
+single death sound, and leave clear ground. They cause no damage, new shots,
+spawning, loot, or blocking. Presentation advances the exported frames, freezes
+them during pause, and removes them on completion or level reset.
+
+Saved sources are `boss_corpse.blend`, `boss_bundle.blend`, `grunt_death.blend`,
+and `spawner_death.blend` under `art/blender/sources/`. The corpse and explosions
+derive from the saved live alien parts. Generators create new sources only;
+normal export preserves artist edits. Export with `make art-render ASSET=...`.
+The shell clips use four source pixels per logical pixel, eight grunt headings,
+and the spawner's fixed body heading. The bundle exports as a live GLB.
+
+Run `make test-resource-gathering` and `make art-enemy-deaths` for the focused
+rules, persistence, view checks, and scripted capture boards.
 
 See [death handling](../scripts/domain/game_simulation.gd),
 [resource rules](../scripts/domain/battlefield_rules.gd),
 [effects](../scripts/presentation/world_effects.gd),
 [level transitions](../scripts/presentation/game_app.gd), and
-[resource gathering](../docs/resource-gathering.md). Boss corpse support also
-needs corpse-kind validation, save compatibility, and artwork support; an
-extra image alone cannot enable collection.
+[resource gathering](../docs/resource-gathering.md).
 
 Created with the built-in imagegen tool. Exact prompts and reference images
 are recorded in [prompts.json](prompts.json).

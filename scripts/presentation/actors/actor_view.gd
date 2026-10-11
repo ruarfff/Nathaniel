@@ -3,6 +3,8 @@ class_name ActorView
 extends Node2D
 ## A view of a logical entity. This scene never changes simulation state.
 
+const TARGET_SHADER: Shader = preload("res://scripts/presentation/target_highlight.gdshader")
+
 @export var kind: String = "nathaniel"
 @export var visual: ActorVisual:
 	set(value):
@@ -25,6 +27,8 @@ var _moving: bool = false
 var _firing: bool = false
 var _attack_active: bool = false
 var _playback_enabled: bool = true
+var target_highlight := Color.WHITE
+var _target_material: ShaderMaterial
 var animation_sprite: AnimatedSprite2D
 var model_view: ActorModelView
 @onready var sprite: Sprite2D = $Sprite2D
@@ -107,6 +111,23 @@ func notify_attack(direction: Vector2 = Vector2.ZERO, weapon_id: String = "") ->
 	if animation_sprite != null:
 		animation_sprite.stop()
 	_update_sprite(_facing, _moving, _animation_time)
+
+
+func set_target_highlight(color: Color, strength: float) -> void:
+	target_highlight = color
+	if _target_material == null:
+		if color == Color.WHITE:
+			return
+		_target_material = ShaderMaterial.new()
+		_target_material.shader = TARGET_SHADER
+	var display: CanvasItem = animation_sprite if animation_sprite != null and animation_sprite.visible else sprite
+	var live_model: bool = model_view != null and model_view.visible
+	if live_model:
+		display = model_view.display
+	display.material = _target_material
+	_target_material.set_shader_parameter("highlight_color", color)
+	_target_material.set_shader_parameter("highlight_strength", 0.0 if color == Color.WHITE else strength)
+	_target_material.set_shader_parameter("source_premultiplied", live_model)
 
 
 func notify_heal() -> void:
@@ -330,7 +351,7 @@ func _draw() -> void:
 	draw_colored_polygon(ellipse, Color(0.02, 0.03, 0.04, 0.4))
 	if _selected:
 		ellipse.append(ellipse[0])
-		draw_polyline(ellipse, Color("f2cf72") if kind == "nathaniel" else Color("6bd7ed"), 2.5, true)
+		draw_polyline(ellipse, Color("e6ad50") if kind in ["nathaniel", "hermes"] else Color("6bd7ed"), 2.5, true)
 	if _health < 1.0 or _selected:
 		var bar: Rect2 = Rect2(-22, -visual.display_size.y - 10, 44, 4)
 		draw_rect(bar, Color("172125"))

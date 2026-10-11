@@ -5,6 +5,7 @@ extends RefCounted
 
 const FEED_HANDOFF: float = 0.72
 const LINK_LENGTH: float = 0.36
+const BOSS_BUNDLE: PackedScene = preload("res://assets/generated/boss_bundle.glb")
 
 var model: ActorModelView
 var backpack: Node3D
@@ -25,6 +26,7 @@ var _corpses: Array = []
 var _nathaniel: Dictionary = {}
 var _hermes: Dictionary = {}
 var _receiver: ActorModelView
+var _boss_bundles: Dictionary[Node3D, Node3D] = {}
 
 
 func _init(owner_model: ActorModelView) -> void:
@@ -73,6 +75,20 @@ func _init(owner_model: ActorModelView) -> void:
 	for index: int in _racks.size():
 		if _racks[index] != null:
 			_racks[index].visible = index == 0
+	for bundle: Node3D in _bundles + [active_bundle, intake_bundle]:
+		if bundle != null:
+			var boss: Node3D = BOSS_BUNDLE.instantiate()
+			boss.name = "BossMatter"
+			bundle.add_child(boss)
+			boss.hide()
+			_boss_bundles[bundle] = boss
+
+
+func _select_bundle(bundle: Node3D, corpse: Dictionary) -> void:
+	var boss: bool = corpse.get("source_kind", "soldier") == "boss"
+	for child: Node in bundle.get_children():
+		if child is Node3D:
+			child.visible = boss if child == _boss_bundles[bundle] else not boss
 
 
 func _node(part_name: String) -> Node3D:
@@ -132,6 +148,7 @@ func _pose_backpack() -> void:
 	for corpse: Dictionary in _corpses:
 		var slot: int = int(corpse.get("cargo_slot", -1))
 		if str(corpse.get("phase", "carry" if corpse.get("carried", false) else "loose")) == "carry" and slot >= 0 and slot < _bundles.size() and _bundles[slot] != null:
+			_select_bundle(_bundles[slot], corpse)
 			_bundles[slot].show()
 	var active: Dictionary = _active_corpse()
 	if active.is_empty() or active_bundle == null:
@@ -140,6 +157,7 @@ func _pose_backpack() -> void:
 	if _slots[slot] == null:
 		return
 	var phase: String = str(active.phase)
+	_select_bundle(active_bundle, active)
 	var fraction: float = phase_fraction(active)
 	if phase == "crush" and active.get("disarmed", active.get("carried", false)) and _contact_material != null:
 		_contact_material.albedo_color = Color("ffc26c", 1.0 - smoothstep(0.0, 0.16, float(active.get("phase_elapsed", 0.0))))
@@ -157,12 +175,12 @@ func _pose_backpack() -> void:
 	if phase == "grab":
 		var folded: Vector3 = (_arms[0].Wrist.global_position + _arms[1].Wrist.global_position) * 0.5
 		point = folded.lerp(ground, smoothstep(0.0, 0.8, fraction))
-		spread = lerpf(0.32, 0.25, smoothstep(0.7, 1.0, fraction))
+		spread = lerpf(0.32, 0.62 if active.get("source_kind", "") == "boss" else 0.25, smoothstep(0.7, 1.0, fraction))
 	elif phase == "crush":
 		var lifted: Vector3 = ground + Vector3.UP * 0.3
 		point = ground.lerp(lifted, smoothstep(0.0, 0.3, fraction)).lerp(rack_point, smoothstep(0.6, 1.0, fraction))
-		size = lerpf(1.65, 1.0, smoothstep(0.0, 0.65, fraction))
-		spread = lerpf(0.25, 0.16, smoothstep(0.0, 0.65, fraction))
+		size = lerpf(4.0 if active.get("source_kind", "") == "boss" else 1.65, 1.0, smoothstep(0.0, 0.65, fraction))
+		spread = lerpf(0.62 if active.get("source_kind", "") == "boss" else 0.25, 0.16, smoothstep(0.0, 0.65, fraction))
 	else:
 		var target: Vector3 = _receiver_point()
 		var staging: Vector3 = rack_point.lerp(target, 0.4) + Vector3.UP * 0.10
@@ -238,6 +256,7 @@ func _pose_intake() -> void:
 		var rest: Transform3D = _rest[_grille]
 		_grille.transform = rest.translated(Vector3.UP * open * 0.18)
 	if intake_bundle != null:
+		_select_bundle(intake_bundle, active)
 		intake_bundle.visible = phase == "feed" and fraction >= FEED_HANDOFF
 		intake_bundle.scale = Vector3.ONE * lerpf(1.0, 0.12, smoothstep(FEED_HANDOFF, 1.0, fraction))
 	if _heat_material != null:

@@ -1,18 +1,27 @@
 # Resource gathering
 
-Nathaniel's backpack gathers Soldier and Gun Soldier bodies. Both mechanical
+Nathaniel's backpack gathers Soldier, Gun Soldier, and Boss bodies. Both mechanical
 arms handle one body at a time. The starter rack holds one bundle. A bundle is
 cargo; it becomes ten spendable resources only after Hermes accepts it.
 
-The [boss corpse and enemy death concepts](../concept-art/enemy-deaths.md)
-propose adding collectible boss matter while grunts and spawners explode
-without leaving resources. This extension is not implemented. In survival,
-boss matter can support the ongoing run through the normal collection loop;
-its value remains undecided. Campaign bosses that end a level need a separate
+The [boss corpse and enemy death design](../concept-art/enemy-deaths.md)
+is implemented. One boss leaves one body, compressed into one bundle in one
+starter slot. The bundle retains a pale crest shard and dark prism. Grunts and
+spawners leave no matter. In survival, the run continues and boss matter uses
+the normal collection and delivery loop. Its current value is **10 resources**,
+a provisional soldier-value default, not approved final balance. Change it in
+`GameBalance.RESOURCE_VALUES`. Campaign bosses that end a level still need a separate
 collection opportunity and reward decision because victory stops collection
 and Continue resets cargo and resources.
 
 ## Collect and deliver
+
+Click a visible corpse to move Nathaniel to its ground position. The selected
+body has Nathaniel's amber highlight, and the HUD says **Collecting corpse**.
+The highlight clears when the body enters the backpack or expires, or when
+movement is replaced or stopped. A full rack shows **Cargo full. Deliver to
+Hermes first** instead of a pickup highlight. Collection still starts
+automatically within reach and uses the existing nearest-body rule.
 
 Approach within 44 logical points of a body. The arms unfold, grip the shell,
 crush it, and place one compact bundle in the rack. Grabbing takes 0.28 seconds;
@@ -21,9 +30,10 @@ Moving out of reach before the grip cancels collection. After the grip, the
 body belongs to the backpack and no longer appears on the ground.
 
 The rack shows each occupied slot. At capacity, the arms stay folded near other
-bodies. The HUD reports cargo separately from resources. Use **Deliver cargo**
-or click Hermes while carrying a bundle to return to him. This closes Build
-and follows Nathaniel with the camera. The return order tracks Hermes and stops
+bodies. The HUD reports cargo separately from resources. With Nathaniel selected,
+tap Hermes in the world while carrying a bundle to return to him immediately.
+Repeated taps keep the delivery action and never select Hermes or open his
+ring. Delivery keeps Nathaniel selected and focused. The return order tracks Hermes and stops
 within intake range until all cargo is accepted. A movement order or Stop
 cancels the return. Hermes can receive cargo while following or deployed;
 delivery does not change his mode.
@@ -63,8 +73,9 @@ grip stopping self-destruct. Timings remain subject to gameplay balance.
 
 The warning is part of the ten-second lifetime, not extra time. Dissolution
 is a visual tail after resource loss. This is internal breakdown: it causes
-no blast damage, chain reaction, or recoverable residue. Keep the current
-resource-producing enemy types and ten-resource value per accepted bundle.
+no blast damage, chain reaction, or recoverable residue. Soldier variants and
+boss matter use these same rules. Boss collapse is part of the ten-second
+lifetime and ends immediately when grip takes ownership.
 
 ### Disarm during collection
 
@@ -115,7 +126,7 @@ The [verification record](verification.md) lists completed checks and platform l
 
 ## Backpack upgrades
 
-Open **Build** to buy the two upgrades independently. They use the same wallet
+Open **Hermes’s ring** to show the separate backpack upgrade controls. They use the same wallet
 as towers and retain the same pair of arms. These are provisional balance
 values; the concept did not specify costs or a progression schedule.
 
@@ -142,6 +153,11 @@ weapon mounts and locomotion. Export through the [Blender pipeline](blender-asse
 do not edit generated models or sprites. The [concept sheets](../concept-art/resource-gathering.md)
 remain the visual reference.
 
+`boss_corpse.blend` contains the collapsed saved boss parts. `boss_bundle.blend`
+contains the compressed crest and prism. The bundle's exported GLB fits the
+existing rack and both intake heights. These sources use the same export
+pipeline; no living character source or weapon rig is rebuilt for boss cargo.
+
 `tools/blender/resource_gathering.py` provides an explicit, idempotent source
 migration and verifies the saved controls and export hashes. Ordinary exports
 never run that migration. Use the pinned Blender version:
@@ -161,6 +177,7 @@ or credited during migration. The save format stays at version 1.
 ```sh
 rtk make test-resource-gathering
 rtk make art-resource-gathering
+rtk make art-enemy-deaths
 rtk make test
 rtk make format-check
 ```
@@ -168,4 +185,6 @@ rtk make format-check
 The focused checks cover capacity, range, interrupted handling, death, sequential
 credit, upgrades, saves, HUD commands, and live model rigs. The capture target
 uses scripted game state for collection, full racks, and both intake heights.
+`art-enemy-deaths` also captures boss warning and dissolve, a complete scripted
+survival delivery, both shell sequences, and simultaneous deaths at normal zoom.
 Real platform input and export results are recorded in [verification](verification.md).

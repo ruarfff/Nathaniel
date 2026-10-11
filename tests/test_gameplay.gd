@@ -245,7 +245,7 @@ func _test_resources() -> void:
 	for kind: String in ["grunt", "boss", "spawner", "soldier"]:
 		var enemy: Dictionary = sim.spawn_enemy(kind, Vector2(1000, 1000))
 		sim.damage_entity(int(enemy.id), int(enemy.max_hp))
-	_check(sim.corpses.size() == 1 and sim.corpses[0].amount == 10, "Only Soldier drops corpse worth ten")
+	_check(sim.corpses.size() == 2 and sim.corpses[0].source_kind == "boss" and sim.corpses[1].source_kind == "soldier" and sim.corpses[0].amount == 10 and sim.corpses[1].amount == 10, "Boss and Soldier leave ten-resource bodies; Grunt and Spawner leave none")
 	sim.corpses.clear()
 	var corpse: Dictionary = sim.spawn_resource(10, sim.nathaniel.position)
 	sim.step(0.6)

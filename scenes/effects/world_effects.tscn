@@ -1,11 +1,17 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/presentation/world_effects.gd" id="1"]
 [ext_resource type="Resource" path="res://resources/actors/corpse.tres" id="2"]
 [ext_resource type="Resource" path="res://resources/actors/gun_soldier_corpse.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/actors/boss_corpse.tres" id="4"]
+[ext_resource type="SpriteFrames" path="res://assets/generated/grunt_death_frames.tres" id="5"]
+[ext_resource type="SpriteFrames" path="res://assets/generated/spawner_death_frames.tres" id="6"]
 
 [node name="WorldEffects" type="Node2D"]
 texture_filter = 4
 script = ExtResource("1")
 corpse_visual = ExtResource("2")
 gun_soldier_corpse_visual = ExtResource("3")
+boss_corpse_visual = ExtResource("4")
+grunt_death_frames = ExtResource("5")
+spawner_death_frames = ExtResource("6")

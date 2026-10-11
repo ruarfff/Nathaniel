@@ -30,6 +30,17 @@ sheets, Blender models, or implemented gameplay changes.
 | [Boss corpse](iron-and-ink/20-boss-corpse.png) | A collapsed heavy boss, clamp contact, and a proposed one-slot matter bundle. |
 | [Grunt death](iron-and-ink/21-grunt-death.png) | A small shell explosion that fades to clear ground, leaving no resource. |
 | [Spawner death](iron-and-ink/22-spawner-death.png) | A core rupture and collapsing crown, leaving no resource or permanent wreck. |
+| [HUD A: shared command shelf](iron-and-ink/23-hud-command-shelf.png) | Historical alternative: persistent portraits and one shared command menu. |
+| [HUD B: split corners](iron-and-ink/24-hud-split-corners.png) | Nathaniel and Hermes at opposite lower corners, with nearby command menus. |
+| [HUD C: original context ring](iron-and-ink/25-hud-context-ring.png) | Initial study of the selected HUD direction; its controls are superseded by the two revised sheets. |
+| [HUD C2: Hermes ring](iron-and-ink/26-hud-hermes-ring.png) | Four optional ability slots, Settings, and Pack up & move; persistent icons only select and focus. |
+| [HUD C2: Nathaniel ring](iron-and-ink/27-hud-nathaniel-ring.png) | Toggle weapon and Settings, plus cargo single-tap and ring double-tap behavior. |
+
+[Character HUD design](hud-character-controls.md) records the selected **C /
+Context ring** direction and its revised selection, target portraits, cargo
+delivery, and double-tap rules. This HUD choice is separate from the game's
+**A / Iron & Ink** art direction. The changes are proposals, not implemented
+controls. Landscape phones are the current design assumption.
 
 [Hermes build-mode notes](hermes-build-mode.md) describe the transformation,
 connections, and teardown sequence. In this proposal, Hermes himself is the
@@ -98,6 +109,16 @@ window and reward decision.
 ![Grunt explosion sequence](iron-and-ink/21-grunt-death.png)
 
 ![Spawner explosion sequence](iron-and-ink/22-spawner-death.png)
+
+![HUD A: shared command shelf](iron-and-ink/23-hud-command-shelf.png)
+
+![HUD B: split corners](iron-and-ink/24-hud-split-corners.png)
+
+![HUD C: context ring](iron-and-ink/25-hud-context-ring.png)
+
+![HUD C2: Hermes ring and target portraits](iron-and-ink/26-hud-hermes-ring.png)
+
+![HUD C2: Nathaniel ring and cargo gestures](iron-and-ink/27-hud-nathaniel-ring.png)
 
 ## Sandy Earth buildings
 
@@ -172,7 +193,7 @@ been tested in game or across animation directions.
 
 ## Source and reuse
 
-Created with the Codex built-in imagegen tool on 2026-10-03 and 2026-10-04. The original
+Created with the Codex built-in imagegen tool on 2026-10-03 through 2026-10-05. The original
 scene established direction A; later sheets use that scene and related
 concept sheets as references. [prompts.json](prompts.json) stores the exact
 prompts, refinement steps, and reference relationships for further iteration.

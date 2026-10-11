@@ -77,7 +77,7 @@ func _collect_controls(node: Node, result: Array) -> void:
 		var properties: Dictionary = {}
 		if node.toggle_mode:
 			properties["checked"] = str(node.button_pressed)
-		result.append({"name": node.text, "type": "CheckButton" if node.toggle_mode else "Button", "position": {"x": rect.get_center().x, "y": rect.get_center().y}, "frame": {"x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y}, "interactive": not node.disabled, "properties": properties})
+		result.append({"name": node.character.capitalize() if node is CharacterControl else node.text, "type": "CheckButton" if node.toggle_mode else "Button", "position": {"x": rect.get_center().x, "y": rect.get_center().y}, "frame": {"x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y}, "interactive": not node.disabled, "properties": properties})
 	for child in node.get_children():
 		_collect_controls(child, result)
 
@@ -141,7 +141,7 @@ func _tap_control(node: Node, point: Vector2) -> bool:
 			return false
 		if _visible_rect(node).has_point(point):
 			for kind: String in ["gun_tower", "laser_tower", "heal_tower"]:
-				if node == app.ui.buttons[kind]:
+				if node == app.ui.ring_buttons[kind]:
 					app.command(kind)
 					return true
 			if node.toggle_mode:
@@ -174,9 +174,14 @@ func _tap_world(point: Vector2) -> bool:
 
 func swipe(from: Vector2, to: Vector2, _duration: float) -> bool:
 	for kind: String in ["gun_tower", "laser_tower", "heal_tower"]:
-		var button: Button = app.ui.buttons[kind]
+		var button: Button = app.ui.ring_buttons[kind]
 		if button.get_global_rect().has_point(from):
-			if not button.is_visible_in_tree() or button.disabled or not app.ui.menu.is_empty() or app.ui.blocks_world_input(to):
+			if not button.is_visible_in_tree() or button.disabled or not app.ui.menu.is_empty():
+				return false
+			app.command(kind)
+			if app.ui.blocks_world_input(to):
+				app.game_input.cancel_tower_drag()
+				app.open_context_ring()
 				return false
 			return app.place_at(kind, to)
 	return tap(to)

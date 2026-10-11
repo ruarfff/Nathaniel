@@ -12,9 +12,14 @@ const CORPSE_SHADER: Shader = preload("res://scripts/presentation/corpse_self_de
 @export_group("Corpses")
 @export var corpse_visual: ActorVisual
 @export var gun_soldier_corpse_visual: ActorVisual
+@export var boss_corpse_visual: ActorVisual
 @export var corpse_texture: Texture2D = preload("res://assets/Sprites/Objects/corpse.png")
 @export var corpse_size := Vector2(30, 16)
 @export_range(0.0, 1.0) var carried_corpse_alpha: float = 0.65
+
+@export_group("Shell Deaths")
+@export var grunt_death_frames: SpriteFrames
+@export var spawner_death_frames: SpriteFrames
 
 @export_group("Projectiles")
 @export_range(0.1, 32.0) var projectile_radius: float = 3.0
@@ -45,8 +50,8 @@ const CORPSE_SHADER: Shader = preload("res://scripts/presentation/corpse_self_de
 @export var delivery_pulse_color := Color("65e6ed")
 
 @export_group("Combat Targets")
-@export_range(0.1, 3.0, 0.05) var target_pulse_lifetime: float = 0.75
-@export var nathaniel_target_color := Color("b4e69b")
+@export_range(0.0, 1.0, 0.01) var target_tint_strength: float = 0.22
+@export var nathaniel_target_color := Color("e6ad50")
 @export var hermes_target_color := Color("65e6ed")
 
 @export_group("Placement Preview")
@@ -75,15 +80,20 @@ var simulation: GameSimulation:
 			_laser_pulses.clear()
 			impact_flashes.clear()
 			corpse_dissolves.clear()
+			for death: Dictionary in shell_deaths:
+				death.sprite.queue_free()
+			shell_deaths.clear()
 			for sprite: Sprite2D in _corpse_sprites.values():
 				sprite.queue_free()
 			_corpse_sprites.clear()
+			pickup_target_id = -1
 			selected_healing_tower_id = -1
 		simulation = value
 var transients: Array[Dictionary] = []
 var muzzle_flashes: Array[Dictionary] = []
 var healing_flashes: Array[Dictionary] = []
 var selected_healing_tower_id: int = -1
+var pickup_target_id: int = -1
 var _projectile_offsets: Dictionary = {}
 var _laser_actors: Dictionary = {}
 var _laser_states: Dictionary = {}
@@ -91,6 +101,8 @@ var _laser_pulses: Dictionary = {}
 var _impact_visuals: Dictionary = {}
 var impact_flashes: Array[Dictionary] = []
 var corpse_dissolves: Array[Dictionary] = []
+var shell_deaths: Array[Dictionary] = []
+var actor_layer: Node2D
 var _corpse_sprites: Dictionary = {}
 var cursor_world := Vector2.ZERO
 var placement := false
@@ -100,8 +112,6 @@ var hermes_transfers: Array[Dictionary] = []
 var _hermes_ground: Node2D
 var delivery_pulse_time := 0.0
 var delivery_pulse_position := Vector2.ZERO
-var target_pulse_id := -1
-var target_pulse_time := 0.0
 var fog_enabled := true
 
 
@@ -115,10 +125,17 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	delivery_pulse_time = maxf(0.0, delivery_pulse_time - delta)
-	target_pulse_time = maxf(0.0, target_pulse_time - delta)
 	for effect: Dictionary in transients:
 		effect.life -= delta
 	transients = transients.filter(func(effect: Dictionary) -> bool: return effect.life > 0)
+	if simulation != null and not simulation.paused:
+		for death: Dictionary in shell_deaths:
+			death.age += delta
+			if death.age >= death.duration:
+				death.sprite.queue_free()
+			else:
+				_pose_shell_death(death)
+		shell_deaths = shell_deaths.filter(func(death: Dictionary) -> bool: return death.age < death.duration)
 	if simulation != null and not simulation.paused and simulation.result == "playing":
 		for corpse: Dictionary in corpse_dissolves:
 			corpse.age = float(corpse.age) + delta
@@ -151,50 +168,28 @@ func pulse_delivery(world: Vector2) -> void:
 	queue_redraw()
 
 
-func pulse_target(id: int) -> void:
-	target_pulse_id = id
-	target_pulse_time = target_pulse_lifetime
-	queue_redraw()
-
-
-func target_markers() -> Array[Dictionary]:
-	var markers: Array[Dictionary] = []
+func target_highlights() -> Dictionary:
+	var highlights: Dictionary = {}
 	if simulation == null:
-		return markers
+		return highlights
 	for unit: Dictionary in [simulation.nathaniel, simulation.hermes]:
 		var target := simulation.entity(int(unit.get("target_id", -1)))
 		if not CombatRules.alive(unit) or not CombatRules.alive(target) or not target.get("enemy", false):
 			continue
 		if fog_enabled and simulation.visibility_at(target.position) != 2:
 			continue
-		var is_nathaniel: bool = unit.kind == "nathaniel"
-		markers.append({"target": target, "label": "N" if is_nathaniel else "H",
-			"color": nathaniel_target_color if is_nathaniel else hermes_target_color})
-	return markers
-
-
-func _draw_target_markers() -> void:
-	for marker: Dictionary in target_markers():
-		var target: Dictionary = marker.target
-		var point := IsoProjection.project(target.position)
-		var is_nathaniel: bool = marker.label == "N"
-		var radius := maxf(34.0, float(target.radius) + 12.0) + (0.0 if is_nathaniel else 8.0)
-		var color: Color = marker.color
-		var outline := Color("101c20")
-		draw_set_transform(point, 0.0, Vector2(1.0, 0.5))
-		draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, outline, 5.0, true)
-		draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, color, 2.5, true)
-		if is_nathaniel and int(target.id) == target_pulse_id and target_pulse_time > 0.0:
-			var remaining := target_pulse_time / target_pulse_lifetime
-			draw_arc(Vector2.ZERO, radius + 45.0 * remaining * remaining, 0.0, TAU, 64, Color(color, remaining), 4.0, true)
-		draw_set_transform(Vector2.ZERO)
-		var label_point := point + Vector2(-radius - 22.0 if is_nathaniel else radius + 5.0, 6.0)
-		draw_rect(Rect2(label_point - Vector2(3, 16), Vector2(20, 22)), outline)
-		draw_string(ThemeDB.fallback_font, label_point, marker.label, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, color)
+		var color: Color = nathaniel_target_color if unit.kind == "nathaniel" else hermes_target_color
+		if highlights.has(int(target.id)):
+			color = (highlights[int(target.id)] as Color).lerp(color, 0.5)
+		highlights[int(target.id)] = color
+	return highlights
 
 
 func add_events(events: Array, actors: Dictionary = {}) -> void:
 	for event: Dictionary in events:
+		if event.get("type", "") == "death" and event.get("kind", "") in ["grunt", "spawner"]:
+			_add_shell_death(event)
+			continue
 		if event.get("type", "") == "corpse_expired":
 			var age: float = float(event.get("elapsed_since_expiry", 0.0))
 			if age < GameBalance.RESOURCE_DISSOLVE_SECONDS:
@@ -575,7 +570,44 @@ func _draw_impacts() -> void:
 
 
 func corpse_art(source_kind: String = "soldier") -> ActorVisual:
+	if source_kind == "boss" and boss_corpse_visual != null:
+		return boss_corpse_visual
 	return gun_soldier_corpse_visual if source_kind == "gunSoldier" and gun_soldier_corpse_visual != null else corpse_visual
+
+
+func _add_shell_death(event: Dictionary) -> void:
+	var frames: SpriteFrames = spawner_death_frames if event.kind == "spawner" else grunt_death_frames
+	if frames == null or not event.get("position") is Vector2:
+		return
+	var facing: Vector2 = event.get("facing", Vector2.RIGHT)
+	var direction: int = posmod(roundi(facing.angle() / (PI / 4.0)), 8)
+	# The live spawner body has a fixed heading; only its crown turns.
+	if event.kind == "spawner":
+		direction = 0
+	var clip := StringName("death_%d" % direction)
+	var sprite := Sprite2D.new()
+	sprite.name = "ShellDeath%d" % int(event.get("entity_id", 0))
+	sprite.centered = false
+	sprite.position = IsoProjection.project(event.position)
+	var density: float = float(frames.get_meta("pixels_per_world_pixel", 8.0))
+	sprite.scale = Vector2.ONE / density
+	sprite.offset = -Vector2(frames.get_meta("ground_anchor", Vector2.ZERO))
+	var layer: Node2D = actor_layer if is_instance_valid(actor_layer) else self
+	layer.add_child(sprite)
+	var death: Dictionary = {"sprite": sprite, "frames": frames, "clip": clip, "age": 0.0,
+		"position": event.position, "entity_id": event.get("entity_id", -1),
+		"duration": frames.get_frame_count(clip) / frames.get_animation_speed(clip)}
+	shell_deaths.append(death)
+	_pose_shell_death(death)
+
+
+func _pose_shell_death(death: Dictionary) -> void:
+	var frames: SpriteFrames = death.frames
+	var sprite: Sprite2D = death.sprite
+	var frame: int = mini(floori(float(death.age) * frames.get_animation_speed(death.clip)), frames.get_frame_count(death.clip) - 1)
+	sprite.texture = frames.get_frame_texture(death.clip, frame)
+	sprite.modulate.a = 1.0 - smoothstep(0.55, 1.0, float(death.age) / float(death.duration))
+	sprite.visible = simulation != null and (not fog_enabled or simulation.visibility_at(death.position) == 2)
 
 
 func corpse_rect(point: Vector2, source_kind: String = "soldier") -> Rect2:
@@ -605,9 +637,41 @@ func corpse_warning_strength(corpse: Dictionary) -> float:
 	return pow(maxf(0.0, sin(elapsed * TAU * 2.0)), 2.0)
 
 
+func corpse_at_screen(screen: Vector2) -> Dictionary:
+	if simulation == null:
+		return {}
+	_sync_corpse_sprites()
+	var hit: Dictionary = {}
+	for corpse: Dictionary in simulation.corpses:
+		var sprite := _corpse_sprites.get(int(corpse.id)) as Sprite2D
+		if not ResourceGatheringView.ground_visible(corpse) or not is_instance_valid(sprite) or not sprite.is_visible_in_tree():
+			continue
+		var local: Vector2 = sprite.get_global_transform_with_canvas().affine_inverse() * screen
+		if sprite.is_pixel_opaque(local):
+			hit = corpse
+	return hit
+
+
+func _sync_pickup_target() -> void:
+	if pickup_target_id < 0:
+		return
+	if CombatRules.alive(simulation.nathaniel) and simulation.result == "playing":
+		for corpse: Dictionary in simulation.corpses:
+			if int(corpse.id) != pickup_target_id or not ResourceGatheringView.ground_visible(corpse):
+				continue
+			if not corpse.get("disarmed", false) and float(corpse.get("expiration", 0.0)) <= 0.0:
+				break
+			var destination: Variant = simulation.nathaniel.destination
+			if str(corpse.phase) == "grab" or (destination is Vector2 and Vector2(destination).is_equal_approx(corpse.position) and simulation.carried_resource_count() < int(simulation.nathaniel.resource_capacity)):
+				return
+			break
+	pickup_target_id = -1
+
+
 func _sync_corpse_sprites() -> void:
 	if simulation == null:
 		return
+	_sync_pickup_target()
 	var live: Dictionary = {}
 	for corpse: Dictionary in simulation.corpses:
 		if ResourceGatheringView.ground_visible(corpse):
@@ -640,9 +704,17 @@ func _sync_corpse_sprite(corpse: Dictionary, dissolve: float, live: Dictionary) 
 	var rect: Rect2 = corpse_rect(IsoProjection.project(corpse.position), source_kind)
 	sprite.position = rect.position
 	sprite.scale = rect.size / sprite.texture.get_size()
+	if source_kind == "boss" and dissolve <= 0.0 and not corpse.get("disarmed", false):
+		var age: float = GameBalance.RESOURCE_LIFETIME_SECONDS - float(corpse.get("expiration", 0.0))
+		var stretch: float = lerpf(1.18, 1.0, smoothstep(0.0, 0.25, age))
+		var ground: Vector2 = IsoProjection.project(corpse.position)
+		sprite.position.y = ground.y + (rect.position.y - ground.y) * stretch
+		sprite.scale.y *= stretch
 	sprite.modulate = corpse_color(false, source_kind)
 	sprite.visible = not fog_enabled or simulation.visibility_at(corpse.position) == 2
 	var shader_material: ShaderMaterial = sprite.material
+	shader_material.set_shader_parameter("pickup_color", nathaniel_target_color)
+	shader_material.set_shader_parameter("pickup_strength", target_tint_strength if id == pickup_target_id and dissolve <= 0.0 else 0.0)
 	shader_material.set_shader_parameter("warning", corpse_warning_strength(corpse) if dissolve <= 0.0 else 0.0)
 	shader_material.set_shader_parameter("dissolve", dissolve)
 	shader_material.set_shader_parameter("disarmed", bool(corpse.get("disarmed", false)))
@@ -682,7 +754,7 @@ func _draw() -> void:
 		if not healing_range.is_empty():
 			draw_polyline(healing_range, Color(healing_flash_color, healing_flash_color.a * 0.75), 1.5, true)
 		var destination: Variant = simulation.nathaniel.get("destination")
-		if destination is Vector2:
+		if destination is Vector2 and (pickup_target_id < 0 or simulation.nathaniel.direct_movement):
 			var point := IsoProjection.project(destination)
 			var blocked: bool = simulation.nathaniel.direct_movement or not simulation.nathaniel.moving
 			var color := invalid_placement_color if blocked else valid_placement_color
@@ -715,7 +787,6 @@ func _draw() -> void:
 					var color := Color(delivery_pulse_color, (1.0 - phase) * delivery_pulse_color.a)
 					draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, color, 3.0, true)
 			draw_set_transform(Vector2.ZERO)
-		_draw_target_markers()
 		_draw_healing_markers()
 	for effect: Dictionary in transients:
 		if effect.position is Vector2:

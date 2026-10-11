@@ -10,6 +10,14 @@ var drag_start := Vector2.ZERO
 var pinching := false
 var _world_tap_pending := false
 var _world_tap_start := Vector2.ZERO
+var _world_tap_entity_id := -1
+
+
+func cancel_world_tap() -> void:
+	_world_tap_pending = false
+	if app != null:
+		app.ui.character_pressed = false
+		app.ui.queue_redraw()
 
 
 func _input(event: InputEvent) -> void:
@@ -18,6 +26,8 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion or event is InputEventMouseButton or event is InputEventScreenTouch or event is InputEventScreenDrag:
 		pointer_position = event.position
 	if event is InputEventKey:
+		if event.pressed:
+			cancel_world_tap()
 		if event.ctrl_pressed or event.alt_pressed or event.meta_pressed:
 			return
 		if event.pressed and not event.echo and app.sim != null and app.sim.result in ["victory", "gameOver"]:
@@ -43,14 +53,20 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		if event.canceled:
 			cancel_tower_drag()
+			if app.ui.build_open:
+				app.open_context_ring()
 			touches.erase(event.index)
 			pinching = not touches.is_empty()
 			return
 		if event.pressed:
+			if app.ui.blocks_world_input(event.position):
+				cancel_world_tap()
 			touches[event.index] = event.position
 			if touches.size() >= 2:
 				pinching = true
 				cancel_tower_drag()
+				if app.ui.build_open:
+					app.open_context_ring()
 		else:
 			touches.erase(event.index)
 			if touches.is_empty():
@@ -58,6 +74,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventScreenDrag and touches.has(event.index):
 		if _world_tap_pending and event.position.distance_to(_world_tap_start) > 12.0:
 			_world_tap_pending = false
+			cancel_world_tap()
 		if touches.size() == 2:
 			var points := touches.values()
 			var before: float = points[0].distance_to(points[1])
@@ -71,9 +88,13 @@ func _input(event: InputEvent) -> void:
 			touches[event.index] = event.position
 	if event is InputEventMagnifyGesture:
 		_world_tap_pending = false
+		cancel_world_tap()
 		app.change_zoom(event.factor)
 	if event is InputEventMouseMotion and _world_tap_pending and event.position.distance_to(_world_tap_start) > 12.0:
 		_world_tap_pending = false
+		cancel_world_tap()
+	if event is InputEventMouseButton and event.pressed and app.ui.blocks_world_input(event.position):
+		cancel_world_tap()
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed and pinching:
 		get_viewport().set_input_as_handled()
 		return
@@ -86,12 +107,16 @@ func _input(event: InputEvent) -> void:
 			if event.position.distance_to(drag_start) > 12.0:
 				if app.ui.blocks_world_input(event.position):
 					cancel_tower_drag()
-				elif app.place_at(kind, event.position):
-					app.ui.build_kind = ""
+					app.open_context_ring()
+				else:
+					app.place_at(kind, event.position)
 		elif _world_tap_pending:
 			_world_tap_pending = false
-			if not pinching and not app.ui.blocks_world_input(event.position) and event.position.distance_to(_world_tap_start) <= 12.0:
+			var same_target: bool = app.sim != null and int(app.world_entity_at(event.position).get("id", -1)) == _world_tap_entity_id
+			if same_target and not pinching and not app.ui.blocks_world_input(event.position) and event.position.distance_to(_world_tap_start) <= 12.0:
 				app.world_click(event.position)
+			else:
+				cancel_world_tap()
 			get_viewport().set_input_as_handled()
 
 
@@ -103,6 +128,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			MOUSE_BUTTON_LEFT:
 				_world_tap_start = event.position
 				_world_tap_pending = true
+				var actor: Dictionary = app.world_entity_at(event.position)
+				_world_tap_entity_id = int(actor.get("id", -1))
+				if app.ui.build_kind.is_empty():
+					if actor.get("kind", "") in ["nathaniel", "hermes"]:
+						app.ui.character_pressed = true
+						app.ui.pressed_actor_position = app.world_to_screen(actor.position) - Vector2(0, 20 * app.camera_zoom)
+						app.ui.queue_redraw()
 			MOUSE_BUTTON_RIGHT:
 				app.command("fire_at_pointer", null)
 			MOUSE_BUTTON_WHEEL_UP:
@@ -115,12 +147,18 @@ func begin_tower_drag(kind: String) -> void:
 	if app == null or app.sim == null or not app.ui.menu.is_empty() or pinching or not app.ui.build_open or app.sim.paused:
 		return
 	_world_tap_pending = false
+	cancel_world_tap()
+	if app.sim.resources < int(GameBalance.COSTS[GameBalance.canonical_kind(kind)]):
+		return
 	drag_kind = kind
 	drag_start = pointer_position
 	app.ui.build_kind = kind
+	app.ui.close_ring()
+	app.ui.update_game(app.sim, app.fog.enabled)
 
 
 func cancel_tower_drag() -> void:
+	cancel_world_tap()
 	drag_kind = ""
 	_world_tap_pending = false
 	if app != null:

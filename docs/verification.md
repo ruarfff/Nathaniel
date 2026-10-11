@@ -8,6 +8,254 @@ of later code or assets.
 Test host: Apple M4 Pro (12 CPU cores), arm64 macOS, Xcode 26.6 (17F113),
 Godot 4.7.2 stable. Results are local measurements, not guarantees for other hardware.
 
+## Corpse pickup feedback — 2026-10-10
+
+Clicking opaque pixels of a visible corpse moves Nathaniel to its logical
+ground position, highlights the body in his amber color, and shows a collection
+notice. The highlight follows movement and grab state, then clears on grip,
+expiry, replaced movement, death, or a full rack. Full cargo and blocked routes
+show their own notices. Normal pickup feedback hides the movement ring;
+blocked routes retain the error marker. Warning flashes and dissolution remain
+visible over the tint. Collection still uses the existing automatic reach and
+nearest-body rules.
+
+The focused resource gathering controls passed all 58 checks. They use actual
+sprite alpha hits and cover input gating, cancellation, full cargo, fog, expiry,
+warning, grab and carry phases, delivery, and reset. `make test` passed on the
+complete-log rerun, including all 231 presentation checks and live MCP
+integration. The first condensed run returned an error without a recoverable
+diagnostic. Format and diff whitespace checks passed.
+
+Rendered fixtures at 1280×800 and 540×960 were inspected for pickup tint,
+transparent edges, the collection notice, and removal of the extra movement
+ring. These checks use scripted clicks and rendering; native mouse and physical
+touch were not rerun for this change. macOS release and unsigned iOS project
+exports passed. iOS rendering remains unverified.
+
+## Target body highlights — 2026-10-10
+
+Enemy target rings, N/H labels, and the expanding click pulse were removed.
+Nathaniel's target has a light amber body wash; Hermes's target has cyan.
+A shared target blends both colors. The HUD keeps each target portrait and
+uses the matching color for its crosshair. The body shader handles sprite
+and premultiplied live-model textures without tinting shadows or health bars.
+Damage flashes remain visible. Retargeting, fog, and death clear the wash.
+
+`make test` passed, including native presentation and live MCP integration.
+The presentation suite passed all 231 checks. An earlier direct run passed
+its assertions but reported a resource leak during shutdown; the diagnostic
+rerun exited cleanly. Rendered fixtures at 1280×800 and 540×960 cover no
+target, distinct targets, and a shared target. The final landscape and portrait
+captures were inspected for body colors, transparent edges, HUD portraits,
+and removal of the old target effects.
+
+macOS release and unsigned iOS project exports passed. These checks use
+scripted setup and rendering; native input was not rerun for this visual
+change. iOS rendering and physical touch remain unverified.
+The final format and diff whitespace checks passed.
+
+## Nathaniel control and repeated building — 2026-10-10
+
+Nathaniel remains the player character. Hermes's icon opens Build and moves
+the camera to Hermes. Valid click and drag placements return to Build with
+the preview and held drag cleared. Placement keeps the same camera framing.
+Clicking outside closes Build without issuing a world order, then moves the
+camera back to Nathaniel in 280 ms. The next world input controls Nathaniel.
+Cancel and the first Escape return from placement to Build; the next Escape
+closes it. Old Hermes-focused saves load with Nathaniel in control.
+
+`make test` passed, including native input dispatch and live MCP integration.
+The graphical character-control suite passed all 209 checks at 1280×800,
+960×540, and 540×960. Landscape and portrait Build captures were inspected.
+An earlier direct presentation run passed its assertions but logged a resource
+shutdown error; the diagnostic rerun and final regression suite exited cleanly.
+
+macOS release and unsigned iOS project exports passed. Real mouse input in an
+isolated copy of the macOS release verified icon opening, click placement,
+rejected placement with the preview retained, Cancel returning to Build,
+successful drag placement returning to Build, click-away dismissal, and the
+next ground click moving Nathaniel. The rendered states were inspected.
+Camera timing and continuity were checked with automated delta steps, not a
+frame-pacing measurement. iOS runtime and physical touch remain unverified;
+the Simulator template limit described below still applies.
+
+The final format and diff whitespace checks passed.
+
+## Hermes icon opens Build — 2026-10-08
+
+Hermes's card now selects him and opens Build, including clicks on its target
+portrait. Repeated card clicks keep the menu open. A world click away closes
+it without issuing an order; Nathaniel's body still selects Nathaniel.
+World Hermes never opens Build. With Nathaniel selected and cargo loaded,
+world Hermes still orders delivery. During placement, Hermes's card cancels
+the preview and reopens Build.
+
+`make test` passed. The graphical character-control suite passed all 203 checks
+at 1280×800, 960×540, and 540×960. Tests cover repeated icons, target portraits,
+click-away dismissal, placement cancellation, and delivery in both Hermes modes.
+The final format and diff whitespace checks passed.
+
+macOS release and unsigned iOS project exports passed. Native mouse input in
+an isolated copy of the macOS release verified single-click opening, repeated
+icon clicks keeping Build open, a click away closing it, and repeated world
+Hermes clicks leaving it closed. The rendered states were inspected. iOS
+runtime and physical touch remain unverified because of the Simulator template
+limit described below.
+
+## Eased character camera — 2026-10-07
+
+Selection now uses a 280 ms camera move with eased acceleration and
+deceleration. New selections start at the current camera position; repeated
+selection does not restart the move. Hermes's build framing uses the same
+transition for position and zoom. Level starts and loads still frame immediately.
+
+`make test` and the graphical character-control suite passed, including 200
+character-control checks. The new checks cover timing, interruption, moving
+targets, repeated selection, zoom input, build framing, and level reset.
+The graphical suite checked 1280×800, 960×540, and 540×960 layouts. Format and
+diff whitespace checks passed.
+
+The macOS release export passed. A temporary copy with isolated storage was
+checked with native mouse and keyboard input: Hermes's card selected him,
+his body opened Build, and Space returned to Nathaniel. Rendered final camera
+positions and ring framing were inspected. Transition timing and continuity
+were checked by automated delta steps; this was not a frame-pacing measurement.
+iOS runtime and physical touch were not checked for this change. The existing
+Simulator template limit still applies.
+
+## Immediate character selection — 2026-10-07
+
+The HUD keeps its appearance but uses explicit selection. Nathaniel's body or
+card selects him. Hermes's card selects Hermes; his body opens Build only while
+he is selected. A world tap on unselected Hermes never selects him. It orders
+delivery when Nathaniel has cargo and otherwise does nothing. Repeated taps
+keep the same action. The double-tap timer and Nathaniel tap ring were removed.
+
+Manual movement, targeting, fire, stop, weapon, and delivery commands require
+Nathaniel selection. Existing orders and automatic combat continue. Pause and
+closing commands preserve selection. A held tap cancels if the world target
+changes before release, so a moving actor cannot turn it into a ground order.
+
+`make test` passed. After the final held-target correction, `make format-check
+test-presentation` passed with 187 character-control checks, 215 presentation
+checks, 29 gathering-control checks, and 59 weapon-control checks. The graphical
+character-control run also passed all 187 checks. Six captures at 1280×800,
+960×540, and 540×960 were refreshed and inspected; the capture links in the
+earlier entry now show this revision.
+
+macOS release and unsigned iOS project exports passed. Native mouse input in
+the final macOS release, with isolated storage, verified:
+
+- Repeated world taps on Hermes with no cargo kept Nathaniel selected.
+- Hermes's card selected him without opening commands; his body then opened
+  the build ring.
+- Nathaniel's body selected him and closed the build ring.
+- Ground input moved Nathaniel and collected a body. Repeated Hermes taps
+  delivered it, cleared cargo, and increased matter from 30 to 40. Nathaniel
+  stayed selected and no build menu opened.
+
+The isolated playtest used normal gameplay and native mouse/keyboard input,
+without debug state setup. iOS runtime, physical touch, and native held-target
+cancellation remain unverified. Automated tests cover held-target cancellation
+and both mobile and deployed Hermes delivery. The existing ARM64 Simulator
+template limitation described below still prevents current iOS runtime testing.
+
+A generic agent used the Impeccable reviewer contract and scored the moving
+target fix resolved; its verdict was `ship` for that fix. The documenter checked
+the current control guides and identified the tray-button clarification now
+recorded in the brief. No visual system files were created.
+
+## Character controls and context rings — 2026-10-06
+
+The HUD now has persistent Nathaniel and Hermes selectors, independent target
+portraits, health bars, cargo state, and offscreen arrows. World taps use a
+pending interval to separate selection, ring opening, and cargo delivery.
+Hermes has six fixed ring positions; Nathaniel has two. Placement replaces the
+ring, and Pack shows tower types, counts, and the actual refund before activation.
+The camera frames the actor's body and limits ring zoom to keep controls clear.
+The new HUD palette is scoped to gameplay; modal menus retain their colors.
+
+`make test` passed, including 166 character-control checks, 216 presentation
+checks, 29 gathering-control checks, 58 weapon-control checks, and 148 live MCP
+checks. After the final palette scope correction, `make format-check
+test-presentation` passed again. Diff whitespace checks passed. An earlier run
+reported an engine resource still in use at presentation shutdown; both the
+diagnostic rerun and the final full run exited without that error.
+
+The graphical character-control suite passed all 166 checks and captured both
+rings at 1280×800, 960×540, and 540×960. These captures use scripted setup and
+do not establish physical-touch acceptance:
+
+- [Hermes, desktop](../test-artifacts/hud-hermes-1280x800.png),
+  [compact landscape](../test-artifacts/hud-hermes-960x540.png), and
+  [portrait](../test-artifacts/hud-hermes-540x960.png).
+- [Nathaniel, desktop](../test-artifacts/hud-nathaniel-1280x800.png),
+  [compact landscape](../test-artifacts/hud-nathaniel-960x540.png), and
+  [portrait](../test-artifacts/hud-nathaniel-540x960.png).
+
+Independent review marked its two findings resolved: the ring leaves the actor
+visible, and Pack exposes tower types, counts, and refund without hover. The
+documenter verified that the finished controls match the control guides.
+Generic agents used the Impeccable reviewer and documenter contracts because
+the named specialist roles were unavailable.
+
+macOS release and unsigned iOS project exports passed. Native mouse input on
+the isolated macOS release selected Hermes through his target portrait and
+opened his ring through the world actor. Escape closed the ring and opened the
+pause menu. Cargo double-tap suppression, pinch cancellation, and boundary
+timing have automated evidence only. iOS runtime and physical touch remain
+unverified: the available ARM64 Simulator template lacks the 3D support required
+by the live character models; see [platform limits](authoring.md#export-and-platform-checks).
+
+## Boss matter and shell deaths — 2026-10-04
+
+Survival bosses now leave one collectible body. The starter backpack compresses
+it into one slot and either Hermes intake accepts it. Its value is provisionally
+10 resources in `GameBalance.RESOURCE_VALUES`; final balance remains undecided.
+The existing expiry, permanent disarm, delivery credit, and save rules apply.
+Campaign victory still stops play immediately and Continue resets cargo and
+resources. Campaign recovery remains a separate design decision.
+
+Grunts and spawners now use short shell animations in place of their orange
+death rings. They finish after 0.4 and 0.8 seconds, respect pause, and clear on
+level changes. Shell sprites share the actor sorting layer so nearby characters
+remain in front when their ground position requires it. Neither effect creates
+resources or applies damage. Four editable Blender sources and their runtime
+exports are included; exports preserve the saved sources.
+
+The focused `make test-resource-gathering`, `make test-gameplay`,
+`make test-services`, and `make test-art` passed. The final `make test` passed
+with 229 enemy-death assertions, 159 resource assertions, 334 gameplay
+assertions, 327 service checks, and 148 live MCP checks. Resource visuals also
+passed 467 checks in the graphical runner. Formatting, diff whitespace, and
+edited-guide local link checks passed.
+
+`make art-enemy-deaths` produced inspected captures of both intake heights,
+boss warning and dissolve, both shell sequences on light and dark ground, and
+simultaneous deaths at normal zoom. The Survival capture uses the normal
+simulation phases and verifies one delivery, changing resources from 30 to 40.
+These use scripted setup and isolated storage, not real input:
+
+- [Boss collection and both intakes](../test-artifacts/boss-gathering-stages-4k.png).
+- [Boss warning and dissolve](../test-artifacts/boss-self-destruct-stages-4k.png).
+- [Shell sequences](../test-artifacts/enemy-death-sequences-4k.png).
+- [Survival delivery](../test-artifacts/boss-survival-feed-4k.png) and
+  [completed credit](../test-artifacts/boss-survival-credited-4k.png).
+- [Simultaneous deaths](../test-artifacts/enemy-deaths-simultaneous-gameplay-4k.png).
+
+macOS release and unsigned iOS project exports passed. The macOS release ran
+Survival with isolated storage and exited without engine errors. Native input
+acceptance remains unverified: the debug build opened, but mouse control failed
+with `windowNotFoundAtPosition` and `noWindowsAvailable`; a keyboard attempt did
+not establish a visible game action. The isolated test process was closed.
+
+iOS runtime and touch remain unverified. A fresh check of the template archive
+found `node_2d.cpp` but no `node_3d.cpp`, `camera_3d.cpp`, or
+`mesh_instance_3d.cpp` in its ARM64 Simulator slice. The x86_64 slice includes
+them. The existing ARM64 Simulator template still needs 3D support before it
+can run these live models. Physical-device input, audible playback, and
+performance were not tested.
+
 ## Default demo development — 2026-10-04
 
 The default Make goal is now `demo`. `make -n` selected the import commands

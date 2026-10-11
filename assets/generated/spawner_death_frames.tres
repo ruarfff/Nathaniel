@@ -1,0 +1,58 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/generated/spawner_death_atlas_0.png" id="p0"]
+
+[sub_resource type="AtlasTexture" id="f0"]
+atlas = ExtResource("p0")
+region = Rect2(1857, 8, 994, 875)
+margin = Rect2(0, 49, 0, 60)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="f1"]
+atlas = ExtResource("p0")
+region = Rect2(2867, 8, 994, 875)
+margin = Rect2(0, 49, 0, 60)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="f2"]
+atlas = ExtResource("p0")
+region = Rect2(902, 8, 939, 884)
+margin = Rect2(28, 30, 55, 51)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="f3"]
+atlas = ExtResource("p0")
+region = Rect2(8, 8, 878, 905)
+margin = Rect2(60, 0, 116, 30)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="f4"]
+atlas = ExtResource("p0")
+region = Rect2(2148, 929, 814, 711)
+margin = Rect2(94, 224, 180, 224)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="f5"]
+atlas = ExtResource("p0")
+region = Rect2(1382, 929, 750, 728)
+margin = Rect2(129, 205, 244, 207)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="f6"]
+atlas = ExtResource("p0")
+region = Rect2(680, 929, 686, 744)
+margin = Rect2(165, 187, 308, 191)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="f7"]
+atlas = ExtResource("p0")
+region = Rect2(8, 929, 656, 756)
+margin = Rect2(167, 173, 338, 179)
+filter_clip = true
+
+[resource]
+metadata/ground_anchor = Vector2(508, 667)
+metadata/pixels_per_world_pixel = 4
+animations = [
+{"frames": [{"duration": 1.0, "texture": SubResource("f0")}, {"duration": 1.0, "texture": SubResource("f1")}, {"duration": 1.0, "texture": SubResource("f2")}, {"duration": 1.0, "texture": SubResource("f3")}, {"duration": 1.0, "texture": SubResource("f4")}, {"duration": 1.0, "texture": SubResource("f5")}, {"duration": 1.0, "texture": SubResource("f6")}, {"duration": 1.0, "texture": SubResource("f7")}], "loop": false, "name": &"death_0", "speed": 10.0}
+]

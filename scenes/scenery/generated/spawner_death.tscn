@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="Texture2D" path="res://assets/generated/spawner_death.png" id="1"]
+
+[node name="spawner_death" type="Sprite2D"]
+texture_filter = 4
+scale = Vector2(0.25, 0.25)
+texture = ExtResource("1")
+centered = false
+offset = Vector2(-508, -667)

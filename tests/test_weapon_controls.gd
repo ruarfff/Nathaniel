@@ -67,8 +67,11 @@ func _run() -> void:
 	var destination: Variant = app.sim.nathaniel.destination
 	var focus: String = app.sim.focused_character
 	_key(app, KEY_2)
-	expect(app.sim.nathaniel.equipped_weapon_id == "heavy_rifle" and app.sim.nathaniel.equip_ready_remaining > 0.0, "Key 2 starts the equip delay")
-	expect(app.sim.nathaniel.destination == destination and app.sim.focused_character == focus and app.ui.build_kind == "gun_tower", "Weapon shortcut leaves movement, camera and build choice intact")
+	expect(app.sim.nathaniel.equipped_weapon_id == "rifle" and app.ui.buttons.heavy_rifle.disabled, "Build temporarily disables Nathaniel weapon controls")
+	expect(app.sim.nathaniel.destination == destination and app.sim.focused_character == focus and app.ui.build_kind == "gun_tower", "Inactive weapon shortcut leaves movement, selection and build choice intact")
+	app.command("focus", "nathaniel")
+	_key(app, KEY_2)
+	expect(app.sim.nathaniel.equipped_weapon_id == "heavy_rifle" and app.sim.nathaniel.equip_ready_remaining > 0.0, "Key 2 starts the equip delay for selected Nathaniel")
 	expect(app.ui.buttons.heavy_rifle.button_pressed and String(app.ui.get_node("Bottom/Rows/Weapons/WeaponStatus").text).contains("Equipping"), "HUD shows equipped slot and switch status")
 	app.command("pause")
 	_key(app, KEY_1)

@@ -1,6 +1,8 @@
 extends SceneTree
 ## Frozen domain phases at gameplay scale and close detail, in both Hermes forms.
 
+var boss: bool = "--boss" in OS.get_cmdline_user_args()
+
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -40,7 +42,7 @@ func _run() -> void:
 				"facing": Vector2.RIGHT, "furnace_remaining": GameBalance.RESOURCE_FURNACE_SECONDS * 0.5 if phase == "consume" else 0.0}
 			var corpse: Dictionary = {"id": 1, "position": Vector2(-20, 8), "pickup_position": Vector2(-20, 8),
 				"phase": phase, "phase_elapsed": BattlefieldRules.phase_seconds(phase) * 0.5,
-				"carried": phase != "grab", "cargo_slot": 0, "source_kind": "soldier"}
+				"carried": phase != "grab", "cargo_slot": 0, "source_kind": "boss" if boss else "soldier"}
 			var cargo: Array = [] if phase == "consume" else [corpse]
 			if row == 2:
 				cargo.append({"phase": "carry", "carried": true, "cargo_slot": 1})
@@ -53,7 +55,7 @@ func _run() -> void:
 				hermes.hide()
 			if phase == "grab":
 				var body := Sprite2D.new()
-				var art: ActorVisual = load("res://resources/actors/corpse.tres")
+				var art: ActorVisual = load("res://resources/actors/boss_corpse.tres" if boss else "res://resources/actors/corpse.tres")
 				body.texture = art.texture
 				body.scale = Vector2.ONE / art.frame_pixel_density()
 				body.centered = false
@@ -70,12 +72,13 @@ func _run() -> void:
 	await RenderingServer.frame_post_draw
 	await process_frame
 	await RenderingServer.frame_post_draw
-	output.get_texture().get_image().save_png("res://test-artifacts/resource-gathering-stages-4k.png")
+	output.get_texture().get_image().save_png("res://test-artifacts/%s-gathering-stages-4k.png" % ("boss" if boss else "resource"))
 	output.free()
 	await process_frame
-	await _capture_gameplay()
+	if not boss:
+		await _capture_gameplay()
 	await _capture_self_destruct()
-	print("Resource gathering capture: test-artifacts/resource-gathering-stages-4k.png")
+	print("Resource gathering capture: test-artifacts/%s-gathering-stages-4k.png" % ("boss" if boss else "resource"))
 	quit()
 
 
@@ -174,7 +177,7 @@ func _capture_self_destruct() -> void:
 		for column: int in range(5):
 			var point: Vector2 = IsoProjection.unproject(Vector2(145 + column * 245, 165))
 			var remaining: float = [6.0, 2.875, 2.625, 0.0, 0.1][column]
-			var corpse: Dictionary = sim.spawn_resource(10, point, maxf(remaining, 0.1), false, "soldier" if column % 2 == 0 else "gunSoldier")
+			var corpse: Dictionary = sim.spawn_resource(10, point, maxf(remaining, 0.1), false, "boss" if boss else ("soldier" if column % 2 == 0 else "gunSoldier"))
 			if column == 3:
 				sim.corpses.erase(corpse)
 				effects.add_events([{"type": "corpse_expired", "corpse_id": corpse.id, "position": point,
@@ -203,7 +206,7 @@ func _capture_self_destruct() -> void:
 	for frame: int in range(4):
 		await process_frame
 		await RenderingServer.frame_post_draw
-	output.get_texture().get_image().save_png("res://test-artifacts/corpse-self-destruct-stages-4k.png")
+	output.get_texture().get_image().save_png("res://test-artifacts/%s-self-destruct-stages-4k.png" % ("boss" if boss else "corpse"))
 	output.free()
 	await process_frame
-	print("Corpse self-destruct capture: test-artifacts/corpse-self-destruct-stages-4k.png")
+	print("Corpse self-destruct capture: test-artifacts/%s-self-destruct-stages-4k.png" % ("boss" if boss else "corpse"))

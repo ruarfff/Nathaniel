@@ -45,8 +45,8 @@ travelling projectiles finish normally. Current pulse saves retain their brief
 firing phase without replaying damage. The save format and schema are unchanged.
 
 The separate `gunSoldier` kind retains its projectile gun, cooldown and active
-bullets on load. Soldier corpses now save `source_kind` as `soldier` or
-`gunSoldier`, including when carried. Older corpses without this optional field
+bullets on load. Corpses save `source_kind` as `soldier`, `gunSoldier`, or
+`boss`, including when carried or dropped after disarm. Older corpses without this optional field
 use the default soldier image. Loading does not change delivery rewards.
 
 Backpack saves include reach and capacity, each body's handling phase and cargo

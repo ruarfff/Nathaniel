@@ -1,0 +1,70 @@
+{
+  "source": "art/blender/sources/boss_bundle.blend",
+  "source_sha256": "74f765b2da0f4d65003a1d7a8a1054cd23227cb64b628ed4622003f2cbb3e3d0",
+  "settings_sha256": "323b3499f9763fc337ed72f9782c0d8cc76bcec744ede45ec0fcaae617e991bb",
+  "blender_version": "5.2.2 LTS",
+  "python_version": "3.13.15",
+  "canvas": [
+    1024,
+    1024
+  ],
+  "anchor": [
+    512,
+    768
+  ],
+  "trimmed": false,
+  "logical_canvas": [
+    128,
+    128
+  ],
+  "logical_anchor": [
+    64,
+    96
+  ],
+  "render_density": 8,
+  "profile": "iron_ink",
+  "world_points_per_unit": 32,
+  "blender_xy_basis_pixels": [
+    [
+      -256,
+      128
+    ],
+    [
+      256,
+      128
+    ]
+  ],
+  "logical_xy_from_blender": [
+    "32 * Y",
+    "32 * X"
+  ],
+  "dependencies": [
+    "Blender (bundled bpy and Python standard library)"
+  ],
+  "model": {
+    "path": "assets/generated/boss_bundle.glb",
+    "scene": "scenes/actors/generated/boss_bundle_model.tscn",
+    "sha256": "0901fd7aaed518efb6eee23618d6a7c819d265a02bfd03fde8b781537a3f2bc9",
+    "blender_to_godot": [
+      "X",
+      "Z",
+      "-Y"
+    ],
+    "logical_xy_from_godot": [
+      "-32 * Z",
+      "32 * X"
+    ],
+    "forward_axis": "+X",
+    "rig_nodes": [
+      "MatterRoot"
+    ],
+    "role": "matter",
+    "muzzle_blender": null,
+    "animations": [],
+    "exporter": "Khronos glTF Blender I/O v5.2.40",
+    "mesh_float_decimal_places": 6,
+    "dependencies": [
+      "Blender bundled glTF 2.0 exporter"
+    ]
+  }
+}
