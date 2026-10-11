@@ -44,6 +44,9 @@ var _speed: float = 0.0
 var _walk_time: float = 0.0
 var _walk_clip: StringName = &""
 var _idle_clip: StringName = &""
+var _sampled_clip: StringName = &""
+var _sampled_time: float = -1.0
+var _sampled_stride: float = INF
 var _mounted_character: bool = false
 var _pitch_rest: Transform3D
 var _laser_target: Vector3 = Vector3.INF
@@ -78,6 +81,9 @@ func configure(scene: PackedScene, tint: Color, weapons: Array[WeaponVisual] = [
 	_walk_clip = &""
 	_idle_clip = &""
 	_walk_time = 0.0
+	_sampled_clip = &""
+	_sampled_time = -1.0
+	_sampled_stride = INF
 	_recoil_distance = RECOIL_DISTANCE
 	_recoil_duration = RECOIL_DURATION
 	_scene = scene
@@ -243,7 +249,7 @@ func set_aim(direction: Vector2) -> void:
 	if pitch_pivot != null:
 		_aim = normalized
 		_laser_target = Vector3.INF
-		_update_locomotion(0.0)
+		_update_locomotion(0.0, false)
 		_apply_mounted_aim()
 		return
 	var pose: Transform3D = _aim_transform(normalized)
@@ -302,7 +308,7 @@ func aim_laser(target_offset: Vector2, target_height: float) -> void:
 	_laser_target = Vector3(target_offset.y, target_height, -target_offset.x) / 32.0
 	if not target_offset.is_zero_approx():
 		_aim = target_offset.normalized()
-	_update_locomotion(0.0)
+	_update_locomotion(0.0, false)
 	_apply_mounted_aim()
 
 
@@ -409,7 +415,7 @@ func _apply_recoil() -> void:
 	_dirty = true
 
 
-func _update_locomotion(delta: float) -> void:
+func _update_locomotion(delta: float, update_mounted_aim: bool = true) -> void:
 	if locomotion_pivot == null or animation_player == null or _idle_clip == &"" or _walk_clip == &"":
 		return
 	var aim_yaw: float = atan2(_aim.x, _aim.y)
@@ -425,25 +431,31 @@ func _update_locomotion(delta: float) -> void:
 		locomotion_pivot.transform = body
 		_dirty = true
 	var clip: StringName = _walk_clip if _speed > 0.01 else _idle_clip
-	if delta <= 0.0 and animation_player.current_animation == clip and not _dirty:
-		return
-	if animation_player.current_animation != clip:
-		animation_player.play(clip)
 	var animation: Animation = animation_player.get_animation(clip)
 	_walk_time = fposmod(_walk_time + delta * clampf(_speed / 70.0, 0.25, 2.0), maxf(0.001, animation.length))
-	animation_player.seek(_walk_time if _speed > 0.01 else 0.0, true)
-	# Rotate the authored forward stride toward actual travel while keeping the
-	# hips within sixty degrees of the gun, including strafe and backpedal steps.
-	var stride: Basis = Basis(Vector3.UP, travel_yaw - body_yaw)
-	if _speed > 0.01 and not _mounted_character:
-		for index: int in _hip_nodes.size():
-			var rest: Transform3D = _hip_rests[index]
-			var hip: Node3D = _hip_nodes[index]
-			var relative: Basis = rest.basis.inverse() * hip.basis
-			hip.basis = rest.basis * stride * relative * stride.inverse()
-	if _mounted_character:
+	var sample_time: float = _walk_time if _speed > 0.01 else 0.0
+	var stride_yaw: float = travel_yaw - body_yaw if _speed > 0.01 and not _mounted_character else 0.0
+	# Only clip, time and hip stride change the sampled bones. Render dirtiness
+	# from aim, recoil, apertures or resize does not need another animation seek.
+	if _sampled_clip != clip or _sampled_time != sample_time or not is_equal_approx(_sampled_stride, stride_yaw):
+		if animation_player.current_animation != clip:
+			animation_player.play(clip)
+		animation_player.seek(sample_time, true)
+		_sampled_clip = clip
+		_sampled_time = sample_time
+		_sampled_stride = stride_yaw
+		# Rotate the authored forward stride toward actual travel while keeping the
+		# hips within sixty degrees of the gun, including strafe and backpedal steps.
+		var stride: Basis = Basis(Vector3.UP, stride_yaw)
+		if _speed > 0.01 and not _mounted_character:
+			for index: int in _hip_nodes.size():
+				var rest: Transform3D = _hip_rests[index]
+				var hip: Node3D = _hip_nodes[index]
+				var relative: Basis = rest.basis.inverse() * hip.basis
+				hip.basis = rest.basis * stride * relative * stride.inverse()
+		_dirty = true
+	if _mounted_character and update_mounted_aim:
 		_apply_mounted_aim()
-	_dirty = true
 
 
 func _resize(density: float) -> void:

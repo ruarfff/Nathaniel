@@ -531,14 +531,14 @@ func _test_spawners_and_waves() -> void:
 		_check(BattlefieldRules.wave_interval(float(stage.after_seconds) - 0.01) == previous.interval_seconds, "Wave interval before threshold %s" % stage.after_seconds)
 		_check(BattlefieldRules.wave_interval(float(stage.after_seconds)) == previous.interval_seconds, "Wave interval at exact threshold %s" % stage.after_seconds)
 		_check(BattlefieldRules.wave_interval(float(stage.after_seconds) + 0.01) == stage.interval_seconds, "Wave interval after threshold %s" % stage.after_seconds)
-	sim = _game(0)
+	sim = _game(4)
 	sim.level.wave_based = true
 	sim.wave_elapsed = float(GameBalance.WAVE_STAGES.back().after_seconds) + 1.0
 	for index: int in 30:
 		BattlefieldRules.update_waves(sim, float(GameBalance.WAVE_STAGES.back().interval_seconds))
 		var enemy: Dictionary = sim.entities.back()
 		_check(enemy.position.x >= 0 and enemy.position.x < 2048, "Wave spawn X bounds")
-		_check(enemy.position.y == (200.0 if enemy.kind == "spawner" else (10.0 if enemy.kind == "grunt" else 50.0)), "Wave bottom edge y-up offsets")
+		_check(enemy.position.y == (200.0 if enemy.kind == "spawner" else (10.0 if enemy.kind == "grunt" else 50.0)), "Campaign wave bottom edge y-up offsets")
 	# Spawner beam damage is paid in whole seconds, including fractional carry.
 	sim = _game()
 	_quiet_players(sim)

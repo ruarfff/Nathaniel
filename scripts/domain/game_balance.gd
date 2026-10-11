@@ -12,6 +12,10 @@ const SPAWNER_INITIAL_SPAWNS: int = 3
 const SPAWNER_INITIAL_INTERVAL_SECONDS: float = 30.0
 const SPAWNER_INTERVAL_SECONDS: float = 120.0
 const SPAWNER_SPAWN_OFFSET: Vector2 = Vector2(240, -168)
+const SURVIVAL_SPAWN_SAFE_DISTANCE: float = 320.0
+const SURVIVAL_SPAWN_RETRY_SECONDS: float = 0.25
+const SURVIVAL_ENTRY_SEARCH_LIMIT: int = 64
+const SURVIVAL_CHILD_SEARCH_LIMIT: int = 24
 ## Stages are ordered by elapsed time. A stage starts strictly after its threshold.
 ## Selection indexes are grunt, soldier, spawner, boss, then extra soldier choices.
 const WAVE_STAGES: Array[Dictionary] = [

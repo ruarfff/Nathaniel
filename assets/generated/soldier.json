@@ -1116,7 +1116,9 @@
   "model": {
     "path": "assets/generated/soldier.glb",
     "scene": "scenes/actors/generated/soldier_model.tscn",
-    "sha256": "606b3c2dbeae7bcfaba5e081f5c0b080854d02db7e1d90071c3ade4c19fd7a01",
+    "sha256": "435139e3669913e387efb1febbce2ce76456f732bf4f4e4e353e4a4100b40977",
+    "source_sha256": "8e9e9ec1f69c54b41208e68722aaa3130c745b14e6227fe7c89f1318d77531c7",
+    "settings_sha256": "ce131252871f9502a3c272d475d9e68e6e2e77cbc42bfcd7a5dc096d0a1ec6eb",
     "blender_to_godot": [
       "X",
       "Z",

@@ -31,6 +31,12 @@ Hermes positions/health, enemy/tower counts, and Hermes `following`/`independent
 mode. State also includes engine, scene size, entity details, camera zoom, and a
 `coordinateSystem` description.
 
+Survival also returns `survival.mapId`, `pendingSpawns`, `spawnBlockedReason`,
+and `spawnRetryRemaining`. A blocked spawner exposes `spawnBlockedReason` on
+its entity. These fields explain deferred births without camera-dependent
+spawn rules. The numeric `loadLevel(0)` action still selects the original map;
+use `--survival-map=ID` at launch for a specific new layout.
+
 The `gathering` state reports `phase`, `cargoCount`, `capacity`, `reach`, and
 `furnaceRemaining`. Cargo is separate from spendable `resources`. Backpack
 upgrades and ring actions use the same discoverable controls as real input.

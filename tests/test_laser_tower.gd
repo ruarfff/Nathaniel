@@ -27,6 +27,7 @@ func game() -> GameSimulation:
 
 func _run() -> void:
 	_check_cycle()
+	_check_non_tilting_laser()
 	await _check_turret()
 	print("Laser tower: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
@@ -72,6 +73,22 @@ func _check_cycle() -> void:
 	expect(not copy.firing and victim.hp == hp_before_leaving, "A target leaving range immediately loses beam contact")
 	sim.set_hermes_mode("following")
 	expect(sim.entity(tower.id).is_empty() and sim.resources == 22, "Packing Hermes removes the tower and returns its normal refund")
+
+
+func _check_non_tilting_laser() -> void:
+	var actor: ActorView = load("res://scenes/actors/gun_tower.tscn").instantiate()
+	root.add_child(actor)
+	var visual: ActorVisual = actor.visual.duplicate()
+	visual.laser = load("res://resources/weapons/tower_laser.tres")
+	actor.visual = visual
+	var model: ActorModelView = actor.model_view
+	model.set_process(false)
+	expect(model.pitch_pivot == null, "A non-tilting turret can use a laser visual")
+	for heading: Vector2 in [Vector2.LEFT, Vector2.UP, Vector2.RIGHT]:
+		actor.apply_state({"position": Vector2(400, 400), "facing": heading}, false, true, true)
+		var direction := Vector3(heading.y, 0.0, -heading.x)
+		expect(model.muzzle.global_basis.x.normalized().dot(direction) > 0.9999, "Deferred game sync still turns a laser model without a pitch control")
+	actor.free()
 
 
 func _check_turret() -> void:

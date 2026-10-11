@@ -26,8 +26,9 @@ func _run() -> void:
 	app.storage_root = "/private/tmp/nathaniel-gathering-controls-%d/" % Time.get_ticks_usec()
 	root.add_child(app)
 	app.set_physics_process(false)
-	app.load_level(0)
-	app.sim.configure({"number": 0, "width": 64, "height": 64, "tile_size": 32,
+	# Campaign saves retain this synthetic open-ground control fixture.
+	app.load_level(1)
+	app.sim.configure({"number": 1, "width": 64, "height": 64, "tile_size": 32,
 		"blocked": [], "player_start": Vector2(640, 640), "hermes_start": Vector2(900, 640),
 		"enemies": [], "wave_based": false, "starting_resources": 100})
 	app.fog.enabled = false

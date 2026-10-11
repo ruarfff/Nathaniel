@@ -28,6 +28,7 @@ func _actor(parent: Node = null) -> ActorView:
 func _run() -> void:
 	_check_aim_and_switch()
 	_check_movement_and_pause()
+	_check_pose_sampling()
 	_check_fallback()
 	if "--render" in OS.get_cmdline_user_args():
 		if DisplayServer.get_name() == "headless":
@@ -117,6 +118,36 @@ func _check_movement_and_pause() -> void:
 		expect(actor.weapon_muzzle(Vector2.RIGHT, "rifle").distance_to(muzzle) < 0.0001, "Saved rifle shot keeps its launch point through changed aim, weapon, and gait phase %d" % phase)
 	actor.notify_respawn()
 	expect(hip.transform.is_equal_approx(idle) and hands.position.length() < 0.0001, "Respawn resets gait and recoil without changing equipped art")
+	actor.free()
+
+
+func _check_pose_sampling() -> void:
+	var actor: ActorView = _actor()
+	var model: ActorModelView = actor.model_view
+	var samples: Array[int] = [0]
+	model.animation_player.mixer_applied.connect(func() -> void: samples[0] += 1)
+	model.refresh_pose()
+	model.set_aim(Vector2.RIGHT)
+	expect(samples[0] == 0, "A render refresh does not resample unchanged idle bones")
+	model.set_movement(Vector2.RIGHT, 70.0)
+	expect(samples[0] > 0, "Walking samples the new animation clip")
+	var previous: int = samples[0]
+	model._process(0.1)
+	expect(samples[0] > previous, "Walking samples each new animation time")
+	previous = samples[0]
+	var phase: float = model._walk_time
+	model.set_aim(Vector2.UP)
+	expect(samples[0] > previous and model._walk_time == phase, "A changed strafe angle resamples the same phase before rotating the hips")
+	previous = samples[0]
+	model.refresh_pose()
+	model.set_aim(Vector2.UP)
+	model.set_movement(Vector2.RIGHT, 140.0)
+	expect(samples[0] == previous, "Repeated aim and changed speed preserve the sampled hip pose until time advances")
+	model._process(0.05)
+	expect(samples[0] > previous and is_equal_approx(model._walk_time - phase, 0.1), "The next sample uses the changed movement speed")
+	previous = samples[0]
+	model.set_movement(Vector2.RIGHT, 0.0)
+	expect(samples[0] > previous, "Stopping restores the idle sample")
 	actor.free()
 
 

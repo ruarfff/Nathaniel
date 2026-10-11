@@ -36,6 +36,7 @@ var _winch_drum: Node3D
 var _winch_guide_pivot: Node3D
 var _winch_guide_arm: Node3D
 var _winch_guide_mesh: MeshInstance3D
+var _pose_parts: Array[Node3D] = []
 
 
 func _init(owner_model: ActorModelView) -> void:
@@ -100,6 +101,14 @@ func _init(owner_model: ActorModelView) -> void:
 			bundle.add_child(boss)
 			boss.hide()
 			_boss_bundles[bundle] = boss
+	_pose_parts.assign(_rest.keys())
+	if active_bundle != null:
+		_pose_parts.append(active_bundle)
+	for bundle: Node3D in _bundles + [active_bundle, intake_bundle]:
+		if bundle != null:
+			for child: Node in bundle.get_children():
+				if child is Node3D:
+					_pose_parts.append(child)
 
 
 func _select_bundle(bundle: Node3D, corpse: Dictionary) -> void:
@@ -137,13 +146,28 @@ func sync(corpses: Array, nathaniel: Dictionary, hermes: Dictionary, receiver: A
 
 
 func apply_pose() -> void:
+	var before: Array = _pose_state()
 	if backpack != null:
 		_pose_backpack()
 	if intake != null:
 		_pose_intake()
 	if winch != null:
 		_pose_winch()
-	model.refresh_pose()
+	if before != _pose_state():
+		model.refresh_pose()
+
+
+func _pose_state() -> Array:
+	# Compare final written poses: the solvers restore joints before placing them.
+	# Keep no simulation state between calls, including during animation sampling.
+	var state: Array = []
+	for part: Node3D in _pose_parts:
+		state.append(part.transform)
+		state.append(part.visible)
+	for material: StandardMaterial3D in [_contact_material, _heat_material]:
+		if material != null:
+			state.append(material.albedo_color)
+	return state
 
 
 func _active_corpse() -> Dictionary:

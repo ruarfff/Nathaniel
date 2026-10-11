@@ -5,6 +5,8 @@ extends Resource
 
 @export_range(0, 99) var number: int = 1
 @export var title: String = "Campaign 1"
+## Stable survival catalog identity. Empty level zero is the original map.
+@export var survival_map_id: String = ""
 @export_group("Logical map")
 @export_range(1, 512) var width: int = 30
 @export_range(1, 512) var height: int = 30

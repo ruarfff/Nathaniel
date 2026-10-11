@@ -103,6 +103,12 @@ static func validate_state(state: Dictionary) -> String:
 	var level: Dictionary = state.level
 	if not AtomicJSON.is_integer(level.get("number")) or int(level.number) not in [0, 1, 2, 3, 4, 5]:
 		return "Invalid level number"
+	if int(level.number) == 0:
+		var map_id: Variant = level.get("survival_map_id", SurvivalMapCatalog.LEGACY_ID)
+		if not map_id is String or not SurvivalMapCatalog.contains(map_id):
+			return "Unknown survival map identifier: %s" % str(map_id)
+	elif level.has("survival_map_id") and level.survival_map_id != "":
+		return "Campaign save cannot contain a survival map identifier"
 	for key: String in ["width", "height", "tile_size"]:
 		if not AtomicJSON.is_number(level.get(key)) or float(level[key]) <= 0:
 			return "Invalid level dimensions"
@@ -116,6 +122,14 @@ static func validate_state(state: Dictionary) -> String:
 	for cell: Variant in level.get("blocked", []):
 		if not AtomicJSON.is_point(cell):
 			return "Invalid blocked grid cell"
+	if not level.get("entry_sectors", []) is Array:
+		return "Invalid enemy entry sectors"
+	for sector: Variant in level.get("entry_sectors", []):
+		if not sector is Dictionary or not sector.get("id") is String or not sector.get("enabled") is bool or not sector.get("positions") is Array:
+			return "Invalid enemy entry sector"
+		for point: Variant in sector.positions:
+			if not AtomicJSON.is_point(point):
+				return "Invalid enemy entry position"
 	for key: String in ["enemies", "towers"]:
 		if not level.get(key, []) is Array:
 			return "Invalid level entity list"
@@ -130,9 +144,14 @@ static func validate_state(state: Dictionary) -> String:
 			return "Gameplay counter must be an integer: " + key
 	if state.get("result", "playing") not in ["playing", "victory", "gameOver"] or state.get("hermes_mode", "building") not in ["following", "building", "independent", "locked", "stopped"]:
 		return "Invalid gameplay mode"
-	for key: String in ["wave_elapsed", "wave_since_last_spawn"]:
+	for key: String in ["wave_elapsed", "wave_since_last_spawn", "spawn_retry_remaining"]:
 		if state.has(key) and (not AtomicJSON.is_number(state[key]) or float(state[key]) < 0):
 			return "Invalid wave timer"
+	if not state.get("pending_wave_kinds", []) is Array:
+		return "Invalid deferred wave enemies"
+	for kind: Variant in state.get("pending_wave_kinds", []):
+		if not kind is String or kind not in GameBalance.ENEMIES:
+			return "Invalid deferred wave enemy kind"
 	if state.has("rng_state") and (not state.rng_state is String or not state.rng_state.is_valid_int()):
 		return "Invalid random generator state"
 	if not state.get("entities") is Array:

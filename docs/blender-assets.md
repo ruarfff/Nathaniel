@@ -86,6 +86,32 @@ eight directions. Terrain exports named tile collections to padded atlases and
 a TileSet. `asset_model` adds saved geometry and markers as GLB and a 3D scene.
 Use [actor guides](authoring.md#add-or-change-an-enemy-or-tower) for rig contracts.
 
+For a live-model exporter change with an unchanged saved source, use
+`rtk make art-render-model ASSET=asset_name`. This leaves sprite pixels and
+their provenance intact. It requires matching source identity and compatible
+profile, canvas, anchor, and density. Source or layout changes require a full
+`art-render`. Model provenance records its own source and settings hashes under
+`model`; the top-level hashes continue to describe the sprite export.
+
+The soldier, gun soldier, and boss exports combine rigid leaf meshes under the
+same parent by material and vertex attributes. Triangles, UVs, authored normals,
+and control hierarchies stay intact. The pass skips unsupported geometry and
+documents with skins, mirrored transforms, or extensions before remapping nodes.
+
+Compatible opaque paint colors then share one material per surface group, with
+the original linear colors stored in vertex attributes. Textured, emissive, and
+transparent materials keep their own surfaces. The exporter skips meshes with
+authored vertex colors or morphs and rejects ambiguous packed palettes.
+
+The three GLB import settings use
+`scripts/presentation/actors/import_vertex_palette.gd`. This import-only adapter
+restores the precise source palette before converting colors to Godot's sRGB
+vertex format and enabling vertex albedo. It changes only color bytes and
+material flags; geometry, UVs, LODs, and shadow meshes remain intact. This avoids
+Godot's first-surface color detection and Compatibility color-space differences.
+There is no palette conversion during gameplay. Keep the import settings with
+the GLBs so clean editor and release imports use the same path.
+
 The saved deployed Hermes source contains the G1 reel, orbital guide, and clamp.
 Its guide follows the domain route; the same clamp subtree renders in a separate
 viewport at full recovery reach. Verify controls and export hashes with:

@@ -1123,7 +1123,9 @@
   "model": {
     "path": "assets/generated/boss.glb",
     "scene": "scenes/actors/generated/boss_model.tscn",
-    "sha256": "1b20d8a3d728feca7b44de55a738f5670c55b55285a6be2e94c7fc3392eba8c8",
+    "sha256": "639dd6ccd87eef768e17423ca323b929fb35c3ac6c2912d49a82f3cb01cd60f7",
+    "source_sha256": "115c5b51c18488d231180cbfea23805cf31ab5730067cb04acf2d1f37bb653d5",
+    "settings_sha256": "ce131252871f9502a3c272d475d9e68e6e2e77cbc42bfcd7a5dc096d0a1ec6eb",
     "blender_to_godot": [
       "X",
       "Z",

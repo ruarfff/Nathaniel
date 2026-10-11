@@ -62,7 +62,7 @@ same ground anchor. No extra tool arm is needed.
 
 The [boss study](enemy-deaths.md#boss-a-collapsed-heavy-shell) keeps the crest and
 dark prism visible in one compressed bundle. Grunts and spawners instead explode
-without collectible remains. See [runtime rules](../docs/resource-gathering.md)
+without collectible matter. See [runtime rules](../docs/resource-gathering.md)
 for survival and campaign outcomes.
 
 Deployed Hermes uses the selected [G1 side winch](hermes-auto-consume.md).
@@ -83,6 +83,14 @@ Keep light inside the chamber, with a small rim reflection and optional exhaust
 puff. A clamp clunk, motor strain, intake slam, and low furnace pulse can mark
 the sequence. Avoid beams, flames over Nathaniel, or a glow which hides the mouth.
 Feed larger racks one slot at a time. Display each bundle in only one place.
+
+## Proposed tech collection
+
+The [tech and research design](research-and-tech.md) adds durable machine
+modules from grunt and spawner deaths. A short auxiliary backpack collector
+places them in a separate cassette. They do not use corpse slots, self-destruct,
+or pass through the furnace. The confirmed design credits tech on pickup;
+the matter delivery sequence above stays unchanged.
 
 ## Production
 

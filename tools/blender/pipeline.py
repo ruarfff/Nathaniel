@@ -259,6 +259,30 @@ def render(asset, settings):
     print(f"Exported {asset}: {canvas[0]}x{canvas[1]}, anchor {anchor}, density {density}; source SHA256 unchanged")
 
 
+def render_model(asset, settings):
+    """Refresh the live model without relabeling or rendering existing sprites."""
+    sys.path.insert(0, str(Path(__file__).parent))
+    from model_export import export_model
+    from model_metadata import replace_model_metadata, validate_model_only_metadata
+
+    source = source_path(asset)
+    metadata_path = IMAGES / f"{asset}.json"
+    if not source.is_file() or not metadata_path.is_file():
+        raise ValueError("Model-only export needs a saved source and sprite manifest; run a full art-render.")
+    before = digest(source)
+    metadata = json.loads(metadata_path.read_text())
+    bpy.ops.wm.open_mainfile(filepath=str(source), use_scripts=False)
+    validate_dependencies()
+    settings = export_settings(settings)
+    profile = bpy.context.scene.get("asset_profile", "default")
+    validate_model_only_metadata(metadata, source.relative_to(ROOT).as_posix(), before, settings, profile)
+    scene = configure(settings)
+    if not scene.get("asset_model"):
+        raise ValueError("Saved source has no live model contract.")
+    export = export_model(sys.modules[__name__], asset, scene, settings, source, before)
+    metadata_path.write_text(json.dumps(replace_model_metadata(metadata, export["model"]), indent=2) + "\n")
+
+
 def render_still(asset, scene, canvas, source, before, settings=None):
     with tempfile.TemporaryDirectory(prefix="nathaniel-render-") as temporary:
         png = Path(temporary) / f"{asset}.png"
@@ -331,7 +355,7 @@ def write_import_settings(asset, density, *, premultiplied=False):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["doctor", "generate", "render", "regenerate", "verify", "verify-hermes", "verify-enemy-lasers", "rig-gun", "rig-laser-tower", "rig-character", "rig-hermes", "rig-enemy-laser", "prepare-soldier-variants"])
+    parser.add_argument("command", choices=["doctor", "generate", "render", "render-model", "regenerate", "verify", "verify-hermes", "verify-enemy-lasers", "rig-gun", "rig-laser-tower", "rig-character", "rig-hermes", "rig-enemy-laser", "prepare-soldier-variants"])
     parser.add_argument("asset", nargs="?", default="placeholder_prop")
     parser.add_argument("--generator", type=Path, default=ROOT / "tools/blender/generate_placeholder.py")
     parser.add_argument("--profile", default="default", help="Shared profile saved in a new source; rendering uses its saved profile")
@@ -367,6 +391,8 @@ def main():
         prepare(sys.modules[__name__])
     elif args.command == "render":
         render(args.asset, settings)
+    elif args.command == "render-model":
+        render_model(args.asset, settings)
     elif args.command == "rig-gun":
         sys.path.insert(0, str(Path(__file__).parent))
         from rig_gun_tower import migrate

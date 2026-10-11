@@ -19,6 +19,8 @@ var camera_zoom := 1.0
 var return_menu := "main"
 var storage_root := "user://"
 var demo_mode := OS.has_feature("demo")
+var map_selection_override := ""
+var map_selection_rng := RandomNumberGenerator.new()
 var _displayed_result := "playing"
 var _scene_cache: Dictionary = {}
 var _debug: Node
@@ -31,6 +33,10 @@ var _camera_focus_elapsed := CAMERA_FOCUS_DURATION
 @onready var camera: Camera2D = $Camera
 
 
+func _init() -> void:
+	map_selection_rng.randomize()
+
+
 func _ready() -> void:
 	if OS.has_feature("mobile") or OS.has_feature("web_ios") or OS.has_feature("web_android"):
 		get_tree().root.content_scale_size = Vector2i(960, 540)
@@ -39,6 +45,8 @@ func _ready() -> void:
 			storage_root = argument.trim_prefix("--storage-dir=").trim_suffix("/") + "/"
 		elif argument == "--demo":
 			demo_mode = true
+		elif argument.begins_with("--survival-map="):
+			map_selection_override = argument.trim_prefix("--survival-map=")
 	if demo_mode:
 		storage_root = storage_root.path_join("demo") + "/"
 	ui.demo_mode = demo_mode
@@ -65,6 +73,8 @@ func _ready() -> void:
 	for argument: String in OS.get_cmdline_user_args():
 		if argument.begins_with("--level="):
 			load_level(int(argument.trim_prefix("--level=")))
+		elif argument.begins_with("--survival-map="):
+			start_survival_run()
 		if argument == "--debug-server" or argument.begins_with("--debug-port="):
 			_start_debug(int(argument.trim_prefix("--debug-port=")) if argument.begins_with("--debug-port=") else 8766)
 
@@ -81,6 +91,41 @@ func load_level(number: int) -> bool:
 		return false
 	start_level_scene(packed.instantiate() as GameLevel)
 	return true
+
+
+func start_survival_run() -> bool:
+	var map_id := map_selection_override
+	if not map_id.is_empty() and map_id not in SurvivalMapCatalog.NEW_RUN_IDS:
+		ui.show_notice("Unknown new-run survival map identifier: " + map_id)
+		return false
+	if map_id.is_empty():
+		map_id = SurvivalMapCatalog.choose(map_selection_rng)
+	return load_survival_map(map_id)
+
+
+func load_survival_map(map_id: String) -> bool:
+	var path := SurvivalMapCatalog.scene_path(map_id)
+	if path.is_empty():
+		ui.show_notice("Unknown survival map identifier: " + map_id)
+		return false
+	var packed := load(path) as PackedScene
+	if packed == null:
+		ui.show_notice("Could not load survival map: " + map_id)
+		return false
+	var new_level := packed.instantiate() as GameLevel
+	if new_level == null:
+		ui.show_notice("Invalid survival map scene: " + map_id)
+		return false
+	start_level_scene(new_level)
+	return true
+
+
+func retry_level() -> bool:
+	if sim == null:
+		return false
+	if sim.level_number == 0:
+		return load_survival_map(sim.survival_map_id)
+	return load_level(sim.level_number)
 
 
 func start_level_scene(new_level: GameLevel) -> void:
@@ -117,7 +162,7 @@ func start_level_scene(new_level: GameLevel) -> void:
 	ui.close_ring()
 	effects.build_open = false
 	game_input.cancel_tower_drag()
-	ui.show_notice("")
+	ui.show_notice(SurvivalMapCatalog.title(sim.survival_map_id) if sim.level_number == 0 else "")
 	ui.show_menu("")
 	return_menu = "pause"
 	camera.position = IsoProjection.project(sim.nathaniel.position)
@@ -207,7 +252,7 @@ func _sync_views() -> void:
 			$World/Actors.add_child(view)
 			views[id] = view
 		var actor: ActorView = views[id]
-		actor.apply_state(entity, entity.kind == "nathaniel" or (entity.kind == "hermes" and ui.build_open) or id == effects.selected_healing_tower_id, sim.result == "playing" and not sim.paused)
+		actor.apply_state(entity, entity.kind == "nathaniel" or (entity.kind == "hermes" and ui.build_open) or id == effects.selected_healing_tower_id, sim.result == "playing" and not sim.paused, true)
 		actor.set_target_highlight(target_highlights.get(id, Color.WHITE), effects.target_tint_strength)
 		actor.visible = entity.kind in ["nathaniel", "hermes"] or not fog.enabled or sim.visibility_at(entity.position) == 2
 	for id: int in views.keys():
@@ -374,7 +419,7 @@ func place_at(kind: String, screen: Vector2) -> bool:
 	var world := screen_to_world(screen)
 	var error := sim.placement_error(world)
 	if error != "valid":
-		ui.show_notice({"outOfBuildRange": "Outside Hermes's build range. Choose ground inside the amber ring.", "noHermes": "Hermes must be alive to support a tower.", "blockedByTerrain": "Choose clear ground away from the map edge.", "overlapsStructure": "A tower is already here.", "overlapsEnemy": "An enemy blocks this location.", "overlapsCharacter": "A character blocks this location.", "overlapsResource": "Collect the corpse before building here."}.get(error, error))
+		ui.show_notice({"outOfBuildRange": "Outside Hermes's build range. Choose ground inside the amber ring.", "noHermes": "Hermes must be alive to support a tower.", "blockedByTerrain": "Choose clear ground away from the map edge.", "overlapsStructure": "A tower is already here.", "overlapsEnemy": "An enemy blocks this location.", "overlapsCharacter": "A character blocks this location.", "overlapsResource": "Collect the corpse before building here.", "blocksEntryRoute": "Keep a route open from every enemy entry sector. Choose another tower position."}.get(error, error))
 		return false
 	var placed := sim.place_tower(kind, world)
 	if placed:
@@ -507,11 +552,13 @@ func command(action: String, value: Variant = null) -> void:
 				ui.show_menu("confirm_exit")
 		"level":
 			load_level(int(value))
+		"survival":
+			start_survival_run()
 		"continue_result":
 			if sim == null:
 				return
 			if sim.result == "gameOver":
-				load_level(sim.level_number)
+				retry_level()
 			elif sim.result == "victory":
 				if level.definition.next_level < 0:
 					show_main()
@@ -698,8 +745,12 @@ func _load(slot: int) -> void:
 		return
 	var snapshot: Dictionary = result.state
 	var number: int = snapshot.get("level", {}).get("number", 1)
-	if not load_level(number):
+	var loaded := load_survival_map(snapshot.level.get("survival_map_id", SurvivalMapCatalog.LEGACY_ID)) if number == 0 else load_level(number)
+	if not loaded:
 		return
+	if number == 0:
+		# The catalog scene supplies terrain and entries; the save supplies run state.
+		snapshot.level = level.data()
 	if not sim.restore(snapshot):
 		ui.show_notice("Save could not be restored")
 		return

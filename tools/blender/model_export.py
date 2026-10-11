@@ -9,9 +9,13 @@ import tempfile
 import bpy
 from mathutils import Matrix
 
+from rigid_mesh_export import batch_rigid_meshes
+from vertex_palette_export import fold_vertex_palette
+
 
 # glTF maps Blender Z-up into Godot Y-up. Camera/light local axes stay unchanged.
 BLENDER_TO_GODOT = Matrix(((1, 0, 0), (0, 0, 1), (0, -1, 0)))
+BATCHED_ASSETS = {"soldier", "gun_soldier", "boss"}
 
 
 def validate_rig(scene):
@@ -288,6 +292,12 @@ def export_model(pipeline, asset, scene, settings, source, before):
             from model_animation import add_animations
 
             data = add_animations(data, scene)
+        if asset in BATCHED_ASSETS:
+            document = glb_document(data)
+            binary_offset = 28 + struct.unpack_from("<I", data, 12)[0]
+            document, binary = batch_rigid_meshes(document, data[binary_offset:])
+            document, binary = fold_vertex_palette(document, binary)
+            data = pack_glb(document, binary)
         data = stable_glb(data)
     document = glb_document(data)
     exported_names = {node.get("name") for node in document["nodes"]}
@@ -308,6 +318,8 @@ def export_model(pipeline, asset, scene, settings, source, before):
             "path": f"assets/generated/{asset}.glb",
             "scene": f"scenes/actors/generated/{asset}_model.tscn",
             "sha256": pipeline.digest(pipeline.IMAGES / f"{asset}.glb"),
+            "source_sha256": before,
+            "settings_sha256": pipeline.digest(pipeline.SETTINGS),
             "blender_to_godot": ["X", "Z", "-Y"],
             "logical_xy_from_godot": ["-32 * Z", "32 * X"],
             "forward_axis": "+X", "rig_nodes": list(rig),

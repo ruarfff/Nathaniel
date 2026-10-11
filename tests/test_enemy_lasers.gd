@@ -1,6 +1,14 @@
 extends SceneTree
 ## Verify enemy pulse rules, saved combat phase and the three authored emitters.
 
+class CountedAimModel extends ActorModelView:
+	var aim_updates: int = 0
+
+	func _apply_mounted_aim() -> void:
+		aim_updates += 1
+		super._apply_mounted_aim()
+
+
 var checks: int = 0
 var failures: int = 0
 
@@ -26,12 +34,33 @@ func game() -> GameSimulation:
 
 
 func _run() -> void:
+	_check_single_aim_update()
 	for kind: String in ["soldier", "boss"]:
 		_check_pulse(kind)
 	for kind: String in ["soldier", "boss", "spawner"]:
 		await _check_model(kind)
 	print("Enemy lasers: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
+
+
+func _check_single_aim_update() -> void:
+	var model := CountedAimModel.new()
+	root.add_child(model)
+	model.set_process(false)
+	expect(model.configure(load("res://scenes/actors/generated/soldier_model.tscn"), Color.WHITE), "Mounted aim count uses an authored animated rig")
+	var animation: AnimationPlayer = model.animation_player
+	for animated: bool in [true, false]:
+		model.animation_player = animation if animated else null
+		model.aim_updates = 0
+		model.set_aim(Vector2.LEFT)
+		expect(model.aim_updates == 1, "Ordinary aim updates once with animation available: %s" % animated)
+		model.aim_updates = 0
+		model.aim_laser(Vector2(180, 80), 40.0)
+		expect(model.aim_updates == 1, "Laser aim updates once with animation available: %s" % animated)
+		var target := Vector3(80.0, 40.0, -180.0) / 32.0
+		expect(model.muzzle.global_basis.x.normalized().dot((target - model.muzzle.global_position).normalized()) > 0.9999, "Immediate muzzle aim survives missing animation: %s" % animated)
+	model.animation_player = animation
+	model.free()
 
 
 func _check_pulse(kind: String) -> void:
@@ -127,6 +156,10 @@ func _check_model(kind: String) -> void:
 						if x == 0 or y == 0 or x == image.get_width() - 1 or y == image.get_height() - 1:
 							border += 1
 			expect(opaque > 100 and border == 0, "%s heading %d renders within its fixed canvas" % [kind, direction])
+	_check_pose_sampling(model, kind)
+	_check_deferred_aim(actor, unit, kind)
+	if kind == "spawner" and "--render" in OS.get_cmdline_user_args():
+		await _check_actor_redraw(actor, unit)
 	model.playback_enabled = false
 	var muzzle: Vector2 = model.live_weapon_muzzle()
 	model._process(0.4)
@@ -152,3 +185,126 @@ func _check_model(kind: String) -> void:
 	actor.free()
 	recipient.free()
 	await process_frame
+
+
+func _check_pose_sampling(model: ActorModelView, kind: String) -> void:
+	model.set_movement(Vector2.RIGHT, 0.0)
+	var samples: Array[int] = [0]
+	model.animation_player.mixer_applied.connect(func() -> void: samples[0] += 1)
+	model.refresh_pose()
+	model.set_aim(Vector2.UP)
+	model.aim_laser(Vector2(140, 30), 40.0)
+	model.aim_laser(Vector2(140, 30), 40.0)
+	expect(samples[0] == 0, kind + " aim and render changes reuse the idle bone sample")
+	var target := Vector3(30.0, 40.0, -140.0) / 32.0
+	var ray: Vector3 = model.muzzle.global_basis.x.normalized()
+	expect(ray.dot((target - model.muzzle.global_position).normalized()) > 0.9999, kind + " cached bones preserve immediate laser aim")
+	model.set_movement(Vector2.RIGHT, 70.0)
+	expect(samples[0] > 0, kind + " entering walk samples its new clip")
+	var previous: int = samples[0]
+	model._process(0.07)
+	expect(samples[0] > previous, kind + " advancing walk samples its new time")
+	previous = samples[0]
+	model.set_aim(Vector2.LEFT)
+	model.aim_laser(Vector2(140, 30), 40.0)
+	model.set_movement(Vector2.DOWN, 140.0)
+	expect(samples[0] == previous, kind + " immediate mounted turns and speed changes reuse the current walk sample")
+	model._process(0.05)
+	expect(samples[0] > previous, kind + " changed speed advances the next walk sample")
+	previous = samples[0]
+	model.set_movement(Vector2.DOWN, 0.0)
+	expect(samples[0] > previous, kind + " stopping samples the idle clip")
+
+
+func _check_deferred_aim(actor: ActorView, unit: Dictionary, kind: String) -> void:
+	var model: ActorModelView = actor.model_view
+	unit.facing = Vector2.RIGHT
+	unit.moving = false
+	unit.firing = false
+	actor.apply_state(unit, false, true)
+	actor.aim_laser(Vector2(140, 30), 40.0)
+	var pitched: Transform3D = model.pitch_pivot.transform
+	var muzzle: Transform3D = model.muzzle.global_transform
+	model._dirty = false
+	actor.apply_state(unit, false, true, true)
+	actor.aim_laser(Vector2(140, 30), 40.0)
+	expect(model.pitch_pivot.transform.is_equal_approx(pitched) and model.muzzle.global_transform.is_equal_approx(muzzle), kind + " deferred sync retains the final laser pose")
+	expect(not model._dirty, kind + " repeated unchanged laser sync does not redraw the model")
+	actor.apply_state(unit, false, false, true)
+	var phase: float = model._walk_time
+	muzzle = model.muzzle.global_transform
+	actor.apply_state(unit, false, false, true)
+	actor.aim_laser(Vector2(140, 30), 40.0)
+	model._process(0.5)
+	expect(model._walk_time == phase and model.muzzle.global_transform.is_equal_approx(muzzle), kind + " paused deferred sync preserves its walk and muzzle")
+	actor.clear_laser_aim()
+	expect(model.pitch_pivot.transform.is_equal_approx(model._pitch_rest) and model.muzzle.global_basis.x.normalized().dot(Vector3.FORWARD) > 0.9999, kind + " clearing a lost target immediately restores stored facing and level pitch")
+	actor.aim_laser(Vector2(140, 30), 40.0)
+	model.set_aim(Vector2.LEFT)
+	expect(model.pitch_pivot.transform.is_equal_approx(model._pitch_rest) and model.muzzle.global_basis.x.normalized().dot(Vector3.BACK) > 0.9999, kind + " direct aim still changes pitch and heading immediately")
+	actor.aim_laser(Vector2(140, 30), 40.0)
+	actor.apply_state(unit, false, true)
+	expect(model.pitch_pivot.transform.is_equal_approx(model._pitch_rest), kind + " default state updates retain immediate ordinary aim")
+	model.fire(Vector2.RIGHT)
+	model._process(0.025)
+	var recoil_pose: Transform3D = model.recoil.transform
+	actor.apply_state(unit, false, true, true)
+	actor.aim_laser(Vector2(140, 30), 40.0)
+	expect(model.recoil.transform.is_equal_approx(recoil_pose), kind + " deferred laser sync preserves an active recoil pose")
+	model.reset_pose()
+
+
+func _check_actor_redraw(actor: ActorView, unit: Dictionary) -> void:
+	var draws: Array[int] = [0]
+	actor.draw.connect(func() -> void: draws[0] += 1)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	draws[0] = 0
+	for step: int in range(8):
+		unit.position += Vector2.ONE
+		actor.apply_state(unit)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	expect(draws[0] == 0, "Moving an unchanged actor reuses its shadow and health draw commands")
+	actor.apply_state(unit, true)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	expect(draws[0] == 1, "Selecting an actor redraws its selection ring and health bar")
+	actor.apply_state(unit, false)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	expect(draws[0] == 2, "Clearing selection removes the old selection ring")
+	unit.hp -= 1
+	actor.apply_state(unit)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	expect(draws[0] == 3, "Damage redraws the actor health bar")
+	unit.hp += 1
+	actor.apply_state(unit)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	expect(draws[0] == 4, "Healing redraws the actor health bar")
+	var original: ActorVisual = actor.visual
+	actor.visual = original.duplicate()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	expect(draws[0] == 5, "Replacing the actor visual redraws its geometry")
+	actor.visual.shadow_radius += 4.0
+	actor.apply_state(unit)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	expect(draws[0] == 6, "A runtime shadow edit invalidates cached draw commands")
+	actor.visual.health_color = Color.RED
+	actor.visual.emit_changed()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	expect(draws[0] == 7, "A visual resource edit redraws without a simulation update")
+	actor.notify_respawn()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	expect(draws[0] == 8, "Respawn refreshes actor draw commands")
+	actor.visual = null
+	await process_frame
+	await RenderingServer.frame_post_draw
+	expect(draws[0] == 9, "Removing the visual clears its old shadow and health geometry")
+	actor.visual = original

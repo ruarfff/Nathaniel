@@ -381,9 +381,106 @@ static func update_spawner(sim: GameSimulation, unit: Dictionary, delta: float) 
 		return
 	unit.spawn_countdown = float(unit.spawn_countdown) - delta
 	if float(unit.spawn_countdown) <= 0:
+		var position: Vector2 = Vector2(unit.position) + GameBalance.SPAWNER_SPAWN_OFFSET
+		if sim.is_survival():
+			var birth: Dictionary = _find_child_spawn(sim, unit)
+			if not birth.has("position"):
+				unit.spawn_countdown = GameBalance.SURVIVAL_SPAWN_RETRY_SECONDS
+				if unit.get("spawn_blocked_reason", "") != birth.reason:
+					sim.emit_event("spawn_deferred", {"owner_id": unit.id, "kind": "grunt", "reason": birth.reason})
+				unit.spawn_blocked_reason = birth.reason
+				return
+			position = birth.position
+			unit.spawn_blocked_reason = ""
 		unit.initial_spawns_remaining = maxi(0, int(unit.initial_spawns_remaining) - 1)
 		unit.spawn_countdown = GameBalance.SPAWNER_INITIAL_INTERVAL_SECONDS if int(unit.initial_spawns_remaining) > 0 else GameBalance.SPAWNER_INTERVAL_SECONDS
-		sim.spawn_enemy("grunt", Vector2(unit.position) + GameBalance.SPAWNER_SPAWN_OFFSET)
+		sim.spawn_enemy("grunt", position)
+
+static func _find_child_spawn(sim: GameSimulation, unit: Dictionary) -> Dictionary:
+	var reason: String = "noChildPosition"
+	for index: int in GameBalance.SURVIVAL_CHILD_SEARCH_LIMIT:
+		var ring: int = index / 8
+		var position: Vector2 = Vector2(unit.position) + Vector2.from_angle(index % 8 * TAU / 8.0) * (176.0 + ring * 32.0)
+		reason = spawn_position_error(sim, "grunt", position)
+		if reason.is_empty():
+			return {"position": position}
+	return {"reason": reason}
+
+static func spawn_position_error(sim: GameSimulation, kind: String, position: Vector2) -> String:
+	var stats: Dictionary = GameBalance.STATS[kind]
+	var radius: float = float(stats.radius)
+	if not sim.navigation.terrain_footprint_clear(position, radius):
+		return "blockedByTerrain"
+	if kind == "spawner" and not sim.navigation.terrain_rect_clear(position, stats.size):
+		return "blockedByTerrain"
+	if not sim.navigation.walkable(position, radius):
+		return "occupied"
+	for unit: Dictionary in sim.entities:
+		if not CombatRules.alive(unit):
+			continue
+		if overlaps(position, stats.size, unit.position, unit.size):
+			return "occupied"
+		if not unit.enemy and (unit.kind in ["nathaniel", "hermes"] or unit.tower) and position.distance_to(unit.position) < GameBalance.SURVIVAL_SPAWN_SAFE_DISTANCE:
+			return "nearPlayerBase"
+	for corpse: Dictionary in sim.corpses:
+		if overlaps(position, stats.size, corpse.position, Vector2(70, 60)):
+			return "occupied"
+	var target: Dictionary = sim.pursuit_target()
+	if target.is_empty():
+		return "noLivingPlayer"
+	var route_radius: float = float(GameBalance.STATS.grunt.radius) if kind == "spawner" else radius
+	if sim.navigation.route_to_player_area(position, target.position, route_radius).is_empty():
+		return "noRouteToPlayer"
+	return ""
+
+static func _entry_candidates(sim: GameSimulation) -> Array[Vector2]:
+	var candidates: Array[Vector2] = []
+	for sector: Dictionary in sim.entry_sectors:
+		if sector.enabled:
+			candidates.append_array(sector.positions)
+	if not sim.entry_sectors.is_empty():
+		return candidates
+	# Original saves have no authored sector data. Keep their original scene
+	# and obtain bounded safe entry candidates inside its existing boundary.
+	var size := Vector2(sim.navigation.width, sim.navigation.height) * sim.navigation.tile_size
+	var margin: float = 128.0
+	for index: int in range(1, 8):
+		var fraction: float = float(index) / 8.0
+		candidates.append(Vector2(lerpf(margin, size.x - margin, fraction), margin))
+		candidates.append(Vector2(lerpf(margin, size.x - margin, fraction), size.y - margin))
+		candidates.append(Vector2(margin, lerpf(margin, size.y - margin, fraction)))
+		candidates.append(Vector2(size.x - margin, lerpf(margin, size.y - margin, fraction)))
+	return candidates
+
+static func _spawn_pending_wave(sim: GameSimulation, delta: float) -> void:
+	sim.spawn_retry_remaining = maxf(0.0, sim.spawn_retry_remaining - delta)
+	if sim.pending_wave_kinds.is_empty() or sim.spawn_retry_remaining > 0.0:
+		return
+	var candidates: Array[Vector2] = _entry_candidates(sim)
+	var start: int = sim.random.randi_range(0, candidates.size() - 1) if not candidates.is_empty() else 0
+	var reason: String = "noEnabledEntrySector"
+	var first_by_kind: Dictionary = {}
+	for index: int in sim.pending_wave_kinds.size():
+		var kind: String = sim.pending_wave_kinds[index]
+		if not first_by_kind.has(kind):
+			first_by_kind[kind] = index
+	# A stationary spawner may occupy its entry for a long time. Retain that
+	# budget without preventing smaller waiting enemies from using other gaps.
+	var attempts: int = mini(candidates.size(), GameBalance.SURVIVAL_ENTRY_SEARCH_LIMIT / first_by_kind.size())
+	for kind: String in first_by_kind:
+		for index: int in attempts:
+			var position: Vector2 = candidates[(start + index) % candidates.size()]
+			reason = spawn_position_error(sim, kind, position)
+			if not reason.is_empty():
+				continue
+			sim.spawn_enemy(kind, position)
+			sim.pending_wave_kinds.remove_at(int(first_by_kind[kind]))
+			sim.spawn_blocked_reason = ""
+			return
+	if sim.spawn_blocked_reason != reason:
+		sim.emit_event("spawn_deferred", {"kind": sim.pending_wave_kinds[0], "reason": reason})
+	sim.spawn_blocked_reason = reason
+	sim.spawn_retry_remaining = GameBalance.SURVIVAL_SPAWN_RETRY_SECONDS
 
 static func wave_interval(elapsed: float) -> float:
 	return float(_wave_stage(elapsed).interval_seconds)
@@ -402,6 +499,8 @@ static func update_waves(sim: GameSimulation, delta: float) -> void:
 	sim.wave_since_last_spawn += delta
 	var stage: Dictionary = _wave_stage(sim.wave_elapsed)
 	if sim.wave_since_last_spawn + 0.00000001 < float(stage.interval_seconds):
+		if sim.is_survival():
+			_spawn_pending_wave(sim, delta)
 		return
 	sim.wave_since_last_spawn = 0.0
 	var maximum: int = int(stage.selection_count)
@@ -415,6 +514,10 @@ static func update_waves(sim: GameSimulation, delta: float) -> void:
 		kind = "boss"
 	if kind == "soldier" and sim.random.randi_range(0, 1) == 1:
 		kind = "gunSoldier"
+	if sim.is_survival():
+		sim.pending_wave_kinds.append(kind)
+		_spawn_pending_wave(sim, delta)
+		return
 	var x: float = sim.navigation.width * sim.navigation.tile_size * (0.25 if index == 2 else sim.random.randf())
 	var y: float = 200.0 if index == 2 else (10.0 if index == 0 else 50.0)
 	var enemy: Dictionary = sim.spawn_enemy(kind, Vector2(x, minf(y, sim.navigation.height * sim.navigation.tile_size)))

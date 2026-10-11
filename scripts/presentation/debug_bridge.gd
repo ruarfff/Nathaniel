@@ -34,12 +34,18 @@ func state() -> Dictionary:
 	result["gathering"] = {"phase": sim.gathering_state().phase,
 		"cargoCount": sim.carried_resource_count(), "capacity": sim.nathaniel.resource_capacity,
 		"reach": sim.nathaniel.resource_reach, "furnaceRemaining": sim.hermes.furnace_remaining}
+	if sim.is_survival():
+		result["survival"] = {"mapId": sim.survival_map_id,
+			"pendingSpawns": sim.pending_wave_kinds.size(), "spawnBlockedReason": sim.spawn_blocked_reason,
+			"spawnRetryRemaining": sim.spawn_retry_remaining}
 	for entity: Dictionary in sim.entities:
 		if entity.hp <= 0:
 			continue
 		var point: Vector2 = entity.position
 		var screen := app.world_to_screen(point)
 		var item := {"id": entity.id, "type": entity.kind, "x": point.x, "y": point.y, "hp": entity.hp, "maxHP": entity.max_hp, "screenX": screen.x, "screenY": screen.y}
+		if entity.kind == "spawner" and sim.is_survival():
+			item["spawnBlockedReason"] = entity.get("spawn_blocked_reason", "")
 		result.entities.append(item)
 		if entity.kind in ["nathaniel", "hermes"]:
 			result[entity.kind] = item

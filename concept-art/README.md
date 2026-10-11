@@ -38,6 +38,9 @@ references. Current behavior is documented in the [runtime guides](../README.md#
 | [HUD C2: Nathaniel ring](iron-and-ink/27-hud-nathaniel-ring.png) | Weapon toggle, Settings, and cargo gestures. |
 | [Hermes grapple options](iron-and-ink/28-hermes-grapple-options.png) | Selected G1 side winch; G2 and G3 are alternatives. |
 | [Hermes grapple sequence](iron-and-ink/29-hermes-grapple-sequence.png) | Clamp, disarm, reel, crush, and consume. |
+| [Tech drops and collection](iron-and-ink/30-tech-collection.png) | Durable alien modules, short collector, and separate backpack cassette. |
+| [Research center](iron-and-ink/31-research-center.png) | Connected analysis bench with deploy, ready, and recycle states. |
+| [Research menu](iron-and-ink/32-research-menu.png) | Paused upgrade menu for desktop, tablet, and landscape phone. |
 
 ## Design notes
 
@@ -48,13 +51,21 @@ references. Current behavior is documented in the [runtime guides](../README.md#
 | Selected shoulder emitter | [Hermes lasers](hermes-lasers.md) |
 | Enemy emitters and contact cues | [Enemy lasers](enemy-lasers.md) |
 | Backpack, disarm and furnace | [Resource gathering](resource-gathering.md) |
-| Boss corpse and non-resource explosions | [Enemy deaths](enemy-deaths.md) |
+| Boss corpse and explosions without matter | [Enemy deaths](enemy-deaths.md) |
 | Selected G1 side winch | [Automatic recovery](hermes-auto-consume.md) |
+| Proposed tech resource, research center, and upgrade menu | [Tech and research](research-and-tech.md) |
+| Four larger survival maps and terrain stages | [Survival demo map plan](survival-maps.md) |
+| Implement the selected survival maps | [Implementation handoff](survival-maps-implementation-prompt.md) |
 
 The art, HUD, and grapple labels describe separate choices. The reclamation pod,
 relay, and bastion remain proposals. Soldier variants and bosses leave collectible
 matter; grunts and spawners do not. See [resource rules](../docs/resource-gathering.md)
 for implemented recovery and campaign limits.
+The [tech proposal](research-and-tech.md) adds durable modules to grunt and
+spawner deaths without adding collectible corpses. Tech, research, and the
+new menu remain concepts; their sample costs are not approved balance values.
+For the survival demo, tech credit on pickup and upgrades lasting only for the
+current run are confirmed design choices.
 
 ## Visual rules
 

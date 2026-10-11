@@ -15,6 +15,7 @@ func data() -> Dictionary:
 	var result: Dictionary = {
 		"number": definition.number,
 		"title": definition.title,
+		"survival_map_id": (SurvivalMapCatalog.LEGACY_ID if definition.survival_map_id.is_empty() else definition.survival_map_id) if definition.number == 0 else "",
 		"width": definition.width,
 		"height": definition.height,
 		"tile_size": definition.tile_size,
@@ -29,6 +30,7 @@ func data() -> Dictionary:
 		"enemies": [],
 		"towers": [],
 		"weapon_pickups": [],
+		"entry_sectors": [],
 	}
 	var collision: TileMapLayer = get_node_or_null("Collision") as TileMapLayer
 	if collision != null:
@@ -40,12 +42,25 @@ func data() -> Dictionary:
 		if not node is SpawnMarker:
 			continue
 		var marker: SpawnMarker = node as SpawnMarker
-		if not marker.enabled:
-			continue
 		var projected_point: Vector2 = marker.position
 		if spawns is Node2D:
 			projected_point = (spawns as Node2D).transform * projected_point
 		var point: Vector2 = IsoProjection.unproject(projected_point)
+		if marker.kind == "enemyEntry":
+			var sector: Dictionary = {}
+			for existing: Dictionary in result.entry_sectors:
+				if existing.id == marker.label:
+					sector = existing
+					break
+			if sector.is_empty():
+				sector = {"id": marker.label, "enabled": false, "positions": []}
+				result.entry_sectors.append(sector)
+			if marker.enabled:
+				sector.enabled = true
+				sector.positions.append(point)
+			continue
+		if not marker.enabled:
+			continue
 		if marker.kind == "nathaniel":
 			result["player_start"] = point
 		elif marker.kind == "hermes":

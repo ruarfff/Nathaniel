@@ -9,12 +9,14 @@ var tile_size: float = 32.0
 var blocked: Dictionary = {}
 var towers: Array[Vector2] = []
 var revision: int = 0
+var terrain_radius_clearance: bool = false
 var _grids: Dictionary = {}
 
 func configure(config: Dictionary) -> void:
 	width = maxi(1, int(config.get("width", 30)))
 	height = maxi(1, int(config.get("height", 30)))
 	tile_size = maxf(1.0, float(config.get("tile_size", 32.0)))
+	terrain_radius_clearance = int(config.get("number", 1)) == 0
 	blocked.clear()
 	for item: Variant in config.get("blocked", []):
 		var point: Vector2i
@@ -52,14 +54,34 @@ func terrain_clear(point: Vector2) -> bool:
 func walkable(point: Vector2, radius: float = 0.0) -> bool:
 	if not terrain_clear(point):
 		return false
+	if terrain_radius_clearance and not terrain_footprint_clear(point, radius):
+		return false
 	for tower: Vector2 in towers:
 		if point.distance_to(tower) < 24.0 + radius:
 			return false
 	return true
 
+func terrain_footprint_clear(point: Vector2, radius: float) -> bool:
+	if not point.is_finite() or point.x < radius or point.y < radius or point.x > width * tile_size - radius or point.y > height * tile_size - radius:
+		return false
+	var low: Vector2i = cell(point - Vector2.ONE * radius)
+	var high: Vector2i = cell(point + Vector2.ONE * radius)
+	for y: int in range(low.y, high.y + 1):
+		for x: int in range(low.x, high.x + 1):
+			if blocked.has(Vector2i(x, y)):
+				var nearest: Vector2 = point.clamp(Vector2(x, y) * tile_size, Vector2(x + 1, y + 1) * tile_size)
+				if point.distance_squared_to(nearest) <= radius * radius:
+					return false
+	return true
+
 func footprint_clear(point: Vector2) -> bool:
-	var low: Vector2 = point - Vector2(24, 24)
-	var high: Vector2 = point + Vector2(24, 24)
+	return terrain_rect_clear(point, Vector2(48, 48))
+
+func terrain_rect_clear(point: Vector2, size: Vector2) -> bool:
+	if not point.is_finite():
+		return false
+	var low: Vector2 = point - size * 0.5
+	var high: Vector2 = point + size * 0.5
 	if low.x < 0 or low.y < 0 or high.x > width * tile_size or high.y > height * tile_size:
 		return false
 	for y: int in range(floori(low.y / tile_size), ceili(high.y / tile_size)):
@@ -154,6 +176,36 @@ func route_to_range(start: Vector2, goal: Vector2, radius: float, attack_range: 
 		if not path.is_empty():
 			return path
 	return []
+
+func route_to_player_area(start: Vector2, goal: Vector2, radius: float) -> Array[Vector2]:
+	if walkable(goal, radius):
+		return route(start, goal, radius)
+	# Nathaniel can stand closer to terrain than a boss. Reach the same small
+	# player area without demanding that a larger unit occupy his exact point.
+	return route_to_range(start, goal, radius, radius + tile_size)
+
+func entry_routes_remain(sectors: Array[Dictionary], goal: Vector2, tower: Vector2, radius: float) -> bool:
+	var candidate := WorldNavigation.new()
+	candidate.width = width
+	candidate.height = height
+	candidate.tile_size = tile_size
+	candidate.blocked = blocked
+	candidate.terrain_radius_clearance = terrain_radius_clearance
+	candidate.towers.assign(towers)
+	candidate.towers.append(tower)
+	for sector: Dictionary in sectors:
+		if not sector.enabled:
+			continue
+		var reachable: bool = false
+		for position: Vector2 in sector.positions:
+			if not candidate.walkable(position, radius):
+				continue
+			if not candidate.route_to_player_area(position, goal, radius).is_empty():
+				reachable = true
+				break
+		if not reachable:
+			return false
+	return true
 
 func _grid(radius: float) -> AStarGrid2D:
 	if _grids.has(radius):

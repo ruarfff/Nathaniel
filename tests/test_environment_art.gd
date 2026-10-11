@@ -1,7 +1,7 @@
 extends SceneTree
 ## Environment art preserves the native level rules, grid, and ground anchors.
 
-const KINDS: Array[String] = ["house", "house_ruin", "shop", "shop_ruin", "garage", "garage_ruin", "warehouse", "warehouse_ruin", "tree", "dead_tree", "rocks", "windmill"]
+const KINDS: Array[String] = ["house", "house_ruin", "shop", "shop_ruin", "garage", "garage_ruin", "warehouse", "warehouse_ruin", "tree", "dead_tree", "rocks", "windmill", "container", "rail", "rock_shelf"]
 const LEVEL_HASHES: Array[String] = [
 	"e1643ef1c6c992893868669a1555c004e95dfa5f9803f0dd64dd91e3f22c8612",
 	"894c23e7fb99552448b9f0d284aeffc5c9c3c535e0ab13dff0b7e5313b403f1a",
@@ -120,6 +120,9 @@ func _check_levels(tiles: TileSet) -> void:
 		data.blocked = occupied
 		# Weapon pickups were added after the terrain migration and have their own content checks.
 		data.erase("weapon_pickups")
+		# New survival identity/entries have dedicated checks; keep all legacy terrain hashes.
+		data.erase("survival_map_id")
+		data.erase("entry_sectors")
 		# Soldier variant checks cover the weapon mix; this baseline protects placement and terrain.
 		for spawn: Dictionary in data.enemies:
 			if spawn.kind == "gunSoldier":

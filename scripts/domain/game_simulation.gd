@@ -8,6 +8,8 @@ var config: Dictionary:
 	get:
 		return level
 var level_number: int = 1
+var survival_map_id: String = ""
+var entry_sectors: Array[Dictionary] = []
 var entities: Array[Dictionary] = []
 var projectiles: Array[Dictionary] = []
 var corpses: Array[Dictionary] = []
@@ -23,6 +25,9 @@ var hermes_mode: String = "following"
 var focused_character: String = "nathaniel"
 var wave_elapsed: float = 0.0
 var wave_since_last_spawn: float = 0.0
+var pending_wave_kinds: Array[String] = []
+var spawn_retry_remaining: float = 0.0
+var spawn_blocked_reason: String = ""
 var fog: Array[int] = []
 var navigation := WorldNavigation.new()
 var random := RandomNumberGenerator.new()
@@ -40,10 +45,22 @@ var _next_id: int = 1
 var _nathaniel_id: int = -1
 var _hermes_id: int = -1
 var _fog_elapsed: float = 0.0
+var _placement_route_key: Array = []
+var _placement_route_error: String = ""
 
 func configure(config: Dictionary) -> void:
 	level = config.duplicate(true)
 	level_number = int(level.get("number", 1))
+	survival_map_id = str(level.get("survival_map_id", SurvivalMapCatalog.LEGACY_ID)) if is_survival() else ""
+	if is_survival():
+		level.survival_map_id = survival_map_id
+	entry_sectors.clear()
+	for sector: Dictionary in level.get("entry_sectors", []):
+		var positions: Array[Vector2] = []
+		for position: Variant in sector.get("positions", []):
+			positions.append(point(position))
+		entry_sectors.append({"id": str(sector.get("id", "")), "enabled": bool(sector.get("enabled", true)), "positions": positions})
+	_placement_route_key.clear()
 	navigation.configure(level)
 	entities.clear()
 	_by_id.clear()
@@ -61,6 +78,9 @@ func configure(config: Dictionary) -> void:
 	elapsed_time = 0.0
 	wave_elapsed = 0.0
 	wave_since_last_spawn = 0.0
+	pending_wave_kinds.clear()
+	spawn_retry_remaining = 0.0
+	spawn_blocked_reason = ""
 	result = "playing"
 	paused = false
 	hermes_mode = "following"
@@ -87,6 +107,12 @@ func configure(config: Dictionary) -> void:
 
 func entity(id: int) -> Dictionary:
 	return _by_id.get(id, {})
+
+func is_survival() -> bool:
+	return level_number == 0
+
+func pursuit_target() -> Dictionary:
+	return nathaniel if CombatRules.alive(nathaniel) else (hermes if CombatRules.alive(hermes) else {})
 
 func allocate_id() -> int:
 	var id: int = _next_id
@@ -136,7 +162,9 @@ func spawn_enemy(kind: String, position: Vector2) -> Dictionary:
 	if kind not in GameBalance.ENEMIES:
 		return {}
 	var enemy: Dictionary = _add(kind, position)
-	if kind == "grunt":
+	if is_survival():
+		CombatRules.acquire(self, enemy)
+	elif kind == "grunt":
 		enemy.target_id = _nathaniel_id
 	emit_event("spawn", {"kind": kind, "position": position})
 	return enemy
@@ -517,6 +545,14 @@ func placement_error(position: Vector2) -> String:
 	for corpse: Dictionary in corpses:
 		if BattlefieldRules.overlaps(position, Vector2(48, 48), corpse.position, Vector2(70, 60)):
 			return "overlapsResource"
+	if is_survival() and not entry_sectors.is_empty():
+		var target: Dictionary = pursuit_target()
+		if not target.is_empty():
+			var key: Array = [position, navigation.revision, target.position, hash(entry_sectors)]
+			if key != _placement_route_key:
+				_placement_route_key = key
+				_placement_route_error = "valid" if navigation.entry_routes_remain(entry_sectors, target.position, position, float(GameBalance.STATS.boss.radius)) else "blocksEntryRoute"
+			return _placement_route_error
 	return "valid"
 
 func place_tower(kind: String, position: Vector2) -> bool:
@@ -643,10 +679,20 @@ func snapshot() -> Dictionary:
 		"score": score, "lives": lives, "elapsed_time": elapsed_time, "result": result,
 		"hermes_mode": hermes_mode, "focused_character": focused_character,
 		"wave_elapsed": wave_elapsed, "wave_since_last_spawn": wave_since_last_spawn,
+		"pending_wave_kinds": pending_wave_kinds, "spawn_retry_remaining": spawn_retry_remaining,
 		"fog": fog, "rng_state": str(random.state), "next_id": _next_id})
 
 func restore(saved: Dictionary) -> bool:
 	if int(saved.get("schema", 0)) != 1 or not saved.get("level") is Dictionary or not saved.get("entities") is Array:
+		return false
+	if int(saved.level.get("number", 1)) == 0 and not SurvivalMapCatalog.contains(str(saved.level.get("survival_map_id", SurvivalMapCatalog.LEGACY_ID))):
+		return false
+	if not saved.get("pending_wave_kinds", []) is Array:
+		return false
+	for kind: Variant in saved.get("pending_wave_kinds", []):
+		if kind not in GameBalance.ENEMIES:
+			return false
+	if not is_finite(float(saved.get("spawn_retry_remaining", 0.0))) or float(saved.get("spawn_retry_remaining", 0.0)) < 0.0:
 		return false
 	if saved.get("hermes_mode", "building") not in ["following", "building", "independent", "locked", "stopped"]:
 		return false
@@ -754,6 +800,8 @@ func restore(saved: Dictionary) -> bool:
 	result = str(saved.get("result", "playing"))
 	wave_elapsed = float(saved.get("wave_elapsed", elapsed_time))
 	wave_since_last_spawn = float(saved.get("wave_since_last_spawn", 0.0))
+	pending_wave_kinds.assign(saved.get("pending_wave_kinds", []))
+	spawn_retry_remaining = float(saved.get("spawn_retry_remaining", 0.0))
 	focused_character = str(saved.get("focused_character", "nathaniel"))
 	if saved.has("rng_state"):
 		random.state = int(saved.rng_state)
@@ -781,11 +829,17 @@ func restore(saved: Dictionary) -> bool:
 	if int(nathaniel.hp) <= 0 and result == "playing":
 		# Old Swift pending respawns have already spent their spare life.
 		BattlefieldRules.drop_resources(self)
-		_respawn_player()
+		if is_survival():
+			result = "gameOver"
+		else:
+			_respawn_player()
 	if int(hermes.hp) <= 0 and result == "playing":
 		result = "gameOver"
 	if not CombatRules.alive(hermes):
 		BattlefieldRules.interrupt_delivery(self)
+	if is_survival() and result == "playing":
+		for enemy: Dictionary in _enemy_units:
+			CombatRules.acquire(self, enemy)
 	nathaniel.has_corpse = CombatRules.alive(nathaniel) and carried_resource_count() > 0
 	_update_cargo_return()
 	BattlefieldRules.update_fog(self)

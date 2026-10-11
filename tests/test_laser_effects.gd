@@ -5,13 +5,50 @@ class LaserActor extends ActorView:
 	var muzzle: Vector2 = Vector2(11, -38)
 	var target_offset := Vector2.ZERO
 	var target_height: float = 0.0
+	var aim_calls: int = 0
+	var clear_calls: int = 0
 
 	func aim_laser(offset: Vector2, height: float) -> void:
+		aim_calls += 1
 		target_offset = offset
 		target_height = height
 
+	func clear_laser_aim() -> void:
+		clear_calls += 1
+
 	func laser_muzzle() -> Vector2:
 		return muzzle
+
+
+class GroundEffects extends WorldEffects:
+	var ground_draws: int = 0
+
+	func _draw_hermes_ground() -> void:
+		ground_draws += 1
+		super._draw_hermes_ground()
+
+
+class DrawEffects extends WorldEffects:
+	var draws: int = 0
+	var physics_draws: int = 0
+
+	func _draw() -> void:
+		draws += 1
+		if Engine.is_in_physics_frame():
+			physics_draws += 1
+		super._draw()
+
+
+class PhysicsEffectsDriver extends Node:
+	var effects: WorldEffects
+	var ticks: int = 0
+
+	func _physics_process(_delta: float) -> void:
+		ticks += 1
+		effects.sync_projectiles({})
+		effects.sync_lasers({})
+		effects.add_events([])
+		effects.pulse_delivery(Vector2.ZERO)
 
 
 var checks: int = 0
@@ -42,6 +79,10 @@ func _run() -> void:
 	_check_beams()
 	_check_impacts()
 	_check_fog()
+	_check_impact_scope()
+	_check_laser_aim_lifecycle()
+	await _check_retained_ground()
+	await _check_physics_redraws()
 	print("Laser effects: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
 
@@ -117,6 +158,181 @@ func _check_beams() -> void:
 	expect(effects.laser_beams().is_empty(), "Replacing a simulation clears beam lifecycle state")
 	emitter.free()
 	recipient.free()
+	effects.free()
+
+
+func _check_impact_scope() -> void:
+	var sim: GameSimulation = _game()
+	var target: Dictionary = sim.spawn_enemy("soldier", Vector2(720, 242))
+	var views: Dictionary = {}
+	for index: int in range(3):
+		var unit: Dictionary = sim.spawn_enemy("soldier", Vector2(850 + index * 40, 242))
+		unit.target_id = sim.nathaniel.id
+		unit.firing = true
+		var actor := LaserActor.new()
+		actor.visual = load("res://resources/actors/soldier.tres")
+		views[int(unit.id)] = actor
+	var effects := WorldEffects.new()
+	effects.simulation = sim
+	effects.sync_lasers(views)
+	var before: Array[int] = []
+	for actor: LaserActor in views.values():
+		before.append(actor.aim_calls)
+	var hit: Dictionary = {"type": "hit", "target_id": target.id, "attacker_id": sim.nathaniel.id,
+		"target_kind": "soldier", "target_enemy": true, "position": target.position, "amount": 1}
+	effects.add_events([hit, hit, hit], views)
+	var index: int = 0
+	for actor: LaserActor in views.values():
+		expect(actor.aim_calls == before[index], "Projectile hit batches do not pose unrelated laser actors")
+		index += 1
+	expect(effects.impact_flashes.size() == 1, "Scoped hit checks preserve merged projectile contacts")
+	expect(effects.laser_beams().size() == 3, "Scoped hit checks preserve unrelated active pulse beams")
+	for actor: LaserActor in views.values():
+		actor.free()
+	effects.free()
+
+
+func _check_laser_aim_lifecycle() -> void:
+	var sim: GameSimulation = _game()
+	var target: Dictionary = sim.spawn_enemy("grunt", Vector2(720, 242))
+	var emitter := LaserActor.new()
+	emitter.visual = load("res://resources/actors/hermes.tres")
+	var effects := WorldEffects.new()
+	effects.simulation = sim
+	sim.hermes.target_id = target.id
+	effects.sync_lasers({int(sim.hermes.id): emitter})
+	expect(emitter.aim_calls == 1 and emitter.clear_calls == 0, "A deferred laser actor receives its live target pose outside a burst")
+	sim.hermes.target_id = -1
+	effects.sync_lasers({int(sim.hermes.id): emitter})
+	expect(emitter.clear_calls == 1, "Target loss clears the deferred mounted pitch")
+	sim.hermes.weapon = "pulse_laser"
+	sim.hermes.target_id = target.id
+	sim.hermes.firing = true
+	effects.sync_lasers({int(sim.hermes.id): emitter})
+	var contact_offset: Vector2 = emitter.target_offset
+	sim.damage_entity(int(target.id), int(target.hp))
+	sim.hermes.target_id = -1
+	var beams: Array[Dictionary] = effects.laser_beams()
+	expect(beams.size() == 1 and emitter.target_offset == contact_offset and emitter.clear_calls == 1, "A lethal pulse retains its contact and pitch after target removal")
+	sim.hermes.firing = false
+	effects.sync_lasers({int(sim.hermes.id): emitter})
+	expect(emitter.clear_calls == 2 and effects.laser_beams().is_empty(), "Pulse completion clears the retained target pose")
+	var removed: Dictionary = sim.spawn_enemy("soldier", Vector2(950, 242))
+	sim.damage_entity(int(removed.id), int(removed.hp))
+	var before: int = emitter.clear_calls
+	effects.sync_lasers({int(removed.id): emitter})
+	expect(emitter.clear_calls == before + 1, "Removed entities clear their registered laser actor pose")
+	emitter.free()
+	effects.free()
+
+
+func _ground_redraw(effects: GroundEffects, expected: bool, message: String, delta: float = 0.0) -> void:
+	var before: int = effects.ground_draws
+	effects._process(delta)
+	await process_frame
+	await process_frame
+	expect((effects.ground_draws > before) == expected, message)
+
+
+func _check_physics_redraws() -> void:
+	var effects := DrawEffects.new()
+	root.add_child(effects)
+	var driver := PhysicsEffectsDriver.new()
+	driver.effects = effects
+	root.add_child(driver)
+	for tick: int in range(6):
+		await physics_frame
+	driver.set_physics_process(false)
+	await process_frame
+	await process_frame
+	expect(driver.ticks >= 5, "Redraw regression fixture exercises real physics ticks")
+	expect(effects.draws > 0 and effects.physics_draws == 0, "Processing effects draw on rendered frames without physics redraw flushes")
+	effects.set_process(false)
+	effects.physics_draws = 0
+	driver.set_physics_process(true)
+	for tick: int in range(3):
+		await physics_frame
+	driver.set_physics_process(false)
+	await process_frame
+	expect(effects.physics_draws > 0, "Effects with processing disabled keep immediate redraws from direct APIs")
+	var before: int = effects.draws
+	effects.add_events([])
+	await process_frame
+	await process_frame
+	expect(effects.draws > before, "Direct nonphysics API calls still request a redraw")
+	driver.free()
+	effects.free()
+
+
+func _check_retained_ground() -> void:
+	var sim: GameSimulation = _game()
+	sim.set_hermes_mode("building")
+	var tower: Dictionary = sim.place_map_tower("gunTower", Vector2(780, 242))
+	var enemy: Dictionary = sim.spawn_enemy("grunt", Vector2(950, 400))
+	var effects := GroundEffects.new()
+	effects.simulation = sim
+	root.add_child(effects)
+	effects.set_process(false)
+	await _ground_redraw(effects, true, "Deployed conduits record their initial draw commands")
+	await _ground_redraw(effects, false, "Stationary conduits reuse draw commands across frames", 0.1)
+	effects.position += Vector2(80, 20)
+	enemy.position += Vector2(10, 10)
+	await _ground_redraw(effects, false, "Camera translation and unrelated actors do not rebuild ground geometry")
+	tower.position += Vector2(10, 0)
+	await _ground_redraw(effects, true, "Moving a tower updates its retained conduit")
+	_visibility(sim, tower.position, 0)
+	await _ground_redraw(effects, true, "Fog hides an existing retained conduit")
+	effects.fog_enabled = false
+	await _ground_redraw(effects, true, "Disabling fog restores the retained conduit")
+	effects.fog_enabled = true
+	await _ground_redraw(effects, true, "Enabling fog removes the hidden retained conduit")
+	_visibility(sim, tower.position, 2)
+	await _ground_redraw(effects, true, "Revealing a tower restores its conduit")
+	sim.hermes.position += Vector2(3, 5)
+	await _ground_redraw(effects, true, "Hermes movement updates every ground connection")
+	effects.build_open = true
+	await _ground_redraw(effects, true, "Opening Build updates range emphasis")
+	effects.placement = true
+	effects.cursor_world = Vector2(860, 300)
+	await _ground_redraw(effects, true, "Placement creates a retained preview")
+	effects.cursor_world += Vector2(8, 4)
+	await _ground_redraw(effects, true, "Cursor movement updates the preview")
+	effects.placement_valid = true
+	await _ground_redraw(effects, true, "Placement validity updates the preview color")
+	for property: String in ["hermes_range_color", "hermes_cable_color", "hermes_cable_band_color", "valid_placement_color", "invalid_placement_color"]:
+		effects.set(property, (effects.get(property) as Color).lightened(0.1))
+		await _ground_redraw(effects, true, "Runtime ground color edits invalidate retained commands")
+	effects.hermes_cable_width += 1.0
+	await _ground_redraw(effects, true, "Runtime cable width edits invalidate retained commands")
+	effects.placement = false
+	await _ground_redraw(effects, true, "Cancelling placement clears the preview")
+	effects.build_open = false
+	await _ground_redraw(effects, true, "Closing Build restores the persistent range treatment")
+	sim.damage_entity(int(tower.id), int(tower.hp))
+	await _ground_redraw(effects, true, "Tower death clears its retained conduit")
+	effects.add_events([{"type": "build", "position": Vector2(780, 242)}])
+	await _ground_redraw(effects, true, "Build transfer creates animated ground commands")
+	await _ground_redraw(effects, true, "Transfer progress updates commands even when endpoints are fixed", 0.1)
+	sim.set_paused(true)
+	await _ground_redraw(effects, false, "Paused transfer geometry remains retained", 0.1)
+	effects.hermes_transfer_lifetime += 0.1
+	await _ground_redraw(effects, true, "Changing transfer lifetime updates its current phase")
+	sim.set_paused(false)
+	await _ground_redraw(effects, true, "Transfer expiry removes its retained pulse", 1.0)
+	sim.set_hermes_mode("following")
+	effects.add_events([{"type": "recycle", "position": Vector2(780, 242)}])
+	await _ground_redraw(effects, true, "A returning transfer remains visible after deployment ends")
+	await _ground_redraw(effects, true, "Returning transfer progress rebuilds its shortened cable", 0.1)
+	sim.set_paused(true)
+	sim.damage_entity(int(sim.hermes.id), int(sim.hermes.hp))
+	await _ground_redraw(effects, true, "Hermes death clears a paused retained transfer")
+	await _ground_redraw(effects, false, "Empty ground effects do not redraw")
+	var replacement: GameSimulation = _game()
+	replacement.set_hermes_mode("building")
+	effects.simulation = replacement
+	await _ground_redraw(effects, true, "Simulation replacement recreates visible ground effects")
+	effects.simulation = null
+	await _ground_redraw(effects, true, "Leaving the level clears retained ground commands")
 	effects.free()
 
 

@@ -63,6 +63,10 @@ check the same image locally.
   and automatic combat continue.
 - Campaign levels have three spare lives. Losing Hermes ends the game. Defeat
   a boss to advance. Survival has no spare lives.
+- New Survival runs choose equally between Abandoned Crossroads, Dry Wash,
+  Freight Yard, and Open Countryside. Retry keeps the map; Load restores its
+  saved layout and state. Each map has three broad deployment clearings and
+  enemy approaches from four sides.
 
 Desktop: **B** opens/closes Hermes's ring, **Space** focuses Nathaniel, **R**
 deploys/packs Hermes, **S** stops Nathaniel, **1 / 2** select weapons, and

@@ -42,6 +42,12 @@ try {
     for (const field of ['score', 'lives', 'resources', 'elapsedTime', 'playerPosition', 'hermesPosition', 'playerHealth', 'hermesHealth', 'enemyCount', 'towerCount']) {
       check(paused.gameState[field] !== undefined, `Structured state includes ${field}`);
     }
+    if (level === 0) {
+      check(paused.gameState.survival.mapId === 'legacy_survival', 'Numeric survival loading retains the legacy map identity through MCP');
+      check(paused.gameState.survival.pendingSpawns === 0 && paused.gameState.survival.spawnBlockedReason === '' && paused.gameState.survival.spawnRetryRemaining === 0, 'MCP exposes the initial survival spawn diagnostics');
+    } else {
+      check(paused.gameState.survival === undefined, 'Campaign state omits survival spawn diagnostics');
+    }
   }
   await action('loadLevel', { level: '0' });
   await action('pause');

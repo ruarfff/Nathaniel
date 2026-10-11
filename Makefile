@@ -10,7 +10,7 @@ GENERATOR ?= tools/blender/generate_placeholder.py
 PROFILE ?= default
 
 .PHONY: help version run editor level debug import test test-tooling test-mcp format format-check profile profile-rendered export-macos export-ios export-web serve-web health clean
-.PHONY: art-doctor art-generate art-render art-regenerate art-preview art-review art-characters test-art test-hd-art test-animated-art test-static-art
+.PHONY: art-doctor art-generate art-render art-render-model art-regenerate art-preview art-review art-characters test-art test-hd-art test-animated-art test-static-art
 .PHONY: art-environment art-environment-regenerate test-environment-art
 .PHONY: art-gun-turret art-gun-turret-preview test-gun-turret
 .PHONY: test-healing-tower
@@ -24,6 +24,7 @@ PROFILE ?= default
 .PHONY: test-resource-gathering art-resource-gathering art-enemy-deaths
 .PHONY: demo test-demo export-web-demo serve-web-demo
 .PHONY: image-demo
+.PHONY: test-survival profile-survival art-survival
 
 help:
 	@echo "make test-resource-gathering Check backpack rules, controls, saves and live models"
@@ -43,6 +44,9 @@ help:
 	@echo "make test-services    Check storage and save compatibility"
 	@echo "make test-presentation Check input, HUD, and weapon controls"
 	@echo "make test-demo        Check demo menus, access rules, and saves"
+	@echo "make test-survival    Check all four survival maps, identity and routes"
+	@echo "make profile-survival Compare authored maps with identical wave seeds"
+	@echo "make art-survival     Capture and profile all four maps at gameplay zoom"
 	@echo "make format           Normalize project source whitespace"
 	@echo "make format-check     Check project source whitespace"
 	@echo "make profile          Measure simulation performance"
@@ -61,6 +65,7 @@ help:
 	@echo "make art-doctor       Check Blender and its bundled Python"
 	@echo "make art-generate     Create a new .blend (ASSET, GENERATOR)"
 	@echo "make art-render       Render a saved .blend (ASSET)"
+	@echo "make art-render-model Export a live model from an unchanged source (ASSET)"
 	@echo "make art-regenerate   Render all saved Blender sources"
 	@echo "make art-environment-regenerate Render saved environment sources only"
 	@echo ""
@@ -124,6 +129,7 @@ test: import format-check test-tooling
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_soldier_variants.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_enemy_lasers.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_content.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_vertex_palette_import.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_blender_asset.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_hd_art.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_gun_turret.gd
@@ -143,6 +149,7 @@ test: import format-check test-tooling
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_services.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_presentation.gd -- --storage-dir="$(TEST_STORAGE)"
 	$(MAKE) test-demo
+	$(MAKE) test-survival
 	$(MAKE) test-mcp
 
 test-tooling:
@@ -157,10 +164,12 @@ art-soldiers: import
 
 test-content: import
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_content.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_survival_maps.gd
 
 test-gameplay: import
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_resource_gathering.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_gameplay.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_survival_rules.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_weapons.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_combat_impacts.gd
 
@@ -175,6 +184,18 @@ test-presentation: import
 
 test-demo: import
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_demo.gd -- --demo --level=1 --storage-dir="$(TEST_STORAGE)/demo-mode"
+
+test-survival: import
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_survival_maps.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_survival_rules.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_survival_identity.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_survival_play.gd
+
+profile-survival: import
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/profile_survival.gd
+
+art-survival: import
+	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tools/render_survival_maps.gd
 
 test-nathaniel-weapons: import
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_weapons.gd
@@ -248,6 +269,9 @@ art-generate:
 
 art-render:
 	sh tools/blender.sh render "$(ASSET)"
+
+art-render-model:
+	sh tools/blender.sh render-model "$(ASSET)"
 
 art-regenerate:
 	sh tools/blender.sh regenerate

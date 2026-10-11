@@ -9,7 +9,7 @@ ambient_light_energy = 0.35
 reflected_light_source = 1
 tonemap_mode = 0
 
-[node name="Gun_SoldierModel" type="Node3D"]
+[node name="GunSoldierModel" type="Node3D"]
 metadata/logical_canvas = Vector2i(128, 160)
 metadata/logical_ground_anchor = Vector2(64, 128)
 metadata/max_pixel_density = 8.0

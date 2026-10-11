@@ -34,6 +34,24 @@ targets, towers and paid costs, weapons and timers, projectiles, spawner product
 corpses/cargo, resources, score, spare lives, waves, explored fog, focus, and random
 state. Loading rebuilds tower obstacles before requesting routes and resumes play.
 
+Survival snapshots store `survival_map_id` separately from mode number `0`.
+The IDs are `abandoned_crossroads`, `dry_wash`, `freight_yard`, and
+`open_countryside`. Scene loading uses the allowlisted map catalog, so scenery
+and simulation restore from the same authored map. Loading never rerolls the
+map. Retry reloads that map's initial state.
+
+Survival resume reads dimensions, terrain, starts, and entry sectors from the
+catalog scene, then restores saved entities, counters, timers, and combat random
+state. The embedded level definition remains compatibility data. Campaign
+resume retains its existing embedded-definition behavior.
+
+Older Survival snapshots without a map ID resolve to `legacy_survival` and
+keep the original 30×30 `levels/level_0.tscn` layout. Saving or retrying them
+preserves that identity. Unknown IDs are rejected. These additive fields do
+not change the envelope version, snapshot schema, slot paths, or app identity.
+Mobile Survival enemies with missing or invalid targets reacquire Nathaniel,
+then living Hermes, when the saved active run resumes. Valid targets remain.
+
 | Compatibility case | Restore rule |
 | --- | --- |
 | Older Hermes camera focus | Return to Nathaniel with Build closed; retain Hermes's saved mode. |

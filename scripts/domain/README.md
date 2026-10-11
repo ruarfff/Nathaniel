@@ -48,6 +48,14 @@ and `healTower`; build APIs accept snake case too. Level data may include
 - Navigation prevents corner cutting, keeps tower clearance, and replans after
   tower changes. When a route fails, movement retains collision and axis sliding.
   Restored routes are rebuilt from requested destinations.
+- Survival is mode number `0`, separate from `survival_map_id`. All mobile
+  Survival enemies pursue immediately, retain valid targets, and reacquire
+  Nathaniel then living Hermes without a vision gate. Firing still uses weapon
+  range and cooldown. Campaign waves retain their own acquisition rules.
+- Authored `entry_sectors` contain `{id, enabled, positions}` values in logical
+  coordinates. Survival births use bounded terrain, occupancy, distance and
+  route checks. Blocked births wait without spending their budget. A proposed
+  tower must retain a route from every enabled sector to the player area.
 
 `aim_direction` is independent of movement `facing`. An accepted `fire_at`
 request may wait for aim; a later valid request replaces its pending point.

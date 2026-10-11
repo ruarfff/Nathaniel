@@ -110,6 +110,7 @@ var placement_valid := false
 var build_open := false
 var hermes_transfers: Array[Dictionary] = []
 var _hermes_ground: Node2D
+var _hermes_ground_inputs: Array = []
 var delivery_pulse_time := 0.0
 var delivery_pulse_position := Vector2.ZERO
 var fog_enabled := true
@@ -156,8 +157,7 @@ func _process(delta: float) -> void:
 		healing_flashes = healing_flashes.filter(func(flash: Dictionary) -> bool: return flash.life > 0 and CombatRules.alive(simulation.entity(int(flash.target_id))))
 	if simulation == null or not CombatRules.alive(simulation.hermes):
 		hermes_transfers.clear()
-	if _hermes_ground != null:
-		_hermes_ground.queue_redraw()
+	_sync_hermes_ground()
 	_sync_corpse_sprites()
 	queue_redraw()
 
@@ -165,6 +165,14 @@ func _process(delta: float) -> void:
 func pulse_delivery(world: Vector2) -> void:
 	delivery_pulse_position = world
 	delivery_pulse_time = delivery_pulse_lifetime
+	_request_redraw()
+
+
+func _request_redraw() -> void:
+	# Catch-up physics ticks can flush CanvasItem draws before a frame is rendered.
+	# The normal process callback draws once; standalone callers still draw directly.
+	if Engine.is_in_physics_frame() and is_inside_tree() and is_processing() and can_process() and not Engine.is_editor_hint():
+		return
 	queue_redraw()
 
 
@@ -234,7 +242,7 @@ func add_events(events: Array, actors: Dictionary = {}) -> void:
 		if event.has("position"):
 			transients.append({"position": event.position, "life": transient_lifetime, "kind": event.get("type", "hit")})
 	_sync_corpse_sprites()
-	queue_redraw()
+	_request_redraw()
 
 
 func hermes_range_points() -> PackedVector2Array:
@@ -284,6 +292,38 @@ func _hermes_cable_path(target: Vector2) -> PackedVector2Array:
 		var fraction: float = float(index) / count
 		points.append(IsoProjection.project(start.lerp(finish, fraction) + bend * sin(fraction * PI)))
 	return points
+
+
+func _sync_hermes_ground() -> void:
+	if _hermes_ground == null:
+		return
+	var inputs: Array = _hermes_ground_draw_inputs()
+	if inputs != _hermes_ground_inputs:
+		_hermes_ground_inputs = inputs
+		_hermes_ground.queue_redraw()
+
+
+func _hermes_ground_draw_inputs() -> Array:
+	if simulation == null or not CombatRules.alive(simulation.hermes):
+		return []
+	var anchored: bool = simulation.hermes.get("anchored", false)
+	var towers: Array[Vector2] = []
+	if anchored:
+		for tower: Dictionary in simulation.entities:
+			if tower.get("tower", false) and CombatRules.alive(tower) and (not fog_enabled or simulation.visibility_at(tower.position) == 2):
+				towers.append(tower.position)
+	var transfers: Array = []
+	for transfer: Dictionary in hermes_transfers:
+		if (not fog_enabled or simulation.visibility_at(transfer.position) == 2) and (transfer.returning or anchored):
+			# Copy values: the live transfer dictionaries change in place each frame.
+			transfers.append([transfer.position, transfer.life, transfer.returning])
+	if not build_open and not anchored and transfers.is_empty():
+		return []
+	var preview: Variant = cursor_world if placement and build_open and cursor_world.is_finite() else null
+	# CanvasItem retains these local draw commands when only the camera moves.
+	return [simulation.hermes.position, anchored, build_open, simulation.hermes_build_range(), towers,
+		preview, placement_valid, hermes_range_color, hermes_cable_color, hermes_cable_band_color,
+		hermes_cable_width, valid_placement_color, invalid_placement_color, hermes_transfer_lifetime, transfers]
 
 
 func _draw_hermes_ground() -> void:
@@ -411,7 +451,7 @@ func sync_projectiles(actors: Dictionary) -> void:
 	for id: int in _projectile_offsets.keys():
 		if not live.has(id):
 			_projectile_offsets.erase(id)
-	queue_redraw()
+	_request_redraw()
 
 
 func projectile_position(shot: Dictionary) -> Vector2:
@@ -424,8 +464,12 @@ func sync_lasers(actors: Dictionary) -> void:
 		var hermes: HermesView = actors.get(int(simulation.hermes.id)) as HermesView
 		if is_instance_valid(hermes) and hermes.recovery_ground().is_finite():
 			hermes.set_recovery_visible(not fog_enabled or simulation.visibility_at(hermes.recovery_ground()) == 2)
+	for id: int in _laser_actors:
+		var actor: ActorView = _laser_actors[id] as ActorView
+		if is_instance_valid(actor) and actor.laser_visual() != null and (simulation == null or simulation.entity(id).is_empty()):
+			actor.clear_laser_aim()
 	laser_beams()
-	queue_redraw()
+	_request_redraw()
 
 
 func laser_beams() -> Array[Dictionary]:
@@ -434,48 +478,10 @@ func laser_beams() -> Array[Dictionary]:
 	if simulation == null:
 		return beams
 	for unit: Dictionary in simulation.entities:
-		if not CombatRules.alive(unit) or unit.get("weapon", "") not in ["laser", "spawner_laser", "pulse_laser"]:
-			continue
-		var target: Dictionary = simulation.entity(int(unit.get("target_id", -1)))
-		var pulse: bool = unit.weapon == "pulse_laser"
-		var contact: Dictionary = {}
-		if pulse and unit.get("firing", false):
-			if not _laser_pulses.has(int(unit.id)) and CombatRules.alive(target):
-				_laser_pulses[int(unit.id)] = {"target_id": target.id, "target_position": target.position, "target_kind": target.kind}
-			contact = _laser_pulses.get(int(unit.id), {})
-			if not contact.is_empty():
-				target = simulation.entity(int(contact.target_id))
-		if not CombatRules.alive(target) and contact.is_empty():
-			continue
-		var target_id: int = int(contact.target_id) if not contact.is_empty() else int(target.id)
-		var target_kind: String = str(contact.target_kind) if not contact.is_empty() else str(target.kind)
-		var target_position: Vector2 = target.position if CombatRules.alive(target) else contact.target_position
-		var actor: ActorView = _laser_actors.get(int(unit.id)) as ActorView
-		var style: LaserVisual = actor.laser_visual() if is_instance_valid(actor) else null
-		var height: float = _contact_height(target_id, target_kind, _laser_actors)
-		if style != null:
-			actor.aim_laser(target_position - Vector2(unit.position), height)
-		if not unit.get("firing", false):
-			continue
-		if simulation.visibility_at(unit.position) != 2 and (fog_enabled or style == null):
-			continue
-		var start: Vector2 = IsoProjection.project(unit.position) - Vector2(0, laser_height)
-		var finish: Vector2 = IsoProjection.project(target_position) - Vector2(0, laser_height)
-		if style != null:
-			if unit.get("anchored", false) or (fog_enabled and simulation.visibility_at(target_position) != 2):
-				continue
-			var muzzle: Vector2 = actor.laser_muzzle()
-			if not muzzle.is_finite():
-				continue
-			start = IsoProjection.project(unit.position) + muzzle
-			finish = IsoProjection.project(target_position) - Vector2(0, height * HEIGHT_PROJECTION)
-		active[int(unit.id)] = true
-		if not _laser_states.has(int(unit.id)):
-			_laser_states[int(unit.id)] = {"target_id": target_id, "age": float(unit.get("burst", 0.0))}
-		elif int(_laser_states[int(unit.id)].target_id) != target_id:
-			_laser_states[int(unit.id)] = {"target_id": target_id, "age": 0.0}
-		beams.append({"owner_id": int(unit.id), "target_id": target_id, "start": start, "finish": finish,
-			"style": style, "enemy": bool(unit.enemy), "age": float(unit.burst) if pulse else float(_laser_states[int(unit.id)].age)})
+		var beam: Dictionary = _laser_beam(unit)
+		if not beam.is_empty():
+			active[int(unit.id)] = true
+			beams.append(beam)
 	for id: int in _laser_states.keys():
 		if not active.has(id):
 			_laser_states.erase(id)
@@ -483,6 +489,54 @@ func laser_beams() -> Array[Dictionary]:
 		if not active.has(id):
 			_laser_pulses.erase(id)
 	return beams
+
+
+func _laser_beam(unit: Dictionary) -> Dictionary:
+	var actor: ActorView = _laser_actors.get(int(unit.get("id", -1))) as ActorView
+	var style: LaserVisual = actor.laser_visual() if is_instance_valid(actor) else null
+	if not CombatRules.alive(unit) or unit.get("weapon", "") not in ["laser", "spawner_laser", "pulse_laser"]:
+		if style != null:
+			actor.clear_laser_aim()
+		return {}
+	var target: Dictionary = simulation.entity(int(unit.get("target_id", -1)))
+	var pulse: bool = unit.weapon == "pulse_laser"
+	var contact: Dictionary = {}
+	if pulse and unit.get("firing", false):
+		if not _laser_pulses.has(int(unit.id)) and CombatRules.alive(target):
+			_laser_pulses[int(unit.id)] = {"target_id": target.id, "target_position": target.position, "target_kind": target.kind}
+		contact = _laser_pulses.get(int(unit.id), {})
+		if not contact.is_empty():
+			target = simulation.entity(int(contact.target_id))
+	if not CombatRules.alive(target) and contact.is_empty():
+		if style != null:
+			actor.clear_laser_aim()
+		return {}
+	var target_id: int = int(contact.target_id) if not contact.is_empty() else int(target.id)
+	var target_kind: String = str(contact.target_kind) if not contact.is_empty() else str(target.kind)
+	var target_position: Vector2 = target.position if CombatRules.alive(target) else contact.target_position
+	var height: float = _contact_height(target_id, target_kind, _laser_actors)
+	if style != null:
+		actor.aim_laser(target_position - Vector2(unit.position), height)
+	if not unit.get("firing", false):
+		return {}
+	if simulation.visibility_at(unit.position) != 2 and (fog_enabled or style == null):
+		return {}
+	var start: Vector2 = IsoProjection.project(unit.position) - Vector2(0, laser_height)
+	var finish: Vector2 = IsoProjection.project(target_position) - Vector2(0, laser_height)
+	if style != null:
+		if unit.get("anchored", false) or (fog_enabled and simulation.visibility_at(target_position) != 2):
+			return {}
+		var muzzle: Vector2 = actor.laser_muzzle()
+		if not muzzle.is_finite():
+			return {}
+		start = IsoProjection.project(unit.position) + muzzle
+		finish = IsoProjection.project(target_position) - Vector2(0, height * HEIGHT_PROJECTION)
+	if not _laser_states.has(int(unit.id)):
+		_laser_states[int(unit.id)] = {"target_id": target_id, "age": float(unit.get("burst", 0.0))}
+	elif int(_laser_states[int(unit.id)].target_id) != target_id:
+		_laser_states[int(unit.id)] = {"target_id": target_id, "age": 0.0}
+	return {"owner_id": int(unit.id), "target_id": target_id, "start": start, "finish": finish,
+		"style": style, "enemy": bool(unit.enemy), "age": float(unit.burst) if pulse else float(_laser_states[int(unit.id)].age)}
 
 
 func _contact_height(id: int, kind: String, actors: Dictionary) -> float:
@@ -504,9 +558,9 @@ func _add_impact(event: Dictionary, actors: Dictionary) -> void:
 	var attacker_id: int = int(event.get("attacker_id", -1))
 	var target: Dictionary = simulation.entity(target_id)
 	var alive: bool = CombatRules.alive(target)
-	for beam: Dictionary in laser_beams():
-		if beam.owner_id == attacker_id and beam.target_id == target_id and beam.style != null:
-			return
+	var beam: Dictionary = _laser_beam(simulation.entity(attacker_id))
+	if not beam.is_empty() and beam.target_id == target_id and beam.style != null:
+		return
 	var ground: Vector2 = target.position if alive else event.position
 	var point: Vector2 = IsoProjection.project(ground) - Vector2(0, _contact_height(target_id, str(event.get("target_kind", "")), actors) * HEIGHT_PROJECTION)
 	for impact: Dictionary in impact_flashes:

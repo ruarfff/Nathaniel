@@ -8,10 +8,12 @@ const TARGET_SHADER: Shader = preload("res://scripts/presentation/target_highlig
 @export var kind: String = "nathaniel"
 @export var visual: ActorVisual:
 	set(value):
+		if visual != null and visual.changed.is_connected(_visual_changed):
+			visual.changed.disconnect(_visual_changed)
 		visual = value
-		if is_node_ready():
-			_update_sprite(0, false, 0.0)
-		queue_redraw()
+		if visual != null:
+			visual.changed.connect(_visual_changed)
+		_visual_changed()
 
 var _health: float = 1.0
 var _selected: bool = false
@@ -27,6 +29,12 @@ var _moving: bool = false
 var _firing: bool = false
 var _attack_active: bool = false
 var _playback_enabled: bool = true
+var _defer_laser_aim: bool = false
+var _draw_visual: ActorVisual
+var _draw_shadow_radius: float = -1.0
+var _draw_bar_height: float = -1.0
+var _draw_health_color: Color
+var _draw_kind: String
 var target_highlight := Color.WHITE
 var _target_material: ShaderMaterial
 var animation_sprite: AnimatedSprite2D
@@ -37,10 +45,32 @@ var model_view: ActorModelView
 
 func _ready() -> void:
 	_update_sprite(0, false, 0.0)
+	_queue_visual_redraw(true)
 
 
-func apply_state(entity: Dictionary, selected: bool = false, playback_enabled: bool = true) -> void:
+func _visual_changed() -> void:
+	if is_node_ready():
+		_update_sprite(_facing, _moving, _animation_time)
+	_queue_visual_redraw(true)
+
+
+func _queue_visual_redraw(force: bool = false) -> void:
+	var radius: float = visual.shadow_radius if visual != null else 0.0
+	var height: float = visual.display_size.y if visual != null else 0.0
+	var color: Color = visual.health_color if visual != null else Color.WHITE
+	if not force and _draw_visual == visual and _draw_shadow_radius == radius and _draw_bar_height == height and _draw_health_color == color and _draw_kind == kind:
+		return
+	_draw_visual = visual
+	_draw_shadow_radius = radius
+	_draw_bar_height = height
+	_draw_health_color = color
+	_draw_kind = kind
+	queue_redraw()
+
+
+func apply_state(entity: Dictionary, selected: bool = false, playback_enabled: bool = true, defer_laser_aim: bool = false) -> void:
 	_playback_enabled = playback_enabled
+	_defer_laser_aim = defer_laser_aim
 	if healing_pulse != null:
 		healing_pulse.playback_enabled = playback_enabled
 	var logical: Vector2 = entity.get("position", Vector2.ZERO)
@@ -76,18 +106,20 @@ func apply_state(entity: Dictionary, selected: bool = false, playback_enabled: b
 	_last_position = projected
 	position = projected
 	var previous_health: float = _health
+	var previous_selected: bool = _selected
 	_health = clampf(float(entity.get("hp", 1)) / maxf(1.0, float(entity.get("max_hp", 1))), 0.0, 1.0)
 	_selected = selected
 	if _playback_enabled:
 		_animation_time += get_process_delta_time()
 	_update_sprite(_facing, _moving, _animation_time)
+	_defer_laser_aim = false
 	if previous_health > _health and is_inside_tree() and visual != null:
 		var display: CanvasItem = animation_sprite if animation_sprite != null and animation_sprite.visible else sprite
 		if model_view != null and model_view.visible:
 			display = model_view.display
 		display.modulate = Color("ff8585")
 		create_tween().tween_property(display, "modulate", visual.tint, 0.15)
-	queue_redraw()
+	_queue_visual_redraw(previous_health != _health or previous_selected != _selected)
 
 
 func notify_attack(direction: Vector2 = Vector2.ZERO, weapon_id: String = "") -> void:
@@ -174,6 +206,11 @@ func aim_laser(target_offset: Vector2, target_height: float) -> void:
 		model_view.aim_laser(target_offset, target_height)
 
 
+func clear_laser_aim() -> void:
+	if model_view != null and model_view.visible:
+		model_view.set_aim(_aim_direction)
+
+
 func laser_muzzle() -> Vector2:
 	if model_view == null or not model_view.visible or model_view.muzzle == null or model_view.camera == null:
 		return Vector2.INF
@@ -200,6 +237,7 @@ func notify_respawn() -> void:
 	if animation_sprite != null:
 		animation_sprite.stop()
 	_update_sprite(_facing, _moving, _animation_time)
+	_queue_visual_redraw(true)
 
 
 func _update_sprite(facing: int, moving: bool, elapsed: float) -> void:
@@ -215,7 +253,8 @@ func _update_sprite(facing: int, moving: bool, elapsed: float) -> void:
 			model_view.playback_enabled = _playback_enabled
 			model_view.set_firing(_firing)
 			model_view.equip_weapon(_equipped_weapon_id if not _equipped_weapon_id.is_empty() else visual.default_weapon_id)
-			model_view.set_aim(_aim_direction)
+			if not _defer_laser_aim or visual.laser == null or model_view.pitch_pivot == null:
+				model_view.set_aim(_aim_direction)
 			model_view.set_movement(_movement_direction, _movement_speed if _moving else 0.0)
 			model_view.show()
 			sprite.hide()

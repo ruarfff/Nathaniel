@@ -29,6 +29,34 @@ Synthetic input checks dispatch, not OS gesture recognition. Audio assertions
 check player state, not audible output. Inspect rendered screenshots for visual
 acceptance.
 
+`make test-survival` checks all four native maps, map selection/retry/restore,
+legacy identities, pursuit and birth rules, route protection, and movement,
+building, cargo and Hermes recovery on authored terrain. The original scene
+and campaign baselines remain separate.
+
+`make profile-survival` compares seeds 137 and 733 for six simulated minutes
+on the original map and all four new layouts. Hero HP is raised so each run
+reaches the later waves; normal weapons, wave cadence, and resource rules stay
+active. Nathaniel holds the start while Hermes is deployed. The report records
+first enemy hit, peak enemies, recovered matter, and simulation frame times.
+This is a repeatable stationary-base workload, not a full balance playtest.
+
+`make art-survival` captures each map at 1280×800 and normal camera zoom, then
+measures 360 rendered opening-wave frames after 60 warmup frames. Fog is off
+for art review; the frame cap is 60 and VSync is off. Reports and PNGs go to
+`test-artifacts/survival-maps/`. Check relocation and input separately.
+
+The existing 200-enemy/30-tower rendered stress test also accepts an authored
+map. Its JSON includes the actual viewport, hardware, samples, and frame cap:
+
+```sh
+rtk godot --path . --script res://tests/profile_rendered.gd -- --survival-map=freight_yard
+```
+
+Reports and images use the map ID under `test-artifacts/rendered-profile/`.
+The profile disables waves and raises unit HP to retain the workload. It is
+separate from the normal wave comparison and opening-wave captures.
+
 ## Native playtest
 
 Follow [exports](authoring.md#export-and-platform-checks). Current live models
@@ -77,3 +105,27 @@ can record campaign progress; use Survival and isolated storage for fixtures.
 `make profile` measures simulation; `make profile-rendered` measures the rendered
 game. Report hardware, engine, workload, warmup, samples, and frame settings.
 Build success and average FPS do not establish input correctness or frame pacing.
+
+The rendered stress test uses a fixed 1280×800 render viewport, 60 physics ticks
+per second, a 60 FPS cap, and VSync off. It retains 200 enemies, 30 towers, and
+both heroes with high HP; waves and fog are disabled. Normal movement, aiming,
+attacks, effects, and animations run. It warms up for 60 drawn frames and measures
+600 more. Run one graphical workload at a time:
+
+```sh
+rtk python3 tools/run_checked.py godot --path . --script res://tests/profile_rendered.gd -- --survival-map=abandoned_crossroads --label=baseline
+```
+
+Reports and captures go to `test-artifacts/rendered-profile/`. `--frames=N`
+changes the sample count. Reports include wall frame intervals, engine time,
+GameApp physics and view-sync time, draw calls, entity count, and elapsed physics
+ticks. The simulation runs in real time: faster rendering changes the number of
+physics ticks in a fixed number of drawn frames. Compare the same map and fixture,
+and report that limit; this is not an identical simulation trace.
+
+`--diagnostic=frozen-models` disables primary actor model updates and rendering
+after warmup. It also skips their render-time pose work; mobile Hermes keeps its
+separate model viewport. Use this as a lower-bound diagnostic, not an isolated
+GPU measurement or playable performance result.
+`--shadow-size=N` overrides the global directional shadow atlas for a diagnostic
+run; the report records its size. Omit it for normal project settings.

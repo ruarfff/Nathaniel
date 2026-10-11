@@ -17,8 +17,9 @@ overwriting them. Godot captures write review images under `test-artifacts/`.
 
 ## Edit and run a level
 
-1. Open `levels/level_1.tscn` in the 2D editor. Levels 1–5 are campaign;
-   `level_0.tscn` is survival.
+1. Open `levels/level_1.tscn` in the 2D editor. Levels 1–5 are campaign.
+   `levels/survival/` contains the four new Survival maps; `level_0.tscn`
+   remains the original map for older saves and deterministic fixtures.
 2. Paint `Ground` and `NonCollision` with the native TileMap tools.
 3. Paint `Collision` to block navigation. Every occupied cell blocks, regardless
    of texture; physics polygons and custom tile properties do not define this rule.
@@ -52,6 +53,42 @@ Duplicate a level and give its Definition a unique number. Use **Make Unique**
 before changing shared resources. Paint layers, place starts/encounters, and test
 with F6. Extend the level lookup, save-level validation, and regression coverage
 when adding a level beyond the six shipped scenes.
+
+### Survival maps
+
+The four maps in `levels/survival/` are 52×52 cells at 32 logical points per
+cell. Each has 2,704 ground cells, explicit `Collision`, two hero starts, a
+heavy-rifle pickup, and enemy entry markers. `Clearings/A`, `B`, and `C` are
+editor guides; they do not restrict building or give bonuses.
+
+Keep Definition's mode number at `0`. Its `survival_map_id` identifies an
+allowlisted entry in `scripts/domain/survival_map_catalog.gd`. New runs select
+one of its four `NEW_RUN_IDS` with equal probability using a separate random
+generator. `load_level(0)` still loads the original map. Retry and resume use
+the selected identity without a new draw.
+
+Under `Spawns`, use `enemyEntry` markers. A shared Label groups candidate
+positions into an entry sector. Enabled candidates in every sector must have
+a route to the hero area with boss/Hermes clearance. Keep several candidates
+per sector, enough free space for a spawner, and broad alternate approaches.
+The simulation checks world-space hero/base distance, terrain, occupancy, and
+routes. If no candidate is valid, it keeps the pending spawn and retries later.
+Tower placement cannot close the final route from any enabled sector.
+
+Tree crowns and scenery bounds do not create collision. Paint trunks, walls,
+containers, and rock footprints explicitly. Grass and roads have the same
+movement rules; scenery does not block shots or provide cover.
+
+To select a map for an isolated capture or playtest:
+
+```sh
+rtk godot --path . -- --survival-map=dry_wash --storage-dir=/private/tmp/nathaniel-dry-wash
+rtk make test-survival profile-survival art-survival
+```
+
+`--survival-map` also pins subsequent new runs in that process. The normal
+menu remains random. The demo export includes all four maps and the original
+scene for save compatibility.
 
 ## Add or change an enemy or tower
 

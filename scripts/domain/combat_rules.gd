@@ -11,9 +11,14 @@ static func acquire(sim: GameSimulation, unit: Dictionary) -> void:
 		return
 	var current: Dictionary = sim.entity(int(unit.target_id))
 	if unit.enemy:
-		if alive(current):
+		if alive(current) and (not sim.is_survival() or not current.enemy):
 			return
 		unit.target_id = -1
+		if sim.is_survival():
+			if sim.result == "playing":
+				var player: Dictionary = sim.pursuit_target()
+				unit.target_id = int(player.get("id", -1))
+			return
 		# Original acquisition intentionally lets the last eligible ally win.
 		for ally: Dictionary in sim.opponents(true):
 			if not alive(ally):

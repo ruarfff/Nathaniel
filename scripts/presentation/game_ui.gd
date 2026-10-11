@@ -305,7 +305,7 @@ func show_menu(which: String, context: Dictionary = {}) -> void:
 					_menu_button("Continue · Level %d" % context.get("continue_level", 1), "level", context.get("continue_level", 1))
 				_menu_button("New campaign", "level", 1)
 				_menu_button("Select level", "levels")
-			_menu_button("Survival", "level", 0)
+			_menu_button("Survival", "survival")
 			_menu_button("Load game", "load_menu")
 			_menu_button("Settings", "settings")
 			_menu_button("Credits", "credits")
@@ -360,7 +360,7 @@ func show_menu(which: String, context: Dictionary = {}) -> void:
 			_menu_button("Main menu", "main")
 		"gameOver":
 			_heading("EARTH HAS FALLEN", "Score %d · Time %s" % [context.get("score", 0), _time_text(context.get("elapsed", 0.0))])
-			_menu_button("Try again", "level", context.get("level", 1))
+			_menu_button("Try again", "continue_result")
 			_menu_button("Main menu", "main")
 		"credits":
 			_heading("NATHANIEL", "Defender of Earth\n\nOriginal game · Ruairi O'Brien\nSpriteKit port · Ruairi O'Brien\nOriginal platform · Windows Phone 7 / XNA\nCurrent engine · Godot 4.7.2\n\nSpecial thanks\nThe XNA Community\nApple Developer Tools")

@@ -37,6 +37,7 @@ func _run() -> void:
 	if rig == null or hermes.gathering_model().gathering_view == null:
 		quit(1)
 		return
+	_check_pose_redraw(player, hermes, nathaniel, receiver)
 	var corpse: Dictionary = {"id": 1, "position": Vector2(220, 200), "pickup_position": Vector2(220, 200), "phase": "grab", "phase_elapsed": 0.2, "cargo_slot": 0, "carried": false, "source_kind": "soldier"}
 	var cargo: Array = [corpse]
 	corpse.phase = "crush"
@@ -101,6 +102,7 @@ func _run() -> void:
 	for model: ActorModelView in [hermes.model_view, hermes.mobile_model_view]:
 		expect(not model.gathering_view.intake_bundle.visible, "Death clears received matter in both forms without a Nathaniel view")
 	_check_winch(player, hermes)
+	_check_gathering_replacement(player.model_view)
 	player.free()
 	hermes.free()
 	_check_self_destruct()
@@ -109,6 +111,76 @@ func _run() -> void:
 		await _check_self_destruct_rendered()
 	print("Resource gathering visuals: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
+
+
+func _check_pose_redraw(player: ActorView, hermes: HermesView, state: Dictionary, receiver: Dictionary) -> void:
+	var model: ActorModelView = player.model_view
+	var rig: ResourceGatheringView = model.gathering_view
+	var intake_model: ActorModelView = hermes.mobile_model_view
+	var intake: ResourceGatheringView = intake_model.gathering_view
+	rig.sync([], state, receiver, intake_model)
+	intake.sync([], state, receiver, null)
+	model._dirty = false
+	intake_model._dirty = false
+	rig.apply_pose()
+	intake.apply_pose()
+	expect(not model._dirty and not intake_model._dirty, "Unchanged empty gathering rigs reuse their rendered models")
+	state.resource_capacity = 1
+	rig.apply_pose()
+	expect(model._dirty, "Rack visibility changes refresh the gathering model")
+	var cargo: Dictionary = {"phase": "carry", "carried": true, "cargo_slot": 0, "source_kind": "soldier"}
+	rig.sync([cargo], state, receiver, intake_model)
+	model._dirty = false
+	rig.apply_pose()
+	expect(not model._dirty, "Unchanged carried matter does not redraw after temporary visibility resets")
+	cargo.source_kind = "boss"
+	rig.apply_pose()
+	expect(model._dirty, "Changing the visible matter mesh refreshes the model")
+	cargo.phase = "crush"
+	cargo.phase_elapsed = 0.03
+	cargo.disarmed = true
+	cargo.position = Vector2(220, 200)
+	cargo.pickup_position = cargo.position
+	rig.apply_pose()
+	model._dirty = false
+	rig.apply_pose()
+	expect(not model._dirty, "An unchanged handling pose does not redraw after restoring its joints")
+	cargo.phase_elapsed = 0.07
+	rig.apply_pose()
+	expect(model._dirty, "Handling motion and clamp light still refresh the model")
+	model._dirty = true
+	rig.apply_pose()
+	expect(model._dirty, "Gathering never clears an independent model refresh")
+	receiver.furnace_remaining = GameBalance.RESOURCE_FURNACE_SECONDS * 0.5
+	intake.apply_pose()
+	expect(intake_model._dirty, "Changed furnace color refreshes the intake model")
+	intake_model._dirty = false
+	intake.apply_pose()
+	expect(not intake_model._dirty, "Unchanged furnace color reuses the rendered model")
+	receiver.furnace_remaining = 0.0
+	state.resource_capacity = 3
+	rig.sync([], state, receiver, intake_model)
+	intake.sync([], state, receiver, null)
+	var wrist: Node3D = model.model_root.find_child("GatherWristLeft", true, false)
+	wrist.position += Vector3.UP * 0.1
+	model._dirty = false
+	rig.apply_pose()
+	expect(model._dirty, "Restoring a joint changed by another pose refreshes the model")
+
+
+func _check_gathering_replacement(model: ActorModelView) -> void:
+	var previous: ResourceGatheringView = model.gathering_view
+	expect(model.configure(load("res://scenes/actors/generated/hermes_anchor_model.tscn"), Color.WHITE), "Model replacement loads the deployed gathering rig")
+	var rig: ResourceGatheringView = model.gathering_view
+	expect(rig != previous, "Model replacement creates a new gathering pose tracker")
+	var live_parts: bool = true
+	for part: Node3D in rig._pose_parts:
+		live_parts = live_parts and is_instance_valid(part) and model.model_root.is_ancestor_of(part)
+	expect(live_parts, "Replacement pose tracking contains only the new model nodes")
+	rig.sync([], {"hp": 100}, {"hp": 100, "anchored": true}, null)
+	model._dirty = false
+	rig.apply_pose()
+	expect(not model._dirty, "An unchanged replacement gathering rig reuses its model render")
 
 
 func _check_winch(player: ActorView, hermes: HermesView) -> void:
@@ -130,6 +202,10 @@ func _check_winch(player: ActorView, hermes: HermesView) -> void:
 				"phase": "winch_reel", "phase_elapsed": 0.05, "source_kind": kind, "disarmed": true, "carried": false,
 				"recovery_route": [Vector2(state.position) + direction * 180.0, Vector2(state.position) + direction * 72.0, Vector2(state.position) + Vector2(72, 0), Vector2(state.position) + Vector2(10, 0)]}
 			_sync(player, hermes, [corpse], carrier, state)
+			if kind == "soldier" and index == 0:
+				hermes.model_view._dirty = false
+				rig.apply_pose()
+				expect(not hermes.model_view._dirty, "An unchanged active winch keeps its final pose without another model render")
 			expect(hermes._hook_display.visible and not rig.winch_clamp.visible, "One authored clamp is visible while the " + kind + " is pulled")
 			expect(not rig.intake_bundle.visible and ResourceGatheringView.ground_visible(corpse), "A pulled shell stays visible on the ground before compression")
 			expect(not ResourceGatheringView.collectible_visible(corpse), "Nathaniel cannot click winch-owned cargo")

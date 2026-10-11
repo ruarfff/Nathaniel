@@ -34,12 +34,12 @@ func _ready() -> void:
 	_apply_deployment()
 
 
-func apply_state(entity: Dictionary, selected: bool = false, playback_enabled: bool = true) -> void:
+func apply_state(entity: Dictionary, selected: bool = false, playback_enabled: bool = true, defer_laser_aim: bool = false) -> void:
 	_anchored = bool(entity.get("anchored", false))
 	if not _received_state:
 		_deployment_amount = 1.0 if _anchored else 0.0
 		_received_state = true
-	super.apply_state(entity, selected, playback_enabled)
+	super.apply_state(entity, selected, playback_enabled, defer_laser_aim)
 	_apply_deployment()
 
 
@@ -115,7 +115,6 @@ func _apply_deployment() -> void:
 		if not part.transform.is_equal_approx(pose):
 			part.transform = pose
 			model_view.refresh_pose()
-	queue_redraw()
 
 
 func notify_respawn() -> void:
@@ -137,6 +136,11 @@ func notify_attack(direction: Vector2 = Vector2.ZERO, weapon_id: String = "") ->
 func aim_laser(target_offset: Vector2, target_height: float) -> void:
 	if not _anchored and mobile_model_view != null and _health > 0.0:
 		mobile_model_view.aim_laser(target_offset, target_height)
+
+
+func clear_laser_aim() -> void:
+	if not _anchored and mobile_model_view != null:
+		mobile_model_view.set_aim(_aim_direction)
 
 
 func laser_muzzle() -> Vector2:

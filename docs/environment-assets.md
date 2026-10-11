@@ -10,6 +10,14 @@ spawn markers, and level rules remain unchanged. Existing earth paths retain
 their broad shapes. Concrete and asphalt tiles are also available in the native
 palette for new authoring; this pass does not redesign the roads.
 
+The four additional scenes in `levels/survival/` use the same ground palette
+and saved scenery sources. Crossroads combines sandy roads and small ruins;
+Dry Wash uses pale ground and separate rock ribs; Freight Yard uses warehouses,
+containers and buried rails. Countryside uses muted grass, sparse tree groups
+and a winding road, with no buildings or industrial props. New container,
+rail and rock-shelf pieces use saved `environment_*.blend` sources and the
+same export pipeline. The six original scene layouts remain intact.
+
 ## Files and commands
 
 Use the installed Blender **5.2.2** and its bundled Python. No new Python

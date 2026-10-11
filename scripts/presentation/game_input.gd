@@ -32,13 +32,7 @@ func _input(event: InputEvent) -> void:
 			return
 		if event.pressed and not event.echo and app.sim != null and app.sim.result in ["victory", "gameOver"]:
 			get_viewport().set_input_as_handled()
-			var level: int = app.sim.level_number
-			if app.sim.result == "victory":
-				level = app.level.definition.next_level
-				if level < 0:
-					app.command("main")
-					return
-			app.command("level", level)
+			app.command("continue_result")
 			return
 		if event.keycode in [KEY_1, KEY_2] and app.sim != null and app.ui.menu.is_empty():
 			get_viewport().set_input_as_handled()

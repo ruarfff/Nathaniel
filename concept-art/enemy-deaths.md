@@ -1,15 +1,20 @@
 # Enemy deaths: boss matter and shell explosions
 
 Requested on 2026-10-04 and implemented from these appearance studies. The boss
-leaves collectible matter. Grunts and spawners explode without resources.
+leaves collectible matter. Grunts and spawners explode without matter.
 The sheets remain visual references; runtime art comes from editable Blender sources.
+
+The later [tech and research proposal](research-and-tech.md) adds a durable
+tech module after grunt and spawner deaths. It preserves these explosions and
+their lack of collectible corpses. The original sheets below predate tech;
+tech drops remain a proposal, not current behavior.
 
 | Enemy | Requested death result | Resource outcome |
 | --- | --- | --- |
 | Soldier | Keep the existing corpse and collection sequence. | Collect, disarm, crush, and feed Hermes. |
 | Boss | Collapse into a distinct heavy corpse. | One bundle, one slot; provisional value 10, final balance undecided. |
-| Grunt | A small, sharp shell burst, then clear ground. | No collectible corpse or fragments. |
-| Spawner | A larger core rupture and falling crown, then clear ground. | No collectible corpse or fragments. |
+| Grunt | A small, sharp shell burst; effect fragments fade. | No matter corpse. Separate tech drop proposed. |
+| Spawner | A larger core rupture; crown and effect fragments fade. | No matter corpse. Separate tech drop proposed. |
 
 The internal `gunSoldier` variant keeps the existing soldier resource behavior.
 This pass does not add another enemy type.
@@ -71,7 +76,8 @@ implementation.
 Keep this small enough for several nearby grunt deaths. A brief lime-white
 flash breaks the low shell into four or five broad plum pieces. Throw them
 only a short distance, extinguish the light, and fade the fragments with a
-small dust puff. End on clear ground with no body or collectible debris.
+small dust puff. End without a body or collectible effect debris. In the tech
+proposal, the separate intact module remains after these effect fragments fade.
 
 Start with about 0.4 seconds for the full effect. Use a sharp onset and fast
 falloff, not a long warning or the corpse's gradual dissolve. The flash should
@@ -86,7 +92,8 @@ Stop the crown laser and spawning when death is accepted. Light briefly rises
 inside the emergence arch and the major shell joins. The dome splits into a
 few large wedges around a contained lime-white burst. The unlit crown falls
 sideways as one recognizable piece. A low dust puff hides the final shell
-pieces as they fade, leaving the footprint empty.
+pieces as they fade. The tech proposal leaves a separate intact core pack;
+the fading shell pieces themselves remain non-collectible.
 
 Start with about 0.8 seconds for the full effect. Its larger body, displaced
 crown, and deeper optional crack distinguish it from the grunt. Keep dust
@@ -96,7 +103,8 @@ pieces are effects, not a permanent wreck, obstacle, or resource deposit.
 ## Shared production and behavior
 
 Treat both explosions as visual feedback by default. They add no blast damage,
-knockback, chain reactions, loot, or persistent blocking. The living actor is
+knockback, chain reactions, or persistent blocking. Proposed tech comes from
+the accepted death event, not the explosion animation. The living actor is
 dead immediately; a short effect can remain after its view is removed. Never
 keep its weapon or spawner logic active merely to finish an animation.
 
@@ -116,7 +124,8 @@ Check the boss corpse against the live boss silhouette, collection reach,
 backpack slot, and both Hermes intake heights. Check both explosions with
 several simultaneous deaths at normal zoom, on sand and dark rubble. Their
 effects must finish once, stop advancing during pause, and leave no ghost
-actor, collectible fragment, or repeated death event. The concept sheets are
+actor, collectible effect fragment, or repeated death event. The separate
+tech proposal must create its pickup once. The concept sheets are
 not gameplay tests. Use [testing](../docs/testing.md) for runtime checks.
 
 ## Current implementation
