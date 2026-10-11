@@ -156,5 +156,4 @@ custom loading UI, cloud saves, and public deployment are outside this preview.
 
 See Godot's [web export guide](https://docs.godotengine.org/en/4.7/tutorials/export/exporting_for_web.html)
 and [Web preset options](https://docs.godotengine.org/en/4.7/classes/class_editorexportplatformweb.html)
-for browser restrictions. Local results are recorded in
-[verification](verification.md).
+for browser restrictions.

@@ -137,6 +137,3 @@ a physical-display, frame-rate, mobile-memory, or real-input acceptance test.
 The complete environment set is about 396 MiB of RGBA texture data including
 mipmaps when all variants are loaded together. This is a desktop detail set;
 it is not a verified mobile memory budget. Shared scene instances reuse textures.
-
-See [dated verification results](verification.md#environment-assets--2026-10-03) for the original
-asset checks and platform limits. Current commands and contracts are above.

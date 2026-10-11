@@ -16,7 +16,6 @@ var winch: Node3D
 var winch_clamp: Node3D
 var winch_outlet: Node3D
 var winch_guide: Node3D
-var winch_contact: StandardMaterial3D
 var _slots: Array[Node3D] = []
 var _racks: Array[Node3D] = []
 var _bundles: Array[Node3D] = []
@@ -81,14 +80,6 @@ func _init(owner_model: ActorModelView) -> void:
 	_winch_guide_pivot = _node("WinchGuidePivot")
 	_winch_guide_arm = _node("WinchGuideArm")
 	_winch_guide_mesh = _node("Winch short sliding guide") as MeshInstance3D
-	if winch_clamp != null:
-		winch_contact = StandardMaterial3D.new()
-		winch_contact.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		winch_contact.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		winch_contact.albedo_color = Color("ffc26c", 0.0)
-		for mesh: MeshInstance3D in winch_clamp.find_children("*", "MeshInstance3D", true, false):
-			if "flat contact pad" in str(mesh.name):
-				mesh.material_overlay = winch_contact
 	if intake_bundle != null:
 		intake_bundle.hide()
 	if _glow != null:
@@ -174,7 +165,6 @@ func recovery_corpse() -> Dictionary:
 func _pose_winch() -> void:
 	var active: Dictionary = recovery_corpse()
 	winch_clamp.visible = active.is_empty()
-	winch_contact.albedo_color = Color("ffc26c", 0.0)
 	for part: Node3D in [_winch_yoke, _winch_drum, _winch_guide_pivot, _winch_guide_arm, _winch_guide_mesh, winch_guide]:
 		part.transform = _rest[part]
 	if active.is_empty():
@@ -197,8 +187,6 @@ func _pose_winch() -> void:
 	_winch_guide_mesh.global_transform = Transform3D(_basis_y(end - start, Vector3.RIGHT) * Basis.from_scale(Vector3(1.0, start.distance_to(end) / length, 1.0)), (start + end) * 0.5)
 	_winch_yoke.rotation.y += -heading.angle() * 0.18
 	_winch_drum.rotation.x += phase_fraction(active) * TAU * (3.0 if str(active.phase) == "winch_reel" else 0.3)
-	if str(active.phase) == "winch_reel":
-		winch_contact.albedo_color = Color("ffc26c", 1.0 - smoothstep(0.0, GameBalance.HERMES_WINCH_CLAMP_SECONDS, float(active.get("phase_elapsed", 0.0))))
 
 
 func _pose_backpack() -> void:

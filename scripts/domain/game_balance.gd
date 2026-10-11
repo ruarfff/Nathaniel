@@ -66,7 +66,7 @@ const WEAPONS: Dictionary = {
 ## Beams use damage per active second and delay as rest after a burst. Spawners pay
 ## damage in whole-second ticks; other beams carry fractional HP.
 ## healTower uses damage as HP restored per tick and delay as its tick interval.
-## See docs/balance.md for the current values and timing rules.
+## See docs/balance.md for units and timing conventions.
 const STATS: Dictionary = {
 	"nathaniel": {"max_hp": 8000, "speed": 80.0, "vision": 500.0,
 		"size": Vector2(48, 72), "radius": 19.2, "score": 0},

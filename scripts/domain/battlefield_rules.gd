@@ -60,7 +60,7 @@ static func update_corpses(sim: GameSimulation, delta: float) -> void:
 		remaining -= tick
 		if remaining <= 0:
 			break
-	_update_carry_flag(sim)
+	sim.nathaniel.has_corpse = sim.carried_resource_count() > 0
 
 static func phase_seconds(phase: String) -> float:
 	match phase:
@@ -136,11 +136,14 @@ static func _finish_gathering_phase(sim: GameSimulation, corpse: Dictionary) -> 
 		"present":
 			_set_phase(sim, corpse, "feed")
 		"feed":
-			sim.resources += int(corpse.amount)
-			sim.corpses.erase(corpse)
-			sim.hermes.furnace_remaining = GameBalance.RESOURCE_FURNACE_SECONDS
-			sim.emit_event("delivery", {"amount": corpse.amount, "position": sim.hermes.position,
-				"corpse_id": corpse.id, "source_kind": corpse.source_kind})
+			_accept_delivery(sim, corpse)
+
+static func _accept_delivery(sim: GameSimulation, corpse: Dictionary) -> void:
+	sim.resources += int(corpse.amount)
+	sim.corpses.erase(corpse)
+	sim.hermes.furnace_remaining = GameBalance.RESOURCE_FURNACE_SECONDS
+	sim.emit_event("delivery", {"amount": corpse.amount, "position": sim.hermes.position,
+		"corpse_id": corpse.id, "source_kind": corpse.source_kind})
 
 static func _available_cargo_slot(sim: GameSimulation) -> int:
 	var occupied_slots: Array[int] = []
@@ -162,7 +165,7 @@ static func drop_resources(sim: GameSimulation) -> void:
 		if corpse.phase != "loose":
 			corpse.cargo_slot = -1
 			_set_phase(sim, corpse, "loose")
-	_update_carry_flag(sim)
+	sim.nathaniel.has_corpse = sim.carried_resource_count() > 0
 
 static func interrupt_delivery(sim: GameSimulation) -> void:
 	for corpse: Dictionary in sim.corpses:
@@ -278,8 +281,7 @@ static func _reel_distance(corpse: Dictionary) -> float:
 static func _recovery_route_clear(sim: GameSimulation, corpse: Dictionary) -> bool:
 	var route: Array[Vector2] = []
 	if corpse.phase == "winch_launch":
-		for position: Vector2 in corpse.recovery_route:
-			route.append(position)
+		route.assign(corpse.recovery_route)
 	elif corpse.phase == "winch_reel":
 		route.append(corpse.position)
 		var travelled: float = _reel_distance(corpse)
@@ -306,9 +308,8 @@ static func recovery_position(corpse: Dictionary) -> Vector2:
 			var start: Vector2 = route[index - 1]
 			var end: Vector2 = route[index]
 			var length: float = start.distance_to(end)
-			var position: Vector2 = start.move_toward(end, minf(travelled, length))
 			if travelled <= length:
-				return position
+				return start.move_toward(end, travelled)
 			travelled -= length
 		return corpse.recovery_route[-2]
 	elif corpse.phase == "winch_crush":
@@ -333,13 +334,9 @@ static func _finish_recovery_phase(sim: GameSimulation, corpse: Dictionary) -> v
 		"winch_crush":
 			_set_phase(sim, corpse, "winch_feed")
 		"winch_feed":
-			sim.resources += int(corpse.amount)
-			sim.corpses.erase(corpse)
 			sim.hermes.recovery_corpse_id = 0
 			sim.hermes.recovery_cooldown = GameBalance.HERMES_WINCH_RESET_SECONDS
-			sim.hermes.furnace_remaining = GameBalance.RESOURCE_FURNACE_SECONDS
-			sim.emit_event("delivery", {"amount": corpse.amount, "position": sim.hermes.position,
-				"corpse_id": corpse.id, "source_kind": corpse.source_kind})
+			_accept_delivery(sim, corpse)
 
 static func interrupt_recovery(sim: GameSimulation, clear_eligibility: bool = false) -> void:
 	for corpse: Dictionary in sim.corpses:
@@ -373,21 +370,11 @@ static func _safe_drop_position(sim: GameSimulation, corpse: Dictionary) -> Vect
 				distance = separation
 	return nearest
 
-static func _update_carry_flag(sim: GameSimulation) -> void:
-	sim.nathaniel.has_corpse = false
-	for corpse: Dictionary in sim.corpses:
-		if corpse.carried:
-			sim.nathaniel.has_corpse = true
-
 static func overlaps(first: Vector2, first_size: Vector2, second: Vector2, second_size: Vector2) -> bool:
 	var separation: Vector2 = (first - second).abs()
 	var extent: Vector2 = (first_size + second_size) * 0.5
 	# CGRect intersects includes touching object boundaries in the Swift game.
 	return separation.x <= extent.x and separation.y <= extent.y
-
-static func update_spawners(sim: GameSimulation, delta: float) -> void:
-	for unit: Dictionary in sim.entities.duplicate():
-		update_spawner(sim, unit, delta)
 
 static func update_spawner(sim: GameSimulation, unit: Dictionary, delta: float) -> void:
 	if unit.kind != "spawner" or not CombatRules.alive(unit):

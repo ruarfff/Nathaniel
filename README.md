@@ -28,7 +28,7 @@ make help                 # Commands and options
 
 Open `project.godot` directly in the editor if preferred. Native scenes in `levels/` are authoritative: edit a level and press **F6** to play it. **F5** opens the menu. `make import` refreshes Godot's resource imports.
 
-Exports go to `exports/macos/Nathaniel.app` and `exports/ios/Nathaniel.xcodeproj`. [Authoring and exports](docs/authoring.md) covers scene editing, templates, and iOS setup. [Verification](docs/verification.md) records the tested platforms and remaining device checks.
+See [authoring and exports](docs/authoring.md) for scene editing, templates, platform limits, and export paths.
 
 The [browser version](docs/web.md) uses the same game and runs from a static web server. Export it, run `make serve-web`, then open <http://127.0.0.1:8060/>. Browser saves are separate from native saves.
 
@@ -90,24 +90,14 @@ Search source directories first; `assets/generated/` contains export output.
 | Blender sources or exports | `art/blender/sources/`, `tools/blender/`, `art/blender/settings.json` | [Pipeline](docs/blender-assets.md), [terrain/buildings](docs/environment-assets.md); `make test-art` |
 | Saves or Swift compatibility | `scripts/infrastructure/save_store.gd`, `swift_save_import.gd` | [Save contract](docs/saves.md); `make test-services` |
 | Debug state or MCP | `scripts/presentation/debug_bridge.gd`, `scripts/infrastructure/debug_server.gd`, `game-mcp-server/` | [Debug protocol](docs/debug-interface.md); `make test-mcp` |
-| Platform export or playtest | `tools/export_project.py`, `export_presets.cfg` | [Exports](docs/authoring.md#export-and-platform-checks), [testing](docs/testing.md), [dated verification](docs/verification.md) |
+| Platform export or playtest | `tools/export_project.py`, `export_presets.cfg` | [Exports](docs/authoring.md#export-and-platform-checks), [testing](docs/testing.md) |
 
 ## Code and content
 
-| Path | Responsibility |
-| --- | --- |
-| `scripts/domain/` | Gameplay state and use cases, combat, balance, navigation, snapshots |
-| `scripts/presentation/` | Input, camera projection, UI, audio, effects and scene views |
-| `scripts/presentation/game_app.gd` | Composition root: connects the simulation, views, and services |
-| `scripts/presentation/actors/` | Actor views and visual resources |
-| `scripts/presentation/levels/` | Native level resources and encounter markers |
-| `scripts/infrastructure/` | Atomic files, save/settings/progress stores, Swift-save conversion and debug HTTP |
-| `levels/`, `scenes/`, `resources/`, `assets/` | Editable native content and artwork |
-| `art/blender/sources/`, `tools/blender/` | Saved editable models, generators and exporters; excluded from runtime import |
-| `assets/generated/`, `scenes/*/generated/` | Committed runtime exports; regenerate from saved sources |
-| `concept-art/` | Design references and proposals; not a record of implemented mechanics |
-| `tests/`, `tools/`, `game-mcp-server/` | Automated checks, local developer tools and MCP adapter |
-
-`GameSimulation` owns gameplay use cases and uses logical world coordinates with positive Y up. It has no scene-tree, rendering, input, or disk dependency. Presentation converts between that world and the isometric viewport. Infrastructure owns persistence and external protocols. There is no separate application wrapper around the simulation. See [architecture](docs/architecture.md) for dependencies. Read the [domain boundary](scripts/domain/README.md) before changing simulation state directly.
+[Architecture](docs/architecture.md) defines the domain, presentation, and
+infrastructure boundaries. Read the [domain APIs](scripts/domain/README.md)
+before changing gameplay state. Native scenes/resources and saved Blender files
+are authoritative; generated assets are exports. Concept art records design
+references, while the implementation guides describe current behavior.
 
 Use [testing](docs/testing.md) for validation and [debug/MCP](docs/debug-interface.md) for inspection and repeatable setup. The former Swift/SpriteKit and Windows Phone projects are retired from the working tree; Git commit `824c8f1` retains their source and migration provenance. Save formats and app storage identifiers remain compatible with the existing Godot edition.

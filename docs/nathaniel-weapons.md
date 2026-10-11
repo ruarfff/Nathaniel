@@ -102,5 +102,5 @@ rtk make format-check
 The focused suite covers combat timing, save compatibility, native pickups,
 controls, modular models, grip recoil, muzzle placement and 4K rendering.
 The capture command writes both guns in the normal game at exact 3840×2160
-under `test-artifacts/`. These are scripted checks; real platform input and
-remaining limits are recorded in [verification](verification.md).
+under `test-artifacts/`. Use [testing](testing.md#native-playtest) for real input
+checks and [exports](authoring.md#export-and-platform-checks) for platform limits.

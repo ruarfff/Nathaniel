@@ -1,94 +1,63 @@
 # Blender asset pipeline
 
-Use Blender to author terrain, props, and actors, then export PNG sprites or
-live GLB models for the existing Godot presentation. The placeholder cube proves the workflow; its material is temporary
-and does not define the game's art style. Existing PNG sprites remain usable.
-They do not have editable Blender originals unless someone models new sources.
+Author saved `.blend` sources, then export sprites or live GLB models for Godot.
+Use Blender **5.2.2**, pinned in `art/blender/settings.json`. The pipeline uses
+Blender's bundled Python and `bpy`; no add-ons or separate Python environment.
 
 ## Setup and files
-
-The pipeline requires Blender **5.2.2**, pinned in
-`art/blender/settings.json`. It uses Blender's bundled Python and `bpy`, with no
-separate Python environment, pip packages, add-ons, or Blender MCP service.
-Godot preview and checks use the project's existing Godot installation.
 
 ```sh
 rtk make art-doctor
 ```
 
-The wrapper checks `BLENDER`, then `blender` on `PATH`, then the standard macOS
-application and Home Manager application paths. To select another installation:
-
-```sh
-rtk make art-doctor BLENDER=/Applications/Blender.app/Contents/MacOS/Blender
-```
-
-`art-doctor` reports the executable, Blender version, and bundled Python version.
-A missing executable or version mismatch stops the command with an error. Change
-the version pin only after checking the exports with the new version.
+The wrapper checks `BLENDER`, `blender` on `PATH`, then standard macOS and Home
+Manager application paths. Set `BLENDER=/path/to/blender` to select an installation.
+The doctor reports executable, Blender, and Python versions and rejects a version
+mismatch. Check exports before changing the pin.
 
 | Location | Purpose |
 | --- | --- |
-| `art/blender/sources/*.blend` | Editable, saved source artwork |
-| `art/blender/settings.json` | Shared projection, canvas, anchor, lighting, and render settings |
+| `art/blender/sources/*.blend` | Editable saved sources |
+| `art/blender/settings.json` | Shared projection, canvas, anchors, lighting, profiles |
 | `tools/blender/generate_*.py` | Optional source generators |
-| `tools/blender/pipeline.py`, `tools/blender.sh` | Export code and Blender launcher |
-| `assets/generated/*.png` | Runtime RGBA sprites |
-| `assets/generated/*.json` | Source/settings hashes, versions, projection, and anchor records |
-| `assets/generated/*_frames.tres` | Native SpriteFrames for saved animation clips |
-| `assets/generated/*.glb` | Self-contained live character and weapon models, when enabled in the source |
-| `scenes/actors/generated/*_model.tscn` | Live model with shared camera, light, and ground anchor |
-| `scenes/scenery/generated/*.tscn` | Generated Sprite2D scenes with the correct anchor |
+| `tools/blender/pipeline.py`, `tools/blender.sh` | Exporter and launcher |
+| `assets/generated/` | PNGs, provenance JSON, SpriteFrames, and optional GLBs |
+| `scenes/actors/generated/*_model.tscn` | Live models with shared camera and ground anchor |
+| `scenes/scenery/generated/*.tscn` | Sprite scenes with exported anchors |
 
-`art/.gdignore` keeps source art outside Godot import. Keep the `.blend`, generator
-when used, shared settings, and exported files together in version control.
-Change source art rather than editing the generated PNG, JSON, or scene files.
-
-Manifest hashes record the source and settings **at export time**. The settings
-hash covers the whole file, so adding an unrelated profile changes it even when
-an asset's effective settings are unchanged. Re-export to refresh provenance;
-do not edit hashes by hand or treat that mismatch alone as evidence of bad pixels.
+`art/.gdignore` excludes source art from Godot import. Track sources, generators
+when used, shared settings, and exports together. Edit source art, not generated
+PNG, JSON, GLB, or scene files. Hashes record provenance at export time. The
+settings hash covers the whole file, including unrelated profiles; re-export to
+refresh it rather than editing hashes or assuming a mismatch means bad pixels.
 
 ## Projection and scale
 
-One Blender unit equals **32 logical world points**. Blender X and Y are ground
-axes; Z is height. Put the prop's ground-contact anchor at `(0, 0, 0)`, with the
-model above Z = 0. The placeholder is a one-unit cube with its bottom center at
-that origin.
+One Blender unit is **32 logical points**. X and Y are ground axes; Z is height.
+Put the ground-contact anchor at `(0, 0, 0)` and geometry above Z = 0.
+The orthographic camera uses 45° azimuth and 30° elevation.
 
-The shared orthographic camera has 45° azimuth and 30° elevation. At the exported
-scale, one unit along Blender X projects to `(-32, 16)` pixels and one unit along
-Blender Y to `(32, 16)` pixels, using image coordinates with positive Y down.
-The mapping is `logical (x, y) = 32 * Blender (Y, X)`: Blender Y follows logical X,
-and Blender X follows logical Y. This matches `IsoProjection` and the game's
-**64×32 diamond**. One unit of height projects about 39.192 pixels upward. The
-exporter checks these basis points each time.
+`logical (x, y) = 32 * Blender (Y, X)`. At export scale, one Blender X unit
+projects to `(-32, 16)` pixels, Y to `(32, 16)`, and height to about 39.192 pixels
+upward. Image Y points down. This matches `IsoProjection` and the **64×32 diamond**;
+the exporter checks the basis points each time.
 
-The default profile's canvas is **128×128**, and its ground anchor is pixel **(64, 96)**
-from its top-left corner. The generated Sprite2D is not centered and has offset
-`(-64, -96)`, so its node origin is the ground anchor. Keep sprite scale at 1;
-the game applies its own world zoom.
+The default canvas is **128×128**, with ground anchor **(64, 96)** from the top
+left. Sprite offset is `(-64, -96)` with centering disabled and scale 1. Iron &
+Ink profiles multiply canvas and anchor by render density 8, then use scale 1/8.
+Select `PROFILE=iron_ink` when generating; saved `asset_profile` controls exports.
 
-The [Iron & Ink profile](iron-and-ink-assets.md) multiplies both dimensions and
-the anchor by a shared render density of 8, then uses sprite scale 1/8. This
-adds source pixels for 4K screens without changing world scale. Select it when
-creating a source with `PROFILE=iron_ink`; its saved `asset_profile` property
-controls later exports. The original placeholder retains the default profile.
+Never fit each model independently to its canvas. Edge-clipped exports fail.
+Enlarge the shared canvas if needed, retaining world scale. Static default
+exports retain transparent borders; environment exports trim and adjust anchors.
+Animation uses common frame dimensions and atlas margins; see
+[animated characters](iron-and-ink-assets.md#animated-characters).
+Any crop must subtract its top-left origin from the anchor and set the sprite
+offset to the negative of the new anchor.
 
-Models are never fitted independently to their canvas. An export that reaches
-the image edge fails. For larger art, enlarge the shared canvas and place its
-anchor so the art fits, then regenerate all exports. Keep the world scale fixed.
-Default static exports retain transparent borders. The environment profile trims
-them and adjusts the exported anchor. Animated actors use common frame
-dimensions with tight atlas crops and native margins, as described in the
-[animation guide](iron-and-ink-assets.md#animated-characters).
-If another tool trims an image, subtract
-the crop's top-left origin from the anchor and update the sprite offset to the
-negative of that new anchor. Cropping without this adjustment moves the prop.
+## Create, edit, and export
 
-## Create an asset
-
-Generate a new source from the sample generator, then render it:
+Generate only when creating a new source:
 
 ```sh
 rtk make art-generate ASSET=my_prop
@@ -96,118 +65,67 @@ rtk make art-render ASSET=my_prop
 ```
 
 Names start with a lowercase letter and use lowercase letters, digits, and
-underscores. Generation creates `art/blender/sources/my_prop.blend` and refuses
-to overwrite an existing source. Rendering is a separate command.
+underscores. Generation refuses to overwrite a source. For custom geometry,
+copy `tools/blender/generate_placeholder.py`, keep `build()`, and pass
+`GENERATOR=tools/blender/generate_my_prop.py`. You can also save a new source
+directly in Blender using the same scale and origin.
 
-To create different geometry, copy `tools/blender/generate_placeholder.py`, keep
-its `build()` entry point, and use your script:
+For existing artwork:
 
-```sh
-rtk make art-generate ASSET=custom_prop GENERATOR=tools/blender/generate_my_prop.py
-```
+1. Open its saved source under `art/blender/sources/`, edit, and save.
+2. Make linked data local. Use **File > External Data > Pack Resources** for
+   textures and save. Export rejects linked libraries and unpacked images.
+   Use static textures; convert or pack other external dependencies.
+3. Run `rtk make art-render ASSET=asset_name`.
 
-The generator runs once to create the editable source. Do not rerun it to update
-a manually edited asset. You can also create a source directly in Blender and
-save it under `art/blender/sources/` with the same scale and origin conventions.
+Do not rerun a generator to update saved edits. Rendering opens a separate
+Blender process, applies shared camera/light/output settings in memory, and
+never saves the source. A hash check guards against source changes during export.
+Static sources render frame 1; `asset_animation` sources render saved clips in
+eight directions. Terrain exports named tile collections to padded atlases and
+a TileSet. `asset_model` adds saved geometry and markers as GLB and a 3D scene.
+Use [actor guides](authoring.md#add-or-change-an-enemy-or-tower) for rig contracts.
 
-## Edit and export
-
-1. In Blender, open `art/blender/sources/placeholder_prop.blend`, or your own
-   source. Edit its geometry and materials, keeping the ground anchor at the
-   origin. Save the file before exporting.
-2. Make linked Blender data local. For image textures, use **File > External
-   Data > Pack Resources** and save. Export rejects linked `.blend` libraries
-   and unpacked image textures. Use static images; sequence, movie, and tiled
-   textures are outside this first pass. Other external asset dependencies must
-   also be packed or converted to local static geometry.
-3. Render the saved source:
-
-   ```sh
-   rtk make art-render ASSET=placeholder_prop
-   ```
-
-Rendering opens the saved file in a separate Blender process. It applies the
-shared camera, light, world, and output settings in memory; source camera and
-light edits do not control the export. Static sources render frame 1. Sources
-with an `asset_animation` scene property render their saved clip frames in eight
-directions. Terrain sources render their named tile collections into padded
-atlases and a native TileSet. None of these paths saves the source. A source hash check guards against
-source changes during rendering. A source with `asset_model` also exports its
-saved weapon geometry and markers as a GLB and a native 3D scene. See the
-[live gun tower guide](iron-and-ink-assets.md#live-gun-tower) for its rig and commands.
-
-The saved deployed Hermes source includes the G1 side reel, low orbital guide
-rail, sliding guide and two-jaw clamp. `ResourceGatheringView` poses these
-controls independently of the cannon. The guide extends to the domain's
-72-point outer route; the clamp uses the same saved subtree in its own small
-viewport to avoid clipping at recovery range. To migrate an older source once,
-run `rtk blender --background --factory-startup --disable-autoexec
---python-exit-code 1 --python tools/blender/resource_gathering.py -- migrate
-hermes_anchor`, then export with `rtk make art-render ASSET=hermes_anchor`.
-The migration preserves existing body geometry and transforms. Rendering
-does not run it. Verify source controls and export hashes with the same
-command using `verify hermes_anchor`.
-
-The default settings use CPU Cycles, 32 samples (64 for Iron & Ink), a fixed seed, no denoising,
-transparent film, no motion blur, a box pixel filter, and 8-bit RGBA PNG.
-Per-layer sample overrides are reset to use the shared sample count.
-The output record includes the Blender and
-Python versions and the source/settings hashes. Repeatable results require the
-same source, settings, and Blender environment; identical bytes across different
-Blender versions or platforms are not guaranteed.
-The exporter removes PNG text, timestamp, and EXIF metadata because Blender
-includes render timings and local source paths in those chunks. Image pixels and
-color information remain unchanged; provenance stays in the JSON export record.
-
-To render every saved source after a shared settings change:
+The saved deployed Hermes source contains the G1 reel, orbital guide, and clamp.
+Its guide follows the domain route; the same clamp subtree renders in a separate
+viewport at full recovery reach. Verify controls and export hashes with:
 
 ```sh
-rtk make art-regenerate
+rtk blender --background --factory-startup --disable-autoexec --python-exit-code 1 --python tools/blender/resource_gathering.py -- verify hermes_anchor
 ```
 
-This command renders existing `.blend` files. It does not rerun generators or
-rebuild their contents.
+Shared exports use CPU Cycles, a fixed seed, transparent film, no denoising or
+motion blur, a box pixel filter, and 8-bit RGBA. Sample counts come from shared
+settings, including per-layer overrides. JSON records Blender/Python versions and
+source/settings hashes. Repeatability requires the same environment; identical
+bytes across Blender versions or platforms are not guaranteed. PNG text, timestamps,
+and EXIF are removed because they contain timings and local paths; pixel and color
+data remain unchanged.
 
-## Use the export in Godot
+After a shared settings change, `rtk make art-regenerate` renders all saved sources
+without rerunning generators.
 
-Open the project or run `rtk make import`. The exporter records lossless
-compression, alpha-border fixing, and straight alpha in sprite import settings.
-Terrain atlases use premultiplied imports and a matching TileData material to
-prevent dark joins under mipmap filtering.
-The default profile has mipmaps off and nearest filtering. Higher-density
-profiles enable mipmaps and linear filtering for smooth scale changes.
-Use the scene in `scenes/scenery/generated/` to retain its exported anchor.
+## Use and check the export
 
-Place an instance under a level's `Scenery` node and move the node to the intended
-ground position. The existing presentation joins scenery to actor Y sorting;
-the ground-anchor Y position determines front/behind order. Keep the same
-Y-sort conventions when placing the prop in another container.
+Open Godot or run `rtk make import`. Sprites use lossless imports, alpha-border
+fixing, and straight alpha. Terrain uses premultiplied imports with matching
+TileData material. Default sprites use nearest filtering without mipmaps;
+higher-density profiles use linear filtering and mipmaps.
 
-Paint blocked cells on the level's `Collision` layer separately. Image dimensions,
-transparent pixels, mesh bounds, and the generated scene do not define movement
-blocking. See [level authoring](authoring.md) for the native map conventions.
-
-## Preview and check
+Instance the generated scenery scene under a level's `Scenery` node to retain its
+anchor and actor Y sorting. Paint blocked cells on `Collision` separately:
+image dimensions, transparent pixels, and mesh bounds do not block movement.
+See [level authoring](authoring.md).
 
 ```sh
 rtk make art-preview
-rtk make test-art
-rtk make format-check
+rtk make test-art format-check
 ```
 
-The isolated `scenes/tests/blender_asset_preview.tscn` uses the sample prop,
-projected ground diamonds, and the existing Nathaniel actor. It shows the prop
-alone and with the actor behind and in front, using nested Y sorting as the game
-does. It does not replace a campaign asset or add gameplay collision.
-
-`test-art` checks the Blender projection, transparent output, and source-edit
-preservation through repeated exports, then runs Godot structure and rendered
-sorting checks. The rendered check requires a working display and writes
-`test-artifacts/blender-preview.png`. For manual validation, save a visible
-geometry or material edit in Blender, render twice, reopen the source, and check
-that the edit remains. Use the preview to inspect scale, ground alignment,
-transparency, and front/behind order. See the [environment guide](environment-assets.md)
-for terrain, buildings, ruins, and scenery.
-
-See [dated verification results](verification.md#base-blender-pipeline--2026-10-03) for the original
-asset checks and platform limits. Current commands and contracts are above.
+The isolated preview checks ground alignment, scale, transparency, and front/behind
+sorting. `test-art` checks projection, output, repeated-export source preservation,
+and Godot structure/rendering. Rendered checks require a display and write
+`test-artifacts/blender-preview.png`. For manual source validation, save a visible
+edit, export twice, reopen the source, and confirm the edit remains.
+See [environment assets](environment-assets.md) for terrain and
+[testing](testing.md) for playtests and platform limits.

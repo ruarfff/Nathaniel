@@ -552,7 +552,7 @@ func _test_spawners_and_waves() -> void:
 	_check(spawner.position == Vector2(1000, 1000), "Spawner is stationary")
 	sim.damage_entity(int(spawner.id), int(spawner.hp))
 	var count: int = sim.entities.size()
-	BattlefieldRules.update_spawners(sim, GameBalance.SPAWNER_INTERVAL_SECONDS)
+	BattlefieldRules.update_spawner(sim, spawner, GameBalance.SPAWNER_INTERVAL_SECONDS)
 	_check(sim.entities.size() == count, "Dead spawner cannot produce")
 
 func _test_targeting_and_update_order() -> void:

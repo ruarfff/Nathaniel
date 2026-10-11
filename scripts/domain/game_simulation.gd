@@ -786,10 +786,7 @@ func restore(saved: Dictionary) -> bool:
 		result = "gameOver"
 	if not CombatRules.alive(hermes):
 		BattlefieldRules.interrupt_delivery(self)
-	nathaniel.has_corpse = false
-	for corpse: Dictionary in corpses:
-		if corpse.carried and CombatRules.alive(nathaniel):
-			nathaniel.has_corpse = true
+	nathaniel.has_corpse = CombatRules.alive(nathaniel) and carried_resource_count() > 0
 	_update_cargo_return()
 	BattlefieldRules.update_fog(self)
 	events.clear()

@@ -1,220 +1,85 @@
 # Nathaniel concept art
 
-Selected direction: **A / Iron & Ink**. These images explore the look of the
-game before production modelling. They are concept references, not sprite
-sheets, Blender models, or implemented gameplay changes.
+Selected direction: **A / Iron & Ink**. These generated images are visual
+references. Current behavior is documented in the [runtime guides](../README.md#find-the-right-files).
+
+![Selected scene](iron-and-ink/01-scene.png)
 
 ## Examples
 
 | Image | Contents |
 | --- | --- |
-| [Original scene](iron-and-ink/01-scene.png) | Nathaniel, Hermes, gun tower, path, rocks, and trees. This is the selected style reference. |
-| [Alien enemies](iron-and-ink/02-alien-enemies.png) | Grunt, soldier, boss, and a spent soldier body for the matter loop. |
-| [Human structures](iron-and-ink/03-human-structures.png) | Gun, laser, and healing towers, plus a proposed reclamation pod. |
-| [Alien structures](iron-and-ink/04-alien-structures.png) | Spawner, plus proposed relay and bastion designs. |
-| [Hermes anchor base](iron-and-ink/05-hermes-anchor-base.png) | Hermes deployed as a stationary armed hub, physically connected to three towers. |
-| [Deploy and recycle](iron-and-ink/06-hermes-deploy-recycle.png) | Six stages from mobile Hermes through construction, defense, and complete reclamation. |
-| [Earth homes and shops](iron-and-ink/07-earth-homes-shops.png) | Weathered and destroyed versions of an ordinary house and corner shop. |
-| [Earth garages and warehouses](iron-and-ink/08-earth-garages-warehouses.png) | Weathered and destroyed versions of a repair garage and warehouse. |
-| [Sandy street](iron-and-ink/09-sandy-street.png) | The four civilian buildings together, with standing and ruined structures around open streets. |
-| [Face laser](iron-and-ink/10-hermes-face-laser.png) | A face aperture fires while Hermes's head turns to aim. |
-| [Shoulder laser (selected)](iron-and-ink/11-hermes-shoulder-laser.png) | Selected mobile laser: a compact independent shoulder turret tracks and fires. |
-| [Forearm laser](iron-and-ink/12-hermes-forearm-laser.png) | A folding clamp reveals an integrated tool emitter. |
-| [Spawner crown laser](iron-and-ink/13-spawner-crown-laser.png) | A visible aiming crown refines the existing enemy beam role. |
-| [Soldier lance laser](iron-and-ink/14-soldier-lance-laser.png) | Proposed laser variant with an integrated triangular forearm lens. |
-| [Boss siege laser](iron-and-ink/15-boss-siege-laser.png) | Proposed laser variant with a protected emitter beneath an opening crest. |
-| [Resource backpack](iron-and-ink/16-resource-backpack.png) | One-body starter pack with two grabber arms, plus proposed reach and capacity upgrades. |
-| [Resource collection](iron-and-ink/17-resource-collection.png) | Approach, grab, crush, and carry one alien body in a visible rear cradle. |
-| [Hermes resource furnace](iron-and-ink/18-hermes-resource-furnace.png) | Physical transfer into the chest intake, followed by a contained furnace pulse. |
-| [Corpse self-destruct](iron-and-ink/19-corpse-self-destruct.png) | Warning flashes and dissolution, plus backpack disarm and safe cargo. |
-| [Boss corpse](iron-and-ink/20-boss-corpse.png) | A collapsed heavy boss, clamp contact, and a proposed one-slot matter bundle. |
-| [Grunt death](iron-and-ink/21-grunt-death.png) | A small shell explosion that fades to clear ground, leaving no resource. |
-| [Spawner death](iron-and-ink/22-spawner-death.png) | A core rupture and collapsing crown, leaving no resource or permanent wreck. |
-| [HUD A: shared command shelf](iron-and-ink/23-hud-command-shelf.png) | Historical alternative: persistent portraits and one shared command menu. |
-| [HUD B: split corners](iron-and-ink/24-hud-split-corners.png) | Nathaniel and Hermes at opposite lower corners, with nearby command menus. |
-| [HUD C: original context ring](iron-and-ink/25-hud-context-ring.png) | Initial study of the selected HUD direction; its controls are superseded by the two revised sheets. |
-| [HUD C2: Hermes ring](iron-and-ink/26-hud-hermes-ring.png) | Four optional ability slots, Settings, and Pack up & move; persistent icons only select and focus. |
-| [HUD C2: Nathaniel ring](iron-and-ink/27-hud-nathaniel-ring.png) | Toggle weapon and Settings, plus cargo single-tap and ring double-tap behavior. |
-| [Hermes grapple options](iron-and-ink/28-hermes-grapple-options.png) | Selected G1 side winch; G2 folding boom and G3 arm launchers remain alternatives. |
-| [Hermes grapple sequence](iron-and-ink/29-hermes-grapple-sequence.png) | Detect, fire, clamp and disarm, reel, crush, and consume one body. |
+| [Original scene](iron-and-ink/01-scene.png) | Selected style: Nathaniel, Hermes, gun tower, path, rocks, and trees. |
+| [Alien enemies](iron-and-ink/02-alien-enemies.png) | Grunt, soldier, boss, and spent soldier body. |
+| [Human structures](iron-and-ink/03-human-structures.png) | Towers and proposed reclamation pod. |
+| [Alien structures](iron-and-ink/04-alien-structures.png) | Spawner and proposed relay and bastion. |
+| [Hermes anchor base](iron-and-ink/05-hermes-anchor-base.png) | Deployed hub and three connected towers. |
+| [Deploy and recycle](iron-and-ink/06-hermes-deploy-recycle.png) | Mobile, deployed, and reclaimed forms. |
+| [Earth homes and shops](iron-and-ink/07-earth-homes-shops.png) | Weathered and destroyed house and shop. |
+| [Earth garages and warehouses](iron-and-ink/08-earth-garages-warehouses.png) | Weathered and destroyed garage and warehouse. |
+| [Sandy street](iron-and-ink/09-sandy-street.png) | Standing and ruined civilian buildings. |
+| [Face laser](iron-and-ink/10-hermes-face-laser.png) | Historical mobile weapon alternative. |
+| [Shoulder laser](iron-and-ink/11-hermes-shoulder-laser.png) | Selected mobile emitter. |
+| [Forearm laser](iron-and-ink/12-hermes-forearm-laser.png) | Historical mobile weapon alternative. |
+| [Spawner crown laser](iron-and-ink/13-spawner-crown-laser.png) | Aiming crown. |
+| [Soldier lance laser](iron-and-ink/14-soldier-lance-laser.png) | Integrated forearm lens. |
+| [Boss siege laser](iron-and-ink/15-boss-siege-laser.png) | Protected prism and opening crest. |
+| [Resource backpack](iron-and-ink/16-resource-backpack.png) | Starter arms and upgrade silhouettes. |
+| [Resource collection](iron-and-ink/17-resource-collection.png) | Grab, crush, and carry. |
+| [Hermes resource furnace](iron-and-ink/18-hermes-resource-furnace.png) | Transfer and contained furnace pulse. |
+| [Corpse self-destruct](iron-and-ink/19-corpse-self-destruct.png) | Warning, dissolution, and disarm. |
+| [Boss corpse](iron-and-ink/20-boss-corpse.png) | Collapsed shell and one-slot bundle. |
+| [Grunt death](iron-and-ink/21-grunt-death.png) | Small shell explosion. |
+| [Spawner death](iron-and-ink/22-spawner-death.png) | Core rupture and collapsing crown. |
+| [HUD A: command shelf](iron-and-ink/23-hud-command-shelf.png) | Historical alternative. |
+| [HUD B: split corners](iron-and-ink/24-hud-split-corners.png) | Historical alternative. |
+| [HUD C: context ring](iron-and-ink/25-hud-context-ring.png) | Initial selected direction; controls revised below. |
+| [HUD C2: Hermes ring](iron-and-ink/26-hud-hermes-ring.png) | Ability slots, Settings, and Pack up & move. |
+| [HUD C2: Nathaniel ring](iron-and-ink/27-hud-nathaniel-ring.png) | Weapon toggle, Settings, and cargo gestures. |
+| [Hermes grapple options](iron-and-ink/28-hermes-grapple-options.png) | Selected G1 side winch; G2 and G3 are alternatives. |
+| [Hermes grapple sequence](iron-and-ink/29-hermes-grapple-sequence.png) | Clamp, disarm, reel, crush, and consume. |
 
-[Character HUD design](hud-character-controls.md) records the selected **C /
-Context ring** direction and its revised selection, target portraits, cargo
-delivery, and double-tap rules. This HUD choice is separate from the game's
-**A / Iron & Ink** art direction. The changes are proposals, not implemented
-controls. Landscape phones are the current design assumption.
+## Design notes
 
-[Hermes build-mode notes](hermes-build-mode.md) describe the transformation,
-connections, and teardown sequence. In this proposal, Hermes himself is the
-fabrication hub; the earlier separate reclamation pod is not needed.
+| Subject | Reference |
+| --- | --- |
+| C / Context ring HUD | [Character controls](hud-character-controls.md) |
+| Deployed silhouette, connections and reclamation | [Hermes build mode](hermes-build-mode.md) |
+| Selected shoulder emitter | [Hermes lasers](hermes-lasers.md) |
+| Enemy emitters and contact cues | [Enemy lasers](enemy-lasers.md) |
+| Backpack, disarm and furnace | [Resource gathering](resource-gathering.md) |
+| Boss corpse and non-resource explosions | [Enemy deaths](enemy-deaths.md) |
+| Selected G1 side winch | [Automatic recovery](hermes-auto-consume.md) |
 
-[Hermes shoulder-laser implementation brief](hermes-lasers.md) records the
-user's selection on 2026-10-04, the required aiming and firing effects, and
-acceptance checks. The face and forearm sheets remain alternatives only.
-
-[Enemy laser notes](enemy-lasers.md) separate the spawner's existing beam role
-from proposed soldier and boss variants, with shared aiming and contact cues.
-
-[Resource gathering notes](resource-gathering.md) describe the requested
-one-body backpack, proposed upgrades, collection sequence, and delivery into
-Hermes. The three-slot rack is an upgrade example, not a fixed capacity rule.
-The [self-destruct concept](resource-gathering.md#corpse-self-destruct) adds
-flashing corpses, dissolution, and disarm through the backpack clamps; the
-[implemented mechanics](../docs/resource-gathering.md#corpse-self-destruct)
-defines the recovery deadline and safe cargo rules.
-
-[Enemy death notes](enemy-deaths.md) describe the proposed boss corpse and
-grunt/spawner explosions. Boss matter supports the ongoing survival run.
-Recovery from campaign bosses that end a level needs a separate collection
-window and reward decision.
-
-[Hermes automatic recovery](hermes-auto-consume.md) defines the selected passive grapple
-for collectible enemies that die inside his deployed build zone. G1 / Side
-winch is selected, with one body per cycle and no new control. Hermes has
-priority over Nathaniel before successful grip; held cargo remains protected.
-The guide covers decay, intake sharing, and interruptions. The
-[implementation handoff](hermes-auto-consume-implementation-prompt.md) targets
-the current branch. The G1 prototype is implemented; the
-[runtime guide](../docs/resource-gathering.md) records its current rules.
-
-![Selected scene](iron-and-ink/01-scene.png)
-
-![Alien enemy concepts](iron-and-ink/02-alien-enemies.png)
-
-![Human structure concepts](iron-and-ink/03-human-structures.png)
-
-![Alien structure concepts](iron-and-ink/04-alien-structures.png)
-
-![Hermes deployed as an anchor base](iron-and-ink/05-hermes-anchor-base.png)
-
-![Hermes deployment and recycling sequence](iron-and-ink/06-hermes-deploy-recycle.png)
-
-![Weathered and destroyed homes and shops](iron-and-ink/07-earth-homes-shops.png)
-
-![Weathered and destroyed garages and warehouses](iron-and-ink/08-earth-garages-warehouses.png)
-
-![Sandy street environment](iron-and-ink/09-sandy-street.png)
-
-![Hermes face laser](iron-and-ink/10-hermes-face-laser.png)
-
-![Hermes shoulder laser](iron-and-ink/11-hermes-shoulder-laser.png)
-
-![Hermes forearm laser](iron-and-ink/12-hermes-forearm-laser.png)
-
-![Spawner crown laser](iron-and-ink/13-spawner-crown-laser.png)
-
-![Proposed soldier lance laser](iron-and-ink/14-soldier-lance-laser.png)
-
-![Proposed boss siege laser](iron-and-ink/15-boss-siege-laser.png)
-
-![Resource backpack and upgrades](iron-and-ink/16-resource-backpack.png)
-
-![Resource collection sequence](iron-and-ink/17-resource-collection.png)
-
-![Hermes resource furnace sequence](iron-and-ink/18-hermes-resource-furnace.png)
-
-![Corpse self-destruct and backpack disarm](iron-and-ink/19-corpse-self-destruct.png)
-
-![Boss corpse and matter bundle](iron-and-ink/20-boss-corpse.png)
-
-![Grunt explosion sequence](iron-and-ink/21-grunt-death.png)
-
-![Spawner explosion sequence](iron-and-ink/22-spawner-death.png)
-
-![HUD A: shared command shelf](iron-and-ink/23-hud-command-shelf.png)
-
-![HUD B: split corners](iron-and-ink/24-hud-split-corners.png)
-
-![HUD C: context ring](iron-and-ink/25-hud-context-ring.png)
-
-![HUD C2: Hermes ring and target portraits](iron-and-ink/26-hud-hermes-ring.png)
-
-![HUD C2: Nathaniel ring and cargo gestures](iron-and-ink/27-hud-nathaniel-ring.png)
-
-![Hermes automatic recovery mechanisms](iron-and-ink/28-hermes-grapple-options.png)
-
-![Hermes grapple and furnace sequence](iron-and-ink/29-hermes-grapple-sequence.png)
-
-## Sandy Earth buildings
-
-This area uses ordinary Earth architecture: plaster and brick walls, simple
-pitched or flat roofs, shop awnings, roller doors, and concrete paving. The
-buildings are abandoned and disheveled, with sun-bleached cream walls, faded
-terracotta or rust roofs, charcoal openings, and small faded teal accents.
-Sand gathers at foundations and across cracked asphalt. This palette applies
-to the sandy area; other areas can have their own materials and colors.
-
-Each building has a weathered standing version and a matching destroyed
-version. Preserve its footprint, ground anchor, camera, and key features
-between states. The house keeps its porch and chimney; the shop keeps part
-of its awning and storefront; the garage keeps its vehicle-door frame; the
-warehouse keeps its taller office facade. The sheets are visual references,
-not pixel-aligned production pairs or measured scale drawings.
-
-Make destruction read through missing roof and wall masses. Use a few large
-slabs and thick beams rather than many small fragments. In Blender, build a
-shared wall and roof kit, then create a separate damaged version from those
-parts. No fracture simulation is needed for these static appearance studies.
-
-The street scene combines standing and ruined buildings while keeping the
-main route clear. It demonstrates appearance and spacing, not tested movement
-or collision. The amount of small brick, roof, and ground detail should be
-reduced for production sprites. Destructible-building gameplay is not specified
-by these concepts.
+The art, HUD, and grapple labels describe separate choices. The reclamation pod,
+relay, and bastion remain proposals. Soldier variants and bosses leave collectible
+matter; grunts and spawners do not. See [resource rules](../docs/resource-gathering.md)
+for implemented recovery and campaign limits.
 
 ## Visual rules
 
-- Use bold outer contours, large angular forms, and two or three values per
-  material. Keep wear broad and sparse.
-- Use petrol blue, ochre panels, and dark joints for human equipment. Repeat
-  Hermes's intake shape and the towers' folding feet across temporary bases.
-- Use dark plum shell plates, pale edges, and small acid-green openings for
-  aliens. Keep each role clear through shape, not color alone.
-- Keep the grunt low and wide, the soldier upright, and the boss broad with
-  one large crest. Keep the spawner's emergence opening clear.
-- Reuse one tower base. Distinguish the gun barrel, split laser emitter, and
-  open healing mast by their outlines.
-- Keep ground detail quieter than units. The original scene and enemy sheet
-  have more ground texture and surface wear than production sprites need.
+- Use bold contours, large angular forms, sparse wear, and two or three values
+  per material. Ground detail stays quieter than units.
+- Human equipment uses petrol blue, ochre, and dark joints. Repeat Hermes's
+  intake and the towers' folding feet. Reuse one tower base, with distinct gun,
+  split laser emitter, and open healing mast silhouettes.
+- Aliens use dark plum plates, pale edges, and small green openings. Keep the
+  grunt low and wide, the soldier upright, the boss broad with one crest, and
+  the spawner opening clear. Their tissue and machinery mix remains exploratory.
 
-## Scope
+Sandy Earth buildings use weathered plaster and brick, cream walls, faded rust
+roofs, charcoal openings, and small teal accents. Standing and destroyed pairs
+share their footprint, anchor, camera, and key features. Show damage through
+missing roof and wall masses, large slabs, and beams. A shared wall and roof kit
+is sufficient; the sheets specify no destructible-building gameplay.
 
-The grunt, soldier, boss, spawner, gun tower, laser tower, and healing tower
-match existing gameplay kinds. Their depicted appearance is exploratory.
-Soldier variants and the boss currently leave usable bodies. Grunt and
-spawner explosions leave no usable matter. Automatic recovery by deployed
-Hermes is a new proposal; it does not add drops to those explosions.
-The reclamation pod, relay, and bastion are visual proposals; their gameplay
-roles and inclusion remain undecided.
+## Production and source
 
-The aliens in this pass have a hard, partly mechanical shell. Their mix of
-organic tissue and machinery remains open for refinement.
+Use the [Blender pipeline](../docs/blender-assets.md) for calibrated projection,
+world scale, canvas, and anchors. Build broad forms from boxes, wedges, cylinders,
+and simple shells. Check actual gameplay size and all animation directions
+before adding surface detail. These sheets are not sprite atlases or scale drawings.
 
-## Production constraints
-
-Use the [Blender sprite pipeline](../docs/blender-assets.md): orthographic
-camera, 45-degree azimuth, 30-degree elevation, and a 64 by 32 pixel ground
-diamond. The current prop pipeline uses a 128 by 128 pixel transparent canvas
-with ground anchor at (64, 96). These generated concepts approximate that
-view; they are not calibrated renders or scale drawings.
-
-Build the main forms from bevelled boxes, wedges, cylinders, and low-poly
-shells. Use shared materials and repeated parts. Avoid modelling the small
-scratches, seams, and joints visible in the concept images.
-
-Check production designs at their actual display sizes before adding detail:
-Nathaniel 48 by 72 pixels, Hermes 80 by 72, grunt 72 by 33, soldier 60 by 72,
-boss 80 by 72, towers 48 by 66, and spawner 240 by 168. The sheets have not
-been tested in game or across animation directions.
-
-## Source and reuse
-
-Created with the Codex built-in imagegen tool on 2026-10-03 through 2026-10-11. The original
-scene established direction A; later sheets use that scene and related
-concept sheets as references. [prompts.json](prompts.json) stores the exact
-prompts, refinement steps, and reference relationships for further iteration.
-Image generation is not deterministic.
-
-The local `.gdignore` keeps these reference images out of Godot's asset
-import. Production sources belong under `art/blender/`; these sheets remain
-concept references.
+[prompts.json](prompts.json) records exact imagegen prompts, refinements, dates,
+and references. Image generation is not deterministic. `.gdignore` excludes the
+sheets from Godot import; editable production sources belong under `art/blender/`.

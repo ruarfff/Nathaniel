@@ -23,7 +23,6 @@ var _hook_jaw_rests: Array[Transform3D] = []
 var _hook_contact: StandardMaterial3D
 var _recovery_cable := PackedVector2Array()
 var _last_recovery_cable := PackedVector2Array()
-var _last_hook_point: Vector2 = Vector2.INF
 var _hook_ground: Vector2 = Vector2.INF
 
 
@@ -127,12 +126,7 @@ func notify_respawn() -> void:
 	if mobile_model_view != null:
 		mobile_model_view.reset_pose(true)
 	_apply_deployment()
-	_recovery_cable.clear()
-	_last_recovery_cable.clear()
-	_last_hook_point = Vector2.INF
-	_hook_ground = Vector2.INF
-	if _hook_display != null:
-		_hook_display.hide()
+	set_recovery_visible(false)
 
 
 func notify_attack(direction: Vector2 = Vector2.ZERO, weapon_id: String = "") -> void:
@@ -234,7 +228,6 @@ func set_recovery_visible(value: bool) -> void:
 	_hook_display.hide()
 	_recovery_cable.clear()
 	_last_recovery_cable.clear()
-	_last_hook_point = Vector2.INF
 	_hook_ground = Vector2.INF
 
 
@@ -247,10 +240,10 @@ func _sync_winch(hermes: Dictionary) -> void:
 	var active: Dictionary = rig.recovery_corpse()
 	if active.is_empty():
 		var remaining: float = float(hermes.get("recovery_cooldown", 0.0))
-		if _anchored and _health > 0.0 and remaining > 0.0 and _last_hook_point.is_finite():
+		if _anchored and _health > 0.0 and remaining > 0.0 and not _last_recovery_cable.is_empty():
 			var fraction: float = clampf(1.0 - remaining / GameBalance.HERMES_WINCH_RESET_SECONDS, 0.0, 1.0)
 			var target: Vector2 = _model_point(rig.winch_clamp.global_position)
-			_hook_display.position = _last_hook_point.lerp(target, smoothstep(0.0, 1.0, fraction))
+			_hook_display.position = _last_recovery_cable[-1].lerp(target, smoothstep(0.0, 1.0, fraction))
 			_hook_display.show()
 			_recovery_cable = _last_recovery_cable.duplicate()
 			if _recovery_cable.size() >= 2:
@@ -260,7 +253,6 @@ func _sync_winch(hermes: Dictionary) -> void:
 			rig.winch_clamp.hide()
 			_hook_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 		else:
-			_last_hook_point = Vector2.INF
 			_last_recovery_cable.clear()
 		return
 	var offset: Vector2 = Vector2(active.position) - Vector2(hermes.position)
@@ -300,5 +292,4 @@ func _sync_winch(hermes: Dictionary) -> void:
 	_recovery_cable.append(guide)
 	_recovery_cable.append(guide.lerp(endpoint, 0.5) + Vector2(0, 1.0 if phase == "winch_launch" else 0.3))
 	_recovery_cable.append(endpoint)
-	_last_hook_point = endpoint
 	_last_recovery_cable = _recovery_cable.duplicate()

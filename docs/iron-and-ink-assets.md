@@ -127,8 +127,8 @@ source and never rebuild or save it.
 `model_sun_energy_scale` converts the shared Blender sun strength to the native
 Godot light. It is currently 0.1. The matte palette is matched, but Godot's direct
 lighting does not reproduce all Cycles indirect light and soft shadows.
-Exports need Godot templates with 3D support. The earlier custom iOS Simulator
-template recorded in `docs/verification.md` disabled 3D and cannot run this model.
+Exports need Godot templates with 3D support; see
+[platform requirements](authoring.md#export-and-platform-checks).
 
 `ActorModelView` owns projection, continuous yaw, short recoil, and the transformed
 muzzle marker. `ActorView.weapon_muzzle(direction, weapon_id)` returns the launch
@@ -371,6 +371,3 @@ placement, and rendered occlusion. `art-review` writes a comparison board and a
 3840×2160 capture under `test-artifacts/`. Inspect these at their native resolution
 to judge edges and small details. A texture-resolution check alone does not prove
 performance on a physical 4K monitor or a mobile device.
-
-See [dated verification results](verification.md#iron--ink-sprite-batches--2026-10-03) for the original
-asset checks and platform limits. Current commands and contracts are above.

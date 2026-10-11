@@ -20,7 +20,7 @@ This repository contains one Godot 4.7.2 game. `project.godot` is at the reposit
 - For Blender source/export changes, read [the pipeline](docs/blender-assets.md); for live character guns, read [weapons](docs/nathaniel-weapons.md). Edit saved sources rather than generated runtime files.
 - Before changing saves or Swift import, read [save compatibility](docs/saves.md).
 - Before a gameplay playtest, read [testing](docs/testing.md). Before changing the debug protocol or MCP tools, also read [the debug interface](docs/debug-interface.md).
-- Before reporting platform acceptance or performance, check [verification](docs/verification.md) and identify which checks were rerun.
+- Report checks and platform limits in the task response. Use [testing](docs/testing.md) for input and performance checks.
 
 ## Commands and validation
 

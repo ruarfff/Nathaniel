@@ -1,160 +1,113 @@
 # Saves and Swift save import
 
-Godot uses three independent save slots under `user://saves/slot_1.json` through
-`slot_3.json`. On macOS, this project resolves `user://` to
-`~/Library/Application Support/NathanielGodot/`. Settings use `settings.json`;
-campaign records use `progress.json`. The retired Swift app used a different
-preferences domain. Audio defaults to off. Fog visibility is a persisted setting
-and defaults to enabled.
+Godot uses three slots at `user://saves/slot_1.json` through `slot_3.json`.
+Settings use `settings.json`; campaign records use `progress.json`.
+Audio defaults off; fog visibility defaults on and is persisted.
+Demo mode uses the same formats under `user://demo/`, loads Survival only, and
+does not import Swift saves. See [demo mode](web.md#survival-demo).
 
-Demo mode uses the same filenames and formats under `user://demo/`. It loads
-Survival saves only and does not import Swift saves. The full game's storage
-identity is unchanged. See [demo mode](web.md#survival-demo).
-
-Use Pause → Save or the main menu's Load control. Slot metadata comes from each
-validated save, so a missing metadata cache cannot hide a valid slot. A save writes
-and flushes a sibling temporary file, checks its JSON, then renames it over the
-selected slot. Invalid input or a failed write preserves the previous slot. Save
-files are limited to 16 MiB and level grids to 1,048,576 cells.
-
-Native snapshots include the level definition, logical positions, requested move
-destinations, health, target IDs, towers and their actual costs, weapon phase,
-projectiles, spawner production, carried/loose corpses, resource wallet, score,
-spare lives, wave phase, explored fog, focus, and random generator state. Loading
-rebuilds tower obstacles before requesting routes. A loaded session resumes play.
-Older saves with Hermes camera focus reopen the Build menu without changing his
-saved following/stopped mode. The saved focus field and format remain unchanged.
-
-Hermes's saved mode also restores his deployed cannon or mobile laser profile.
-Older stopped saves receive the cannon and discard incompatible laser-burst
-state. Deployed cannon cooldown survives a current save/load round trip. The
-derived `anchored` flag does not change the schema. Following reclaims all
-towers, including unowned map towers; only paid owned towers refund resources.
-Restoring a dead Hermes removes the dependent towers without a refund.
-
-Nathaniel's owned and equipped weapons, aim, equip timer, shot recovery and
-pending manual aim are saved with his state. Remaining weapon pickups and each
-projectile's weapon ID are also saved. Older snapshots without these fields use
-the original rifle and no pending equip or manual shot. The envelope and snapshot
-schema stay at version 1. A spare-life respawn retains weapons; a fresh level
-uses its authored default loadout and pickups.
-
-Soldier and boss saves with the old `gun` or `bow` mechanism upgrade to
-`pulse_laser` while retaining their damage, range and elapsed cooldown. Already
-travelling projectiles finish normally. Current pulse saves retain their brief
-firing phase without replaying damage. The save format and schema are unchanged.
-
-The separate `gunSoldier` kind retains its projectile gun, cooldown and active
-bullets on load. Corpses save `source_kind` as `soldier`, `gunSoldier`, or
-`boss`, including when carried or dropped after disarm. Older corpses without this optional field
-use the default soldier image. Loading does not change delivery rewards.
-
-Backpack saves include reach and capacity, each body's handling phase and cargo
-slot, the return-to-Hermes command, and Hermes's remaining furnace time.
-In-flight collection and delivery resume without repeating a credit.
-Old saves receive the one-slot starter rack;
-extra carried bodies drop beside Nathaniel, permanently disarmed. Their
-values and source types remain intact. The envelope and schema stay at version 1.
-See [resource gathering](resource-gathering.md) for interruption and upgrade rules.
-
-Corpses save their remaining armed lifetime and permanent `disarmed` flag.
-Older held cargo loads as disarmed, including overflow dropped from the rack.
-Older loose bodies remain armed with their saved time remaining. Loading never
-resets that countdown. Expired bodies are absent from snapshots; the short
-dissolve effect is presentation-only and is not restored as collectible matter.
-
-Hermes recovery saves each corpse's death-time eligibility, winch phase,
-phase time, pull route, current ground position, and safe drop position. Hermes
-saves the one pending corpse ID and reset time. Older saves default to no
-eligible corpses, pending job, or reset time; loading near Hermes does not make
-an old body eligible. Launch retains the saved armed lifetime. Reel, crush, and
-feed retain permanent disarm and do not use Nathaniel's cargo slots. Invalid
-ownership, phase timers, routes, or shared intake claims fail validation. Active
-routes must match the authored guide path, and each ground position must match
-its phase and elapsed time. Disarmed winch bodies have no expiry timer.
-
-Recovery resumes with living, deployed Hermes during play. Otherwise load
-releases a pre-contact body with its remaining lifetime, or drops a secured
-body at its saved safe ground position. It clears waiting eligibility. Intake
-acceptance removes the body and pending ID before saving the resource credit
-and furnace/reset time. Loading after acceptance cannot restore or credit the
-body again. The save envelope and snapshot schema remain at version 1.
+Use Pause → Save or the menu's Load control. Metadata comes from validated saves,
+so a missing cache cannot hide a valid slot. Writes flush a sibling temporary
+file, validate its JSON, and rename it over the slot. Invalid input or a failed
+write preserves the previous file. Saves are limited to 16 MiB; grids to
+1,048,576 cells. Tests use isolated storage, never live slots or preferences.
 
 ## Storage identity
 
-Keep `config/use_custom_user_dir=true`, `config/custom_user_dir_name="NathanielGodot"`, and the export bundle identifier `dev.ruarfff.nathaniel.godot`. Moving the project or renaming the displayed app does not require a new storage location. Changing the iOS bundle identifier creates a different app container. Native files retain envelope format `nathaniel-godot`, version `1`, and gameplay snapshot schema `1`. The slot filenames and settings/progress filenames are part of this compatibility contract.
+Keep these identifiers stable:
+
+- `config/use_custom_user_dir=true`
+- `config/custom_user_dir_name="NathanielGodot"`
+- Export bundle identifier `dev.ruarfff.nathaniel.godot`
+- Envelope format `nathaniel-godot`, version `1`, gameplay snapshot schema `1`
+- Slot, settings, and progress filenames above
+
+On macOS, `user://` resolves to `~/Library/Application Support/NathanielGodot/`.
+Moving the checkout or renaming the displayed app does not change storage.
+Changing the iOS bundle identifier creates a different app container. The retired
+Swift app used a separate preferences domain.
+
+## Native restore
+
+Snapshots retain level definition, logical positions and destinations, health,
+targets, towers and paid costs, weapons and timers, projectiles, spawner production,
+corpses/cargo, resources, score, spare lives, waves, explored fog, focus, and random
+state. Loading rebuilds tower obstacles before requesting routes and resumes play.
+
+| Compatibility case | Restore rule |
+| --- | --- |
+| Older Hermes camera focus | Return to Nathaniel with Build closed; retain Hermes's saved mode. |
+| Hermes following/stopped | Restore mobile laser/deployed cannon; older stopped saves discard incompatible beam state. Current cannon cooldown persists. |
+| Dead Hermes | Defeat; remove dependent towers without refund. |
+| Missing Nathaniel weapon fields | Original rifle, no pending equip/manual shot. Respawn retains weapons; a fresh level uses authored loadout/pickups. |
+| Soldier/boss old `gun` or `bow` mechanism | Upgrade to `pulse_laser`, retaining damage, range, and elapsed cooldown; existing bullets finish. Active pulses restore without replaying damage. |
+| `gunSoldier` | Retain projectile gun, cooldown, and bullets. |
+| Corpse missing `source_kind` | Soldier appearance; current `soldier`, `gunSoldier`, and `boss` kinds and values persist. |
+| Missing backpack fields | Starter rack; excess held bodies drop beside Nathaniel, permanently disarmed, with value/type intact. |
+| Older held cargo | Permanently disarmed, including dropped overflow. |
+| Older loose corpses | Armed with saved remaining lifetime; never reset the deadline. |
+| Missing Hermes recovery fields | No death-time eligibility, pending job, or reset time; proximity does not infer eligibility. |
+
+Following dismantles all connected towers; only paid owned towers refund their
+stored cost. The derived `anchored` flag does not change the schema.
+Expired bodies are absent; dissolution is a visual effect, not restored matter.
+
+Backpack state includes reach/capacity, handling phase, slot, return order, and
+remaining furnace time. Collection and delivery resume without repeating credit.
+Recovery stores each body's death-time eligibility, winch phase/time, pull route,
+ground position, and safe drop point, plus Hermes's pending body ID and reset time.
+Launch retains armed time; secured winch matter stays disarmed and uses no rack slot.
+
+Validation rejects invalid ownership, timers, routes, or shared intake claims.
+Active routes must match the guide path; ground position must match phase/time.
+Recovery resumes only with living, deployed Hermes during play. Otherwise restore
+releases a pre-contact body with its remaining lifetime, or drops secured matter
+at its safe point, then clears eligibility. Acceptance removes the body/pending ID
+before saving credit and furnace/reset time; load cannot restore or credit it twice.
+See [resource rules](resource-gathering.md) for gameplay interruptions.
 
 ## Import a Swift save
 
-The retired Swift app stored JSON `Data` values in UserDefaults keys `save_slot_1`,
-`save_slot_2`, and `save_slot_3`. A JSON export of one of those values is the input.
-The Godot app does **not** search for or read the live Swift preferences. First
-obtain a copy of the save or an exported preferences plist through the platform's
-normal export or backup access. On iOS, access to another app's container requires
-an available export or backup; Godot cannot read it directly.
-
-If you have an exported plist, extract one slot with the standard-library tool:
+Swift stored JSON `Data` in UserDefaults keys `save_slot_1` through `save_slot_3`.
+Obtain a copy through export or backup access; Godot does not read live Swift
+preferences or another iOS app's container. Extract a slot from an exported plist:
 
 ```sh
-python3 tools/import_swift_save.py /path/to/exported-preferences.plist /path/to/swift-slot.json --plist-slot 2
+rtk python3 tools/import_swift_save.py /path/to/preferences.plist /path/to/swift-slot.json --plist-slot 2
 ```
 
-If you already have JSON, use it directly. The extraction tool also accepts JSON
-as its source and can make a checked copy. It opens output files exclusively and
-refuses to replace existing files, including its own source.
-
-Import the explicit JSON path into an **empty** Godot slot:
+The tool also accepts JSON and makes a checked copy. Output is exclusive: it
+never replaces an existing file or its source. Import JSON into an empty slot:
 
 ```sh
-godot --path . -- --import-swift=/path/to/swift-slot.json --slot=2
+rtk godot --path . -- --import-swift=/path/to/swift-slot.json --slot=2
 ```
 
-The game checks the source schema, loads the matching native level, writes the
-new Godot slot, and opens the restored session. `--slot` defaults to `1`. An
-occupied slot, including a corrupt slot file, is never replaced by an import.
-The source JSON is read-only. Source versions 1 and 2 are supported; future
-versions are rejected with a specific error.
+The game validates the schema, loads the native level, writes the slot, and opens
+the session. `--slot` defaults to `1`. Occupied slots, including corrupt files,
+are never replaced. Source JSON stays read-only. Swift versions 1 and 2 are
+supported; future versions are rejected. For a trial, add
+`--storage-dir=/private/tmp/nathaniel-import-trial` using an unused directory.
 
-For a trial import, select an isolated directory:
+Positions remain logical Y up. Import retains requested destinations, target
+references, production timers, corpse expiry/carried state, and tower costs.
+Loading a corpse does not credit the wallet. Version 1 total lives becomes
+`max(0, lives - 1)` spare lives. Pending respawn restores at the start without
+spending another life. Dead Hermes restores defeat; old `locked` becomes
+independent. Hermes movement and tower cooldown reset as in Swift. Missing corpse
+or production fields get fresh defaults.
+
+Swift omits explored fog, projectiles, weapon timers, random state, and camera;
+these start fresh. Debug settings are not imported. Missing owned-tower costs use
+5/10/15 for gun/laser/heal; an absent customized cost cannot be recovered.
+Following refunds 25% of stored/default cost, rounded down. Settings and campaign
+records are separate; importing does not mark levels complete.
+
+## Checks
 
 ```sh
-godot --path . -- --storage-dir=/private/tmp/nathaniel-import-trial --import-swift=/path/to/swift-slot.json --slot=1
+rtk make test-services test-tooling
 ```
 
-## Compatibility details
-
-Positions stay in Swift logical pixels with positive y pointing up; isometric
-projection does not change saved coordinates. The importer preserves requested
-destinations, enemy target references, spawner countdowns and initial production,
-corpse expiration/carried state, and actual tower construction cost. A corpse does
-not credit the resource wallet again during load.
-
-Version 1's total-life count converts to spare lives with `max(0, lives - 1)`.
-A saved pending Nathaniel respawn restores at the level start without spending
-another life. Dead Hermes restores as defeat. Old `locked` Hermes mode becomes
-independent. Hermes movement and tower cooldown reset as they do in Swift load.
-Old saves without corpses or production fields receive the same fresh defaults.
-
-Swift saves do not contain explored fog, active projectiles, weapon timers,
-random generator state, or camera state; import starts those fields fresh. Swift
-debug settings are not imported. Where an older owned tower has no stored cost,
-the shipped costs 5/10/15 are used for gun/laser/heal towers. If it was built with
-a customized old debug cost, that absent value cannot be recovered. Following
-Hermes still refunds 25% of the stored/default cost, rounded down.
-
-Settings and campaign completion records are separate from resumable saves and
-are not copied by the slot importer. Importing a slot does not mark levels complete.
-
-## Verification
-
-```sh
-godot --headless --path . --script res://tests/test_services.gd
-python3 -m unittest discover -s tests -p 'test_import*.py'
-```
-
-The service suite creates a unique temporary directory and removes only its own
-fixtures. It checks three-slot isolation, atomic replacement, corrupt data,
-explicit import without overwrites, the literal Swift Codable schema, version 1
-compatibility, and restoration through the actual simulation, including routes,
-corpses, production timers, random state, and tower refunds. Python checks explicit
-JSON/plist extraction and refusal to replace sources or existing output.
+Checks use temporary fixtures for slot isolation, atomic replacement, invalid data,
+native and Swift compatibility, simulation restore, and non-overwriting extraction.

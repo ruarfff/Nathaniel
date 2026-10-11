@@ -213,9 +213,8 @@ func _capture_self_destruct() -> void:
 	print("Corpse self-destruct capture: test-artifacts/%s-self-destruct-stages-4k.png" % ("boss" if boss else "corpse"))
 
 
-func _winch_panel(output: SubViewport, point: Vector2, direction: Vector2, phase: String, fraction: float, source_kind: String, zoom: float) -> void:
+func _winch_panel(output: SubViewport, point: Vector2, direction: Vector2, phase: String, fraction: float, source_kind: String) -> void:
 	var pair := Node2D.new()
-	pair.scale = Vector2.ONE * zoom
 	pair.position = point
 	output.add_child(pair)
 	var sim := GameSimulation.new()
@@ -224,12 +223,11 @@ func _winch_panel(output: SubViewport, point: Vector2, direction: Vector2, phase
 	sim.set_hermes_mode("building")
 	sim.fog.fill(2)
 	sim.set_paused(true)
-	pair.position -= IsoProjection.project(sim.hermes.position) * zoom
+	pair.position -= IsoProjection.project(sim.hermes.position)
 	var hermes: HermesView = load("res://scenes/actors/hermes.tscn").instantiate()
 	pair.add_child(hermes)
 	hermes.apply_state(sim.hermes, false, false)
-	var reach: float = 100.0 if zoom > 0.85 else 170.0
-	var corpse: Dictionary = sim.spawn_resource(10, Vector2(sim.hermes.position) + direction * reach, 2.875, false, source_kind)
+	var corpse: Dictionary = sim.spawn_resource(10, Vector2(sim.hermes.position) + direction * 100.0, 2.875, false, source_kind)
 	corpse.phase = phase
 	corpse.phase_elapsed = BattlefieldRules.phase_seconds(phase) * fraction
 	corpse.pickup_position = corpse.position
@@ -237,7 +235,7 @@ func _winch_panel(output: SubViewport, point: Vector2, direction: Vector2, phase
 	corpse.recovery_route = [corpse.position, Vector2(sim.hermes.position) + direction * GameBalance.HERMES_WINCH_GUIDE_RADIUS,
 		Vector2(sim.hermes.position) + Vector2(GameBalance.HERMES_WINCH_GUIDE_RADIUS, 0), Vector2(sim.hermes.position) + GameBalance.HERMES_WINCH_INTAKE_OFFSET]
 	if phase == "winch_reel":
-		corpse.position = Vector2(sim.hermes.position) + direction * lerpf(reach, GameBalance.HERMES_WINCH_GUIDE_RADIUS, fraction)
+		corpse.position = Vector2(sim.hermes.position) + direction * lerpf(100.0, GameBalance.HERMES_WINCH_GUIDE_RADIUS, fraction)
 	elif phase == "winch_crush":
 		corpse.position = Vector2(sim.hermes.position) + Vector2(GameBalance.HERMES_WINCH_GUIDE_RADIUS, 0).lerp(GameBalance.HERMES_WINCH_INTAKE_OFFSET, fraction)
 	elif phase == "winch_feed":
@@ -279,7 +277,7 @@ func _capture_winch_studies() -> void:
 				var phase: String = ["winch_launch", "winch_reel", "winch_reel", "winch_crush", "winch_feed", "consume"][column] if study == "stages" else "winch_reel"
 				var fraction: float = [0.35, 0.04, 0.5, 0.5, 0.5, 0.5][column] if study == "stages" else 0.5
 				var cell: Vector2 = Vector2(1920.0 / columns, 1080.0 / rows)
-				_winch_panel(output, Vector2(column * cell.x + cell.x * 0.5, row * cell.y + cell.y * 0.48), Vector2.from_angle(heading), phase, fraction, "boss" if row > 0 else "soldier", 1.0)
+				_winch_panel(output, Vector2(column * cell.x + cell.x * 0.5, row * cell.y + cell.y * 0.48), Vector2.from_angle(heading), phase, fraction, "boss" if row > 0 else "soldier")
 				var label := Label.new()
 				label.text = ["Fire / armed", "Contact / disarmed", "Reel", "Crush", "Feed", "Furnace"][column] if study == "stages" else "Heading %d / %s" % [row * 4 + column, "boss" if row > 0 else "soldier"]
 				label.position = Vector2(column * cell.x + 8, row * cell.y + 12)

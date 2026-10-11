@@ -117,7 +117,7 @@ backpack slot, and both Hermes intake heights. Check both explosions with
 several simultaneous deaths at normal zoom, on sand and dark rubble. Their
 effects must finish once, stop advancing during pause, and leave no ghost
 actor, collectible fragment, or repeated death event. The concept sheets are
-not gameplay tests. Current evidence is recorded in [verification](../docs/verification.md).
+not gameplay tests. Use [testing](../docs/testing.md) for runtime checks.
 
 ## Current implementation
 
