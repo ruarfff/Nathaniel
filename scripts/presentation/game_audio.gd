@@ -35,7 +35,7 @@ func play_music(track: String) -> void:
 			music.play()
 
 
-func play_effect(name: String) -> void:
+func play_effect(name: String, volume_db: float = -12) -> void:
 	if not sound_enabled:
 		return
 	var path := "res://assets/Audio/SFX/%s.wav" % name
@@ -45,7 +45,7 @@ func play_effect(name: String) -> void:
 		streams[path] = load(path)
 	var player := AudioStreamPlayer.new()
 	player.stream = streams[path]
-	player.volume_db = -12
+	player.volume_db = volume_db
 	add_child(player)
 	player.finished.connect(player.queue_free)
 	player.play()

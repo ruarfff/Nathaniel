@@ -55,9 +55,14 @@ check the same image locally.
   Cancel returns to Build; Nathaniel's card or body discards the preview and closes it.
 - Pack up & move reclaims surviving connected towers, refunds one quarter of
   each paid cost rounded down, closes Build, and resumes following Nathaniel. Check the
-  displayed refund first. Backpack upgrades remain in the separate command tray.
+  displayed refund first. Campaign backpack upgrades remain in the command tray.
+- In Survival, grunt and spawner deaths drop tech. Collect it automatically or
+  tap it to approach; full matter cargo does not block tech collection. Build
+  Research in Hermes's fourth slot for 10 matter. Tap the center to pause, choose
+  an upgrade, and spend tech. Resume continues the run. Research survives pack-up
+  and save/resume; New Run and Retry reset it.
 - Use the weapon buttons with Build closed. Collect the heavy rifle
-  crate to unlock it. Settings and the empty ability position stay inactive.
+  crate to unlock it. Settings stays inactive; campaign keeps the fourth slot empty.
 - With Build closed, ground taps move Nathaniel and enemy taps target for him.
   Build temporarily disables new manual Nathaniel commands. Existing orders
   and automatic combat continue.

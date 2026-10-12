@@ -144,6 +144,8 @@ func begin_tower_drag(kind: String) -> void:
 	cancel_world_tap()
 	if app.sim.resources < int(GameBalance.COSTS[GameBalance.canonical_kind(kind)]):
 		return
+	if kind == "research_center" and (app.sim.level_number != 0 or not app.sim.research_center().is_empty()):
+		return
 	drag_kind = kind
 	drag_start = pointer_position
 	app.ui.build_kind = kind

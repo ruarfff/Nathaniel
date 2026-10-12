@@ -3,8 +3,18 @@ extends RefCounted
 ## Shipped gameplay constants, independent of presentation and storage.
 
 const ENEMIES: Array[String] = ["grunt", "soldier", "gunSoldier", "boss", "spawner"]
-const TOWERS: Array[String] = ["gunTower", "laserTower", "healTower"]
-const COSTS: Dictionary = {"gunTower": 5, "laserTower": 10, "healTower": 15}
+const TOWERS: Array[String] = ["gunTower", "laserTower", "healTower", "researchCenter"]
+const COSTS: Dictionary = {"gunTower": 5, "laserTower": 10, "healTower": 15, "researchCenter": 10}
+const TECH_VALUES: Dictionary = {"grunt": 1, "spawner": 8}
+const TECH_COLLECTION_SECONDS: float = 0.35
+const TECH_MERGE_REACH: float = 40.0
+const TECH_PLACEMENT_RETRY_SECONDS: float = 0.5
+const RESEARCH: Dictionary = {
+	"capacity": {"name": "Cargo capacity", "category": "Nathaniel", "costs": [10, 20], "values": [1, 2, 3], "unit": "bodies"},
+	"reach": {"name": "Collection reach", "category": "Nathaniel", "costs": [8, 16], "values": [44.0, 60.0, 76.0], "unit": "world units"},
+	"cooling": {"name": "Shoulder cooling", "category": "Hermes", "costs": [12, 24], "values": [1.0, 0.85, 0.75], "unit": "mobile laser cooldown"},
+	"plating": {"name": "Reinforced plating", "category": "Defenses", "costs": [12, 24], "values": [1.0, 1.2, 1.35], "unit": "tower maximum health"},
+}
 const HERMES_BUILD_RANGE: float = 240.0
 const HERMES_FOLLOW_DISTANCE: float = 100.0
 const BOSS_APPROACH_RANGE_RATIO: float = 0.3
@@ -100,6 +110,9 @@ const STATS: Dictionary = {
 		"size": Vector2(48, 48), "radius": 24.0, "score": 0},
 	"healTower": {"max_hp": 600, "speed": 0.0, "range": 400.0, "vision": 400.0,
 		"weapon": "heal", "delay": 2.0, "damage": 40,
+		"size": Vector2(48, 48), "radius": 24.0, "score": 0},
+	"researchCenter": {"max_hp": 600, "speed": 0.0, "range": 0.0, "vision": 200.0,
+		"weapon": "none", "delay": 0.0, "damage": 0,
 		"size": Vector2(48, 48), "radius": 24.0, "score": 0},
 }
 

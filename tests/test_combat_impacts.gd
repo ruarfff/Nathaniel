@@ -27,7 +27,7 @@ func _initialize() -> void:
 	check(sim.take_events().is_empty(), "Impact events are consumed once")
 	sim.damage_entity(int(target.id), 100, int(sim.nathaniel.id))
 	events = sim.take_events()
-	check(events.size() == 2 and events[0].type == "hit" and events[1].type == "death", "Lethal contact precedes death")
+	check(events.size() == 3 and events[0].type == "hit" and events[1].type == "death" and events[2].type == "tech_dropped", "Lethal contact precedes death and its tech reward")
 	if not events.is_empty():
 		check(events[0].amount == 23, "Lethal impact is capped to remaining health")
 	check(not target.active and target.hp == 0, "Damage still uses normal death handling")

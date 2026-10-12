@@ -20,6 +20,20 @@ BATCHED_ASSETS = {"soldier", "gun_soldier", "boss"}
 
 def validate_rig(scene):
     role = scene.get("asset_model")
+    if role in {"tech", "structure", "attachment"}:
+        names = {"tech": ("TechRoot",),
+                 "structure": ("ResearchRoot", "ResearchArchLeft", "ResearchArchRight", "ResearchCrosspiece", "ResearchScan"),
+                 "attachment": ("TechCollectorRoot", "TechCassetteLid", "TechShoulder", "TechUpper", "TechElbow", "TechForearm", "TechWrist", "TechHeld")}[role]
+        nodes = {}
+        for name in names:
+            node = scene.objects.get(name)
+            if node is None or node.type != "EMPTY":
+                raise ValueError(f"{role} requires an Empty named {name}.")
+            nodes[name] = node
+        root = nodes[names[0]]
+        if any(obj.type == "MESH" and not obj.hide_render and obj not in root.children_recursive for obj in scene.objects):
+            raise ValueError(f"Parent all visible {role} geometry under {root.name}.")
+        return nodes
     if role == "matter":
         root = scene.objects.get("MatterRoot")
         if root is None or root.type != "EMPTY":
@@ -159,6 +173,7 @@ def _scene_text(asset, scene, settings):
         f'metadata/max_pixel_density = {settings["render_density"]}.0\n'
         'metadata/world_points_per_unit = 32\n'
         + ('metadata/model_role = "mounted_character"\n' if role == "mounted_character" else '')
+        + ('metadata/model_role = "structure"\n' if role == "structure" else '')
         + (f'metadata/body_aim = "{scene.get("model_body_aim", "movement")}"\n' if role == "mounted_character" else '')
         + '\n'
         '[node name="Geometry" parent="." instance=ExtResource("1")]\n\n'

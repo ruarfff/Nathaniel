@@ -20,6 +20,7 @@ var _ring: Control
 var _placement: HBoxContainer
 var _placement_label: Label
 var _ring_layout_size := Vector2.ZERO
+var research: ResearchMenu
 
 
 func _ready() -> void:
@@ -55,6 +56,10 @@ func _ready() -> void:
 		button.pressed.connect(func() -> void: command.emit("upgrade_gathering", upgrade))
 		buttons["upgrade_" + upgrade] = button
 	_make_ring()
+	research = ResearchMenu.new()
+	add_child(research)
+	research.purchase_requested.connect(func(request: Dictionary) -> void: command.emit("research_purchase", request))
+	research.resume_requested.connect(func() -> void: command.emit("research_resume", null))
 	_fit_hud.call_deferred()
 
 
@@ -69,22 +74,26 @@ func update_game(sim: GameSimulation, fog_enabled: bool = true) -> void:
 	%Nathaniel.update_unit(sim, sim.nathaniel, fog_enabled, true)
 	%Hermes.update_unit(sim, sim.hermes, fog_enabled, build_open)
 	var mode_label := "DEMO · SURVIVAL" if demo_mode else ("SURVIVAL" if sim.config.get("number", 0) == 0 else "LEVEL %d" % sim.config.get("number", 1))
-	%Stats.text = "MATTER %d   ·   %s\n%d lives · %d score · %s" % [sim.resources, _time_text(sim.elapsed_time), sim.lives, sim.score, mode_label]
+	var wallet := "MATTER %d" % sim.resources
+	if sim.level_number == 0:
+		wallet += "   TECH %d" % sim.tech
+	%Stats.text = "%s   ·   %s\n%d lives · %d score · %s" % [wallet, _time_text(sim.elapsed_time), sim.lives, sim.score, mode_label]
 	buttons.fire.disabled = build_open or not CombatRules.alive(sim.nathaniel)
 	buttons.stop.disabled = buttons.fire.disabled
 	var following := sim.hermes_mode == "following"
-	var tower_counts := {"gunTower": 0, "laserTower": 0, "healTower": 0}
+	var tower_counts := {"gunTower": 0, "laserTower": 0, "healTower": 0, "researchCenter": 0}
 	var refund := 0
 	for entity: Dictionary in sim.entities:
 		if entity.tower and entity.hp > 0:
 			tower_counts[entity.kind] += 1
 			if entity.owned:
 				refund += int(entity.construction_cost) / 4
-	%Towers.visible = build_open
+	%Towers.visible = build_open and sim.level_number != 0
 	%Weapons.visible = not build_open
 	for upgrade: String in ["capacity", "reach"]:
 		var cost: int = sim.gathering_upgrade_cost(upgrade)
 		var button: Button = buttons["upgrade_" + upgrade]
+		button.visible = sim.level_number != 0
 		var label := "Cargo slot" if upgrade == "capacity" else "Arm reach"
 		button.text = "%s · %d" % [label, cost] if cost >= 0 else "%s · Max" % label
 		button.disabled = cost < 0 or sim.resources < cost or not CombatRules.alive(sim.nathaniel) or not CombatRules.alive(sim.hermes)
@@ -95,11 +104,16 @@ func update_game(sim: GameSimulation, fog_enabled: bool = true) -> void:
 		button.disabled = sim.resources < cost or not CombatRules.alive(sim.hermes)
 		button.text = "%s · %d\n%s" % [kind.trim_suffix("_tower").capitalize(), cost, "Need more matter" if sim.resources < cost else "Place tower"]
 		button.tooltip_text = "Costs %d matter. Place inside Hermes's build range." % cost
+	var research_button: Button = ring_buttons.research_center
+	var has_center := not sim.research_center().is_empty()
+	var research_cost := int(GameBalance.COSTS.researchCenter)
+	research_button.disabled = sim.level_number != 0 or has_center or sim.resources < research_cost or not CombatRules.alive(sim.hermes)
+	research_button.text = "Research built" if has_center else "Research · %d\n%s" % [research_cost, "Survival only" if sim.level_number != 0 else ("Need more matter" if sim.resources < research_cost else "Place center")]
 	ring_buttons.pack.disabled = following or not CombatRules.alive(sim.hermes)
 	var tower_summary: PackedStringArray = []
 	for kind: String in tower_counts:
 		if tower_counts[kind] > 0:
-			tower_summary.append("%s %d" % [{"gunTower": "Gun", "laserTower": "Laser", "healTower": "Heal"}[kind], tower_counts[kind]])
+			tower_summary.append("%s %d" % [{"gunTower": "Gun", "laserTower": "Laser", "healTower": "Heal", "researchCenter": "Research"}[kind], tower_counts[kind]])
 	var pack_detail := "No linked towers" if tower_summary.is_empty() else " · ".join(tower_summary.slice(0, 2))
 	pack_detail += "\n%s+%d matter" % [(tower_summary[2] + " · ") if tower_summary.size() > 2 else "", refund]
 	ring_buttons.pack.text = "Pack up & move\n%s" % ("Already mobile" if following else pack_detail)
@@ -131,6 +145,8 @@ func update_game(sim: GameSimulation, fog_enabled: bool = true) -> void:
 	if _placement.visible:
 		_placement_label.text = "%s · %d matter · Range %d" % [build_kind.trim_suffix("_tower").capitalize(), GameBalance.COSTS[GameBalance.canonical_kind(build_kind)], sim.hermes_build_range()]
 	_layout_ring()
+	if menu == "research":
+		research.update_state(sim.research_state())
 	queue_redraw()
 
 
@@ -179,11 +195,11 @@ func _make_ring() -> void:
 	_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_ring)
 	move_child(_ring, get_node("Modal").get_index())
-	for key: String in ["gun_tower", "laser_tower", "heal_tower", "empty", "pack", "settings"]:
+	for key: String in ["gun_tower", "laser_tower", "heal_tower", "research_center", "pack", "settings"]:
 		var button := _button("", _ring)
 		button.add_theme_font_size_override("font_size", 12)
 		var face := get_theme_stylebox("normal", "Button").duplicate() as StyleBoxFlat
-		face.border_color = Color("e6ad50") if key not in ["empty", "settings"] else Color("70858a")
+		face.border_color = Color("e6ad50") if key != "settings" else Color("70858a")
 		face.set_corner_radius_all(6)
 		face.set_border_width_all(2)
 		button.add_theme_stylebox_override("normal", face)
@@ -193,13 +209,12 @@ func _make_ring() -> void:
 		button.add_theme_stylebox_override("disabled", unavailable)
 		button.custom_minimum_size = Vector2.ZERO
 		button.size = Vector2(136, 72)
-		button.disabled = key in ["empty", "settings"]
+		button.disabled = key == "settings"
 		if key == "settings":
 			button.text = "Settings\nNot yet available"
-		elif key == "empty":
-			button.text = "Empty\nUnassigned"
-		elif key.ends_with("_tower"):
-			button.icon = CharacterControl.portrait(GameBalance.canonical_kind(key))
+		elif key.ends_with("_tower") or key == "research_center":
+			if key.ends_with("_tower"):
+				button.icon = CharacterControl.portrait(GameBalance.canonical_kind(key))
 			button.expand_icon = true
 			button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
@@ -239,7 +254,7 @@ func close_ring() -> void:
 func _layout_ring() -> void:
 	if _ring == null or ring_character.is_empty():
 		return
-	var offsets := {"gun_tower": Vector2(-142, -56), "laser_tower": Vector2(0, -112), "heal_tower": Vector2(142, -56), "empty": Vector2(142, 56), "pack": Vector2(0, 112), "settings": Vector2(-142, 56)}
+	var offsets := {"gun_tower": Vector2(-142, -56), "laser_tower": Vector2(0, -112), "heal_tower": Vector2(142, -56), "research_center": Vector2(142, 56), "pack": Vector2(0, 112), "settings": Vector2(-142, 56)}
 	if _ring_layout_size != size:
 		var safe := play_rect()
 		var half := Vector2(210, 148)
@@ -267,6 +282,8 @@ func _draw() -> void:
 
 
 func blocks_world_input(screen: Vector2) -> bool:
+	if menu == "research":
+		return true
 	for panel: Control in [$Top, $Bottom, $Characters, %Pause, %Modal, _placement]:
 		if panel.is_visible_in_tree() and panel.get_global_rect().has_point(screen):
 			return true
@@ -284,9 +301,11 @@ func show_notice(message: String) -> void:
 
 func show_menu(which: String, context: Dictionary = {}) -> void:
 	menu = which
+	if research != null:
+		research.visible = which == "research"
 	%Scroll.scroll_vertical = 0
 	_fit_menu.call_deferred()
-	%Modal.visible = not which.is_empty()
+	%Modal.visible = not which.is_empty() and which != "research"
 	$Top.visible = which != "main" and which != "levels" and context.get("in_game", true)
 	$Bottom.visible = $Top.visible
 	$Characters.visible = $Top.visible
@@ -298,6 +317,8 @@ func show_menu(which: String, context: Dictionary = {}) -> void:
 		%Content.remove_child(child)
 		child.queue_free()
 	match which:
+		"research":
+			research.open(context)
 		"main":
 			_heading("NATHANIEL", "DEMO MODE · SURVIVAL ONLY\nEARTH NEEDS YOU" if demo_mode else "EARTH NEEDS YOU")
 			if not demo_mode:

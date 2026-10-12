@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/actors/research_center_view.gd" id="1"]
+[ext_resource type="Resource" path="res://resources/actors/research_center.tres" id="2"]
+
+[node name="ResearchCenter" type="Node2D"]
+texture_filter = 1
+script = ExtResource("1")
+kind = "researchCenter"
+visual = ExtResource("2")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture_filter = 4

@@ -231,7 +231,7 @@ func _run() -> void:
 		if button.visible:
 			live_buttons += 1
 	expect(live_buttons == 6, "Hermes has six fixed positions")
-	expect(app.ui.ring_buttons.empty.disabled and app.ui.ring_buttons.settings.disabled and app.ui.ring_buttons.pack.disabled, "Empty, Settings and mobile Pack stay inactive")
+	expect(not app.ui.ring_buttons.research_center.disabled and app.ui.ring_buttons.settings.disabled and app.ui.ring_buttons.pack.disabled, "Research replaces the fourth slot; Settings and mobile Pack stay inactive")
 	app.sim.resources = 0
 	app.ui.update_game(app.sim, false)
 	expect(app.ui.ring_buttons.gun_tower.disabled and app.ui.ring_buttons.gun_tower.text.contains("Need more matter"), "Unaffordable slot stays visible with a reason")

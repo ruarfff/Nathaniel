@@ -15,6 +15,9 @@ delivery to Hermes. These choices avoid a second delivery inventory and keep
 fresh runs comparable. All new prices and yields below are starting values
 for playtests.
 
+The [implementation handoff](research-implementation-prompt.md) defines the
+survival demo build, including the four starting upgrade tracks and validation.
+
 ## T1 Tech modules and collection
 
 ![Tech drops and collection](iron-and-ink/30-tech-collection.png)

@@ -25,6 +25,7 @@ PROFILE ?= default
 .PHONY: demo test-demo export-web-demo serve-web-demo
 .PHONY: image-demo
 .PHONY: test-survival profile-survival art-survival
+.PHONY: test-research test-research-art art-research profile-research
 
 help:
 	@echo "make test-resource-gathering Check backpack rules, controls, saves and live models"
@@ -45,6 +46,10 @@ help:
 	@echo "make test-presentation Check input, HUD, and weapon controls"
 	@echo "make test-demo        Check demo menus, access rules, and saves"
 	@echo "make test-survival    Check all four survival maps, identity and routes"
+	@echo "make test-research    Check tech, research, saves, and survival lifecycle"
+	@echo "make test-research-art Check saved research sources and exports"
+	@echo "make art-research     Capture research at desktop and phone sizes"
+	@echo "make profile-research Measure tech stacks and spawner farming income"
 	@echo "make profile-survival Compare authored maps with identical wave seeds"
 	@echo "make art-survival     Capture and profile all four maps at gameplay zoom"
 	@echo "make format           Normalize project source whitespace"
@@ -120,6 +125,7 @@ import: version
 	python3 tools/run_checked.py "$(GODOT)" --headless --editor --path . --import --quit
 
 test: import format-check test-tooling
+	$(MAKE) test-research
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_character_controls.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_enemy_deaths.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_resource_gathering.gd
@@ -142,7 +148,7 @@ test: import format-check test-tooling
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_healing_tower.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_hermes_actor.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_hermes_base_effects.gd
-	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_animated_art.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --fixed-fps 60 --path . --script res://tests/test_animated_art.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_static_art.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_environment_art.gd
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_gameplay.gd
@@ -175,6 +181,23 @@ test-gameplay: import
 
 test-services: import
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_services.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_research_services.gd
+
+test-research: import
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_research.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_research_services.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_research_lifecycle.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_research_presentation.gd
+
+art-research: import
+	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tools/capture_research.gd
+
+profile-research: import
+	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/profile_research.gd
+
+test-research-art: import
+	blender --background --factory-startup --disable-autoexec --python-exit-code 1 --python tools/blender/verify_research_assets.py
+	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tools/blender/verify_research_views.gd
 
 test-presentation: import
 	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_character_controls.gd
@@ -311,7 +334,7 @@ test-healing-tower: import
 	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tests/test_healing_tower.gd -- --render
 
 test-animated-art: import
-	python3 tools/run_checked.py "$(GODOT)" --headless --path . --script res://tests/test_animated_art.gd
+	python3 tools/run_checked.py "$(GODOT)" --headless --fixed-fps 60 --path . --script res://tests/test_animated_art.gd
 	python3 tools/run_checked.py "$(GODOT)" --path . --script res://tests/test_animated_art.gd -- --render
 
 test-static-art: import

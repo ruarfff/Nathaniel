@@ -8,6 +8,7 @@ var height: int = 1
 var tile_size: float = 32.0
 var blocked: Dictionary = {}
 var towers: Array[Vector2] = []
+var obstacle_rects: Array[Rect2] = []
 var revision: int = 0
 var terrain_radius_clearance: bool = false
 var _grids: Dictionary = {}
@@ -28,6 +29,7 @@ func configure(config: Dictionary) -> void:
 			point = Vector2i(int(item[0]), int(item[1]))
 		blocked[point] = true
 	towers.clear()
+	obstacle_rects.clear()
 	invalidate()
 
 func invalidate() -> void:
@@ -58,6 +60,9 @@ func walkable(point: Vector2, radius: float = 0.0) -> bool:
 		return false
 	for tower: Vector2 in towers:
 		if point.distance_to(tower) < 24.0 + radius:
+			return false
+	for obstacle: Rect2 in obstacle_rects:
+		if obstacle.grow(radius).has_point(point):
 			return false
 	return true
 

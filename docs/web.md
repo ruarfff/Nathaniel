@@ -109,16 +109,27 @@ a held world tap. Pressed feedback clears on release or cancellation.
 If the world target changes under a stationary press, release cancels the tap.
 Opening or closing Build preserves existing orders and automatic combat.
 
-Hermes has six fixed positions: Gun, Laser, Heal, an inactive empty slot,
-Pack up & move, and disabled Settings. Tower slots show their cost and explain
+Hermes has six fixed positions: Gun, Laser, Heal, Research in Survival,
+Pack up & move, and disabled Settings. Campaign keeps the fourth slot empty.
+Tower slots show their cost and explain
 insufficient matter. Select a tower to replace the ring with placement and a
 Cancel button, then tap clear ground inside the amber range or drag the tower
 there. A valid placement pays once, deploys Hermes, connects the tower, and
 returns to Build with Hermes still framed so you can place another tower.
 A rejected placement keeps the preview. Cancel or Escape returns to Build.
 Tapping Nathaniel's card or body, or pressing Space, discards the preview and
-closes Build; tapping Hermes's card returns to his build ring. Backpack upgrades
-remain in the separate command tray while Hermes's commands are open.
+closes Build; tapping Hermes's card returns to his build ring. Campaign backpack
+upgrades remain in the command tray. Survival backpack upgrades use Research.
+
+In Survival, tap tech to approach it. Nearby tech also collects automatically,
+including with a full matter rack. The tech counter updates at pickup acceptance.
+Tap the ready research center from either character focus to open Research;
+this replaces an open build ring. Active tower placement keeps input priority.
+The menu pauses all world activity. Select Nathaniel, Hermes, or Defenses, then
+select a track and press Research to buy one rank with tech. Selecting a row
+does not spend anything. Insufficient-tech and maximum-rank reasons stay visible.
+On a narrow screen, Back or Escape first returns from details to the list.
+Resume, or Back from the list, closes Research. Background taps are consumed.
 
 Pack up & move shows the connected tower types, their counts, and the actual
 refund before activation. Existing ground cables show the connections;

@@ -36,10 +36,52 @@ next intake turn and gives no additional credit. Leaving range or losing Hermes
 before acceptance returns the bundle to its rack. Nathaniel's death drops held
 matter safely; an ungripped body keeps its remaining armed lifetime.
 
-Capacity and reach upgrades use the command tray while Build is open and the
-same wallet as towers.
+In Survival, capacity and reach upgrades use tech in the Research menu.
+Campaign retains the matter-priced upgrades in the command tray while Build
+is open.
 They retain one arm pair, add visible rack clamps or extend the end links, and
 survive saves and spare-life respawns. A fresh level uses the starter backpack.
+
+## Survival tech and research
+
+Each accepted grunt death, including a spawner child, drops 1 tech. A spawner
+drops one core worth 8 tech. Both retain their explosion effects and leave no
+matter corpse. Tech has no expiry or warning state. Nearby unclaimed drops
+merge within clear local ground, preserving their full quantity. A large saved
+stack uses a bounded visual shape.
+
+Nathaniel collects tech with a separate short collector and cassette. A full
+matter rack does not block it. Tech needs no furnace, delivery, deployed Hermes,
+or research center. Acceptance removes the drop and credits the tech wallet
+together. Interrupting collection before acceptance leaves the drop available.
+Automatic collection does not change movement. Tap a drop to approach it;
+movement or Stop cancels that approach. Corpse rescue and active matter handling
+take priority. Collection reach applies to both tools.
+
+Hermes's fourth Survival build slot constructs Research for 10 matter. It uses
+normal build range, footprint, route checks, and the broad ground conduit.
+Only one center may exist. Pack-up refunds the normal 25% of its paid cost,
+rounded down; destruction gives no refund. Either event retains tech and learned
+ranks. Rebuild the center to regain menu access.
+
+Tap a ready center to open Research immediately and pause the world. Select a
+track to read its effect; press Research to buy one rank. Each rank needs a new
+press. Resume closes the menu. On narrow screens, Back first returns from the
+detail view to the list and keeps the world paused. Research releases only its
+own pause when closed.
+
+| Track | Baseline → rank 1 → rank 2 | Tech costs |
+| --- | --- | --- |
+| Cargo capacity | 1 → 2 → 3 bodies | 10, 20 |
+| Collection reach | 44 → 60 → 76 world units | 8, 16 |
+| Shoulder cooling | Base cooldown → 85% → 75% of base | 12, 24 |
+| Reinforced plating | Base maximum HP → 120% → 135% of base | 12, 24 |
+
+Cooling changes only Hermes's mobile laser. Plating changes gun, laser, and
+heal tower maximum health, including existing towers, while retaining their
+health fraction. Each rank derives from the original baseline. These values
+are playtest defaults. All upgrades last for the current run; New Run and Retry
+reset them. Save/resume and spare-life respawn retain them.
 
 ## Hermes automatic recovery
 

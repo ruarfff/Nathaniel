@@ -14,13 +14,31 @@ var entities: Array[Dictionary] = []
 var projectiles: Array[Dictionary] = []
 var corpses: Array[Dictionary] = []
 var weapon_pickups: Array[Dictionary] = []
+var tech_pickups: Array[Dictionary] = []
+var tech: int = 0
+var tech_target_id: int = 0
+var corpse_target_id: int = 0
+var research_ranks: Dictionary = {"capacity": 0, "reach": 0, "cooling": 0, "plating": 0}
+var research_session_id: int = 0
+var _research_center_id: int = 0
+static var _next_research_session: int = 1
+var _external_paused: bool = false
+var application_suspended: bool = false
+var _tech_placement_retry: float = 0.0
+var _tech_route_key: Array = []
+var _tech_routes: WorldNavigation
+var _tech_approach_revision: int = -1
 var events: Array[Dictionary] = []
 var resources: int = 30
 var score: int = 0
 var lives: int = 3
 var elapsed_time: float = 0.0
 var result: String = "playing"
-var paused: bool = false
+var paused: bool:
+	get:
+		return _external_paused or application_suspended or research_session_id > 0
+	set(value):
+		_external_paused = value
 var hermes_mode: String = "following"
 var focused_character: String = "nathaniel"
 var wave_elapsed: float = 0.0
@@ -70,6 +88,15 @@ func configure(config: Dictionary) -> void:
 	projectiles.clear()
 	corpses.clear()
 	weapon_pickups.clear()
+	tech_pickups.clear()
+	tech = 0
+	tech_target_id = 0
+	corpse_target_id = 0
+	_tech_route_key.clear()
+	_tech_routes = null
+	research_ranks = {"capacity": 0, "reach": 0, "cooling": 0, "plating": 0}
+	end_research()
+	_tech_placement_retry = 0.0
 	events.clear()
 	_next_id = 1
 	resources = int(level.get("starting_resources", 0 if level_number >= 4 else 30))
@@ -122,6 +149,7 @@ func allocate_id() -> int:
 func _add(kind: String, position: Vector2) -> Dictionary:
 	var unit: Dictionary = GameBalance.create(kind, allocate_id(), position)
 	if not unit.is_empty():
+		_apply_tower_plating(unit)
 		entities.append(unit)
 		_by_id[int(unit.id)] = unit
 		_register_side(unit)
@@ -177,14 +205,21 @@ func apply_design_parameters(unit: Dictionary, parameters: Dictionary) -> void:
 		if parameters.has(key) and float(parameters[key]) >= 0:
 			unit[key] = parameters[key]
 	unit.hp = clampi(int(parameters.get("hp", unit.max_hp)), 0, int(unit.max_hp))
+	if unit.kind in ["gunTower", "laserTower", "healTower"]:
+		unit.research_base_max_hp = int(parameters.get("max_hp", GameBalance.STATS[unit.kind].max_hp))
+		_apply_tower_plating(unit)
 
 func place_map_tower(kind: String, position: Vector2) -> Dictionary:
 	kind = GameBalance.canonical_kind(kind)
 	if kind not in GameBalance.TOWERS or not CombatRules.alive(hermes):
 		return {}
+	if kind == "researchCenter" and (not is_survival() or not research_center().is_empty()):
+		return {}
 	set_hermes_mode("building")
 	var tower: Dictionary = _add(kind, position)
 	tower.construction_cost = 0
+	if kind == "researchCenter":
+		tower.owned = true
 	navigation.update_towers(entities)
 	return tower
 
@@ -258,7 +293,7 @@ func gathering_upgrade_cost(kind: String) -> int:
 
 func upgrade_gathering(kind: String) -> bool:
 	var cost: int = gathering_upgrade_cost(kind)
-	if paused or result != "playing" or not CombatRules.alive(nathaniel) or not CombatRules.alive(hermes) or cost < 0 or resources < cost:
+	if is_survival() or paused or result != "playing" or not CombatRules.alive(nathaniel) or not CombatRules.alive(hermes) or cost < 0 or resources < cost:
 		return false
 	if kind == "capacity":
 		nathaniel.resource_capacity = int(nathaniel.resource_capacity) + 1
@@ -273,6 +308,8 @@ func return_to_hermes() -> bool:
 	if paused or result != "playing" or not CombatRules.alive(nathaniel) or not CombatRules.alive(hermes) or carried_resource_count() == 0:
 		return false
 	nathaniel.returning_cargo = true
+	corpse_target_id = 0
+	_cancel_tech_collection()
 	_stop(nathaniel)
 	_update_cargo_return()
 	return true
@@ -290,6 +327,332 @@ func _update_cargo_return() -> void:
 
 func set_paused(value: bool) -> void:
 	paused = value
+
+func external_pause_active() -> bool:
+	return _external_paused
+
+func set_application_suspended(value: bool) -> void:
+	application_suspended = value
+
+func research_center() -> Dictionary:
+	for unit: Dictionary in entities:
+		if unit.kind == "researchCenter" and CombatRules.alive(unit):
+			return unit
+	return {}
+
+func _research_center_connected(center: Dictionary) -> bool:
+	return is_survival() and result == "playing" and CombatRules.alive(nathaniel) and CombatRules.alive(hermes) and hermes_mode == "building" and CombatRules.alive(center) and center.kind == "researchCenter" and bool(center.owned) and Vector2(center.position).distance_to(hermes.position) <= hermes_build_range()
+
+func begin_research(center_id: int) -> bool:
+	if not _research_center_connected(entity(center_id)):
+		return false
+	if research_session_id > 0:
+		return _research_center_id == center_id
+	_research_center_id = center_id
+	research_session_id = _next_research_session
+	_next_research_session += 1
+	return true
+
+func end_research() -> void:
+	research_session_id = 0
+	_research_center_id = 0
+
+func _validate_research_session() -> void:
+	if research_session_id > 0 and not _research_center_connected(entity(_research_center_id)):
+		end_research()
+
+func research_state() -> Dictionary:
+	_validate_research_session()
+	var tracks: Array[Dictionary] = []
+	for track: String in GameBalance.RESEARCH:
+		var catalog: Dictionary = GameBalance.RESEARCH[track]
+		var rank: int = int(research_ranks[track])
+		var maximum: int = catalog.costs.size()
+		var cost: int = int(catalog.costs[rank]) if rank < maximum else -1
+		var reason: String = ""
+		if rank == maximum:
+			reason = "Fully researched"
+		elif research_session_id == 0:
+			reason = "Open a connected Research center"
+		elif application_suspended:
+			reason = "Application suspended"
+		elif tech < cost:
+			reason = "Need %d more Tech" % (cost - tech)
+		tracks.append({"id": track, "name": catalog.name, "category": catalog.category,
+			"rank": rank, "max_rank": maximum, "cost": cost, "current": catalog.values[rank],
+			"next": catalog.values[mini(rank + 1, maximum)], "unit": catalog.unit,
+			"available": reason.is_empty(), "reason": reason})
+	return {"active": research_session_id > 0, "center_id": _research_center_id,
+		"session_id": research_session_id, "tech": tech, "tracks": tracks}
+
+func purchase_research(track: String, expected_rank: int, session_id: int = -1) -> bool:
+	_validate_research_session()
+	if research_session_id == 0 or application_suspended or (session_id != -1 and session_id != research_session_id) or not GameBalance.RESEARCH.has(track):
+		return false
+	var rank: int = int(research_ranks[track])
+	var catalog: Dictionary = GameBalance.RESEARCH[track]
+	if rank != expected_rank or rank >= catalog.costs.size() or tech < int(catalog.costs[rank]):
+		return false
+	tech -= int(catalog.costs[rank])
+	research_ranks[track] = rank + 1
+	_apply_research()
+	emit_event("research_purchased", {"track": track, "rank": rank + 1, "center_id": _research_center_id, "position": entity(_research_center_id).position})
+	return true
+
+func _apply_tower_plating(unit: Dictionary) -> void:
+	if unit.kind not in ["gunTower", "laserTower", "healTower"]:
+		return
+	var fraction: float = float(unit.hp) / float(unit.max_hp)
+	unit.research_base_max_hp = int(unit.get("research_base_max_hp", unit.max_hp))
+	unit.max_hp = roundi(int(unit.research_base_max_hp) * float(GameBalance.RESEARCH.plating.values[int(research_ranks.plating)]))
+	unit.hp = maxi(1 if fraction > 0 else 0, roundi(fraction * int(unit.max_hp)))
+
+func _apply_research() -> void:
+	nathaniel.resource_capacity = GameBalance.RESOURCE_CAPACITIES[int(research_ranks.capacity)]
+	nathaniel.resource_reach = GameBalance.RESOURCE_REACHES[int(research_ranks.reach)]
+	_apply_hermes_weapon(false)
+	for unit: Dictionary in entities:
+		_apply_tower_plating(unit)
+
+func tech_pickup(id: int) -> Dictionary:
+	for pickup: Dictionary in tech_pickups:
+		if int(pickup.id) == id:
+			return pickup
+	return {}
+
+func tech_collection_state() -> Dictionary:
+	for pickup: Dictionary in tech_pickups:
+		if pickup.phase == "collect":
+			return pickup
+	return {}
+
+func approach_corpse(id: int) -> bool:
+	if paused or result != "playing" or not CombatRules.alive(nathaniel):
+		return false
+	for corpse: Dictionary in corpses:
+		if int(corpse.id) == id and corpse.phase in ["loose", "grab"] and carried_resource_count() < int(nathaniel.resource_capacity):
+			move_to(corpse.position)
+			corpse_target_id = id
+			return true
+	return false
+
+func _tech_navigation() -> WorldNavigation:
+	var key: Array = [navigation.revision]
+	for unit: Dictionary in entities:
+		if unit.kind == "spawner" and CombatRules.alive(unit):
+			key.append([unit.id, unit.position, unit.size])
+	if _tech_routes != null and key == _tech_route_key:
+		return _tech_routes
+	_tech_route_key = key
+	_tech_routes = WorldNavigation.new()
+	_tech_routes.width = navigation.width
+	_tech_routes.height = navigation.height
+	_tech_routes.tile_size = navigation.tile_size
+	_tech_routes.terrain_radius_clearance = navigation.terrain_radius_clearance
+	_tech_routes.blocked = navigation.blocked
+	_tech_routes.towers.assign(navigation.towers)
+	for unit: Dictionary in entities:
+		if unit.kind == "spawner" and CombatRules.alive(unit):
+			_tech_routes.obstacle_rects.append(Rect2(Vector2(unit.position) - Vector2(unit.size) * 0.5, unit.size))
+	return _tech_routes
+
+func spawn_tech(amount: int, position: Vector2, kind: String = "module") -> Dictionary:
+	if amount <= 0 or amount > 9007199254740991 or not position.is_finite() or kind not in ["module", "core"]:
+		return {}
+	var origin: Vector2 = position.clamp(Vector2.ONE * 5.0, Vector2(navigation.width, navigation.height) * navigation.tile_size - Vector2.ONE * 5.0)
+	var pickup: Dictionary = {"id": allocate_id(), "amount": amount, "position": origin,
+		"kind": kind, "phase": "deferred", "phase_elapsed": 0.0, "owner_id": 0}
+	tech_pickups.append(pickup)
+	if _place_tech(pickup):
+		return _merge_tech(pickup)
+	return pickup
+
+func _tech_ground_clear(position: Vector2, route_navigation: WorldNavigation = null) -> bool:
+	if route_navigation == null:
+		route_navigation = navigation
+	if not route_navigation.walkable(position, float(nathaniel.radius)):
+		return false
+	for unit: Dictionary in entities:
+		if unit.kind == "spawner" and CombatRules.alive(unit) and BattlefieldRules.overlaps(position, Vector2.ONE * 12.0, unit.position, unit.size):
+			return false
+	return true
+
+func _tech_segment_clear(start: Vector2, goal: Vector2) -> bool:
+	if not navigation.segment_clear(start, goal, 4.0):
+		return false
+	for unit: Dictionary in entities:
+		if unit.kind == "spawner" and CombatRules.alive(unit) and WorldNavigation.segment_hits_rect(start, goal, Rect2(Vector2(unit.position) - Vector2(unit.size) * 0.5, unit.size).grow(4.0)):
+			return false
+	return true
+
+func _place_tech(pickup: Dictionary) -> bool:
+	if not CombatRules.alive(nathaniel):
+		return false
+	var origin: Vector2 = pickup.position
+	var routes: WorldNavigation = _tech_navigation()
+	var candidates: Array[Vector2] = [origin]
+	var cell: Vector2i = navigation.cell(origin)
+	# Search rings in order. A blocked death retains its value until ground opens.
+	for ring: int in range(1, 9):
+		for y: int in range(-ring, ring + 1):
+			for x: int in range(-ring, ring + 1):
+				if absi(x) == ring or absi(y) == ring:
+					candidates.append(navigation.center(cell + Vector2i(x, y)))
+	for candidate: Vector2 in candidates:
+		if navigation.terrain_clear(origin) and not navigation.swept_terrain_clear(origin, candidate, 4.0):
+			continue
+		if not _tech_ground_clear(candidate) or routes.route(nathaniel.position, candidate, float(nathaniel.radius)).is_empty():
+			continue
+		pickup.position = candidate
+		pickup.phase = "loose"
+		emit_event("tech_dropped", {"pickup_id": pickup.id, "position": candidate, "amount": pickup.amount, "kind": pickup.kind})
+		return true
+	return false
+
+func _merge_tech(pickup: Dictionary) -> Dictionary:
+	if pickup.phase != "loose":
+		return pickup
+	for existing: Dictionary in tech_pickups:
+		if existing == pickup or existing.phase != "loose" or int(existing.id) == tech_target_id:
+			continue
+		if Vector2(existing.position).distance_to(pickup.position) > GameBalance.TECH_MERGE_REACH or not _tech_segment_clear(existing.position, pickup.position):
+			continue
+		if int(existing.amount) > 9007199254740991 - int(pickup.amount):
+			continue
+		existing.amount = int(existing.amount) + int(pickup.amount)
+		if pickup.kind == "core":
+			existing.kind = "core"
+		tech_pickups.erase(pickup)
+		if tech_target_id == int(pickup.id):
+			tech_target_id = int(existing.id)
+		return existing
+	return pickup
+
+func _matter_has_priority() -> bool:
+	if nathaniel.returning_cargo:
+		return true
+	var rescue: bool = false
+	for corpse: Dictionary in corpses:
+		if int(corpse.id) == corpse_target_id and corpse.phase in ["loose", "grab"]:
+			rescue = true
+	if rescue:
+		return true
+	corpse_target_id = 0
+	for corpse: Dictionary in corpses:
+		if corpse.phase in ["grab", "crush", "present", "feed"]:
+			return true
+		if corpse.phase == "loose" and carried_resource_count() < int(nathaniel.resource_capacity) and Vector2(nathaniel.position).distance_to(corpse.position) <= float(nathaniel.resource_reach):
+			return true
+	return false
+
+func _tech_in_reach(pickup: Dictionary) -> bool:
+	return CombatRules.alive(nathaniel) and Vector2(nathaniel.position).distance_to(pickup.position) <= float(nathaniel.resource_reach) and _tech_segment_clear(nathaniel.position, pickup.position)
+
+func approach_tech(id: int) -> bool:
+	var pickup: Dictionary = tech_pickup(id)
+	if paused or result != "playing" or not CombatRules.alive(nathaniel) or pickup.is_empty() or pickup.phase == "deferred" or _matter_has_priority():
+		return false
+	if tech_target_id == id:
+		return true
+	var route: Array[Vector2] = _tech_navigation().route(nathaniel.position, pickup.position, float(nathaniel.radius))
+	if route.is_empty():
+		return false
+	_cancel_tech_collection()
+	tech_target_id = id
+	_tech_approach_revision = -1
+	nathaniel.manual_fire_target = null
+	_stop(nathaniel)
+	_command_move(nathaniel, pickup.position)
+	_update_tech_approach()
+	return true
+
+func _cancel_tech_collection() -> void:
+	tech_target_id = 0
+	for pickup: Dictionary in tech_pickups:
+		if pickup.phase == "collect":
+			pickup.phase = "loose"
+			pickup.phase_elapsed = 0.0
+			pickup.owner_id = 0
+
+func _update_tech_approach() -> void:
+	if tech_target_id == 0:
+		return
+	var pickup: Dictionary = tech_pickup(tech_target_id)
+	if pickup.is_empty() or _matter_has_priority() or not CombatRules.alive(nathaniel):
+		_cancel_tech_collection()
+		_stop(nathaniel)
+	elif _tech_in_reach(pickup):
+		_stop(nathaniel)
+	else:
+		var routes: WorldNavigation = _tech_navigation()
+		var revision: int = hash(_tech_route_key)
+		if _tech_approach_revision == revision:
+			return
+		var route: Array[Vector2] = routes.route(nathaniel.position, pickup.position, float(nathaniel.radius))
+		if route.is_empty():
+			_cancel_tech_collection()
+			_stop(nathaniel)
+		else:
+			nathaniel.path = route
+			nathaniel.navigation_revision = navigation.revision
+			nathaniel.direct_movement = false
+			_tech_approach_revision = revision
+
+func _update_tech(delta: float) -> void:
+	_tech_placement_retry -= delta
+	if _tech_placement_retry <= 0.0:
+		_tech_placement_retry = GameBalance.TECH_PLACEMENT_RETRY_SECONDS
+		for deferred: Dictionary in tech_pickups.duplicate():
+			if deferred.phase == "deferred" and _place_tech(deferred):
+				_merge_tech(deferred)
+	if result != "playing" or not CombatRules.alive(nathaniel) or _matter_has_priority():
+		_cancel_tech_collection()
+		return
+	var active: Dictionary = tech_collection_state()
+	if not active.is_empty() and (not _tech_in_reach(active) or int(active.owner_id) != int(nathaniel.id)):
+		_cancel_tech_collection()
+		active = {}
+	if active.is_empty():
+		var closest: float = INF
+		for pickup: Dictionary in tech_pickups:
+			if pickup.phase != "loose" or not _tech_in_reach(pickup):
+				continue
+			var distance: float = Vector2(nathaniel.position).distance_squared_to(pickup.position)
+			if distance < closest:
+				active = pickup
+				closest = distance
+		if active.is_empty():
+			return
+		active.phase = "collect"
+		active.owner_id = int(nathaniel.id)
+		active.phase_elapsed = 0.0
+	active.phase_elapsed = minf(GameBalance.TECH_COLLECTION_SECONDS, float(active.phase_elapsed) + delta)
+	if float(active.phase_elapsed) + BattlefieldRules.TIMER_EPSILON < GameBalance.TECH_COLLECTION_SECONDS:
+		return
+	if tech > 9007199254740991 - int(active.amount):
+		return
+	# Removal and credit are one domain transition, before any visual callback.
+	tech_pickups.erase(active)
+	tech += int(active.amount)
+	if tech_target_id == int(active.id):
+		tech_target_id = 0
+		_stop(nathaniel)
+	emit_event("tech_collected", {"pickup_id": active.id, "amount": active.amount, "position": active.position, "kind": active.kind})
+
+func _tech_access_remains(position: Vector2) -> bool:
+	if tech_pickups.is_empty():
+		return true
+	var candidate := WorldNavigation.new()
+	candidate.configure(level)
+	candidate.towers.assign(navigation.towers)
+	candidate.towers.append(position)
+	candidate.obstacle_rects.assign(_tech_navigation().obstacle_rects)
+	for pickup: Dictionary in tech_pickups:
+		if pickup.phase == "deferred":
+			continue
+		if not _tech_ground_clear(pickup.position, candidate) or candidate.route(nathaniel.position, pickup.position, float(nathaniel.radius)).is_empty():
+			return false
+	return true
 
 func spawn_weapon_pickup(weapon_id: String, position: Vector2) -> Dictionary:
 	if not GameBalance.WEAPONS.has(weapon_id) or not position.is_finite():
@@ -323,11 +686,13 @@ func _collect_weapon_pickups() -> void:
 			"position": pickup.position, "newly_owned": newly_owned})
 
 func step(delta: float) -> void:
+	_validate_research_session()
 	if paused or result != "playing" or not is_finite(delta) or delta < 0:
 		return
 	elapsed_time += delta
 	# Preserve GameScene's player -> waves -> enemy -> corpse -> tower order.
 	_update_cargo_return()
+	_update_tech_approach()
 	if CombatRules.alive(nathaniel):
 		_move(nathaniel, delta)
 	_collect_weapon_pickups()
@@ -356,7 +721,9 @@ func step(delta: float) -> void:
 		CombatRules.update_unit(self, unit, delta)
 		if CombatRules.alive(unit):
 			_move(unit, delta)
+	var matter_was_busy: bool = _matter_has_priority()
 	BattlefieldRules.update_corpses(self, delta)
+	_update_tech(0.0 if matter_was_busy else delta)
 	if nathaniel.returning_cargo and carried_resource_count() == 0:
 		_update_cargo_return()
 	for unit: Dictionary in entities.duplicate():
@@ -381,6 +748,8 @@ func move_to(destination: Vector2) -> void:
 		return
 	# Focusing Hermes only changes the camera. All ground commands move Nathaniel.
 	nathaniel.returning_cargo = false
+	corpse_target_id = 0
+	_cancel_tech_collection()
 	nathaniel.manual_target_id = -1
 	nathaniel.manual_fire_target = null
 	_stop(nathaniel)
@@ -388,6 +757,8 @@ func move_to(destination: Vector2) -> void:
 
 func stop_player() -> void:
 	if not nathaniel.is_empty():
+		corpse_target_id = 0
+		_cancel_tech_collection()
 		nathaniel.returning_cargo = false
 		_stop(nathaniel)
 
@@ -410,6 +781,8 @@ func _plan_route(unit: Dictionary) -> Array[Vector2]:
 	var destination: Vector2 = unit.destination
 	var route: Array[Vector2]
 	unit.direct_movement = false
+	if unit.kind == "nathaniel" and tech_target_id != 0:
+		return _tech_navigation().route(unit.position, destination, float(unit.radius))
 	if float(unit.arrival_range) > 0 and not navigation.walkable(destination, float(unit.radius)):
 		route = navigation.route_to_range(unit.position, destination, float(unit.radius), float(unit.arrival_range))
 	else:
@@ -517,6 +890,8 @@ func _apply_hermes_weapon(reset_phase: bool) -> void:
 		hermes.burst = 0.0
 		hermes.pending_damage = 0.0
 		hermes.firing = false
+	if not hermes.anchored:
+		hermes.delay = float(GameBalance.STATS.hermes.delay) * float(GameBalance.RESEARCH.cooling.values[int(research_ranks.cooling)])
 
 func _dismantle_towers(refund_paid: bool) -> void:
 	for tower: Dictionary in entities.duplicate():
@@ -545,6 +920,8 @@ func placement_error(position: Vector2) -> String:
 	for corpse: Dictionary in corpses:
 		if BattlefieldRules.overlaps(position, Vector2(48, 48), corpse.position, Vector2(70, 60)):
 			return "overlapsResource"
+	if not _tech_access_remains(position):
+		return "overlapsResource"
 	if is_survival() and not entry_sectors.is_empty():
 		var target: Dictionary = pursuit_target()
 		if not target.is_empty():
@@ -558,6 +935,8 @@ func placement_error(position: Vector2) -> String:
 func place_tower(kind: String, position: Vector2) -> bool:
 	kind = GameBalance.canonical_kind(kind)
 	if paused or result != "playing" or kind not in GameBalance.TOWERS or not CombatRules.alive(hermes):
+		return false
+	if kind == "researchCenter" and (not is_survival() or not research_center().is_empty()):
 		return false
 	var cost: int = int(GameBalance.COSTS[kind])
 	if resources < cost or placement_error(position) != "valid":
@@ -591,6 +970,8 @@ func damage_entity(id: int, amount: int, attacker_id: int = -1) -> void:
 	emit_event("death", {"entity_id": unit.id, "kind": unit.kind, "position": unit.position, "facing": unit.facing})
 	if unit.enemy:
 		score += int(unit.score)
+		if is_survival() and GameBalance.TECH_VALUES.has(unit.kind):
+			spawn_tech(int(GameBalance.TECH_VALUES[unit.kind]), unit.position, "core" if unit.kind == "spawner" else "module")
 		if GameBalance.RESOURCE_VALUES.has(unit.kind):
 			var corpse: Dictionary = spawn_resource(int(GameBalance.RESOURCE_VALUES[unit.kind]), unit.position, GameBalance.RESOURCE_LIFETIME_SECONDS, false, unit.kind)
 			corpse.recovery_eligible = CombatRules.alive(hermes) and hermes_mode == "building" and Vector2(unit.position).distance_to(hermes.position) <= hermes_build_range()
@@ -607,6 +988,8 @@ func damage_entity(id: int, amount: int, attacker_id: int = -1) -> void:
 		if result == "playing":
 			result = "gameOver"
 	elif unit.kind == "nathaniel":
+		corpse_target_id = 0
+		_cancel_tech_collection()
 		unit.manual_fire_target = null
 		unit.returning_cargo = false
 		BattlefieldRules.drop_resources(self)
@@ -618,6 +1001,7 @@ func damage_entity(id: int, amount: int, attacker_id: int = -1) -> void:
 				result = "gameOver"
 	if result != "playing":
 		BattlefieldRules.interrupt_recovery(self, true)
+	_validate_research_session()
 
 func _respawn_player() -> void:
 	nathaniel.hp = nathaniel.max_hp
@@ -644,6 +1028,7 @@ func _destroy_tower(tower: Dictionary) -> void:
 	_friendly_units.erase(tower)
 	_by_id.erase(int(tower.id))
 	navigation.update_towers(entities)
+	_validate_research_session()
 
 func _cleanup_dead() -> void:
 	var shooters: Dictionary = {}
@@ -675,6 +1060,7 @@ func take_events() -> Array[Dictionary]:
 
 func snapshot() -> Dictionary:
 	return encode({"schema": 1, "level": level, "entities": entities,
+		"tech": tech, "tech_pickups": tech_pickups, "research_ranks": research_ranks, "tech_target_id": tech_target_id, "corpse_target_id": corpse_target_id,
 		"projectiles": projectiles, "corpses": corpses, "weapon_pickups": weapon_pickups, "resources": resources,
 		"score": score, "lives": lives, "elapsed_time": elapsed_time, "result": result,
 		"hermes_mode": hermes_mode, "focused_character": focused_character,
@@ -708,6 +1094,8 @@ func restore(saved: Dictionary) -> bool:
 	if not weapon_state_error(saved).is_empty():
 		return false
 	if not gathering_state_error(saved).is_empty():
+		return false
+	if not research_state_error(saved).is_empty():
 		return false
 	configure(saved.level)
 	entities.clear()
@@ -793,6 +1181,19 @@ func restore(saved: Dictionary) -> bool:
 		pickup.position = point(pickup.position)
 		weapon_pickups.append(pickup)
 		_next_id = maxi(_next_id, int(pickup.id) + 1)
+	for data: Dictionary in saved.get("tech_pickups", []):
+		var pickup: Dictionary = data.duplicate(true)
+		pickup.position = point(pickup.position)
+		tech_pickups.append(pickup)
+		_next_id = maxi(_next_id, int(pickup.id) + 1)
+	tech = int(saved.get("tech", 0))
+	tech_target_id = int(saved.get("tech_target_id", 0))
+	corpse_target_id = int(saved.get("corpse_target_id", 0))
+	if saved.has("research_ranks"):
+		research_ranks = saved.research_ranks.duplicate()
+	elif is_survival():
+		research_ranks.capacity = GameBalance.RESOURCE_CAPACITIES.find(int(nathaniel.resource_capacity))
+		research_ranks.reach = GameBalance.RESOURCE_REACHES.find(float(nathaniel.resource_reach))
 	resources = int(saved.get("resources", resources))
 	score = int(saved.get("score", 0))
 	lives = int(saved.get("lives", lives))
@@ -814,6 +1215,8 @@ func restore(saved: Dictionary) -> bool:
 	if hermes_mode in ["independent", "locked", "stopped"]:
 		hermes_mode = "building"
 	_apply_hermes_weapon(false)
+	if is_survival():
+		_apply_research()
 	if hermes_mode != "building" or not CombatRules.alive(hermes) or result != "playing":
 		BattlefieldRules.interrupt_recovery(self, true)
 	if hermes_mode == "following" or not CombatRules.alive(hermes):
@@ -842,13 +1245,116 @@ func restore(saved: Dictionary) -> bool:
 			CombatRules.acquire(self, enemy)
 	nathaniel.has_corpse = CombatRules.alive(nathaniel) and carried_resource_count() > 0
 	_update_cargo_return()
+	if result != "playing" or not CombatRules.alive(nathaniel):
+		_cancel_tech_collection()
+	else:
+		for pickup: Dictionary in tech_pickups:
+			if pickup.phase == "collect" and (not _tech_in_reach(pickup) or _matter_has_priority()):
+				_cancel_tech_collection()
+				break
 	BattlefieldRules.update_fog(self)
 	events.clear()
 	return true
 
+static func research_state_error(state: Dictionary) -> String:
+	if not _research_integer(state.get("tech", 0)):
+		return "Invalid tech balance"
+	var ranks: Variant = state.get("research_ranks", {"capacity": 0, "reach": 0, "cooling": 0, "plating": 0})
+	if not ranks is Dictionary or ranks.size() != GameBalance.RESEARCH.size():
+		return "Invalid research ranks"
+	for track: String in GameBalance.RESEARCH:
+		if not _research_integer(ranks.get(track)) or int(ranks[track]) > GameBalance.RESEARCH[track].costs.size():
+			return "Invalid research rank: " + track
+	var player_id: int = 0
+	var center_count: int = 0
+	var center: Dictionary = {}
+	var robot: Dictionary = {}
+	var level_data: Variant = state.get("level", {})
+	if not level_data is Dictionary:
+		return "Invalid research level"
+	var survival: bool = int(level_data.get("number", 1)) == 0
+	if not state.get("entities", []) is Array:
+		return "Invalid research entities"
+	for unit: Variant in state.get("entities", []):
+		if not unit is Dictionary:
+			return "Invalid research entity"
+		if unit.get("kind") == "nathaniel":
+			player_id = int(unit.get("id", 0))
+			if survival and state.has("research_ranks") and (int(unit.get("resource_capacity", 1)) != GameBalance.RESOURCE_CAPACITIES[int(ranks.capacity)] or float(unit.get("resource_reach", 44.0)) != GameBalance.RESOURCE_REACHES[int(ranks.reach)]):
+				return "Research ranks conflict with backpack"
+		if unit.get("kind") == "researchCenter":
+			if not survival or unit.get("owned") != true or unit.get("tower") != true or unit.get("enemy", false) != false:
+				return "Invalid research center ownership"
+			if not _finite_number(unit.get("hp")) or float(unit.hp) <= 0 or unit.get("active") != true or not _weapon_point_valid(unit.get("position")) or unit.get("weapon") != "none" or not _finite_number(unit.get("damage")) or not _finite_number(unit.get("speed")) or float(unit.damage) != 0.0 or float(unit.speed) != 0.0:
+				return "Invalid research center state"
+			center_count += 1
+			center = unit
+		if unit.get("kind") == "hermes":
+			robot = unit
+		if unit.has("research_base_max_hp") and (not _research_integer(unit.research_base_max_hp) or int(unit.research_base_max_hp) <= 0):
+			return "Invalid tower health baseline"
+		if survival and unit.get("kind") in ["gunTower", "laserTower", "healTower"] and (int(ranks.plating) > 0 or unit.has("research_base_max_hp")):
+			if not unit.has("research_base_max_hp") or int(unit.get("max_hp", 0)) != roundi(int(unit.research_base_max_hp) * float(GameBalance.RESEARCH.plating.values[int(ranks.plating)])):
+				return "Research ranks conflict with tower health"
+	if center_count > 1:
+		return "Multiple research centers"
+	if center_count == 1 and (robot.is_empty() or not _finite_number(robot.get("hp")) or float(robot.hp) <= 0 or robot.get("active") != true or state.get("hermes_mode", "building") == "following" or not _weapon_point_valid(robot.get("position")) or point(robot.position).distance_to(point(center.position)) > GameBalance.HERMES_BUILD_RANGE):
+		return "Research center has no living deployed owner in range"
+	var target: Variant = state.get("tech_target_id", 0)
+	if not _research_integer(target):
+		return "Invalid tech target"
+	if not state.get("tech_pickups", []) is Array:
+		return "Invalid tech pickups"
+	var claims: int = 0
+	var target_found: bool = int(target) == 0
+	var width: float = float(level_data.get("width", 30)) * float(level_data.get("tile_size", 32.0))
+	var height: float = float(level_data.get("height", 30)) * float(level_data.get("tile_size", 32.0))
+	for pickup: Variant in state.get("tech_pickups", []):
+		if not pickup is Dictionary or not _research_integer(pickup.get("amount")) or int(pickup.amount) <= 0:
+			return "Invalid tech quantity"
+		if pickup.get("kind") not in ["module", "core"] or not _weapon_point_valid(pickup.get("position")):
+			return "Invalid tech kind or position"
+		var position: Vector2 = point(pickup.position)
+		if position.x < 0 or position.y < 0 or position.x >= width or position.y >= height:
+			return "Tech pickup outside level bounds"
+		if pickup.get("phase") not in ["loose", "collect", "deferred"] or not _finite_number(pickup.get("phase_elapsed")):
+			return "Invalid tech collection phase"
+		if float(pickup.phase_elapsed) < 0 or float(pickup.phase_elapsed) > GameBalance.TECH_COLLECTION_SECONDS or not _research_integer(pickup.get("owner_id")):
+			return "Invalid tech collection ownership or timer"
+		if pickup.phase == "collect":
+			if player_id <= 0 or int(pickup.owner_id) != player_id:
+				return "Invalid tech collector"
+			claims += 1
+		elif int(pickup.owner_id) != 0 or float(pickup.phase_elapsed) != 0:
+			return "Unclaimed tech has collection state"
+		if int(pickup.get("id", 0)) == int(target):
+			if pickup.phase == "deferred":
+				return "Tech target has no ground placement"
+			target_found = true
+	if claims > 1 or not target_found:
+		return "Invalid tech collection claims or target"
+	if claims > 0:
+		for corpse: Dictionary in state.get("corpses", []):
+			if corpse.get("phase") in ["grab", "crush", "present", "feed"]:
+				return "Tech collection conflicts with active matter handling"
+	var corpse_target: Variant = state.get("corpse_target_id", 0)
+	if not _research_integer(corpse_target):
+		return "Invalid corpse approach target"
+	if int(corpse_target) != 0:
+		var found: bool = false
+		for corpse: Dictionary in state.get("corpses", []):
+			if int(corpse.get("id", 0)) == int(corpse_target):
+				found = true
+		if not found:
+			return "Missing corpse approach target"
+	return ""
+
+static func _research_integer(value: Variant) -> bool:
+	return _finite_number(value) and float(value) >= 0 and float(value) <= 9007199254740991 and float(value) == float(int(value))
+
 static func state_id_error(state: Dictionary) -> String:
 	var used_ids: Dictionary = {}
-	for collection: String in ["entities", "projectiles", "corpses", "weapon_pickups"]:
+	for collection: String in ["entities", "projectiles", "corpses", "weapon_pickups", "tech_pickups"]:
 		if not state.get(collection, []) is Array:
 			return "Invalid state collection: " + collection
 		for item: Variant in state.get(collection, []):

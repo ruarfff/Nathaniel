@@ -129,6 +129,31 @@ the same saved clamp in a separate viewport at recovery reach and poses cable
 and cargo from simulation progress. Mobile Hermes has no winch. Use
 `rtk make test-hermes-base` and `rtk make art-hermes-base` for pose and capture checks.
 
+### Research assets
+
+Survival tech uses saved `tech_module.blend` and `tech_core.blend` sources.
+`tech_collector.blend` supplies the separate short collector and cassette on
+Nathaniel. `research_center.blend` supplies the noncombat folding bench. These
+sources share the existing world scale and export pipeline. Edit the saved
+source, then run `rtk make art-render ASSET=tech_module` (or the other asset name).
+Do not replace runtime assets with concept sheets.
+
+The center uses the `structure` model role and normal owned-tower ground
+connections. Its deployment, scan, recycle, and destruction poses are visual;
+domain acceptance owns construction, pickup credit, and purchases. The shared
+`resources/actors/tech_icon.tres` crops the exported module for the HUD and menu.
+Drop stack geometry is bounded independently of its saved quantity.
+
+```sh
+rtk make test-research test-research-art
+rtk make art-research profile-research
+```
+
+Research captures include a 1280×800 desktop and 844×390 landscape phone. The
+menu is native UI; list/detail layout, scrolling, and purchase controls remain
+active while world animation is paused. Use actual input checks in addition to
+these scripted captures.
+
 ### Laser appearance and contacts
 
 `ActorVisual.laser` selects a `LaserVisual` resource under `resources/weapons/`.

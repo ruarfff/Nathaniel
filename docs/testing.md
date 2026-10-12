@@ -34,6 +34,18 @@ legacy identities, pursuit and birth rules, route protection, and movement,
 building, cargo and Hermes recovery on authored terrain. The original scene
 and campaign baselines remain separate.
 
+`make test-research` checks tech conservation, ownership, reach and navigation,
+the center singleton, rank effects, paused purchases, nested pause owners,
+native menu input, old saves, real JSON round trips, and the full loop on each
+Survival map. It also checks 667×375 output with desktop and mobile virtual
+viewports; Research controls must remain at least 48 display pixels high.
+Tests use temporary storage. `make test-research-art` validates
+saved Blender sources, controls, export hashes, and bounded geometry.
+`make art-research` captures the world and menu at desktop and landscape phone
+sizes. `make profile-research` writes `test-artifacts/research/profile.json` for
+10,000 drops and a six-minute spawner fixture. The fixture kills each child
+immediately, so its income excludes combat risk and travel cost.
+
 `make profile-survival` compares seeds 137 and 733 for six simulated minutes
 on the original map and all four new layouts. Hero HP is raised so each run
 reaches the later waves; normal weapons, wave cadence, and resource rules stay

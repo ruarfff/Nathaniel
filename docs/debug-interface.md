@@ -37,6 +37,12 @@ its entity. These fields explain deferred births without camera-dependent
 spawn rules. The numeric `loadLevel(0)` action still selects the original map;
 use `--survival-map=ID` at launch for a specific new layout.
 
+Survival state also reports the `tech` wallet, ground `techPickups`, and
+the current `research` session and catalog. These are read-only observations.
+Research buttons participate in normal control discovery and debug taps; each
+tap supplies a fresh press before release. Use OS input to verify mouse, keyboard,
+or touch recognition separately.
+
 The `gathering` state reports `phase`, `cargoCount`, `capacity`, `reach`, and
 `furnaceRemaining`. Cargo is separate from spendable `resources`. Backpack
 upgrades and ring actions use the same discoverable controls as real input.

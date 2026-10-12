@@ -29,6 +29,8 @@ var _moving: bool = false
 var _firing: bool = false
 var _attack_active: bool = false
 var _playback_enabled: bool = true
+var _damage_tween: Tween
+var _damage_tween_paused: bool = false
 var _defer_laser_aim: bool = false
 var _draw_visual: ActorVisual
 var _draw_shadow_radius: float = -1.0
@@ -70,6 +72,13 @@ func _queue_visual_redraw(force: bool = false) -> void:
 
 func apply_state(entity: Dictionary, selected: bool = false, playback_enabled: bool = true, defer_laser_aim: bool = false) -> void:
 	_playback_enabled = playback_enabled
+	if _damage_tween != null and _damage_tween.is_valid():
+		if _playback_enabled and _damage_tween_paused:
+			_damage_tween.play()
+			_damage_tween_paused = false
+		elif not _playback_enabled and _damage_tween.is_running():
+			_damage_tween.pause()
+			_damage_tween_paused = true
 	_defer_laser_aim = defer_laser_aim
 	if healing_pulse != null:
 		healing_pulse.playback_enabled = playback_enabled
@@ -118,7 +127,14 @@ func apply_state(entity: Dictionary, selected: bool = false, playback_enabled: b
 		if model_view != null and model_view.visible:
 			display = model_view.display
 		display.modulate = Color("ff8585")
-		create_tween().tween_property(display, "modulate", visual.tint, 0.15)
+		if _damage_tween != null:
+			_damage_tween.kill()
+		_damage_tween = create_tween()
+		_damage_tween_paused = false
+		_damage_tween.tween_property(display, "modulate", visual.tint, 0.15)
+		if not _playback_enabled:
+			_damage_tween.pause()
+			_damage_tween_paused = true
 	_queue_visual_redraw(previous_health != _health or previous_selected != _selected)
 
 

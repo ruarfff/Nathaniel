@@ -6,7 +6,7 @@ static func acquire(sim: GameSimulation, unit: Dictionary) -> void:
 	if int(unit.hp) <= 0:
 		unit.target_id = -1
 		return
-	if unit.weapon == "heal":
+	if unit.weapon in ["heal", "none"]:
 		unit.target_id = -1
 		return
 	var current: Dictionary = sim.entity(int(unit.target_id))
@@ -61,6 +61,9 @@ static func update_unit(sim: GameSimulation, unit: Dictionary, delta: float) -> 
 	# preserves boss-victory priority if an enemy arrow also lands this frame.
 	_update_projectiles(sim, delta, int(unit.id))
 	if not alive(unit):
+		return
+	if unit.weapon == "none":
+		unit.target_id = -1
 		return
 	acquire(sim, unit)
 	var target: Dictionary = sim.entity(int(unit.target_id))

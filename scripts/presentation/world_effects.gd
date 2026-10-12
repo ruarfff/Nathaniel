@@ -125,6 +125,8 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if simulation != null and simulation.paused:
+		delta = 0.0
 	delivery_pulse_time = maxf(0.0, delivery_pulse_time - delta)
 	for effect: Dictionary in transients:
 		effect.life -= delta

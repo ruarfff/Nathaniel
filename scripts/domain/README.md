@@ -6,7 +6,8 @@ world points; level dimensions are cells scaled by `tile_size`.
 
 Call `configure(level_scene.data())` for a fresh run. Use simulation methods to
 add or remove entities: combat keeps indexes of the same dictionary objects.
-Presentation reads `entities`, `corpses`, `projectiles`, and `weapon_pickups`.
+Presentation reads `entities`, `corpses`, `projectiles`, `weapon_pickups`, and
+`tech_pickups`.
 Debug setup and tests may change individual values.
 
 ## APIs
@@ -20,15 +21,17 @@ Debug setup and tests may change individual values.
 | Build | `hermes_build_range()`, `placement_error(point)`, `place_tower(kind, point)` |
 | Map/debug setup | `spawn_enemy(kind, point)`, `place_map_tower(kind, point)`, `damage_entity(id, amount, attacker_id)`, `spawn_resource(...)` |
 | Weapon pickup setup | `spawn_weapon_pickup(weapon_id, point)` |
-| Backpack | `return_to_hermes()`, `gathering_state()`, `gathering_upgrade_cost(kind)`, `upgrade_gathering(kind)`; upgrade kinds are `capacity` and `reach` |
+| Backpack | `approach_corpse(id)`, `return_to_hermes()`, `gathering_state()`; `upgrade_gathering("capacity" / "reach")` remains campaign-only |
+| Survival tech | `spawn_tech(amount, point, kind)`, `approach_tech(id)`, `tech_collection_state()` |
+| Research | `research_center()`, `begin_research(center_id)`, `research_state()`, `purchase_research(track, expected_rank, session_id)`, `end_research()` |
 | Winch display | `recovery_state()` returns the active body or an empty dictionary |
-| Pause | `set_paused(bool)` |
+| Pause | `set_paused(bool)`, `set_application_suspended(bool)`; Research has separate transient pause ownership |
 | Save | `snapshot()` returns JSON primitives; `restore(state)` rebuilds navigation |
 | Visibility | `visibility_at(point)`: 0 unexplored, 1 explored, 2 visible |
 | Events | `take_events()` consumes transient presentation/audio events once |
 
 IDs are allocator integers. Canonical tower kinds are `gunTower`, `laserTower`,
-and `healTower`; build APIs accept snake case too. Level data may include
+`healTower`, and Survival-only `researchCenter`; build APIs accept snake case too. Level data may include
 `weapon_pickups: [{weapon_id, position}]`.
 
 ## Contracts
@@ -56,6 +59,16 @@ and `healTower`; build APIs accept snake case too. Level data may include
   coordinates. Survival births use bounded terrain, occupancy, distance and
   route checks. Blocked births wait without spending their budget. A proposed
   tower must retain a route from every enabled sector to the player area.
+- Survival tech is credited at pickup acceptance. Ground stacks persist without
+  expiry, share the global ID allocator, and merge only on clear local ground.
+  Corpse rescue and active matter handling have priority over tech collection.
+- A living or accepted research center is a singleton. Construction is accepted
+  synchronously; the folding animation does not delay or repeat its reservation.
+  Pack-up and destruction retain wallet and learned ranks. Research is run-only.
+- Research purchases validate the active center, session, expected next rank,
+  and tech balance. They are the explicit permitted mutation during research
+  pause. Other gameplay commands remain blocked. Application suspension is
+  independent, and restoration discards menu authorization.
 
 `aim_direction` is independent of movement `facing`. An accepted `fire_at`
 request may wait for aim; a later valid request replaces its pending point.

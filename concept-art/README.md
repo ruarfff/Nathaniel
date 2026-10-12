@@ -54,6 +54,7 @@ references. Current behavior is documented in the [runtime guides](../README.md#
 | Boss corpse and explosions without matter | [Enemy deaths](enemy-deaths.md) |
 | Selected G1 side winch | [Automatic recovery](hermes-auto-consume.md) |
 | Proposed tech resource, research center, and upgrade menu | [Tech and research](research-and-tech.md) |
+| Implement tech collection and research | [Research implementation handoff](research-implementation-prompt.md) |
 | Four larger survival maps and terrain stages | [Survival demo map plan](survival-maps.md) |
 | Implement the selected survival maps | [Implementation handoff](survival-maps-implementation-prompt.md) |
 

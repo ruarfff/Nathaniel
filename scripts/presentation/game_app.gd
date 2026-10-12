@@ -8,6 +8,9 @@ var sim: GameSimulation
 var level: GameLevel
 var views: Dictionary = {}
 var pickup_views: Dictionary = {}
+var tech_views: Dictionary = {}
+var _retiring_centers: Array[ResearchCenterView] = []
+var _tech_collection := TechCollectionView.new()
 var save_store: GameSaveStore
 var settings: GameSettingsStore
 var progress: GameProgressStore
@@ -182,6 +185,17 @@ func _physics_process(delta: float) -> void:
 	sim.step(delta)
 	var events := sim.take_events()
 	for event: Dictionary in events:
+		if event.get("type", "") in ["death", "recycle"]:
+			var removed_id := int(event.get("owner_id", event.get("entity_id", event.get("target_id", -1))))
+			if views.get(removed_id) is ResearchCenterView:
+				var retired: ResearchCenterView = views[removed_id]
+				retired.begin_removal("recycled" if event.type == "recycle" else "destroyed")
+				_retiring_centers.append(retired)
+				views.erase(removed_id)
+		elif event.get("type", "") == "research_purchased":
+			var center_view: ActorView = views.get(int(event.get("center_id", -1)))
+			if center_view is ResearchCenterView:
+				center_view.notify_research()
 		if event.get("type", "") == "sound":
 			audio.play_effect(event.get("name", "gunShot"))
 		elif event.get("type", "") == "shot":
@@ -196,8 +210,12 @@ func _physics_process(delta: float) -> void:
 		elif event.get("type", "") == "weapon_collected":
 			var weapon_name := "Heavy rifle" if event.weapon_id == "heavy_rifle" else "Rifle"
 			ui.show_notice("%s collected · choose its weapon button to equip." % weapon_name)
+		elif event.get("type", "") == "tech_collected":
+			ui.show_notice("+%d Tech" % int(event.get("amount", 1)))
 		elif event.get("type", "") == "respawn" and sim.result == "playing":
 			ui.show_notice("Life lost · %d spare lives remain" % sim.lives)
+	if ui.menu == "research" and not bool(sim.research_state().get("active", false)):
+		_close_research()
 	_sync_views()
 	var pulsed_healers: Dictionary = {}
 	for event: Dictionary in events:
@@ -215,7 +233,8 @@ func _physics_process(delta: float) -> void:
 	effects.add_events(events, views)
 	ui.update_game(sim, fog.enabled)
 	effects.build_open = ui.build_open and ui.menu.is_empty()
-	_update_camera(delta)
+	if not sim.paused:
+		_update_camera(delta)
 	_update_character_hud()
 	effects.placement = not ui.build_kind.is_empty() and ui.menu.is_empty() and not ui.blocks_world_input(game_input.pointer_position)
 	effects.cursor_world = screen_to_world(game_input.pointer_position)
@@ -242,7 +261,7 @@ func _sync_views() -> void:
 		var id: int = entity.id
 		live[id] = true
 		if not views.has(id):
-			var kind: String = {"gunTower": "gun_tower", "laserTower": "laser_tower", "healTower": "heal_tower", "gunSoldier": "gun_soldier"}.get(entity.kind, entity.kind)
+			var kind: String = {"gunTower": "gun_tower", "laserTower": "laser_tower", "healTower": "heal_tower", "researchCenter": "research_center", "gunSoldier": "gun_soldier"}.get(entity.kind, entity.kind)
 			var path := "res://scenes/actors/%s.tscn" % kind
 			if not ResourceLoader.exists(path):
 				continue
@@ -262,9 +281,14 @@ func _sync_views() -> void:
 	if views.has(int(sim.nathaniel.id)):
 		var player_view: ActorView = views[int(sim.nathaniel.id)]
 		player_view.sync_gathering(sim.corpses, sim.nathaniel, sim.hermes, views.get(int(sim.hermes.id)) as ActorView)
+		_tech_collection.sync(player_view.model_view, sim.tech_pickups, sim.nathaniel, not sim.paused and sim.result == "playing")
 	if views.has(int(sim.hermes.id)):
 		(views[int(sim.hermes.id)] as ActorView).sync_intake(sim.corpses, sim.nathaniel, sim.hermes)
 	_sync_pickup_views()
+	_sync_tech_views()
+	_retiring_centers = _retiring_centers.filter(func(view: ResearchCenterView) -> bool: return is_instance_valid(view))
+	for view: ResearchCenterView in _retiring_centers:
+		view._playback_enabled = not sim.paused and sim.result == "playing"
 	effects.sync_projectiles(views)
 	effects.sync_lasers(views)
 
@@ -295,6 +319,46 @@ func _clear_views() -> void:
 	for view: Node in pickup_views.values():
 		view.queue_free()
 	pickup_views.clear()
+	for view: Node in tech_views.values():
+		view.queue_free()
+	tech_views.clear()
+	for view: ResearchCenterView in _retiring_centers:
+		if is_instance_valid(view):
+			view.queue_free()
+	_retiring_centers.clear()
+
+
+func _sync_tech_views() -> void:
+	var live: Dictionary = {}
+	for pickup: Dictionary in sim.tech_pickups:
+		if pickup.phase == "deferred":
+			continue
+		var id: int = pickup.id
+		live[id] = true
+		if not tech_views.has(id):
+			var view := TechPickupView.new()
+			$World/Actors.add_child(view)
+			tech_views[id] = view
+		var view: TechPickupView = tech_views[id]
+		view.apply_state(pickup, not sim.paused and sim.result == "playing")
+		view.visible = not fog.enabled or sim.visibility_at(pickup.position) == 2
+	for id: int in tech_views.keys():
+		if not live.has(id):
+			tech_views[id].queue_free()
+			tech_views.erase(id)
+
+
+func tech_at_screen(screen: Vector2) -> Dictionary:
+	var nearest := 30.0
+	var selected: Dictionary = {}
+	for pickup: Dictionary in sim.tech_pickups:
+		if pickup.phase != "loose" or (fog.enabled and sim.visibility_at(pickup.position) != 2):
+			continue
+		var distance := world_to_screen(pickup.position).distance_to(screen)
+		if distance < nearest:
+			selected = pickup
+			nearest = distance
+	return selected
 
 
 func screen_to_world(screen: Vector2) -> Vector2:
@@ -315,6 +379,12 @@ func world_click(screen: Vector2) -> void:
 	game_input.cancel_world_tap()
 	var selected := world_entity_at(screen)
 	var target_id: int = int(selected.get("id", -1))
+	if not ui.build_kind.is_empty():
+		place_at(ui.build_kind, screen)
+		return
+	if selected.get("kind", "") == "researchCenter":
+		_open_research(target_id)
+		return
 	if selected.get("kind", "") == "nathaniel":
 		command("focus", "nathaniel")
 		return
@@ -324,9 +394,6 @@ func world_click(screen: Vector2) -> void:
 	if selected.get("kind", "") == "hermes":
 		if not ui.build_open and sim.carried_resource_count() > 0:
 			command("deliver")
-		return
-	if not ui.build_kind.is_empty():
-		place_at(ui.build_kind, screen)
 		return
 	_select_healing_tower(target_id if selected.get("kind") == "healTower" else -1)
 	if target_id >= 0:
@@ -342,12 +409,16 @@ func world_click(screen: Vector2) -> void:
 	elif not ui.build_open:
 		var corpse := effects.corpse_at_screen(screen)
 		if corpse.is_empty():
-			_move_nathaniel(screen_to_world(screen))
-		else:
-			_move_nathaniel(corpse.position)
-			if sim.carried_resource_count() >= int(sim.nathaniel.resource_capacity):
-				ui.show_notice("Cargo full. Deliver to Hermes first.")
+			var tech := tech_at_screen(screen)
+			if not tech.is_empty():
+				ui.show_notice("Collecting Tech." if sim.approach_tech(int(tech.id)) else "Cannot collect Tech now. Clear a route or finish the current collection.")
 			else:
+				_move_nathaniel(screen_to_world(screen))
+		else:
+			if sim.carried_resource_count() >= int(sim.nathaniel.resource_capacity):
+				_move_nathaniel(corpse.position)
+				ui.show_notice("Cargo full. Deliver to Hermes first.")
+			elif sim.approach_corpse(int(corpse.id)):
 				effects.pickup_target_id = int(corpse.id)
 				ui.show_notice("No clear route to the corpse. Nathaniel will move as far as possible." if sim.nathaniel.direct_movement else "Collecting corpse.")
 
@@ -373,7 +444,7 @@ func world_entity_at(screen: Vector2) -> Dictionary:
 			if bounds.has_point(screen) and depth >= friendly_hit_y:
 				friendly_hit_id = int(entity.id)
 				friendly_hit_y = depth
-		if entity.kind == "healTower" and views.has(int(entity.id)):
+		if entity.kind in ["healTower", "researchCenter"] and views.has(int(entity.id)):
 			var actor: ActorView = views[int(entity.id)]
 			var depth: float = IsoProjection.project(entity.position).y
 			if depth >= tower_hit_y and actor.sprite_contains_screen_point(screen):
@@ -389,7 +460,7 @@ func world_entity_at(screen: Vector2) -> Dictionary:
 			target_id = friendly_hit_id
 	if tower_hit_id >= 0:
 		var nearby: Dictionary = sim.entity(target_id)
-		if nearby.is_empty() or nearby.kind == "healTower" or IsoProjection.project(nearby.position).y <= tower_hit_y:
+		if nearby.is_empty() or nearby.kind in ["healTower", "researchCenter"] or IsoProjection.project(nearby.position).y <= tower_hit_y:
 			target_id = tower_hit_id
 	return sim.entity(target_id)
 
@@ -538,6 +609,21 @@ func show_main() -> void:
 
 func command(action: String, value: Variant = null) -> void:
 	game_input.cancel_world_tap()
+	if ui.menu == "research":
+		match action:
+			"research_purchase":
+				if value is Dictionary:
+					var accepted := sim.purchase_research(str(value.get("track", "")), int(value.get("expected_rank", -1)), int(value.get("session_id", -1)))
+					ui.research.update_state(sim.research_state())
+					ui.research.acknowledge(accepted)
+					if accepted:
+						audio.play_effect("zap", -24)
+			"escape", "back":
+				if not ui.research.back():
+					_close_research()
+			"research_resume", "resume":
+				_close_research()
+		return
 	if sim != null and sim.result in ["victory", "gameOver"] and action not in ["main", "level", "quit", "continue_result"]:
 		return
 	if action in ["pause", "settings", "credits", "save_menu", "load_menu", "resume", "exit_menu"]:
@@ -719,7 +805,9 @@ func _game_command(action: String, value: Variant) -> void:
 				open_context_ring()
 		"toggle_hermes":
 			command("hermes_stop" if sim.hermes_mode == "following" else "follow")
-		"gun_tower", "laser_tower", "heal_tower":
+		"gun_tower", "laser_tower", "heal_tower", "research_center":
+			if action == "research_center" and (sim.level_number != 0 or not sim.research_center().is_empty()):
+				return
 			if ui.build_open and sim.resources >= int(GameBalance.COSTS[GameBalance.canonical_kind(action)]) and CombatRules.alive(sim.hermes):
 				ui.build_kind = action
 				ui.close_ring()
@@ -728,6 +816,35 @@ func _game_command(action: String, value: Variant) -> void:
 			change_zoom(1.15)
 		"zoom_out":
 			change_zoom(1.0 / 1.15)
+
+
+func _open_research(center_id: int) -> bool:
+	if sim == null or not sim.begin_research(center_id):
+		return false
+	game_input.cancel_tower_drag()
+	_set_build_open(false)
+	ui.show_menu("research", sim.research_state())
+	_sync_views()
+	return true
+
+
+func _close_research() -> void:
+	if sim == null:
+		return
+	sim.end_research()
+	ui.show_menu("pause" if sim.external_pause_active() and sim.result == "playing" else "")
+	_sync_views()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST and is_node_ready():
+		command("escape")
+	elif what == NOTIFICATION_APPLICATION_PAUSED and sim != null:
+		sim.set_application_suspended(true)
+		game_input.cancel_world_tap()
+		ui.research.cancel_purchase_input()
+	elif what == NOTIFICATION_APPLICATION_RESUMED and sim != null:
+		sim.set_application_suspended(false)
 
 
 func _save(slot: int) -> void:

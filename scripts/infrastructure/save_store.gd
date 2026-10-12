@@ -203,6 +203,9 @@ static func validate_state(state: Dictionary) -> String:
 	var gathering_issue: String = GameSimulation.gathering_state_error(state)
 	if not gathering_issue.is_empty():
 		return gathering_issue
+	var research_issue: String = GameSimulation.research_state_error(state)
+	if not research_issue.is_empty():
+		return research_issue
 	return GameSimulation.weapon_state_error(state)
 
 

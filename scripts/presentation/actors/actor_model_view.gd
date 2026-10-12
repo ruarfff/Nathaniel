@@ -112,10 +112,12 @@ func configure(scene: PackedScene, tint: Color, weapons: Array[WeaponVisual] = [
 	camera = model_root.find_child("Camera3D", true, false) as Camera3D
 	aim_pivot = model_root.find_child("AimPivot", true, false) as Node3D
 	pitch_pivot = model_root.find_child("PitchPivot", true, false) as Node3D
-	if camera == null or aim_pivot == null:
+	var structure: bool = model_root.get_meta("model_role", "") == "structure"
+	if camera == null or (aim_pivot == null and not structure):
 		push_error("Actor model needs Camera3D and AimPivot nodes: " + scene.resource_path)
 		return false
-	_pivot_rest = aim_pivot.transform
+	if aim_pivot != null:
+		_pivot_rest = aim_pivot.transform
 	if _mounted_character:
 		if pitch_pivot == null:
 			push_error("Mounted actor model needs a PitchPivot: " + scene.resource_path)
@@ -126,12 +128,14 @@ func configure(scene: PackedScene, tint: Color, weapons: Array[WeaponVisual] = [
 		return false
 	recoil = model_root.find_child("Recoil", true, false) as Node3D
 	muzzle = model_root.find_child("Muzzle", true, false) as Node3D
-	if camera == null or aim_pivot == null or recoil == null or muzzle == null:
+	if not structure and (aim_pivot == null or recoil == null or muzzle == null):
 		push_error("Actor model needs Camera3D, AimPivot, Recoil and Muzzle nodes: " + scene.resource_path)
 		return false
 	camera.make_current()
-	_recoil_rest = recoil.transform
-	_muzzle_from_pivot = aim_pivot.global_transform.affine_inverse() * muzzle.global_transform
+	if recoil != null:
+		_recoil_rest = recoil.transform
+	if aim_pivot != null and muzzle != null:
+		_muzzle_from_pivot = aim_pivot.global_transform.affine_inverse() * muzzle.global_transform
 	_recoil_elapsed = _recoil_duration
 	_weapon_hands = model_root.find_child("WeaponHands", true, false) as Node3D
 	if _weapon_hands != null:

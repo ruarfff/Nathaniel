@@ -84,6 +84,27 @@ at its safe point, then clears eligibility. Acceptance removes the body/pending 
 before saving credit and furnace/reset time; load cannot restore or credit it twice.
 See [resource rules](resource-gathering.md) for gameplay interruptions.
 
+Survival research adds `tech`, `tech_pickups`, `research_ranks`, and
+`tech_target_id` to the existing snapshot schema. `corpse_target_id` retains an
+explicit rescue order so tech cannot replace it after loading. Ground stacks retain unique
+allocator IDs, full quantities, positions, and collection ownership/progress.
+The research center uses the normal owned-entity record and paid construction
+cost. Collection acceptance removes its resource before the credited wallet is
+saved, so restoration cannot award the same drop again.
+
+Older snapshots without research fields start with zero tech and no drops.
+Their existing backpack capacity and reach ranks remain purchased. Saved actor
+stats already include their upgrades; restoration must not multiply them again.
+Rank effects derive from baseline values, including tower health fractions and
+Hermes's mobile cooldown. New Run and Retry clear research; Retry retains the
+selected map. Spare-life respawn, pack-up, center destruction, and rebuilding
+retain the current run's wallet and learned ranks.
+
+Save-store loading and direct snapshot restoration validate tech quantities,
+drop kinds, global ID uniqueness, rank bounds, collection ownership, and the
+single-center rule. Research menu/session ownership is transient. Loading closes
+the menu and starts with no research pause or stale purchase authorization.
+
 ## Import a Swift save
 
 Swift stored JSON `Data` in UserDefaults keys `save_slot_1` through `save_slot_3`.

@@ -13,6 +13,8 @@ and model scale do not change gameplay distances.
 | Deployed Hermes's cannon | `GameBalance.HERMES_ANCHORED_WEAPON` |
 | Tower costs and build radius | `GameBalance.COSTS`, `HERMES_BUILD_RANGE` |
 | Corpse value, lifetime, handling and backpack upgrades | `GameBalance.RESOURCE_*`; [resource rules](resource-gathering.md) |
+| Survival tech yields, stacking, and collection | `GameBalance.TECH_*` |
+| Research catalog, rank values, and tech costs | `GameBalance.RESEARCH` |
 | Winch stages and guide clearance | `GameBalance.HERMES_WINCH_*` |
 | Follow distance and boss approach ratio | `GameBalance.HERMES_FOLLOW_DISTANCE`, `BOSS_APPROACH_RANGE_RATIO` |
 | Spawner production | `GameBalance.SPAWNER_*` |

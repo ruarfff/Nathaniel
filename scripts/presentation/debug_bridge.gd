@@ -35,6 +35,9 @@ func state() -> Dictionary:
 		"cargoCount": sim.carried_resource_count(), "capacity": sim.nathaniel.resource_capacity,
 		"reach": sim.nathaniel.resource_reach, "furnaceRemaining": sim.hermes.furnace_remaining}
 	if sim.is_survival():
+		result["research"] = sim.research_state()
+		result["tech"] = sim.tech
+		result["techPickups"] = sim.tech_pickups.size()
 		result["survival"] = {"mapId": sim.survival_map_id,
 			"pendingSpawns": sim.pending_wave_kinds.size(), "spawnBlockedReason": sim.spawn_blocked_reason,
 			"spawnRetryRemaining": sim.spawn_retry_remaining}
@@ -75,7 +78,7 @@ func nodes() -> Array:
 
 func _collect_controls(node: Node, result: Array) -> void:
 	if node is Button and node.is_visible_in_tree():
-		if not app.ui.menu.is_empty() and not app.ui.get_node("Modal").is_ancestor_of(node):
+		if not app.ui.menu.is_empty() and not _active_modal().is_ancestor_of(node):
 			return
 		var rect := _visible_rect(node)
 		if not rect.has_area():
@@ -143,13 +146,14 @@ func tap(point: Vector2) -> bool:
 
 func _tap_control(node: Node, point: Vector2) -> bool:
 	if node is Button and node.is_visible_in_tree() and not node.disabled:
-		if not app.ui.menu.is_empty() and not app.ui.get_node("Modal").is_ancestor_of(node):
+		if not app.ui.menu.is_empty() and not _active_modal().is_ancestor_of(node):
 			return false
 		if _visible_rect(node).has_point(point):
-			for kind: String in ["gun_tower", "laser_tower", "heal_tower"]:
+			for kind: String in ["gun_tower", "laser_tower", "heal_tower", "research_center"]:
 				if node == app.ui.ring_buttons[kind]:
 					app.command(kind)
 					return true
+			node.button_down.emit()
 			if node.toggle_mode:
 				node.set_pressed_no_signal(not node.button_pressed)
 				node.toggled.emit(node.button_pressed)
@@ -159,6 +163,10 @@ func _tap_control(node: Node, point: Vector2) -> bool:
 		if _tap_control(child, point):
 			return true
 	return false
+
+
+func _active_modal() -> Control:
+	return app.ui.research if app.ui.menu == "research" else app.ui.get_node("Modal")
 
 
 func _visible_rect(control: Control) -> Rect2:
@@ -179,7 +187,7 @@ func _tap_world(point: Vector2) -> bool:
 
 
 func swipe(from: Vector2, to: Vector2, _duration: float) -> bool:
-	for kind: String in ["gun_tower", "laser_tower", "heal_tower"]:
+	for kind: String in ["gun_tower", "laser_tower", "heal_tower", "research_center"]:
 		var button: Button = app.ui.ring_buttons[kind]
 		if button.get_global_rect().has_point(from):
 			if not button.is_visible_in_tree() or button.disabled or not app.ui.menu.is_empty():
